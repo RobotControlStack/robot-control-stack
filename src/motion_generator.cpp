@@ -17,8 +17,8 @@ void setDefaultBehavior(franka::Robot& robot) {
   robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-MotionGenerator::MotionGenerator(double speed_factor, const std::array<double, 7> q_goal)
-    : q_goal_(q_goal.data()) {
+MotionGenerator::MotionGenerator(double speed_factor, const Vector7d q_goal)
+    : q_goal_(q_goal) {
   dq_max_ *= speed_factor;
   ddq_max_start_ *= speed_factor;
   ddq_max_goal_ *= speed_factor;

@@ -9,6 +9,9 @@
 #include <franka/robot.h>
 #include <franka/robot_state.h>
 
+using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
+using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
+
 /**
  * @file examples_common.h
  * Contains common types and functions for the examples.
@@ -25,6 +28,8 @@ void setDefaultBehavior(franka::Robot& robot);
  * An example showing how to generate a joint pose motion to a goal position. Adapted from:
  * Wisama Khalil and Etienne Dombre. 2002. Modeling, Identification and Control of Robots
  * (Kogan Page Science Paper edition).
+ * 
+ * TODO(tobi): create a motion generator for linear cartesian motion
  */
 class MotionGenerator {
  public:
@@ -34,7 +39,7 @@ class MotionGenerator {
    * @param[in] speed_factor General speed factor in range [0, 1].
    * @param[in] q_goal Target joint positions.
    */
-  MotionGenerator(double speed_factor, const std::array<double, 7> q_goal);
+  MotionGenerator(double speed_factor, const Vector7d q_goal);
 
   /**
    * Sends joint position calculations
@@ -47,8 +52,6 @@ class MotionGenerator {
   franka::JointPositions operator()(const franka::RobotState& robot_state, franka::Duration period);
 
  private:
-  using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
-  using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
 
   bool calculateDesiredValues(double t, Vector7d* delta_q_d) const;
   void calculateSynchronizedValues();

@@ -3,28 +3,29 @@
 #include <franka/robot.h>
 #include <franka/gripper.h>
 #include <franka/exception.h>
+#include "fr3.h"
 
 using namespace std;
 
 const string ip = "192.168.100.1";
-std::function<franka::JointVelocities(const franka::RobotState &, franka::Duration)> my_external_motion_generator_callback;
 
-// // Define my_external_motion_generator_callback
-// franka::JointVelocities my_external_motion_generator_callback(const franka::RobotState &robot_state, franka::Duration period)
-// {
-//     // do something
-// }
 
 int main()
 {
-    try
-    {
-        franka::Robot robot(ip);
-        franka::Gripper gripper(ip);
-        cout << "Initialized" << endl;
+    try{
+        auto robot = FR3(ip);
+        std::cout << robot.get_ee_state() << std::endl;
+        std::cout << robot.get_joint_state() << std::endl;
 
-        // only motion generation for the beginning
-        robot.control(my_external_motion_generator_callback);
+        std::cout << "WARNING: This example will move the robot! "
+              << "Please make sure to have the user stop button at hand!" << std::endl
+              << "Press Enter to continue..." << std::endl;
+        std::cin.ignore();
+        robot.move_home(0.1);
+        // robot.move_zero(0.1);
+        // robot.set_guiding_mode(true);
+        
+        
     }catch (const franka::Exception &e){
         cout << e.what() << endl;
         return -1;
