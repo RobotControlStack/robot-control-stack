@@ -13,15 +13,15 @@ const string ip = "192.168.100.1";
 int main()
 {
     try{
-        auto robot = FR3(ip);
-        std::cout << robot.get_ee_state() << std::endl;
-        std::cout << robot.get_joint_state() << std::endl;
+        FR3 robot(ip);
+        std::cout << *(robot.get_ee_state()) << std::endl;
+        std::cout << *(robot.get_joint_state()) << std::endl;
 
         std::cout << "WARNING: This example will move the robot! "
               << "Please make sure to have the user stop button at hand!" << std::endl
               << "Press Enter to continue..." << std::endl;
         std::cin.ignore();
-        robot.move_home(0.1);
+        robot.move_home2(1);
         // robot.move_zero(0.1);
         // robot.set_guiding_mode(true);
         

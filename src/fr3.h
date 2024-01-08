@@ -16,8 +16,9 @@ class FR3
 private:
     /* data */
     bool guiding_mode;
-    Vec7 q_home = {0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4};
-    Vec7 q_zero = {0, 0, 0, 0, 0, 0, 0};
+    Vec7 q_home;
+    Vec7 q_home2;
+    Vec7 q_zero;
 
 public:
     franka::Robot robot;
@@ -38,6 +39,7 @@ public:
 
     // home and zero poses
     void move_home(double speed_factor = 0.1);
+    void move_home2(double speed_factor = 0.1);
 
     void move_zero(double speed_factor = 0.1);
 

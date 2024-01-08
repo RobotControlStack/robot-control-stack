@@ -20,7 +20,7 @@ set(BUILD_TESTS OFF)
 include(FetchContent)
 FetchContent_Declare(
     libfranka
-    GIT_REPOSITORY git@github.com:frankaemika/libfranka.git
+    GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
     GIT_TAG 0.10.0
     GIT_PROGRESS TRUE
 )

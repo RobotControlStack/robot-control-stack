@@ -17,9 +17,12 @@ using Mat4x4 = Eigen::Matrix<double, 4, 4, Eigen::ColMajor>;
 
 
 FR3::FR3(const std::string ip)
-: robot(ip), gripper(ip)
+: robot(ip), gripper(ip),
+    q_home2((Vec7() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished()),
+    q_home((Vec7() << -0.00566619, -0.365061, -0.00605667, -3.06371, 1.57833, 1.56703, -0.312275 ).finished()),
+    q_zero(Vec7::Zero()),
+    guiding_mode(false)
 {
-    guiding_mode = false;
 }
 
 // TODO(tobi): Do we need a destructor?
@@ -53,6 +56,9 @@ void FR3::set_ee_pose(){}
 
 void FR3::move_home(double speed_factor){
     set_joints(q_home, speed_factor);
+}
+void FR3::move_home2(double speed_factor){
+    set_joints(q_home2, speed_factor);
 }
 
 void FR3::move_zero(double speed_factor){
