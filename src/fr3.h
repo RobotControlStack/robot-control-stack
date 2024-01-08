@@ -17,8 +17,6 @@ private:
     /* data */
     bool guiding_mode;
     Vec7 q_home;
-    Vec7 q_home2;
-    Vec7 q_zero;
 
 public:
     franka::Robot robot;
@@ -28,20 +26,23 @@ public:
     FR3(const std::string ip);
     ~FR3();
 
-    std::shared_ptr<Vec7> get_joint_state();
+    Vec7 get_joint_state();
 
-    std::shared_ptr<Mat4x4> get_ee_state();
+    Mat4x4 get_ee_state();
 
+    std::tuple<Vec3, Mat3x3> get_ee_pose();
 
     // use option to start new thread
     void set_joints(const Vec7 q_goal, const double speed_factor = 0.1);
+
     void set_ee_pose();
 
     // home and zero poses
     void move_home(double speed_factor = 0.1);
-    void move_home2(double speed_factor = 0.1);
 
-    void move_zero(double speed_factor = 0.1);
+    void move_store_pose(double speed_factor = 0.1);
+
+    void move_extend_arm(double speed_factor = 0.1);
 
     // gripper, methods should only work if gripper is defined
     void gripper_state();
@@ -54,7 +55,7 @@ public:
     // TODO(tobi): abstract away end effector tool:
     // gripper and pump are possible
 
-    // TODO(tobi): buttons?
+    // TODO(tobi): is there a way to access the buttons?
 
     // set robot to free movable
     void set_guiding_mode(bool enabled);
@@ -66,6 +67,4 @@ public:
 
     // TODO(tobi): inverse kinematics and bounding box checking
     // of all cartesian positions of the robot in 3D space
-
 };
-
