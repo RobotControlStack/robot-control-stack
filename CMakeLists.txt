@@ -16,6 +16,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # turn off libfranka tests
 set(BUILD_TESTS OFF)
+set(RL_BUILD_DEMOS OFF)
+set(RL_BUILD_RL_SG OFF)
+set(RL_BUILD_TESTS OFF)
+set(RL_BUILD_EXTRAS OFF)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -24,6 +28,11 @@ FetchContent_Declare(
     GIT_TAG 0.10.0
     GIT_PROGRESS TRUE
 )
-FetchContent_MakeAvailable(libfranka)
+FetchContent_Declare(rl
+    GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
+    GIT_TAG master
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(libfranka rl)
 
 add_subdirectory(src)
