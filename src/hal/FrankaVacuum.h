@@ -1,4 +1,4 @@
-#include <franka/gripper.h>
+#include <franka/vacuum_gripper.h>
 #include <string>
 #include <cmath>
 #include <Eigen/Core>
@@ -13,7 +13,7 @@
 class FrankaHand : public rl::hal::Gripper
 {
 private:
-    franka::Gripper gripper;
+    franka::VacuumGripper gripper;
 
 public:
     FrankaHand(const std::string ip);
