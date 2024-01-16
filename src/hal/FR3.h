@@ -26,6 +26,7 @@ private:
 public:
     FR3(const std::string ip, const std::string filename);
     ~FR3();
+    // how to do destructor of inherited classes? how to handle virtual descrutors
 
     void setDefaultRobotBehavior();
 
@@ -39,11 +40,11 @@ public:
     void setCartesianPosition(const ::rl::math::Transform &x);
 
     // Methods from CartesianPositionSensor
-    rl::math::Transform getCartesianPosition();
+    rl::math::Transform getCartesianPosition() const;
 
     // Methods from JointPositionActuator
     void setJointPosition(const ::rl::math::Vector &q);
 
     // Methods from JointPositionSensor
-    rl::math::Vector getJointPosition();
+    rl::math::Vector getJointPosition() const;
 };

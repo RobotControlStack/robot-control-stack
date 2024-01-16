@@ -78,9 +78,11 @@ void FR3::setCartesianPosition(const ::rl::math::Transform &x)
 }
 
 // Methods from CartesianPositionSensor
-rl::math::Transform FR3::getCartesianPosition()
+rl::math::Transform FR3::getCartesianPosition() const
 {
-    franka::RobotState state = robot.readOnce();
+    // This const cast is necessary because the readOnce method is not const.
+    // We currently do not know if the state of the robot object changes.
+    franka::RobotState state = const_cast<franka::Robot*>(&robot)->readOnce();
     Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(state.O_T_EE.data());
     rl::math::Transform x;
     x.matrix() = transMatrix;
@@ -96,8 +98,12 @@ void FR3::setJointPosition(const rl::math::Vector &q)
 }
 
 // Methods from JointPositionSensor
-rl::math::Vector FR3::getJointPosition()
+rl::math::Vector FR3::getJointPosition() const
 {
-    franka::RobotState state = robot.readOnce();
-    return rl::math::Vector(state.q.data());
+    // TODO: validate that the state of the robot object does not change
+    // This const cast is necessary because the readOnce method is not const.
+    // We currently do not know if the state of the robot object changes.
+    franka::RobotState state = const_cast<franka::Robot*>(&robot)->readOnce();
+    Eigen::Matrix<double, 7, 1, Eigen::ColMajor> joints(state.q.data());
+    return joints;
 }
