@@ -9,11 +9,13 @@
 #include <rl/hal/JointPositionSensor.h>
 #include <rl/math/Transform.h>
 
-
 class FrankaHand : public rl::hal::Gripper
 {
 private:
     franka::Gripper gripper;
+    double grasping_width=0;
+    double speed = 0.1;
+    double force = 10;
 
 public:
     FrankaHand(const std::string ip);
@@ -24,6 +26,8 @@ public:
     void open();
     void start();
     void stop();
+    bool FrankaHand::setParameters(double grapsing_width, double speed = 0.1, double force = 50);
+    std::tuple<double, double, bool> FrankaHand::getState();
 
     // Methods from Gripper
     void halt();
