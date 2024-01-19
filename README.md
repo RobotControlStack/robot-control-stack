@@ -2,9 +2,9 @@
 
 ## Build
 ### Dependencies
-To install the dependencies of `libfranka`` use the following command for debian based systems:
+To install the dependencies of `libfranka` use the following command for debian based systems:
 ```shell
-sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev clang
+sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev clang libboost-all-dev liblzma-dev
 ```
 For arch based systems:
 `libpoco` is `poco` and `libeigen` is `eigen` in pacman.
