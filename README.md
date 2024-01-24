@@ -11,6 +11,6 @@ For arch based systems:
 
 ### Compile
 ```shell
-cmake -B build
+cmake -B buila -G Ninja
 cmake --build build
 ```

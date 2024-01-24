@@ -26,8 +26,8 @@ public:
     void open();
     void start();
     void stop();
-    bool FrankaHand::setParameters(double grapsing_width, double speed = 0.1, double force = 50);
-    std::tuple<double, double, bool> FrankaHand::getState();
+    bool setParameters(double grapsing_width, double speed = 0.1, double force = 10);
+    std::tuple<double, double, bool> getState();
 
     // Methods from Gripper
     void halt();

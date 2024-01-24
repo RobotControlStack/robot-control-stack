@@ -35,8 +35,8 @@ void FrankaHand::stop()
 }
 
 bool FrankaHand::setParameters(double grapsing_width,
-                               double speed = 0.1,
-                               double force = 10)
+                               double speed,
+                               double force)
 {
     franka::GripperState gripper_state = gripper.readOnce();
     if (gripper_state.max_width < grapsing_width)
