@@ -24,7 +24,7 @@ private:
     std::unique_ptr<rl::mdl::JacobianInverseKinematics> ik;
 
 public:
-    FR3(const std::string ip, const std::string filename);
+    FR3(const std::string &ip, const std::string &filename);
     ~FR3();
     // how to do destructor of inherited classes? how to handle virtual descrutors
 
@@ -47,4 +47,11 @@ public:
 
     // Methods from JointPositionSensor
     rl::math::Vector getJointPosition() const;
+
+
+    // void setGuidingMode(bool enabled);
+    void setGuidingMode(std::array<bool, 6> activated, bool enabled);
+
+    // inertia?
+    // void setLoad(double load_mass);
 };

@@ -20,7 +20,7 @@
 const size_t DOF = 7;
 const double SPEED_FACTOR = 0.5;
 
-FR3::FR3(const std::string ip, const std::string filename) : AxisController(DOF),
+FR3::FR3(const std::string &ip, const std::string &filename) : AxisController(DOF),
                                                              CartesianPositionActuator(DOF),
                                                              CartesianPositionSensor(DOF),
                                                              JointPositionActuator(DOF),
@@ -31,6 +31,7 @@ FR3::FR3(const std::string ip, const std::string filename) : AxisController(DOF)
     // set collision behavior and impedance
     setDefaultRobotBehavior();
 
+    // todo: move this into initialization list
     rl::mdl::UrdfFactory factory;
     factory.load(filename, &model);
     ik = std::make_unique<rl::mdl::JacobianInverseKinematics>(static_cast<rl::mdl::Kinematic *>(&model));
@@ -106,4 +107,15 @@ rl::math::Vector FR3::getJointPosition() const
     franka::RobotState state = const_cast<franka::Robot*>(&robot)->readOnce();
     Eigen::Matrix<double, 7, 1, Eigen::ColMajor> joints(state.q.data());
     return joints;
+}
+
+
+// void FR3::setGuidingMode(bool enabled)
+// {
+//     std::array<bool, 6> activated;
+//     activated.fill(enabled);
+//     robot.setGuidingMode(activated, enabled);
+// }
+void FR3::setGuidingMode(std::array<bool, 6> activated, bool enabled){
+    robot.setGuidingMode(activated, enabled);
 }

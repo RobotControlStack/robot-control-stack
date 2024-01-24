@@ -14,3 +14,18 @@ For arch based systems:
 cmake -B buila -G Ninja
 cmake --build build
 ```
+
+### Python Bindings
+```shell
+# create new virtual env and activate it
+
+# install pyfr3
+pip install .
+
+# add dynamic linking paths
+export LD_LIBRARY_PATH=build/lib:build/_deps/rl-build/lib
+```
+Open python and try to import the lib:
+```python
+import pyfr3
+```
