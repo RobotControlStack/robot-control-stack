@@ -25,11 +25,15 @@ private:
     rl::mdl::Dynamic model;
     std::unique_ptr<rl::mdl::JacobianInverseKinematics> ik;
     Vec7 q_home;
+    double speed_factor = 0.2;
 
 public:
     FR3(const std::string &ip, const std::string &filename);
     ~FR3();
     // how to do destructor of inherited classes? how to handle virtual descrutors
+
+
+    bool setParameters(double speed_factor);
 
     void setDefaultRobotBehavior();
 

@@ -18,7 +18,7 @@
 #include "motion_generator.h"
 
 const size_t DOF = 7;
-const double SPEED_FACTOR = 0.5;
+const double SPEED_FACTOR = 0.2;
 
 FR3::FR3(const std::string &ip, const std::string &filename) : AxisController(DOF),
                                                              CartesianPositionActuator(DOF),
@@ -40,6 +40,17 @@ FR3::FR3(const std::string &ip, const std::string &filename) : AxisController(DO
 
 FR3::~FR3()
 {
+}
+
+bool FR3::setParameters(double speed_factor)
+{
+    if (0.0 < speed_factor && speed_factor <= 1.0)
+    {
+        this->speed_factor = speed_factor;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void FR3::setDefaultRobotBehavior()
@@ -95,7 +106,7 @@ rl::math::Transform FR3::getCartesianPosition() const
 void FR3::setJointPosition(const rl::math::Vector &q)
 {
     // TODO: how does this motion generator work
-    MotionGenerator motion_generator(SPEED_FACTOR, q);
+    MotionGenerator motion_generator(speed_factor, q);
     robot.control(motion_generator);
 }
 
