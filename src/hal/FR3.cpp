@@ -26,7 +26,8 @@ FR3::FR3(const std::string &ip, const std::string &filename) : AxisController(DO
                                                              JointPositionActuator(DOF),
                                                              JointPositionSensor(DOF),
                                                              robot(ip),
-                                                             model()
+                                                             model(),
+                                                             q_home((Vec7() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished())
 {
     // set collision behavior and impedance
     setDefaultRobotBehavior();
@@ -105,7 +106,7 @@ rl::math::Vector FR3::getJointPosition() const
     // This const cast is necessary because the readOnce method is not const.
     // We currently do not know if the state of the robot object changes.
     franka::RobotState state = const_cast<franka::Robot*>(&robot)->readOnce();
-    Eigen::Matrix<double, 7, 1, Eigen::ColMajor> joints(state.q.data());
+    Vec7 joints(state.q.data());
     return joints;
 }
 
@@ -118,4 +119,8 @@ rl::math::Vector FR3::getJointPosition() const
 // }
 void FR3::setGuidingMode(std::array<bool, 6> activated, bool enabled){
     robot.setGuidingMode(activated, enabled);
+}
+void FR3::move_home()
+{
+    setJointPosition(q_home);
 }

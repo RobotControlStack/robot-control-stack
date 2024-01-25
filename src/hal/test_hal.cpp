@@ -7,14 +7,15 @@
 
 using namespace std;
 
-const string ip = "192.168.100.1";
-const string fn = "robot.urdf";
+const string ip = "192.168.101.1";
+const string fn = "models/panda.urdf";
 
 int main()
 {
     try
     {
         FR3 robot(ip, fn);
+        robot.move_home();
         // robot.automatic_error_recovery();
         // std::cout << (robot.get_ee_state()) << std::endl;
         // std::cout << (robot.get_joint_state()) << std::endl;

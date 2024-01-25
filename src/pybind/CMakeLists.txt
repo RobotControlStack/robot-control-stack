@@ -6,6 +6,7 @@
 #   LANGUAGES CXX)
 
 
+# scikit-build
 # find_package(Eigen3 REQUIRED)
 # add_library(ha2 STATIC ../hal/FR3.cpp ../hal/FR3.h ../hal/FrankaHand.cpp ../hal/FrankaHand.h)
 # target_include_directories(ha2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -15,15 +16,17 @@
 
 # Find the module development requirements (requires FindPython from 3.17 or
 # scikit-build-core's built-in backport)
-find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
-find_package(pybind11 CONFIG REQUIRED)
+# find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+# find_package(pybind11 CONFIG REQUIRED)
 
 # Add a library using FindPython's tooling (pybind11 also provides a helper like
 # this)
-python_add_library(_core MODULE pyfr3.cpp WITH_SOABI)
-target_link_libraries(_core PRIVATE pybind11::headers ha)
-# pybind11_add_module(_core pyfr3.cpp)
-# target_link_libraries(_core PUBLIC ha hal)
+# python_add_library(_core MODULE pyfr3.cpp WITH_SOABI)
+# target_link_libraries(_core PRIVATE pybind11::headers ha)
+
+# plain pybind11 (no sckiit-build)
+pybind11_add_module(_core pyfr3.cpp)
+target_link_libraries(_core PUBLIC ha)
 
 # This is passing in the version as a define just as an example
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})

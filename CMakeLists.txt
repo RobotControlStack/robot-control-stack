@@ -33,6 +33,11 @@ FetchContent_Declare(rl
     GIT_TAG master
     GIT_PROGRESS TRUE
 )
-FetchContent_MakeAvailable(libfranka rl)
+FetchContent_Declare(pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG master
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(libfranka rl pybind11)
 
 add_subdirectory(src)

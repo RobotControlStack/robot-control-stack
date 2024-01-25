@@ -13,6 +13,8 @@
 #include <rl/mdl/UrdfFactory.h>
 #include <memory>
 
+typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vec7;
+
 class FR3 : public rl::hal::CartesianPositionActuator,
             public rl::hal::CartesianPositionSensor,
             public rl::hal::JointPositionActuator,
@@ -22,6 +24,7 @@ private:
     franka::Robot robot;
     rl::mdl::Dynamic model;
     std::unique_ptr<rl::mdl::JacobianInverseKinematics> ik;
+    Vec7 q_home;
 
 public:
     FR3(const std::string &ip, const std::string &filename);
@@ -54,4 +57,6 @@ public:
 
     // inertia?
     // void setLoad(double load_mass);
+    // Own methods
+    void move_home();
 };
