@@ -1,9 +1,13 @@
 from abc import ABC
-from typing import Optional, List, Tuple
+import argparse
+from collections import defaultdict
+from typing import Dict, Optional, List, Tuple, Union
 import pyfr3
 import numpy as np
 from time import sleep
 import pickle
+
+np.set_printoptions(precision=27)
 
 ip = "192.168.101.1"
 # model_path = "models/panda.urdf"
@@ -16,37 +20,67 @@ class Pose(ABC):
     def replay(self):
         pass
 
+    def __str__(self) -> str:
+        pass
+
+    @classmethod
+    def from_str(cls, line: str) -> "Pose":
+        pass
+
+
+
 class JointPose(Pose):
-    def __init__(self, pose: Optional[np.ndarray] = None):
+    def __init__(self, name: str, pose: Optional[np.ndarray] = None):
         self.pose = pose
+        self.name = name
 
-    def record(self, robot: pyfr3.FR3):
-        self.pose = robot.getJointPosition()
+    def record(self, robot: Dict[str, pyfr3.FR3]):
+        self.pose = robot[self.name].getJointPosition()
 
-    def replay(self, robot: pyfr3.FR3, _: pyfr3.FrankaHand):
-        robot.setJointPosition(self.pose)
+    def replay(self, robot: Dict[str, pyfr3.FR3], _: Dict[str, pyfr3.FrankaHand]):
+        robot[self.name].setJointPosition(self.pose)
+
+    def __str__(self) -> str:
+        ps = np.array2string(self.pose).replace('\n', '')
+        return f"JointPose;{self.name};{ps}"
+
+    @classmethod
+    def from_str(cls, line: str) -> "Pose":
+        l = line.replace("\n", "").split(";")
+        # return cls(l[1], np.fromstring(l[2].replace("]", "").replace("[", "")), sep=" ")
+        # np.fromstring(array_string.strip('[]'), sep=' ')
+        return cls(l[1], np.fromstring(l[2].strip('[]'), sep=" "))
 
 
 class GripperPose(Pose):
     SPEED = 0.1
     FORCE = 5
-    def __init__(self, shut: Optional[float] = None):
-        self.shut = shut
+    def __init__(self, name: str, pose: Optional[float] = None):
+        self.pose = pose
+        self.name = name
 
-    def record(self, shut: bool, gripper: pyfr3.FrankaHand):
+    def record(self, shut: bool, gripper: Dict[str, pyfr3.FrankaHand]):
         if shut:
-            gripper.shut()
-            self.pose = gripper.getState()[1]
+            gripper[self.name].halt()
+            self.pose = gripper[self.name].getState()[1]
         else:
-            gripper.release()
+            gripper[self.name].release()
             self.pose = None
 
-    def replay(self, _: pyfr3.FR3, gripper: pyfr3.FrankaHand):
+    def replay(self, _: Dict[str, pyfr3.FR3], gripper: Dict[str, pyfr3.FrankaHand]):
         if self.pose:
-            gripper.setParameters(self.pose, self.SPEED, self.FORCE)
-            gripper.shut()
+            gripper[self.name].setParameters(self.pose, self.SPEED, self.FORCE)
+            gripper[self.name].halt()
         else:
-            gripper.release()
+            gripper[self.name].release()
+
+    def __str__(self) -> str:
+        return f"GripperPose;{self.name};{self.pose}"
+
+    @classmethod
+    def from_str(cls, line: str) -> Pose:
+        l = line.replace("\n", "").split(";")
+        return cls(l[1], float(l[2]) if l[2] != "None" else None)
 
 class WaitForInput(Pose):
     def __init__(self):
@@ -58,6 +92,14 @@ class WaitForInput(Pose):
     def replay(self, *args):
         input("Press enter to continue")
 
+    def __str__(self) -> str:
+        return "WaitForInput"
+
+    @classmethod
+    def from_str(cls, line: str) -> Pose:
+        l = line.replace("\n", "").split(";")
+        return cls()
+
 class Sleep(Pose):
     def __init__(self, t):
         self.t = t
@@ -68,54 +110,92 @@ class Sleep(Pose):
     def replay(self, *args):
         sleep(self.t)
 
+    def __str__(self) -> str:
+        return f"Sleep;{self.t}"
+
+    @classmethod
+    def from_str(cls, line: str) -> Pose:
+        l = line.replace("\n", "").split(";")
+        return cls(float(l[1]))
+
 class ChnageSpeedFactor(Pose):
-    def __init__(self, s):
-        self.t = s
+    def __init__(self, speed: float, name: str):
+        self.speed = min(max(0, speed), 1)
+        self.name = name
 
     def record(self):
         pass
 
     def replay(self, robot, _):
-        robot.setParameters(self.t)
+        robot[self.name].setParameters(self.speed)
+
+    def __str__(self) -> str:
+        return f"ChnageSpeedFactor;{self.name};{self.speed}"
+    
+    @classmethod
+    def from_str(cls, line: str) -> Pose:
+        l = line.replace("\n", "").split(";")
+        return cls(float(l[2]), l[1])
 
 class PoseList:
     # should record and replay a list of poses
     MODEL_PATH = "models/panda.urdf"
-    def __init__(self, ip, filename: str, load: bool = False):
-        self.poses: List[Pose] = []
-        self.filename = filename
-        if load:
-            self.load()
-        self.r = pyfr3.FR3(ip, self.MODEL_PATH)
-        self.r.setParameters(0.5)
-        self.g = pyfr3.FrankaHand(ip)
+    def __init__(self, ip: Dict[str, str], speed_factor: float = 0.2, poses: Optional[List[Pose]] = None):
+        self.r: Dict[str, pyfr3.FR3] = {key: pyfr3.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()} 
+        self.g: Dict[str, pyfr3.FR3] = {key: pyfr3.FrankaHand(ip) for key, ip in ip.items()} 
+        self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
+
+        # self.r = pyfr3.FR3(ip, self.MODEL_PATH)
+        # self.g = pyfr3.FrankaHand(ip)
+
         self.m = {}
 
-    def load(self):
-        # load with pickle
-        with open(self.filename, "rb") as f:    
-            self.poses = pickle.load(f)
+    @classmethod
+    def load(cls, ip: Dict[str, str], filenames: List[str]):
+        poses = []
+        for filename in filenames:
+            # load with pickle
+            # with open(filename, "rb") as f:    
+            #     poses.append(pickle.load(f))
+            pose_dict = {"JointPose": JointPose, "GripperPose": GripperPose, "WaitForInput": WaitForInput, "Sleep": Sleep, "ChnageSpeedFactor": ChnageSpeedFactor}
+            def get_class(line: str) -> Pose:
+                first = line.split(";")[0].replace("\n", "")
+                print(line)
+                return pose_dict[first]
 
-    def save(self):
+            with open(filename, "r") as f:
+                poses += [get_class(line).from_str(line) for line in f.readlines()]
+
+        return cls(poses=poses, ip=ip)
+
+    def save(self, filename):
         # save with pickle
-        with open(self.filename, "wb") as f:
-            pickle.dump(self.poses, f)
+        # with open(filename, "wb") as f:
+        #     pickle.dump(self.poses, f)
+        with open(filename, "w") as f:
+            f.write("\n".join([str(pose) for pose in self.poses]))
 
 
     def record(self):
         while True:
             # try:
             i = input("Press p to record a pose, press s to shut the gripper, press r to release the gripper, press w to have a wait for input pose\n")
-            if i == "p":
-                j = JointPose()
+            if i.split(" ")[0] == "p":
+            # if i == "p":
+                j = JointPose(name=i.split(" ")[1])
                 j.record(self.r)
                 self.poses.append(j)
-            elif i == "s":
-                g = GripperPose()
+            elif i.split(" ")[0] == "s":
+            # elif i == "s":
+                g = GripperPose(name=i.split(" ")[1])
                 g.record(True, self.g)
                 self.poses.append(g)
-            elif i == "r":
-                g = GripperPose()
+            # elif i == "r":
+            elif i.split(" ")[0] == "r":
+                # if len(i.split(" ")) == 1:
+                #     g = GripperPose()
+                # else:
+                g = GripperPose(name=i.split(" ")[1])
                 g.record(False, self.g)
                 self.poses.append(g)
             elif i == "w":
@@ -125,22 +205,23 @@ class PoseList:
                 p = Sleep(float(i.split(" ")[1]))
                 self.poses.append(p)
             elif i.split(" ")[0] == "sp":
-                p = Sleep(float(i.split(" ")[1]))
+                p = ChnageSpeedFactor(name=i.split(" ")[1], speed = float(i.split(" ")[2]))
                 self.poses.append(p)
             elif i == "q":
                 break
             elif i.split(" ")[0] == "re":
-                self.m[i.split(" ")[1]] = self.r.getJointPosition()
+                # re robotname savename
+                self.m[i.split(" ")[2]] = (i.split(" ")[1], self.r[i.split(" ")[1]].getJointPosition())
             else:
                 if i in self.m:
-                    j = JointPose(self.m[i])
+                    j = JointPose(name=self.m[i][0], pose=self.m[i][1])
                     self.poses.append(j)
                 else:
                     print("Invalid input")
 
             # except KeyboardInterrupt:
             #     break
-        self.save()
+        # self.save()
 
     def replay(self):
         for pose in self.poses:
@@ -178,8 +259,49 @@ class PoseList:
 #     return np.load(filename)
     
 
-record = True
+record = False
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Tool to record poses with FR3."
+    )
+    parser.add_argument(
+        "ip",
+        type=str,
+        help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\""
+    )
+    parser.add_argument(
+        "--lpaths",
+        type=str,
+        nargs="+",
+        help="Paths to load n recordings",
+        default=[]
+    )
+    parser.add_argument(
+        "--spath",
+        type=str,
+        help="Path to store the recoding",
+        default=None
+    )
+    args = parser.parse_args()
+    ip = eval(args.ip)
+
+    if len(args.lpaths) != 0:
+        p = PoseList.load(ip, args.lpaths)
+        input("Press any key to replay")
+        p.replay()
+    else:
+        p = PoseList(ip)
+        p.record()
+        if args.spath:
+            p.save(args.spath)
+
+    # if args.replay:
+    #     p = PoseList.load(ip, args.filepath)
+    #     p.replay()
+    # else:
+    #     p = PoseList(ip)
+    #     p.record()
+
     # f = pyfr3.FR3(ip, model_path)
     # g = pyfr3.FrankaHand(ip)
     # g.setParameters(0.072, 0.1, 5)
@@ -189,9 +311,9 @@ if __name__ == "__main__":
     # else:
     #     input("Press enter to record a pose")
     #     replay_poses(f, read_poses(poses_path))
-    p = PoseList(ip, "scripts/wave_better2.pickle", load=not record)
-    if record:
-        p.record()
-    input("Press enter to replay")
-    p.replay()
+    # p = PoseList(ip, "scripts/wave_better2.pickle", load=not record)
+    # if record:
+    #     p.record()
+    # input("Press enter to replay")
+    # p.replay()
 
