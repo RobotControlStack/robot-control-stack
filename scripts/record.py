@@ -118,6 +118,14 @@ class Sleep(Pose):
         l = line.replace("\n", "").split(";")
         return cls(float(l[1]))
 
+
+def check_pose(pose: np.ndarray):
+    if np.all(pose <= np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895])) and \
+        np.all(np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]) <= pose):
+        return True
+    return False
+
+
 class ChnageSpeedFactor(Pose):
     def __init__(self, speed: float, name: str):
         self.speed = min(max(0, speed), 1)
@@ -145,18 +153,12 @@ class PoseList:
         self.g: Dict[str, pyfr3.FR3] = {key: pyfr3.FrankaHand(ip) for key, ip in ip.items()} 
         self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
-        # self.r = pyfr3.FR3(ip, self.MODEL_PATH)
-        # self.g = pyfr3.FrankaHand(ip)
-
         self.m = {}
 
     @classmethod
     def load(cls, ip: Dict[str, str], filenames: List[str]):
         poses = []
         for filename in filenames:
-            # load with pickle
-            # with open(filename, "rb") as f:    
-            #     poses.append(pickle.load(f))
             pose_dict = {"JointPose": JointPose, "GripperPose": GripperPose, "WaitForInput": WaitForInput, "Sleep": Sleep, "ChnageSpeedFactor": ChnageSpeedFactor}
             def get_class(line: str) -> Pose:
                 first = line.split(";")[0].replace("\n", "")
@@ -169,9 +171,6 @@ class PoseList:
         return cls(poses=poses, ip=ip)
 
     def save(self, filename):
-        # save with pickle
-        # with open(filename, "wb") as f:
-        #     pickle.dump(self.poses, f)
         with open(filename, "w") as f:
             f.write("\n".join([str(pose) for pose in self.poses]))
 
@@ -181,20 +180,17 @@ class PoseList:
             # try:
             i = input("Press p to record a pose, press s to shut the gripper, press r to release the gripper, press w to have a wait for input pose\n")
             if i.split(" ")[0] == "p":
-            # if i == "p":
+                if not check_pose(self.r[i.split(" ")[1]].getJointPosition()):
+                    print("REJECTED due to joint constraints")
+                    continue
                 j = JointPose(name=i.split(" ")[1])
                 j.record(self.r)
                 self.poses.append(j)
             elif i.split(" ")[0] == "s":
-            # elif i == "s":
                 g = GripperPose(name=i.split(" ")[1])
                 g.record(True, self.g)
                 self.poses.append(g)
-            # elif i == "r":
             elif i.split(" ")[0] == "r":
-                # if len(i.split(" ")) == 1:
-                #     g = GripperPose()
-                # else:
                 g = GripperPose(name=i.split(" ")[1])
                 g.record(False, self.g)
                 self.poses.append(g)
@@ -219,9 +215,6 @@ class PoseList:
                 else:
                     print("Invalid input")
 
-            # except KeyboardInterrupt:
-            #     break
-        # self.save()
 
     def replay(self):
         for pose in self.poses:
