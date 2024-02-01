@@ -29,6 +29,8 @@ public:
     bool setParameters(double grapsing_width, double speed = 0.1, double force = 10);
     std::tuple<double, double, bool> getState();
 
+    // method that puts the gripper to certain position
+
     // Methods from Gripper
     void halt();
     void release();
