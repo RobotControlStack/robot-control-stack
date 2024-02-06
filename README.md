@@ -24,6 +24,10 @@ cmake --build build
 ```shell
 # create new virtual env and activate it
 
+# export CC and CXX env vars to use clang compile (needed for mujoco)
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+
 # install pyfr3
 pip install .
 
