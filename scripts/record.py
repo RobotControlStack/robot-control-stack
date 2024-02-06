@@ -147,7 +147,7 @@ class ChnageSpeedFactor(Pose):
 
 class PoseList:
     # should record and replay a list of poses
-    MODEL_PATH = "models/panda.urdf"
+    MODEL_PATH = "models/urdf/fr3.urdf"
     def __init__(self, ip: Dict[str, str], speed_factor: float = 0.2, poses: Optional[List[Pose]] = None):
         self.r: Dict[str, pyfr3.FR3] = {key: pyfr3.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()} 
         self.g: Dict[str, pyfr3.FR3] = {key: pyfr3.FrankaHand(ip) for key, ip in ip.items()} 

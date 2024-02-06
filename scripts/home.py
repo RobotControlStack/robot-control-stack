@@ -12,7 +12,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    f = pyfr3.FR3(args.ip, "models/panda.urdf")
+    f = pyfr3.FR3(args.ip, "models/urdf/fr3.urdf")
     g = pyfr3.FrankaHand(args.ip)
     g.shut()
     f.move_home()
