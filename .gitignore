@@ -1,4 +1,4 @@
 .cache
 .vscode
 build
-*.h.in
+plugin.h
