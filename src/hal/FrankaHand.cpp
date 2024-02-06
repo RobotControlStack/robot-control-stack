@@ -59,7 +59,7 @@ std::tuple<double, double, bool> FrankaHand::getState()
 // Methods from Gripper
 void FrankaHand::halt()
 {
-    gripper.grasp(grasping_width, speed, force);
+    gripper.grasp(grasping_width, speed, force, 0.1, 0.1);
 }
 void FrankaHand::release()
 {
