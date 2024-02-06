@@ -9,9 +9,14 @@ sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev
 For arch based systems:
 `libpoco` is `poco` and `libeigen` is `eigen` in pacman.
 
+For wrlview program qt must be installed
+```shell
+sudo apt-get install qt5-default
+```
+
 ### Compile
 ```shell
-cmake -B buila -G Ninja
+cmake -B build -G Ninja
 cmake --build build
 ```
 
