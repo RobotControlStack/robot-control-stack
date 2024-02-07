@@ -11,7 +11,7 @@ For arch based systems:
 
 For wrlview program qt must be installed
 ```shell
-sudo apt-get install qt5-default
+sudo apt-get install qt5-qmake qtbase5-dev libsoqt520-dev
 ```
 
 ### Compile
