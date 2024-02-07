@@ -135,3 +135,8 @@ void FR3::move_home()
 {
     setJointPosition(q_home);
 }
+
+void FR3::automatic_error_recovery()
+{
+    robot.automaticErrorRecovery();
+}

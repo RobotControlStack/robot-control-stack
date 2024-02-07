@@ -63,4 +63,8 @@ public:
     // void setLoad(double load_mass);
     // Own methods
     void move_home();
+
+    void automatic_error_recovery();
+
+
 };
