@@ -66,5 +66,8 @@ public:
 
     void automatic_error_recovery();
 
+    static void wait_milliseconds(int milliseconds);
+
+    void double_tap_robot_to_continue();
 
 };

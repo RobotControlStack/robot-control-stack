@@ -16,6 +16,7 @@
 #include <rl/mdl/Exception.h>
 #include "FR3.h"
 #include "motion_generator.h"
+#include <thread>
 
 const size_t DOF = 7;
 const double SPEED_FACTOR = 0.2;
@@ -139,4 +140,53 @@ void FR3::move_home()
 void FR3::automatic_error_recovery()
 {
     robot.automaticErrorRecovery();
+}
+
+void FR3::wait_milliseconds(int milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
+
+void FR3::double_tap_robot_to_continue() {
+    auto s = robot.readOnce();
+    int touch_counter = false;
+    bool can_be_touched_again = true;
+    Eigen::Vector3d start_force;
+    auto last_time_something_happened = std::chrono::system_clock::now();
+    auto last_time_something_touched = std::chrono::system_clock::now();
+    start_force << s.O_F_ext_hat_K[0], s.O_F_ext_hat_K[1], s.O_F_ext_hat_K[2];
+    robot.read(
+            [&](
+                    const franka::RobotState &robot_state) {
+//                std::cout << Pose(robot_state.O_T_EE).orientation.quaternion.toRotationMatrix() << std::endl<<std::endl;
+                // Printing to std::cout adds a delay. This is acceptable for a read loop such as this,
+                // but should not be done in a control loop.
+                Eigen::Vector3d force;
+                force << robot_state.O_F_ext_hat_K[0], robot_state.O_F_ext_hat_K[1], robot_state.O_F_ext_hat_K[2];
+//                std::cout << (start_force - force).norm() << std::endl;
+//                std::cout << touch_counter << std::endl;
+                if ((start_force - force).norm() > 2 and can_be_touched_again) {
+                    touch_counter++;
+                    can_be_touched_again = false;
+                    last_time_something_happened = std::chrono::system_clock::now();
+                    last_time_something_touched = std::chrono::system_clock::now();
+                }
+                if (touch_counter > 0 and (start_force - force).norm() < 1) {
+                    can_be_touched_again = true;
+                    last_time_something_happened = std::chrono::system_clock::now();
+                }
+                std::chrono::duration<double> elapse_time_touched =
+                        std::chrono::system_clock::now() - last_time_something_touched;
+                if (elapse_time_touched.count() > 0.5) {
+                    touch_counter = 0;
+                }
+                std::chrono::duration<double> elapse_time_happend =
+                        std::chrono::system_clock::now() - last_time_something_happened;
+                if (elapse_time_happend.count() > 2) {
+                    start_force = force;
+                    last_time_something_happened = std::chrono::system_clock::now();
+
+                }
+                return touch_counter < 2;
+            });
+    wait_milliseconds(100);
 }

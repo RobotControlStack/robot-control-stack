@@ -41,6 +41,8 @@ PYBIND11_MODULE(_core, m) {
         .def("getJointPosition", &FR3::getJointPosition)
         .def("setGuidingMode", &FR3::setGuidingMode, py::arg("activated"), py::arg("enabled"))
         .def("move_home", &FR3::move_home)
+        .def("automatic_error_recovery", &FR3::automatic_error_recovery)
+        .def("double_tap_robot_to_continue", &FR3::double_tap_robot_to_continue)
         .def("setParameters", &FR3::setParameters, py::arg("speed_factor"));
 
     py::class_<FrankaHand>(m, "FrankaHand")

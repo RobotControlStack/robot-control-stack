@@ -100,6 +100,24 @@ class WaitForInput(Pose):
         l = line.replace("\n", "").split(";")
         return cls()
 
+class WaitForDoubleTab(Pose):
+    def __init__(self, name: str):
+        self.name = name
+
+    def record(self):
+        pass
+
+    def replay(self, robot: Dict[str, pyfr3.FR3], _: Dict[str, pyfr3.FrankaHand]):
+        robot[self.name].double_tap_robot_to_continue()
+
+    def __str__(self) -> str:
+        return f"WaitForDoubleTab;{self.name}"
+
+    @classmethod
+    def from_str(cls, line: str) -> "Pose":
+        l = line.replace("\n", "").split(";")
+        return cls(l[1])
+
 class Sleep(Pose):
     def __init__(self, t):
         self.t = t
@@ -159,7 +177,7 @@ class PoseList:
     def load(cls, ip: Dict[str, str], filenames: List[str]):
         poses = []
         for filename in filenames:
-            pose_dict = {"JointPose": JointPose, "GripperPose": GripperPose, "WaitForInput": WaitForInput, "Sleep": Sleep, "ChnageSpeedFactor": ChnageSpeedFactor}
+            pose_dict = {"JointPose": JointPose, "GripperPose": GripperPose, "WaitForInput": WaitForInput, "Sleep": Sleep, "ChnageSpeedFactor": ChnageSpeedFactor, "WaitForDoubleTab": WaitForDoubleTab}
             def get_class(line: str) -> Pose:
                 first = line.split(";")[0].replace("\n", "")
                 print(line)
@@ -196,6 +214,9 @@ class PoseList:
                 self.poses.append(g)
             elif i == "w":
                 p = WaitForInput()
+                self.poses.append(p)
+            elif i == "w":
+                p = WaitForDoubleTab(name=i.split(" ")[1])
                 self.poses.append(p)
             elif i.split(" ")[0] == "sl":
                 p = Sleep(float(i.split(" ")[1]))
