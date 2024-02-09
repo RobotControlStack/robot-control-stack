@@ -2,3 +2,5 @@
 .vscode
 build
 plugin.h
+.session.vim
+.projections.json
