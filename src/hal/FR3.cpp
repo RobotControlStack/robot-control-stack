@@ -97,10 +97,16 @@ rl::math::Transform FR3::getCartesianPosition() const
     // This const cast is necessary because the readOnce method is not const.
     // We currently do not know if the state of the robot object changes.
     franka::RobotState state = const_cast<franka::Robot*>(&robot)->readOnce();
-    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(state.O_T_EE.data());
+    // other lib uses O_T_EE_c
+    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(state.O_T_EE_c.data());
     rl::math::Transform x;
     x.matrix() = transMatrix;
     return x;
+}
+Eigen::Matrix<double, 4, 4, Eigen::ColMajor> FR3::getCartesianPosition2()
+{
+    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> re(getCartesianPosition().matrix());
+    return re;
 }
 
 // Methods from JointPositionActuator
@@ -206,6 +212,7 @@ rl::math::Transform interpolate(const rl::math::Transform &start_pose, const rl:
     return result_pose;
 }
 
+// todo this should be done with library function
 std::array<double, 16> to_matrix(rl::math::Transform transform){
     Eigen::Matrix3d rot_mat = transform.rotation();
     std::array<double, 16> mat = {rot_mat(0, 0), rot_mat(1, 0), rot_mat(2, 0), 0, rot_mat(0, 1), rot_mat(1, 1),
@@ -214,8 +221,11 @@ std::array<double, 16> to_matrix(rl::math::Transform transform){
     return mat;
 }
 
-void FR3::move_cartesian(rl::math::Transform dest, double max_time, std::optional<double> elbow, double max_force) {
+void FR3::move_cartesian(Eigen::Matrix<double, 4, 4> dest, double max_time, std::optional<double> elbow, double max_force) {
     rl::math::Transform initial_pose = getCartesianPosition();
+
+
+    rl::math::Transform destt(dest);
 
     // TODO: make max force check optional
 
@@ -244,7 +254,7 @@ void FR3::move_cartesian(rl::math::Transform dest, double max_time, std::optiona
                 const double progress = time / max_time;
 
                 // calculate new pose
-                rl::math::Transform new_pose_pose = interpolate(initial_pose, dest, progress);                    
+                rl::math::Transform new_pose_pose = interpolate(initial_pose, destt, progress);                    
 
                 std::array<double, 16> new_pose = to_matrix(new_pose_pose);
                 if (elbow.has_value()) {

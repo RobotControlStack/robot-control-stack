@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <pybind11/eigen.h>
 // TODO: shouldnt this be .h, but only .cpp works?
 #include "../hal/FR3.cpp"
@@ -39,12 +40,14 @@ PYBIND11_MODULE(_core, m) {
         .def(py::init<const std::string &, const std::string &>(), py::arg("ip"), py::arg("filename"))
         .def("setJointPosition", &FR3::setJointPosition, py::arg("q"))
         .def("getJointPosition", &FR3::getJointPosition)
+        .def("getCartesianPosition", &FR3::getCartesianPosition)
+        .def("getCartesianPosition2", &FR3::getCartesianPosition2)
         .def("setGuidingMode", &FR3::setGuidingMode, py::arg("activated"), py::arg("enabled"))
         .def("move_home", &FR3::move_home)
         .def("automatic_error_recovery", &FR3::automatic_error_recovery)
         .def("double_tap_robot_to_continue", &FR3::double_tap_robot_to_continue)
         .def("setParameters", &FR3::setParameters, py::arg("speed_factor"))
-        .def("move_cartesian", &FR3::move_cartesian, py::arg("dest"), py::arg("max_time"), py::arg("elbow")=py::none(), py::arg("max_force")=5);
+        .def("move_cartesian", &FR3::move_cartesian, py::arg("dest"), py::arg("max_time"), py::arg("elbow")=py::none(), py::arg("max_force")=5.0);
 
     py::class_<FrankaHand>(m, "FrankaHand")
         .def(py::init<const std::string &>(), py::arg("ip"))

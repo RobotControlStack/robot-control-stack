@@ -75,22 +75,14 @@ class Desk:
     self._listening = False
     self._listen_thread = None
     self.login()
-    self._legacy = False
-    try:
-      self.take_control()
-    except ConnectionError as error:
-      if 'File not found' in str(error):
-        _logger.info('Legacy desk detected.')
-        self._legacy = True
-      else:
-        raise error
+    self.take_control()
 
   def lock(self, force: bool = True) -> None:
     """
     Locks the brakes. API call blocks until the brakes are locked.
     """
     self._request('post',
-                  '/desk/api/api/lock',
+                  '/desk/api/joints/lock',
                   files={'force': force})
 
   def unlock(self, force: bool = True) -> None:
@@ -98,7 +90,7 @@ class Desk:
     Unlocks the brakes. API call blocks until the brakes are unlocked.
     """
     self._request('post',
-                  '/desk/api/api/unlock',
+                  '/desk/api/joints/unlock',
                   files={'force': force},
                   headers={'X-Control-Token': self._token.token})
 
@@ -106,19 +98,17 @@ class Desk:
     """
     Enables guiding mode which deactivates robot control.
     """
-    if not self._legacy:
-      self._request('post',
-                    '/admin/api/control-token/fci',
-                    json={'token': self._token.token})
+    self._request('post',
+                  '/desk/api/operating-mode/programming',
+                  headers={'X-Control-Token': self._token.token})
 
   def disable_guiding_mode(self) -> None:
     """
     Disables guiding mode and activates robot control.
     """
-    if not self._legacy:
-      self._request('post',
-                    '/admin/api/control-token/fci',
-                    json={'token': self._token.token})
+    self._request('post',
+                  '/desk/api/operating-mode/execution',
+                  headers={'X-Control-Token': self._token.token})
 
   def reboot(self) -> None:
     """
@@ -128,26 +118,32 @@ class Desk:
                   '/admin/api/reboot',
                   headers={'X-Control-Token': self._token.token})
 
+  def shutdown(self) -> None:
+    """
+    Reboots the robot hardware (this will close open connections).
+    """
+    self._request('post',
+                  '/admin/api/shutdown',
+                  headers={'X-Control-Token': self._token.token})
+
   def activate_fci(self) -> None:
     """
     Activates the Franka Research Interface (FCI). Note that the
     brakes must be unlocked first. For older Desk versions, this
     function does nothing.
     """
-    if not self._legacy:
-      self._request('post',
-                    '/admin/api/control-token/fci',
-                    json={'token': self._token.token})
+    self._request('post',
+                  '/desk/api/system/fci',
+                  headers={'X-Control-Token': self._token.token})
 
   def deactivate_fci(self) -> None:
     """
     Deactivates the Franka Research Interface (FCI). For older
     Desk versions, this function does nothing.
     """
-    if not self._legacy:
-      self._request('delete',
-                    '/admin/api/control-token/fci',
-                    json={'token': self._token.token})
+    self._request('delete',
+                  '/admin/api/control-token/fci',
+                  json={'token': self._token.token})
 
   def _load_token(self) -> Token:
     config_path = os.path.expanduser(TOKEN_PATH)
@@ -186,8 +182,6 @@ class Desk:
 
     For legacy versions of the Desk, this function does nothing.
     """
-    if self._legacy:
-      return True
     active = self._get_active_token()
     if active.id != '' and self._token.id == active.id:
       _logger.info('Retaken control.')
@@ -230,8 +224,6 @@ class Desk:
     other users to take control or transfer control to the next
     user if there is an active queue of control requests.
     """
-    if self._legacy:
-      return
     _logger.info('Releasing control.')
     try:
       self._request('delete',
@@ -284,8 +276,6 @@ class Desk:
 
   def _get_active_token(self) -> Token:
     token = Token()
-    if self._legacy:
-      return Token()
     response = self._request('get', '/admin/api/control-token').json()
     if response['activeToken'] is not None:
       token.id = str(response['activeToken']['id'])
@@ -297,8 +287,6 @@ class Desk:
     Returns:
       bool: True if this instance is in control of the Desk.
     """
-    if self._legacy:
-      return True
     return self._token.id == self._get_active_token().id
 
   def _request(self,

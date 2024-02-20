@@ -6,6 +6,7 @@ import pyfr3
 import numpy as np
 from time import sleep
 import pickle
+import prepare
 
 np.set_printoptions(precision=27)
 
@@ -287,10 +288,14 @@ if __name__ == "__main__":
     ip = eval(args.ip)
 
     if len(args.lpaths) != 0:
+        for robot, r_ip in ip.items():
+            prepare.prepare(r_ip, guiding_mode=False)
         p = PoseList.load(ip, args.lpaths)
         input("Press any key to replay")
         p.replay()
     else:
+        for robot, ip in ip.items():
+            prepare.prepare(ip, guiding_mode=True)
         p = PoseList(ip)
         p.record()
         if args.spath:

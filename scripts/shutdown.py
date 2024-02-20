@@ -1,5 +1,7 @@
 import argparse
 import pyfr3
+import pw
+import time
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -12,9 +14,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    f = pyfr3.FR3(args.ip, "models/urdf/fr3.urdf")
-    f.setParameters(0.7)
-    g = pyfr3.FrankaHand(args.ip)
-    # g.release()
-    g.shut()
-    f.move_home()
+    f = pyfr3.Desk(args.ip, pw.username, pw.password)
+    f.take_control(force=True)
+    f.lock()
+    f.shutdown()

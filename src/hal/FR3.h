@@ -49,6 +49,7 @@ public:
 
     // Methods from CartesianPositionSensor
     rl::math::Transform getCartesianPosition() const;
+    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
 
     // Methods from JointPositionActuator
     void setJointPosition(const ::rl::math::Vector &q);
@@ -71,6 +72,6 @@ public:
 
     void double_tap_robot_to_continue();
 
-    void move_cartesian(rl::math::Transform dest, double max_time, std::optional<double> elbow, double max_force = 5);
+    void move_cartesian(Eigen::Matrix<double, 4, 4, Eigen::ColMajor> dest, double max_time, std::optional<double> elbow, double max_force = 5);
 
 };
