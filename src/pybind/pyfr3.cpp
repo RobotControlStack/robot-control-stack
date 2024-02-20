@@ -43,7 +43,8 @@ PYBIND11_MODULE(_core, m) {
         .def("move_home", &FR3::move_home)
         .def("automatic_error_recovery", &FR3::automatic_error_recovery)
         .def("double_tap_robot_to_continue", &FR3::double_tap_robot_to_continue)
-        .def("setParameters", &FR3::setParameters, py::arg("speed_factor"));
+        .def("setParameters", &FR3::setParameters, py::arg("speed_factor"))
+        .def("move_cartesian", &FR3::move_cartesian, py::arg("dest"), py::arg("max_time"), py::arg("elbow")=py::none(), py::arg("max_force")=5);
 
     py::class_<FrankaHand>(m, "FrankaHand")
         .def(py::init<const std::string &>(), py::arg("ip"))

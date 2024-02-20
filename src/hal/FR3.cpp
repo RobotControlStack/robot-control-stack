@@ -157,13 +157,8 @@ void FR3::double_tap_robot_to_continue() {
     robot.read(
             [&](
                     const franka::RobotState &robot_state) {
-//                std::cout << Pose(robot_state.O_T_EE).orientation.quaternion.toRotationMatrix() << std::endl<<std::endl;
-                // Printing to std::cout adds a delay. This is acceptable for a read loop such as this,
-                // but should not be done in a control loop.
                 Eigen::Vector3d force;
                 force << robot_state.O_F_ext_hat_K[0], robot_state.O_F_ext_hat_K[1], robot_state.O_F_ext_hat_K[2];
-//                std::cout << (start_force - force).norm() << std::endl;
-//                std::cout << touch_counter << std::endl;
                 if ((start_force - force).norm() > 2 and can_be_touched_again) {
                     touch_counter++;
                     can_be_touched_again = false;
@@ -189,4 +184,85 @@ void FR3::double_tap_robot_to_continue() {
                 return touch_counter < 2;
             });
     wait_milliseconds(100);
+}
+
+rl::math::Transform interpolate(const rl::math::Transform &start_pose, const rl::math::Transform &dest_pose, double progress) {
+    if (progress > 1) {
+        progress = 1;
+    }
+    Eigen::Vector3d pos_result = start_pose.translation() + (dest_pose.translation() - start_pose.translation()) * progress;
+    Eigen::Quaterniond quat_start, quat_end, quat_result;
+    quat_start = start_pose.rotation();
+    quat_end = dest_pose.rotation();
+    quat_result = quat_start.slerp(progress, quat_end);
+    rl::math::Transform result_pose;
+    result_pose.translation() = pos_result;
+    // result_pose.linear() = quat_result.toRotationMatrix();
+    // result_pose.affine() = quat_result.toRotationMatrix();
+    // result_pose.rotation() = quat_result.toRotationMatrix();
+    result_pose.rotate(quat_result);
+
+    // result_pose.makeAffine();
+    return result_pose;
+}
+
+std::array<double, 16> to_matrix(rl::math::Transform transform){
+    Eigen::Matrix3d rot_mat = transform.rotation();
+    std::array<double, 16> mat = {rot_mat(0, 0), rot_mat(1, 0), rot_mat(2, 0), 0, rot_mat(0, 1), rot_mat(1, 1),
+                                  rot_mat(2, 1), 0, rot_mat(0, 2), rot_mat(1, 2), rot_mat(2, 2), 0, transform.translation().x(),
+                                  transform.translation().y(), transform.translation().z(), 1};
+    return mat;
+}
+
+void FR3::move_cartesian(rl::math::Transform dest, double max_time, std::optional<double> elbow, double max_force) {
+    rl::math::Transform initial_pose = getCartesianPosition();
+
+    // TODO: make max force check optional
+
+    auto stop_condition = [&max_force](const franka::RobotState &state, const double progress) {
+        Eigen::Vector3d force;
+        force << state.O_F_ext_hat_K[0], state.O_F_ext_hat_K[1], state.O_F_ext_hat_K[2];
+        double minimum_progress = 0.1;
+        return force.norm() > max_force and progress > minimum_progress;
+    };
+    
+    std::array<double, 2> initial_elbow;
+
+    double time = 0.0;
+
+    bool should_stop = false;
+
+    robot.control(
+            [=, &initial_elbow, &time, &max_time, &initial_pose, &should_stop](
+                    const franka::RobotState &state,
+                    franka::Duration time_step) -> franka::CartesianPose {
+                time += time_step.toSec();
+                if (time == 0) {
+                    initial_elbow = state.elbow_c;
+                }
+                auto new_elbow = initial_elbow;
+                const double progress = time / max_time;
+
+                // calculate new pose
+                rl::math::Transform new_pose_pose = interpolate(initial_pose, dest, progress);                    
+
+                std::array<double, 16> new_pose = to_matrix(new_pose_pose);
+                if (elbow.has_value()) {
+                    new_elbow[0] += (elbow.value() - initial_elbow[0]) * (1 - std::cos(M_PI * progress)) / 2.0;
+                }
+                // if (stop_condition.is_initialized()) {
+                //     should_stop = stop_condition.value()(generatorInput);
+                // }
+                should_stop = stop_condition(state, progress);
+                if (time >= max_time or should_stop) {
+                    if (elbow.has_value()) {
+                        return franka::MotionFinished({new_pose, new_elbow});
+                    }
+                    return franka::MotionFinished(new_pose);
+                }
+                if (elbow.has_value()) {
+                    return {new_pose, new_elbow};
+                }
+                return new_pose;
+            }, franka::ControllerMode::kCartesianImpedance);
 }

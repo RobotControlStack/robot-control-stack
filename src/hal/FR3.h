@@ -12,6 +12,7 @@
 #include <rl/mdl/Dynamic.h>
 #include <rl/mdl/UrdfFactory.h>
 #include <memory>
+#include <optional>
 
 typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vec7;
 
@@ -69,5 +70,7 @@ public:
     static void wait_milliseconds(int milliseconds);
 
     void double_tap_robot_to_continue();
+
+    void move_cartesian(rl::math::Transform dest, double max_time, std::optional<double> elbow, double max_force = 5);
 
 };
