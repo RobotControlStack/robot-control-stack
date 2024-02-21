@@ -1,39 +1,33 @@
-#include <iostream>
-#include <string>
-#include <franka/robot.h>
-#include <franka/gripper.h>
 #include <franka/exception.h>
+#include <franka/gripper.h>
+#include <franka/robot.h>
+
+#include <iostream>
+#include <optional>
+#include <string>
+
 #include "FR3.h"
 
 using namespace std;
 
 const string ip = "192.168.101.1";
-const string fn = "models/panda.urdf";
+const string fn = "models/urdf/fr3.urdf";
 
-int main()
-{
-    try
-    {
-        FR3 robot(ip, fn);
-        robot.move_home();
-        // robot.automatic_error_recovery();
-        // std::cout << (robot.get_ee_state()) << std::endl;
-        // std::cout << (robot.get_joint_state()) << std::endl;
+int main() {
+  try {
+    FR3 robot(ip, fn);
+    robot.automatic_error_recovery();
+    // robot.move_home();
 
-        // std::cout << std::get<0>(robot.get_ee_pose()) << std::endl;
-        // std::cout << std::get<1>(robot.get_ee_pose()) << std::endl;
+    auto rs = robot.getCartesianPosition();
+    rs.translation() += Eigen::Vector3d(0, 0, 0.1);
 
-        // std::cout << "WARNING: This example will move the robot! "
-        //           << "Please make sure to have the user stop button at hand!" << std::endl
-        //           << "Press Enter to continue..." << std::endl;
-        // std::cin.ignore();
-        // // robot.move_extend_arm(0.1);
-        // robot.move_home(0.1);
-    }
-    catch (const franka::Exception &e)
-    {
-        cout << e.what() << endl;
-        return -1;
-    }
-    return 0;
+    robot.move_cartesian(rs, 5.0, std::nullopt);
+
+    // robot.automatic_error_recovery();
+  } catch (const franka::Exception &e) {
+    cout << e.what() << endl;
+    return -1;
+  }
+  return 0;
 }

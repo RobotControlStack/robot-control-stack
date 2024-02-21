@@ -58,7 +58,7 @@ class GripperPose(Pose):
     def record(self, shut: bool, gripper: Dict[str, pyfr3.FrankaHand]):
         if shut:
             gripper[self.name].halt()
-            self.pose = gripper[self.name].getState()[1]
+            self.pose = 0.1 # gripper[self.name].getState()[1]
         else:
             gripper[self.name].release()
             self.pose = None
@@ -240,7 +240,7 @@ class PoseList:
             elif i == "w":
                 p = WaitForInput()
                 self.poses.append(p)
-            elif i == "w":
+            elif i == "wd":
                 p = WaitForDoubleTab(name=i.split(" ")[1])
                 self.poses.append(p)
             elif i.split(" ")[0] == "sl":

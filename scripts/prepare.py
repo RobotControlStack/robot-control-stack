@@ -7,12 +7,12 @@ def prepare(ip, guiding_mode=False):
     d = pyfr3.Desk(ip, pw.username, pw.password)
     d.take_control(force=True)
     d.unlock()
+    d.activate_fci()
     if guiding_mode:
         d.enable_guiding_mode()
     else:
         d.disable_guiding_mode()
 
-    d.activate_fci()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
