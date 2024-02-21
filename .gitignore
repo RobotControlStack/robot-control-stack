@@ -4,3 +4,5 @@ build
 plugin.h
 .session.vim
 .projections.json
+pw.py
+__pycache__

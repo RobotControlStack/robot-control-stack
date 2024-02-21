@@ -1,5 +1,13 @@
+
 import argparse
 import pyfr3
+import pw
+import time
+
+def lock(ip, guiding_mode=False):
+    d = pyfr3.Desk(ip, pw.username, pw.password)
+    d.take_control(force=True)
+    d.lock()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -11,10 +19,4 @@ if __name__ == "__main__":
         help="IP of the robot"
     )
     args = parser.parse_args()
-
-    f = pyfr3.FR3(args.ip, "models/urdf/fr3.urdf")
-    f.setParameters(0.7)
-    g = pyfr3.FrankaHand(args.ip)
-    g.release()
-    # g.shut()
-    f.move_home()
+    lock(args.ip)

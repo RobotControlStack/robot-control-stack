@@ -1,7 +1,4 @@
 #include <franka/gripper.h>
-#include <string>
-#include <cmath>
-#include <Eigen/Core>
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
 #include <rl/hal/Gripper.h>
@@ -9,30 +6,34 @@
 #include <rl/hal/JointPositionSensor.h>
 #include <rl/math/Transform.h>
 
-class FrankaHand : public rl::hal::Gripper
-{
-private:
-    franka::Gripper gripper;
-    double grasping_width=0;
-    double speed = 0.1;
-    double force = 10;
+#include <Eigen/Core>
+#include <cmath>
+#include <string>
 
-public:
-    FrankaHand(const std::string ip);
-    ~FrankaHand();
+class FrankaHand : public rl::hal::Gripper {
+ private:
+  franka::Gripper gripper;
+  double grasping_width = 0;
+  double speed = 0.1;
+  double force = 10;
 
-    // Methods from Device
-    void close();
-    void open();
-    void start();
-    void stop();
-    bool setParameters(double grapsing_width, double speed = 0.1, double force = 10);
-    std::tuple<double, double, bool> getState();
+ public:
+  FrankaHand(const std::string ip);
+  ~FrankaHand();
 
-    // method that puts the gripper to certain position
+  // Methods from Device
+  void close();
+  void open();
+  void start();
+  void stop();
+  bool setParameters(double grapsing_width, double speed = 0.1,
+                     double force = 10);
+  std::tuple<double, double, bool> getState();
 
-    // Methods from Gripper
-    void halt();
-    void release();
-    void shut();
+  // method that puts the gripper to certain position
+
+  // Methods from Gripper
+  void halt();
+  void release();
+  void shut();
 };
