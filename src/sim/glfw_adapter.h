@@ -40,9 +40,9 @@ class GlfwAdapter : public PlatformUIAdapter {
   std::pair<int, int> GetWindowSize() const override;
   bool IsGPUAccelerated() const override;
   void PollEvents() override;
-  void SetClipboardString(const char* text) override;
+  void SetClipboardString(const char *text) override;
   void SetVSync(bool enabled) override;
-  void SetWindowTitle(const char* title) override;
+  void SetWindowTitle(const char *title) override;
   bool ShouldCloseWindow() const override;
   void SwapBuffers() override;
   void ToggleFullscreen() override;
@@ -63,7 +63,7 @@ class GlfwAdapter : public PlatformUIAdapter {
 
  private:
   GLFWvidmode vidmode_;
-  GLFWwindow* window_;
+  GLFWwindow *window_;
 
   // store last window information when going to full screen
   std::pair<int, int> window_pos_;

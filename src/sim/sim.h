@@ -1,31 +1,36 @@
-#include <mujoco/mujoco.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <threads.h>
+#include <barrier>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include "ui/ui.h"
-#define SIM_MAX_ERR_MSG_SIZE 1000
+#include "mujoco/mujoco.h"
+#include "plugin.h"
+#include "rl/math/Transform.h"
+#include "rl/mdl/JacobianInverseKinematics.h"
+#include "rl/mdl/Model.h"
+
 #define SIM_MAX_THREADS 128
 
-enum sim_errors { SIM_EOK = 0, SIM_EMJMDL, SIM_ERLMDL };
+// Keyframes & their IDs.
 enum { SIM_KF_HOME = 0 };
 
-typedef struct {
-  char* mjcf_filepath;
-  char* urdf_filepath;
-  uint8_t n_threads;
-  bool render;
-} SimConf;
+class Simulation {
+ private:
+  std::shared_ptr<mjModel> model;
+  std::vector<std::shared_ptr<mjData>> mujoco_data;
+  std::jthread render_thread;
+  std::vector<std::jthread> physics_threads;
+  std::barrier<std::function<void(void)>> sync_point;
+  std::pair<std::counting_semaphore<SIM_MAX_THREADS>, std::binary_semaphore>
+      semaphores;
+  bool exit_requested;
+  void syncfn() noexcept;
+  void render_loop();
+  void physics_loop(std::shared_ptr<mjData> data);
 
-typedef struct {
-  mjModel* model;
-  mjData* data[SIM_MAX_THREADS];
-  thrd_t physics_threads[SIM_MAX_THREADS];
-  mtx_t physics_locks[SIM_MAX_THREADS];
-  thrd_t render_thread;
-  int error;
-  char error_message[SIM_MAX_ERR_MSG_SIZE];
-  uint8_t n_threads;
-} Sim;
-
-Sim* start_sim(SimConf);
+ public:
+  Simulation(std::shared_ptr<mjModel> model, bool render, size_t n_threads);
+  rl::math::Matrix reset();
+  rl::math::Matrix step(rl::math::Matrix act);
+  void close();
+};

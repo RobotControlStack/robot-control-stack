@@ -22,7 +22,7 @@ PlatformUIAdapter::PlatformUIAdapter() { mjr_defaultContext(&con_); }
 
 void PlatformUIAdapter::FreeMjrContext() { mjr_freeContext(&con_); }
 
-bool PlatformUIAdapter::RefreshMjrContext(const mjModel* m, int fontscale) {
+bool PlatformUIAdapter::RefreshMjrContext(const mjModel *m, int fontscale) {
   if (m != last_model_ || fontscale != last_fontscale_) {
     mjr_makeContext(m, &con_, fontscale);
     last_model_ = m;
@@ -34,7 +34,7 @@ bool PlatformUIAdapter::RefreshMjrContext(const mjModel* m, int fontscale) {
 
 bool PlatformUIAdapter::EnsureContextSize() { return false; }
 
-void PlatformUIAdapter::OnFilesDrop(int count, const char** paths) {
+void PlatformUIAdapter::OnFilesDrop(int count, const char **paths) {
   state_.type = mjEVENT_FILESDROP;
   state_.dropcount = count;
   state_.droppaths = paths;
@@ -179,7 +179,10 @@ void PlatformUIAdapter::OnWindowRefresh() {
 }
 
 void PlatformUIAdapter::OnWindowResize(int width, int height) {
-  std::tie(state_.rect[0].width, state_.rect[0].height) = GetFramebufferSize();
+  int buf_width, buf_height = 0;
+  std::tie(buf_width, buf_height) = GetFramebufferSize();
+  state_.rect[0].width = buf_width;
+  state_.rect[0].height = buf_height;
   if (state_.nrect < 1) state_.nrect = 1;
 
   // update window layout
@@ -222,7 +225,7 @@ void PlatformUIAdapter::UpdateMjuiState() {
   }
 
   // get mouse position, scale by buffer-to-window ratio
-  double x, y = 0;
+  double x, y;
   std::tie(x, y) = GetCursorPosition();
   const double buffer_window_ratio =
       static_cast<double>(GetFramebufferSize().first) / GetWindowSize().first;
