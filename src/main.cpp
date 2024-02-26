@@ -1,33 +1,32 @@
+#include <franka/exception.h>
+#include <franka/gripper.h>
+#include <franka/robot.h>
+
+#include <chrono>
 #include <iostream>
 #include <string>
-#include <franka/robot.h>
-#include <franka/gripper.h>
-#include <franka/exception.h>
-#include "hal/FR3.h"
-#include <chrono>
 #include <thread>
+
+#include "hal/FR3.h"
 
 using namespace std;
 
 const string ip = "192.168.101.1";
 const string model_path = "models/urdf/fr3.urdf";
 
-int main()
-{
-    try
-    {
-        FR3 robot(ip, model_path);
+int main() {
+  try {
+    FR3 robot(ip, model_path);
 
-        std::cout << "WARNING: This example will move the robot! "
-                  << "Please make sure to have the user stop button at hand!" << std::endl
-                  << "Press Enter to continue..." << std::endl;
-        std::cin.ignore();
-        robot.move_home();
-    }
-    catch (const franka::Exception &e)
-    {
-        cout << e.what() << endl;
-        return -1;
-    }
-    return 0;
+    std::cout << "WARNING: This example will move the robot! "
+              << "Please make sure to have the user stop button at hand!"
+              << std::endl
+              << "Press Enter to continue..." << std::endl;
+    std::cin.ignore();
+    robot.move_home();
+  } catch (const franka::Exception &e) {
+    cout << e.what() << endl;
+    return -1;
+  }
+  return 0;
 }

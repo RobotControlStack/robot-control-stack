@@ -15,9 +15,9 @@
 #ifndef MUJOCO_SIMULATE_PLATFORM_UI_ADAPTER_H_
 #define MUJOCO_SIMULATE_PLATFORM_UI_ADAPTER_H_
 
-#include <utility>
-
 #include <mujoco/mujoco.h>
+
+#include <utility>
 
 namespace mujoco {
 class PlatformUIAdapter {
