@@ -24,22 +24,22 @@ class PlatformUIAdapter {
  public:
   virtual ~PlatformUIAdapter() = default;
 
-  inline mjuiState& state() { return state_; }
-  inline const mjuiState& state() const { return state_; }
+  inline mjuiState &state() { return state_; }
+  inline const mjuiState &state() const { return state_; }
 
-  inline mjrContext& mjr_context() { return con_; }
-  inline const mjrContext& mjr_context() const { return con_; }
+  inline mjrContext &mjr_context() { return con_; }
+  inline const mjrContext &mjr_context() const { return con_; }
 
-  inline void SetEventCallback(void (*event_callback)(mjuiState*)) {
+  inline void SetEventCallback(void (*event_callback)(mjuiState *)) {
     event_callback_ = event_callback;
   }
 
-  inline void SetLayoutCallback(void (*layout_callback)(mjuiState*)) {
+  inline void SetLayoutCallback(void (*layout_callback)(mjuiState *)) {
     layout_callback_ = layout_callback;
   }
 
   // Optionally overridable function to (re)create an mjrContext for an mjModel
-  virtual bool RefreshMjrContext(const mjModel* m, int fontscale);
+  virtual bool RefreshMjrContext(const mjModel *m, int fontscale);
 
   virtual bool EnsureContextSize();
 
@@ -50,9 +50,9 @@ class PlatformUIAdapter {
   virtual std::pair<int, int> GetWindowSize() const = 0;
   virtual bool IsGPUAccelerated() const = 0;
   virtual void PollEvents() = 0;
-  virtual void SetClipboardString(const char* text) = 0;
+  virtual void SetClipboardString(const char *text) = 0;
   virtual void SetVSync(bool enabled) = 0;
-  virtual void SetWindowTitle(const char* title) = 0;
+  virtual void SetWindowTitle(const char *title) = 0;
   virtual bool ShouldCloseWindow() const = 0;
   virtual void SwapBuffers() = 0;
   virtual void ToggleFullscreen() = 0;
@@ -76,7 +76,7 @@ class PlatformUIAdapter {
   void FreeMjrContext();
 
   // Event handlers
-  void OnFilesDrop(int count, const char** paths);
+  void OnFilesDrop(int count, const char **paths);
   virtual void OnKey(int key, int scancode, int act);
   void OnMouseButton(int button, int act);
   void OnMouseMove(double x, double y);
@@ -86,11 +86,11 @@ class PlatformUIAdapter {
 
   mjuiState state_;
   int last_key_;
-  void (*event_callback_)(mjuiState*);
-  void (*layout_callback_)(mjuiState*);
+  void (*event_callback_)(mjuiState *);
+  void (*layout_callback_)(mjuiState *);
 
   mjrContext con_;
-  const mjModel* last_model_ = nullptr;
+  const mjModel *last_model_ = nullptr;
   int last_fontscale_ = -1;
 
  private:

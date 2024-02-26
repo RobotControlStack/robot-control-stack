@@ -19,6 +19,7 @@
 #include <mujoco/mujoco.h>
 
 #include <cstdlib>
+#include <iostream>
 #include <utility>
 
 #include "glfw_dispatch.h"
@@ -33,15 +34,19 @@ int MaybeGlfwInit() {
   static const int is_initialized = []() {
     auto success = Glfw().glfwInit();
     if (success == GLFW_TRUE) {
-      std::atexit(Glfw().glfwTerminate);
+      int ret = std::atexit(Glfw().glfwTerminate);
+      if (ret) {
+        std::cout << "Failed to register function with atexit" << std::endl;
+        exit(EXIT_FAILURE);
+      }
     }
     return success;
   }();
   return is_initialized;
 }
 
-GlfwAdapter& GlfwAdapterFromWindow(GLFWwindow* window) {
-  return *static_cast<GlfwAdapter*>(Glfw().glfwGetWindowUserPointer(window));
+GlfwAdapter &GlfwAdapterFromWindow(GLFWwindow *window) {
+  return *static_cast<GlfwAdapter *>(Glfw().glfwGetWindowUserPointer(window));
 }
 }  // namespace
 
@@ -72,30 +77,30 @@ GlfwAdapter::GlfwAdapter() {
   // set callbacks
   Glfw().glfwSetWindowUserPointer(window_, this);
   Glfw().glfwSetDropCallback(
-      window_, +[](GLFWwindow* window, int count, const char** paths) {
+      window_, +[](GLFWwindow *window, int count, const char **paths) {
         GlfwAdapterFromWindow(window).OnFilesDrop(count, paths);
       });
   Glfw().glfwSetKeyCallback(
       window_,
-      +[](GLFWwindow* window, int key, int scancode, int act, int mods) {
+      +[](GLFWwindow *window, int key, int scancode, int act, int mods) {
         GlfwAdapterFromWindow(window).OnKey(key, scancode, act);
       });
   Glfw().glfwSetMouseButtonCallback(
-      window_, +[](GLFWwindow* window, int button, int act, int mods) {
+      window_, +[](GLFWwindow *window, int button, int act, int mods) {
         GlfwAdapterFromWindow(window).OnMouseButton(button, act);
       });
   Glfw().glfwSetCursorPosCallback(
-      window_, +[](GLFWwindow* window, double x, double y) {
+      window_, +[](GLFWwindow *window, double x, double y) {
         GlfwAdapterFromWindow(window).OnMouseMove(x, y);
       });
   Glfw().glfwSetScrollCallback(
-      window_, +[](GLFWwindow* window, double xoffset, double yoffset) {
+      window_, +[](GLFWwindow *window, double xoffset, double yoffset) {
         GlfwAdapterFromWindow(window).OnScroll(xoffset, yoffset);
       });
   Glfw().glfwSetWindowRefreshCallback(
-      window_, +[](GLFWwindow* window) {
+      window_, +[](GLFWwindow *window) {
 #ifdef __APPLE__
-        auto& core_video = GlfwAdapterFromWindow(window).core_video_;
+        auto &core_video = GlfwAdapterFromWindow(window).core_video_;
         if (core_video.has_value()) {
           core_video->UpdateDisplayLink();
         }
@@ -103,7 +108,7 @@ GlfwAdapter::GlfwAdapter() {
         GlfwAdapterFromWindow(window).OnWindowRefresh();
       });
   Glfw().glfwSetWindowSizeCallback(
-      window_, +[](GLFWwindow* window, int width, int height) {
+      window_, +[](GLFWwindow *window, int width, int height) {
         GlfwAdapterFromWindow(window).OnWindowResize(width, height);
       });
 
@@ -146,7 +151,7 @@ bool GlfwAdapter::IsGPUAccelerated() const { return true; }
 
 void GlfwAdapter::PollEvents() { Glfw().glfwPollEvents(); }
 
-void GlfwAdapter::SetClipboardString(const char* text) {
+void GlfwAdapter::SetClipboardString(const char *text) {
   Glfw().glfwSetClipboardString(window_, text);
 }
 
@@ -163,7 +168,7 @@ void GlfwAdapter::SetVSync(bool enabled) {
 #endif
 }
 
-void GlfwAdapter::SetWindowTitle(const char* title) {
+void GlfwAdapter::SetWindowTitle(const char *title) {
   Glfw().glfwSetWindowTitle(window_, title);
 }
 

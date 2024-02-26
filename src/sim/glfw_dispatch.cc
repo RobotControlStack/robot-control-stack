@@ -29,10 +29,10 @@
 namespace mujoco {
 
 // return dispatch table for glfw functions
-const struct Glfw& Glfw(void* dlhandle) {
+const struct Glfw &Glfw(void *dlhandle) {
   {
     // set static init_dlhandle
-    static const void* init_dlhandle = dlhandle;
+    static const void *init_dlhandle = dlhandle;
 
     // check that not already initialized
     if (dlhandle && dlhandle != init_dlhandle) {
