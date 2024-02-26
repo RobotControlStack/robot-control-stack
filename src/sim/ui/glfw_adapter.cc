@@ -14,12 +14,13 @@
 
 #include "glfw_adapter.h"
 
-#include <cstdlib>
-#include <utility>
-
 #include <GLFW/glfw3.h>
 #include <mujoco/mjui.h>
 #include <mujoco/mujoco.h>
+
+#include <cstdlib>
+#include <utility>
+
 #include "glfw_dispatch.h"
 
 #ifdef __APPLE__
@@ -58,8 +59,8 @@ GlfwAdapter::GlfwAdapter() {
 
   // create window
   window_ = Glfw().glfwCreateWindow((2 * vidmode_.width) / 3,
-                                    (2 * vidmode_.height) / 3,
-                                    "MuJoCo", nullptr, nullptr);
+                                    (2 * vidmode_.height) / 3, "MuJoCo",
+                                    nullptr, nullptr);
   if (!window_) {
     mju_error("could not create window");
   }
@@ -75,7 +76,8 @@ GlfwAdapter::GlfwAdapter() {
         GlfwAdapterFromWindow(window).OnFilesDrop(count, paths);
       });
   Glfw().glfwSetKeyCallback(
-      window_, +[](GLFWwindow* window, int key, int scancode, int act, int mods) {
+      window_,
+      +[](GLFWwindow* window, int key, int scancode, int act, int mods) {
         GlfwAdapterFromWindow(window).OnKey(key, scancode, act);
       });
   Glfw().glfwSetMouseButtonCallback(
@@ -123,8 +125,8 @@ std::pair<double, double> GlfwAdapter::GetCursorPosition() const {
 
 double GlfwAdapter::GetDisplayPixelsPerInch() const {
   int width_mm, height_mm;
-  Glfw().glfwGetMonitorPhysicalSize(
-      Glfw().glfwGetPrimaryMonitor(), &width_mm, &height_mm);
+  Glfw().glfwGetMonitorPhysicalSize(Glfw().glfwGetPrimaryMonitor(), &width_mm,
+                                    &height_mm);
   return 25.4 * vidmode_.width / width_mm;
 }
 
@@ -140,19 +142,15 @@ std::pair<int, int> GlfwAdapter::GetWindowSize() const {
   return {width, height};
 }
 
-bool GlfwAdapter::IsGPUAccelerated() const {
-  return true;
-}
+bool GlfwAdapter::IsGPUAccelerated() const { return true; }
 
-void GlfwAdapter::PollEvents() {
-  Glfw().glfwPollEvents();
-}
+void GlfwAdapter::PollEvents() { Glfw().glfwPollEvents(); }
 
 void GlfwAdapter::SetClipboardString(const char* text) {
   Glfw().glfwSetClipboardString(window_, text);
 }
 
-void GlfwAdapter::SetVSync(bool enabled){
+void GlfwAdapter::SetVSync(bool enabled) {
 #ifdef __APPLE__
   Glfw().glfwSwapInterval(0);
   if (enabled && !core_video_.has_value()) {
@@ -186,8 +184,9 @@ void GlfwAdapter::ToggleFullscreen() {
   // currently full screen: switch to windowed
   if (Glfw().glfwGetWindowMonitor(window_)) {
     // restore window from saved data
-    Glfw().glfwSetWindowMonitor(window_, nullptr, window_pos_.first, window_pos_.second,
-                                window_size_.first, window_size_.second, 0);
+    Glfw().glfwSetWindowMonitor(window_, nullptr, window_pos_.first,
+                                window_pos_.second, window_size_.first,
+                                window_size_.second, 0);
   }
 
   // currently windowed: switch to full screen
@@ -198,22 +197,25 @@ void GlfwAdapter::ToggleFullscreen() {
                              &window_size_.second);
 
     // switch
-    Glfw().glfwSetWindowMonitor(window_, Glfw().glfwGetPrimaryMonitor(), 0,
-                                0, vidmode_.width, vidmode_.height,
+    Glfw().glfwSetWindowMonitor(window_, Glfw().glfwGetPrimaryMonitor(), 0, 0,
+                                vidmode_.width, vidmode_.height,
                                 vidmode_.refreshRate);
   }
 }
 
 bool GlfwAdapter::IsLeftMouseButtonPressed() const {
-  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) ==
+         GLFW_PRESS;
 }
 
 bool GlfwAdapter::IsMiddleMouseButtonPressed() const {
-  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
+  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_MIDDLE) ==
+         GLFW_PRESS;
 }
 
 bool GlfwAdapter::IsRightMouseButtonPressed() const {
-  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+  return Glfw().glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT) ==
+         GLFW_PRESS;
 }
 
 bool GlfwAdapter::IsAltKeyPressed() const {

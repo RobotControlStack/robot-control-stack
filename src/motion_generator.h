@@ -1,13 +1,12 @@
 #pragma once
 
-#include <array>
-
-#include <Eigen/Core>
-
 #include <franka/control_types.h>
 #include <franka/duration.h>
 #include <franka/robot.h>
 #include <franka/robot_state.h>
+
+#include <Eigen/Core>
+#include <array>
 
 using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
 using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
@@ -25,10 +24,10 @@ using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
 void setDefaultBehavior(franka::Robot& robot);
 
 /**
- * An example showing how to generate a joint pose motion to a goal position. Adapted from:
- * Wisama Khalil and Etienne Dombre. 2002. Modeling, Identification and Control of Robots
- * (Kogan Page Science Paper edition).
- * 
+ * An example showing how to generate a joint pose motion to a goal position.
+ * Adapted from: Wisama Khalil and Etienne Dombre. 2002. Modeling,
+ * Identification and Control of Robots (Kogan Page Science Paper edition).
+ *
  * TODO(tobi): create a motion generator for linear cartesian motion
  */
 class MotionGenerator {
@@ -49,10 +48,10 @@ class MotionGenerator {
    *
    * @return Joint positions for use inside a control loop.
    */
-  franka::JointPositions operator()(const franka::RobotState& robot_state, franka::Duration period);
+  franka::JointPositions operator()(const franka::RobotState& robot_state,
+                                    franka::Duration period);
 
  private:
-
   bool calculateDesiredValues(double t, Vector7d* delta_q_d) const;
   void calculateSynchronizedValues();
 
@@ -70,7 +69,8 @@ class MotionGenerator {
 
   double time_ = 0.0;
 
-  Vector7d dq_max_ = (Vector7d() << 2.0, 2.0, 2.0, 2.0, 2.5, 2.5, 2.5).finished();
+  Vector7d dq_max_ =
+      (Vector7d() << 2.0, 2.0, 2.0, 2.0, 2.5, 2.5, 2.5).finished();
   Vector7d ddq_max_start_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
   Vector7d ddq_max_goal_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
 };
