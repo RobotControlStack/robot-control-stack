@@ -19,11 +19,12 @@ from ._core import __doc__, __version__, add, subtract, FR3, FrankaHand
 
 __all__ = ["__doc__", "__version__", "add", "subtract", "FR3", "FrankaHand", "Desk"]
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
+
 
 _logger = logging.getLogger('desk')
 
-TOKEN_PATH = '~/.pyfr3/token.conf'
+TOKEN_PATH = '~/.rcsss/token.conf'
 """
 Path to the configuration file holding known control tokens.
 If :py:class:`Desk` is used to connect to a control unit's

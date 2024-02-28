@@ -2,8 +2,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 // TODO: shouldnt this be .h, but only .cpp works?
-#include "../hal/FR3.cpp"
-#include "../hal/FrankaHand.cpp"
+#include "../hw/FR3.cpp"
+#include "../hw/FrankaHand.cpp"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -39,18 +39,16 @@ PYBIND11_MODULE(_core, m) {
   py::class_<FR3>(m, "FR3")
       .def(py::init<const std::string &, const std::string &>(), py::arg("ip"),
            py::arg("filename"))
-      .def("setJointPosition", &FR3::setJointPosition, py::arg("q"))
-      .def("getJointPosition", &FR3::getJointPosition)
-      .def("getCartesianPosition", &FR3::getCartesianPosition)
-      .def("getCartesianPosition2", &FR3::getCartesianPosition2)
-      .def("setGuidingMode", &FR3::setGuidingMode, py::arg("enabled"))
+      .def("set_joint_position", &FR3::set_joint_position, py::arg("q"))
+      .def("get_joint_position", &FR3::get_joint_position)
+      .def("get_cartesian_position", &FR3::get_cartesian_position)
+      .def("set_guiding_mode", &FR3::set_guiding_mode, py::arg("enabled"))
       .def("move_home", &FR3::move_home)
       .def("automatic_error_recovery", &FR3::automatic_error_recovery)
       .def("double_tap_robot_to_continue", &FR3::double_tap_robot_to_continue)
-      .def("setParameters", &FR3::setParameters, py::arg("speed_factor"))
-      .def("move_cartesian", &FR3::move_cartesian, py::arg("dest"),
-           py::arg("max_time"), py::arg("elbow") = py::none(),
-           py::arg("max_force") = 5.0);
+      .def("set_parameters", &FR3::setParameters, py::arg("speed_factor"), py::arg("load_parameters"))
+      .def("set_cartesian_position", &FR3::move_cartesian, py::arg("x"),
+           py::arg("controller"), py::arg("nominal_end_effector_frame") = py::none());
 
   py::class_<FrankaHand>(m, "FrankaHand")
       .def(py::init<const std::string &>(), py::arg("ip"))

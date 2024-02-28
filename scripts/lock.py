@@ -1,11 +1,11 @@
 
 import argparse
-import pyfr3
+import rcsss
 import pw
 import time
 
 def lock(ip, guiding_mode=False):
-    d = pyfr3.Desk(ip, pw.username, pw.password)
+    d = rcsss.Desk(ip, pw.username, pw.password)
     d.take_control(force=True)
     d.lock()
 

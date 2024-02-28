@@ -53,9 +53,10 @@ class FR3 {
   rl::math::Transform get_cartesian_position();
   //   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
 
-  void set_joint_position(const ::rl::math::Vector &q);
+  void set_joint_position(const Vector7d &q);
 
-  rl::math::Vector get_joint_position();
+
+  Vector7d get_joint_position();
 
   void set_guiding_mode(bool enabled);
 
@@ -77,6 +78,8 @@ class FR3 {
                                        std::optional<double> max_force = 5);
 
   void set_cartesian_position_rl(const ::rl::math::Transform &x);
+
+  rl::math::Transform FR3::get_cartesian_position();
 };
 }  // namespace hw
 }  // namespace rcs
