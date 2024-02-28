@@ -7,9 +7,3 @@ target_link_libraries(mg PUBLIC Eigen3::Eigen franka)
 add_subdirectory(hw)
 add_subdirectory(pybind)
 add_subdirectory(sim)
-
-add_executable(main main.cpp)
-target_link_libraries(main franka mg ha)
-
-add_executable(mirror mirror.cpp)
-target_link_libraries(mirror franka Eigen3::Eigen)

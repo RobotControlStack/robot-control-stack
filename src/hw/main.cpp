@@ -17,12 +17,17 @@ int main() {
   try {
     FR3 robot(ip, fn);
     robot.automatic_error_recovery();
-    // robot.move_home();
+    std::cout << "WARNING: This example will move the robot! "
+              << "Please make sure to have the user stop button at hand!"
+              << std::endl
+              << "Press Enter to continue..." << std::endl;
+    std::cin.ignore();
+    robot.move_home();
 
-    auto rs = robot.getCartesianPosition();
-    rs.translation() += Eigen::Vector3d(0, 0, 0.1);
+    auto rs = robot.get_cartesian_position();
+    rs.translation() -= Eigen::Vector3d(0, 0, 0.1);
 
-    robot.move_cartesian(rs, 5.0, std::nullopt);
+    robot.set_cartesian_position_internal(rs, 5.0, std::nullopt);
 
     // robot.automatic_error_recovery();
   } catch (const franka::Exception &e) {

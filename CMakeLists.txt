@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(
-    franka_interface
+    rcs
     LANGUAGES C CXX
     VERSION 0.1.0
-    DESCRIPTION "Franka Abstraction Layer"
+    DESCRIPTION "UTNs Robot Control Stack Library"
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -32,6 +32,7 @@ set(MUJOCO_BUILD_EXAMPLES OFF)
 set(MUJOCO_BUILD_SIMULATE OFF)
 set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
+set(BUILD_TESTING OFF)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -54,6 +55,11 @@ FetchContent_Declare(
     mujoco
     GIT_REPOSITORY https://github.com/google-deepmind/mujoco.git
     GIT_TAG 3.1.1
+    GIT_PROGRESS TRUE
+)
+FetchContent_Declare(
+    orl
+    GIT_REPOSITORY https://github.com/marcbone/liborl.git
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)

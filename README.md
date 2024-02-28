@@ -1,4 +1,4 @@
-# Franka Interface
+# Robot Control Stack
 
 ## Build
 ### Dependencies
