@@ -13,6 +13,9 @@
 #include <string>
 #include <tuple>
 
+namespace rcs {
+namespace hw {
+
 FrankaHand::FrankaHand(const std::string ip) : Gripper(), gripper(ip) {}
 
 FrankaHand::~FrankaHand() {}
@@ -54,3 +57,5 @@ void FrankaHand::release() {
   gripper.move(gripper_state.max_width, speed);
 }
 void FrankaHand::shut() { gripper.move(grasping_width, speed); }
+}  // namespace hw
+}  // namespace rcs

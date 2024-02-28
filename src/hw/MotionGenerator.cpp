@@ -1,4 +1,4 @@
-#include "motion_generator.h"
+#include "MotionGenerator.h"
 
 #include <franka/exception.h>
 #include <franka/robot.h>
@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+
+namespace rcs {
+namespace hw {
 
 void setDefaultBehavior(franka::Robot& robot) {
   robot.setCollisionBehavior({{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
@@ -139,3 +142,5 @@ franka::JointPositions MotionGenerator::operator()(
   output.motion_finished = motion_finished;
   return output;
 }
+}  // namespace hw
+}  // namespace rcs

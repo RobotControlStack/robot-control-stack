@@ -15,7 +15,7 @@ const string fn = "models/urdf/fr3.urdf";
 
 int main() {
   try {
-    FR3 robot(ip, fn);
+    rcs::hw::FR3 robot(ip, fn);
     robot.automatic_error_recovery();
     std::cout << "WARNING: This example will move the robot! "
               << "Please make sure to have the user stop button at hand!"

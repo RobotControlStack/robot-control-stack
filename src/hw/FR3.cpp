@@ -22,6 +22,8 @@
 
 #include "motion_generator.h"
 
+namespace rcs {
+namespace hw {
 FR3::FR3(const std::string &ip, std::optional<const std::string &> filename)
     : robot(ip), model() {
   // set collision behavior and impedance
@@ -39,8 +41,6 @@ FR3::FR3(const std::string &ip, std::optional<const std::string &> filename)
 }
 
 FR3::~FR3() {}
-
-// EE should be added to cartesian controller
 
 bool FR3::set_parameters(std::optional<double> speed_factor,
                          std::optional<const FR3Load &> load) {
@@ -224,9 +224,9 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 // TODO: relative cartesian movement, cartesian movement with ik, cartesian with
 // same orientation, cartesian with euler rotation
 
-void FR3::set_cartesian_position(const ::rl::math::Transform &x,
-                                 IKController controller,
-                                 const std::optional<rl::math::Transform &> nominal_end_effector_frame) {
+void FR3::set_cartesian_position(
+    const ::rl::math::Transform &x, IKController controller,
+    const std::optional<rl::math::Transform &> nominal_end_effector_frame) {
   rl::math::Transform nominal_end_effector_frame_value;
   if (nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value = nominal_end_effector_frame.value();
@@ -236,7 +236,6 @@ void FR3::set_cartesian_position(const ::rl::math::Transform &x,
 
   // TODO: trajectory planner
   if (controller == IKController::internal) {
-
     std::array<double, 16> EE;
     // this could be problematic if we want to use non double
     Eigen::Matrix3d::Map(EE.data()) = nominal_end_effector_frame_value.matrix();
@@ -327,3 +326,6 @@ void FR3::set_cartesian_position_internal(const rl::math::Transform &dest,
       },
       franka::ControllerMode::kCartesianImpedance);
 }
+
+}  // namespace hw
+}  // namespace rcs

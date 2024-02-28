@@ -4,12 +4,16 @@
 #include <franka/duration.h>
 #include <franka/robot.h>
 #include <franka/robot_state.h>
+#include <franka/exception.h>
+
+#include "FR3.h"
 
 #include <Eigen/Core>
 #include <array>
 
-using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
-using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
+namespace rcs {
+namespace hw {
+
 
 /**
  * @file examples_common.h
@@ -74,3 +78,5 @@ class MotionGenerator {
   Vector7d ddq_max_start_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
   Vector7d ddq_max_goal_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
 };
+}  // namespace hw
+}  // namespace rcs

@@ -15,11 +15,15 @@
 #include <optional>
 #include <string>
 
+namespace rcs {
+namespace hw {
+
 Vector7d q_home(
     (Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished());
 double DEFAULT_SPEED_FACTOR = 0.2;
 
 typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
+typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
 struct FR3Load {
   double load_mass;
   std::optional<Eigen::Vector3d> f_x_cload;
@@ -74,3 +78,5 @@ class FR3 {
 
   void set_cartesian_position_rl(const ::rl::math::Transform &x);
 };
+}  // namespace hw
+}  // namespace rcs

@@ -10,6 +10,9 @@
 #include <cmath>
 #include <string>
 
+namespace rcs {
+namespace hw {
+
 class FrankaHand : public rl::hal::Gripper {
  private:
   franka::Gripper gripper;
@@ -37,3 +40,5 @@ class FrankaHand : public rl::hal::Gripper {
   void release();
   void shut();
 };
+}  // namespace hw
+}  // namespace rcs
