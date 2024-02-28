@@ -15,53 +15,46 @@
 #include <optional>
 #include <string>
 
-typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vec7;
+Vector7d q_home(
+    (Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished());
+double DEFAULT_SPEED_FACTOR = 0.2;
 
-class FR3 : public rl::hal::CartesianPositionActuator,
-            public rl::hal::CartesianPositionSensor,
-            public rl::hal::JointPositionActuator,
-            public rl::hal::JointPositionSensor {
+typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
+struct FR3Load {
+  double load_mass;
+  std::optional<Eigen::Vector3d> f_x_cload;
+  std::optional<Eigen::Matrix3f> load_inertia;
+};
+enum IKController { internal, robotics_library };
+
+class FR3 {
  private:
   franka::Robot robot;
   rl::mdl::Dynamic model;
-  std::unique_ptr<rl::mdl::JacobianInverseKinematics> ik;
-  Vec7 q_home;
-  double speed_factor = 0.2;
+  std::optional<std::unique_ptr<rl::mdl::JacobianInverseKinematics>> ik;
+  double speed_factor = DEFAULT_SPEED_FACTOR;
   bool guiding_mode_enabled;
+  // TODO: add max force
 
  public:
-  FR3(const std::string &ip, const std::string &filename);
+  FR3(const std::string &ip,
+      std::optional<const std::string &> filename = std::nullopt);
   ~FR3();
-  // how to do destructor of inherited classes? how to handle virtual descrutors
 
-  bool setParameters(double speed_factor);
+  bool set_parameters(std::optional<double> speed_factor,
+                      std::optional<const FR3Load &> load_parameters);
 
-  void setDefaultRobotBehavior();
+  void set_default_robot_behavior();
 
-  // Methods from Device
-  void close();
-  void open();
-  void start();
-  void stop();
+  rl::math::Transform get_cartesian_position();
+  //   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
 
-  // Methods from CartesianPositionActuator
-  void setCartesianPosition(const ::rl::math::Transform &x);
+  void set_joint_position(const ::rl::math::Vector &q);
 
-  // Methods from CartesianPositionSensor
-  rl::math::Transform getCartesianPosition() const;
-  Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
+  rl::math::Vector get_joint_position();
 
-  // Methods from JointPositionActuator
-  void setJointPosition(const ::rl::math::Vector &q);
+  void set_guiding_mode(bool enabled);
 
-  // Methods from JointPositionSensor
-  rl::math::Vector getJointPosition() const;
-
-  void setGuidingMode(bool enabled);
-
-  // inertia?
-  // void setLoad(double load_mass);
-  // Own methods
   void move_home();
 
   void automatic_error_recovery();
@@ -70,7 +63,14 @@ class FR3 : public rl::hal::CartesianPositionActuator,
 
   void double_tap_robot_to_continue();
 
-  void move_cartesian(rl::math::Transform dest, double max_time,
-                      std::optional<double> elbow,
-                      std::optional<double> max_force = 5);
+  void set_cartesian_position(
+      const ::rl::math::Transform &x, IKController controller,
+      const std::optional<rl::math::Transform &> nominal_end_effector_frame);
+
+  void set_cartesian_position_internal(const rl::math::Transform &dest,
+                                       double max_time,
+                                       std::optional<double> elbow,
+                                       std::optional<double> max_force = 5);
+
+  void set_cartesian_position_rl(const ::rl::math::Transform &x);
 };
