@@ -50,11 +50,10 @@ class FR3 {
 
   void set_default_robot_behavior();
 
-  rl::math::Transform get_cartesian_position();
+  Eigen::Affine3d get_cartesian_position();
   //   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
 
   void set_joint_position(const Vector7d &q);
-
 
   Vector7d get_joint_position();
 
@@ -69,17 +68,17 @@ class FR3 {
   void double_tap_robot_to_continue();
 
   void set_cartesian_position(
-      const ::rl::math::Transform &x, IKController controller,
-      const std::optional<rl::math::Transform &> nominal_end_effector_frame);
+      const ::Eigen::Affine3d &x, IKController controller,
+      const std::optional<Eigen::Affine3d &> nominal_end_effector_frame);
 
-  void set_cartesian_position_internal(const rl::math::Transform &dest,
+  void set_cartesian_position_internal(const Eigen::Affine3d &dest,
                                        double max_time,
                                        std::optional<double> elbow,
                                        std::optional<double> max_force = 5);
 
-  void set_cartesian_position_rl(const ::rl::math::Transform &x);
+  void set_cartesian_position_rl(const ::Eigen::Affine3d &x);
 
-  rl::math::Transform FR3::get_cartesian_position();
+  Eigen::Affine3d FR3::get_cartesian_position();
 };
 }  // namespace hw
 }  // namespace rcs

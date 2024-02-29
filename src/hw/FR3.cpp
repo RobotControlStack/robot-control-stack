@@ -20,7 +20,7 @@
 #include <string>
 #include <thread>
 
-#include "motion_generator.h"
+#include "MotionGenerator.h"
 
 namespace rcs {
 namespace hw {
@@ -83,11 +83,11 @@ void FR3::set_default_robot_behavior() {
   this->robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-rl::math::Transform FR3::get_cartesian_position() {
+Eigen::Affine3d FR3::get_cartesian_position() {
   franka::RobotState state = this->robot.readOnce();
   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
       state.O_T_EE_c.data());
-  rl::math::Transform x;
+  Eigen::Affine3d x;
   x.matrix() = transMatrix;
   return x;
 }
@@ -163,9 +163,8 @@ void FR3::double_tap_robot_to_continue() {
   wait_milliseconds(100);
 }
 
-rl::math::Transform interpolate(const rl::math::Transform &start_pose,
-                                const rl::math::Transform &dest_pose,
-                                double progress) {
+Eigen::Affine3d interpolate(const Eigen::Affine3d &start_pose,
+                            const Eigen::Affine3d &dest_pose, double progress) {
   if (progress > 1) {
     progress = 1;
   }
@@ -176,7 +175,7 @@ rl::math::Transform interpolate(const rl::math::Transform &start_pose,
   quat_start = start_pose.rotation();
   quat_end = dest_pose.rotation();
   quat_result = quat_start.slerp(progress, quat_end);
-  rl::math::Transform result_pose;
+  Eigen::Affine3d result_pose;
   result_pose.setIdentity();
   result_pose.translation() = pos_result;
   result_pose.rotate(quat_result);
@@ -184,7 +183,7 @@ rl::math::Transform interpolate(const rl::math::Transform &start_pose,
 }
 
 // todo this should be done with library function
-std::array<double, 16> to_matrix(const rl::math::Transform &transform) {
+std::array<double, 16> to_matrix(const Eigen::Affine3d &transform) {
   Eigen::Matrix3d rot_mat = transform.rotation();
   std::array<double, 16> mat = {rot_mat(0, 0),
                                 rot_mat(1, 0),
@@ -225,13 +224,13 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 // same orientation, cartesian with euler rotation
 
 void FR3::set_cartesian_position(
-    const ::rl::math::Transform &x, IKController controller,
-    const std::optional<rl::math::Transform &> nominal_end_effector_frame) {
-  rl::math::Transform nominal_end_effector_frame_value;
+    const ::Eigen::Affine3d &x, IKController controller,
+    const std::optional<Eigen::Affine3d &> nominal_end_effector_frame) {
+  Eigen::Affine3d nominal_end_effector_frame_value;
   if (nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value = nominal_end_effector_frame.value();
   } else {
-    nominal_end_effector_frame_value = rl::math::Transform::Identity();
+    nominal_end_effector_frame_value = Eigen::Affine3d::Identity();
   }
 
   // TODO: trajectory planner
@@ -247,7 +246,7 @@ void FR3::set_cartesian_position(
   }
 }
 
-void FR3::set_cartesian_position_rl(const ::rl::math::Transform &x) {
+void FR3::set_cartesian_position_rl(const ::Eigen::Affine3d &x) {
   if (!this->ik.has_value()) {
     throw rl::mdl::Exception(
         "No file for robot model was provided. Cannot use RL for IK.");
@@ -264,12 +263,12 @@ void FR3::set_cartesian_position_rl(const ::rl::math::Transform &x) {
   }
 }
 
-void FR3::set_cartesian_position_internal(const rl::math::Transform &dest,
+void FR3::set_cartesian_position_internal(const Eigen::Affine3d &dest,
                                           double max_time,
                                           std::optional<double> elbow,
                                           std::optional<double> max_force) {
   // TODO: use speed factor instead of max_time
-  rl::math::Transform initial_pose = this->get_cartesian_position();
+  Eigen::Affine3d initial_pose = this->get_cartesian_position();
 
   auto force_stop_condition = [&max_force](const franka::RobotState &state,
                                            const double progress) {
@@ -300,7 +299,7 @@ void FR3::set_cartesian_position_internal(const rl::math::Transform &dest,
         const double progress = time / max_time;
 
         // calculate new pose
-        rl::math::Transform new_pose_pose =
+        Eigen::Affine3d new_pose_pose =
             interpolate(initial_pose, dest,
                         quintic_polynomial_speed_profile(progress, 0, 1));
 
