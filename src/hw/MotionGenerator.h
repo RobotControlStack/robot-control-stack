@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RCS_MOTION_GENERATOR_H
+#define RCS_MOTION_GENERATOR_H
 
 #include <franka/control_types.h>
 #include <franka/duration.h>
@@ -80,3 +81,4 @@ class MotionGenerator {
 };
 }  // namespace hw
 }  // namespace rcs
+#endif  // RCS_MOTION_GENERATOR_H

@@ -1,3 +1,6 @@
+#ifndef RCS_FRANKA_HAND_H
+#define RCS_FRANKA_HAND_H
+
 #include <franka/gripper.h>
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
@@ -42,3 +45,4 @@ class FrankaHand : public rl::hal::Gripper {
 };
 }  // namespace hw
 }  // namespace rcs
+#endif  // RCS_FRANKA_HAND_H

@@ -1,3 +1,6 @@
+#ifndef RCS_FR3_H
+#define RCS_FR3_H
+
 #include <franka/robot.h>
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
@@ -82,3 +85,5 @@ class FR3 {
 };
 }  // namespace hw
 }  // namespace rcs
+
+#endif // RCS_FR3_H
