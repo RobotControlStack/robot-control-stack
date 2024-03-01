@@ -7,7 +7,10 @@
 namespace rcs {
 namespace common {
 
-// convert between eigen and array
+/***
+ * @brief convert between eigen and flattened array (col major as required by
+ * libfranka)
+ */
 template <auto N, auto M>
 std::array<double, N * M> eigen2array(
     Eigen::Matrix<double, N, M, Eigen::ColMajor> matrix) {
@@ -15,7 +18,10 @@ std::array<double, N * M> eigen2array(
   Eigen::Matrix<double, N, M>::Map(array.data()) = matrix;
 }
 
-// convert between array and eigen
+/***
+ * @brief convert between flattened array (col major as required by libfranka)
+ * and eigen
+ */
 template <auto N, auto M>
 Eigen::Matrix<double, N, M, Eigen::ColMajor> array2eigen(
     std::array<double, N * M> array) {

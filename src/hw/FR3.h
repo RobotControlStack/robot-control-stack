@@ -18,6 +18,8 @@
 #include <optional>
 #include <string>
 
+#include "common/Pose.h"
+
 namespace rcs {
 namespace hw {
 
@@ -53,8 +55,7 @@ class FR3 {
 
   void set_default_robot_behavior();
 
-  Eigen::Affine3d get_cartesian_position();
-  //   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> getCartesianPosition2();
+  common::Pose get_cartesian_position();
 
   void set_joint_position(const Vector7d &q);
 
@@ -71,19 +72,17 @@ class FR3 {
   void double_tap_robot_to_continue();
 
   void set_cartesian_position(
-      const ::Eigen::Affine3d &x, IKController controller,
-      const std::optional<Eigen::Affine3d &> nominal_end_effector_frame);
+      const common::Pose &x, IKController controller,
+      const std::optional<common::Pose &> nominal_end_effector_frame);
 
-  void set_cartesian_position_internal(const Eigen::Affine3d &dest,
+  void set_cartesian_position_internal(const common::Pose &dest,
                                        double max_time,
                                        std::optional<double> elbow,
                                        std::optional<double> max_force = 5);
 
-  void set_cartesian_position_rl(const ::Eigen::Affine3d &x);
-
-  Eigen::Affine3d FR3::get_cartesian_position();
+  void set_cartesian_position_rl(const common::Pose &x);
 };
 }  // namespace hw
 }  // namespace rcs
 
-#endif // RCS_FR3_H
+#endif  // RCS_FR3_H

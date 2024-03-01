@@ -83,20 +83,11 @@ void FR3::set_default_robot_behavior() {
   this->robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-Eigen::Affine3d FR3::get_cartesian_position() {
+common::Pose FR3::get_cartesian_position() {
   franka::RobotState state = this->robot.readOnce();
-  Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
-      state.O_T_EE_c.data());
-  Eigen::Affine3d x;
-  x.matrix() = transMatrix;
+  common::Pose x(state.O_T_EE_c);
   return x;
 }
-
-// Eigen::Matrix<double, 4, 4, Eigen::ColMajor> FR3::getCartesianPosition2() {
-//   Eigen::Matrix<double, 4, 4, Eigen::ColMajor> re(
-//       getCartesianPosition().matrix());
-//   return re;
-// }
 
 void FR3::set_joint_position(const Vector7d &q) {
   // TODO: max force?
@@ -224,21 +215,19 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 // same orientation, cartesian with euler rotation
 
 void FR3::set_cartesian_position(
-    const ::Eigen::Affine3d &x, IKController controller,
-    const std::optional<Eigen::Affine3d &> nominal_end_effector_frame) {
-  Eigen::Affine3d nominal_end_effector_frame_value;
+    const common::Pose &x, IKController controller,
+    const std::optional<common::Pose &> nominal_end_effector_frame) {
+  common::Pose nominal_end_effector_frame_value;
   if (nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value = nominal_end_effector_frame.value();
   } else {
+    // what does this exactly do, does it call the constructor?
     nominal_end_effector_frame_value = Eigen::Affine3d::Identity();
   }
 
   // TODO: trajectory planner
   if (controller == IKController::internal) {
-    std::array<double, 16> EE;
-    // this could be problematic if we want to use non double
-    Eigen::Matrix3d::Map(EE.data()) = nominal_end_effector_frame_value.matrix();
-    this->robot.setEE(EE);
+    this->robot.setEE(nominal_end_effector_frame_value.affine_array());
 
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
   } else if (controller == IKController::robotics_library) {
@@ -246,12 +235,12 @@ void FR3::set_cartesian_position(
   }
 }
 
-void FR3::set_cartesian_position_rl(const ::Eigen::Affine3d &x) {
+void FR3::set_cartesian_position_rl(const common::Pose &x) {
   if (!this->ik.has_value()) {
     throw rl::mdl::Exception(
         "No file for robot model was provided. Cannot use RL for IK.");
   }
-  this->ik.value()->addGoal(x, 0);
+  this->ik.value()->addGoal(x.affine_matrix(), 0);
   bool success = this->ik.value()->solve();
   if (success) {
     rl::math::Vector q(6);
@@ -263,12 +252,12 @@ void FR3::set_cartesian_position_rl(const ::Eigen::Affine3d &x) {
   }
 }
 
-void FR3::set_cartesian_position_internal(const Eigen::Affine3d &dest,
+void FR3::set_cartesian_position_internal(const common::Pose &dest,
                                           double max_time,
                                           std::optional<double> elbow,
                                           std::optional<double> max_force) {
   // TODO: use speed factor instead of max_time
-  Eigen::Affine3d initial_pose = this->get_cartesian_position();
+  common::Pose initial_pose = this->get_cartesian_position();
 
   auto force_stop_condition = [&max_force](const franka::RobotState &state,
                                            const double progress) {
@@ -284,26 +273,25 @@ void FR3::set_cartesian_position_internal(const Eigen::Affine3d &dest,
   bool should_stop = false;
 
   this->robot.control(
-      [=, &initial_elbow, &time, &max_time, &initial_pose, &should_stop](
+      [=, &initial_elbow, &time, &max_time, &initial_pose, &should_stop, &dest](
           const franka::RobotState &state,
           franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
-              state.O_T_EE_c.data());
-          initial_pose.matrix() = transMatrix;
+          // Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
+          //     state.O_T_EE_c.data());
+          // initial_pose.matrix() = transMatrix;
+          initial_pose = common::Pose(state.O_T_EE_c);
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;
 
-        // calculate new pose
-        Eigen::Affine3d new_pose_pose =
-            interpolate(initial_pose, dest,
-                        quintic_polynomial_speed_profile(progress, 0, 1));
+        // calculate new pose by interpolating along the linear path
+        common::Pose new_pose = initial_pose.interpolate(
+            dest, quintic_polynomial_speed_profile(progress, 0, 1));
 
-        std::array<double, 16> new_pose = to_matrix(new_pose_pose);
         if (elbow.has_value()) {
           new_elbow[0] += (elbow.value() - initial_elbow[0]) *
                           (1 - std::cos(M_PI * progress)) / 2.0;
@@ -314,14 +302,14 @@ void FR3::set_cartesian_position_internal(const Eigen::Affine3d &dest,
         should_stop = force_stop_condition(state, progress);
         if (time >= max_time or should_stop) {
           if (elbow.has_value()) {
-            return franka::MotionFinished({new_pose, new_elbow});
+            return franka::MotionFinished({new_pose.affine_array(), new_elbow});
           }
-          return franka::MotionFinished(new_pose);
+          return franka::MotionFinished(new_pose.affine_array());
         }
         if (elbow.has_value()) {
-          return {new_pose, new_elbow};
+          return {new_pose.affine_array(), new_elbow};
         }
-        return new_pose;
+        return new_pose.affine_array();
       },
       franka::ControllerMode::kCartesianImpedance);
 }
