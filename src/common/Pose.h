@@ -12,9 +12,16 @@ Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
 Eigen::Matrix3d IdentityRotation() { return Eigen::Matrix3d::Identity(); }
 
 struct RPY {
-  double roll;
-  double pitch;
-  double yaw;
+  double roll = 0;
+  double pitch = 0;
+  double yaw = 0;
+  std::string str() const {
+    return "RPY(" + std::to_string(roll) + ", " + std::to_string(pitch) + ", " +
+           std::to_string(yaw) + ")";
+  }
+  RPY operator+(const RPY &rpy_b) const {
+    return RPY{roll + rpy_b.roll, pitch + rpy_b.pitch, yaw + rpy_b.yaw};
+  }
 };
 
 /**
@@ -41,7 +48,8 @@ class Pose {
 
   /**
    * @brief Identity Affine Constructor. Generates an Affine3d with Identity
-   * Pose
+   * Pose.
+   * For python bindings.
    */
   Pose();
 
@@ -49,14 +57,44 @@ class Pose {
 
   Pose(const std::array<double, 16> &pose);
 
+  /**
+   * @brief Construct a new Pose object from a 4x4 matrix.
+   * For python bindings.
+   *
+   * @param pose
+   */
   Pose(const Eigen::Matrix4d &pose);
 
+  /**
+   * @brief Construct a new Pose object from a 3x3 rotation matrix and a 3D
+   * translation vector.
+   * For python bindings.
+   *
+   * @param rotation
+   * @param translation
+   */
   Pose(const Eigen::Matrix3d &rotation, const Eigen::Vector3d &translation);
 
+  /**
+   * @brief Construct a new Pose object from a 4D quaternion and a 3D
+   * translation vector.
+   * For python bindings.
+   *
+   * @param rotation
+   * @param translation
+   */
   Pose(const Eigen::Vector4d &rotation, const Eigen::Vector3d &translation);
 
   Pose(const Eigen::Quaterniond &rotation, const Eigen::Vector3d &translation);
 
+  /**
+   * @brief Construct a new Pose object from a RPY struct and a 3D translation
+   * vector.
+   * For python bindings.
+   *
+   * @param rpy
+   * @param translation
+   */
   Pose(const RPY &rpy, const Eigen::Vector3d &translation);
 
   // GETTERS
@@ -64,18 +102,24 @@ class Pose {
   /**
    * @brief returns the translational part of the transformation. It is similar
    * to the getPosition function
+   * For python bindings.
+   *
    * @return 3D vector of the translation
    */
   Eigen::Vector3d translation() const;
 
   /**
    * @brief returns the rotational part of the pose as a matrix
+   * For python bindings.
+   *
    * @return 3x3 rotation matrix
    */
   Eigen::Matrix3d rotation_m() const;
 
   /**
    * @brief returns the rotational part of the pose as quaternion
+   * For python bindings.
+   *
    * @return 4D vector of the quaternion
    */
   Eigen::Vector4d rotation_q() const;
@@ -88,6 +132,12 @@ class Pose {
 
   Eigen::Affine3d affine_matrix() const;
 
+  /**
+   * @brief Returns the pose as a 4x4 matrix
+   * For python bindings.
+   *
+   * @return 4x4 matrix
+   */
   Eigen::Matrix4d Pose::pose_matrix() const;
 
   /**
@@ -101,12 +151,16 @@ class Pose {
 
   /**
    * @brief Returns the RPY representation of the rotation
+   * For python bindings.
+   *
    * @return RPY struct with roll, pitch and yaw
    */
   RPY Pose::rpy() const;
 
   /**
    * @brief Interpolates the Pose to a destination Pose
+   * For python bindings.
+   *
    * @param dest_pose goal Pose
    * @param progress value of [0-1] where 0 is the start pose and 1 is the end
    * Pose
@@ -116,6 +170,8 @@ class Pose {
 
   /**
    * @brief Converts a Pose to a String
+   * For python bindings.
+   *
    * @return Pose as String
    */
   std::string str() const;
@@ -123,6 +179,7 @@ class Pose {
   /**
    * @brief Performs multiplication of Poses as  homogenous matrix
    * multiplication
+   * For python bindings. TODO: look how to bind operator overloading
    * @param pose_b an other
    * @return  the result of the multiplication
    */

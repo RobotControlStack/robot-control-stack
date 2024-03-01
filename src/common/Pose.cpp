@@ -7,7 +7,6 @@ namespace common {
 
 // CONSTRUCTORS
 
-// for python
 Pose::Pose() {
   this->m_translation = Eigen::Vector3d::Zero();
   this->m_rotation = Eigen::Quaterniond::Identity();
@@ -21,21 +20,18 @@ Pose::Pose(const Eigen::Affine3d &pose) {
 Pose::Pose(const std::array<double, 16> &pose)
     : Pose(array2eigen<4, 4>(pose)) {}
 
-// for python
 Pose::Pose(const Eigen::Matrix4d &pose) {
   Eigen::Affine3d affine_pose = Eigen::Affine3d(pose);
   this->m_translation = affine_pose.translation();
   this->m_rotation = Eigen::Quaterniond(affine_pose.rotation());
 }
 
-// for python
 Pose::Pose(const Eigen::Matrix3d &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
   this->m_rotation = Eigen::Quaterniond(rotation);
 }
 
-// for python
 Pose::Pose(const Eigen::Vector4d &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
@@ -57,15 +53,12 @@ Pose::Pose(const RPY &rpy, const Eigen::Vector3d &translation) {
 
 // GETTERS
 
-// for python
 Eigen::Vector3d Pose::translation() const { return this->m_translation; }
 
-// for python
 Eigen::Matrix3d Pose::rotation_m() const {
   return this->m_rotation.toRotationMatrix();
 }
 
-// for python
 Eigen::Vector4d Pose::rotation_q() const { return this->m_rotation.coeffs(); }
 
 Eigen::Quaterniond Pose::quaternion() const { return this->m_rotation; }
@@ -76,7 +69,6 @@ Eigen::Affine3d Pose::affine_matrix() const {
   return pose;
 }
 
-// for python
 Eigen::Matrix4d Pose::pose_matrix() const {
   return this->affine_matrix().matrix();
 }
