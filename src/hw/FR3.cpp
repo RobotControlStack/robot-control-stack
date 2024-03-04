@@ -57,8 +57,10 @@ void FR3::set_parameters(std::optional<double> speed_factor,
       load_value.load_inertia = Eigen::Matrix3d::Zero();
     }
 
-    this->robot.setLoad(load_value.load_mass, common::eigen2array<3, 1>(load_value.f_x_cload.value()),
-                        common::eigen2array<3, 3>(load_value.load_inertia.value()));
+    this->robot.setLoad(
+        load_value.load_mass,
+        common::eigen2array<3, 1>(load_value.f_x_cload.value()),
+        common::eigen2array<3, 3>(load_value.load_inertia.value()));
   }
 }
 

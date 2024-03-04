@@ -3,18 +3,20 @@
 
 #include <franka/control_types.h>
 #include <franka/duration.h>
+#include <franka/exception.h>
 #include <franka/robot.h>
 #include <franka/robot_state.h>
-#include <franka/exception.h>
-
-#include "FR3.h"
 
 #include <Eigen/Core>
 #include <array>
 
+#include "FR3.h"
+
 namespace rcs {
 namespace hw {
 
+using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
+using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
 
 /**
  * @file examples_common.h
