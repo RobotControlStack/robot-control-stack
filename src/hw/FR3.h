@@ -19,6 +19,7 @@
 #include <string>
 
 #include "common/Pose.h"
+#include "common/utils.h"
 
 namespace rcs {
 namespace hw {
@@ -32,7 +33,7 @@ typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
 struct FR3Load {
   double load_mass;
   std::optional<Eigen::Vector3d> f_x_cload;
-  std::optional<Eigen::Matrix3f> load_inertia;
+  std::optional<Eigen::Matrix3d> load_inertia;
 };
 enum IKController { internal, robotics_library };
 
@@ -50,7 +51,7 @@ class FR3 {
       std::optional<const std::string &> filename = std::nullopt);
   ~FR3();
 
-  bool set_parameters(std::optional<double> speed_factor,
+  void set_parameters(std::optional<double> speed_factor,
                       std::optional<const FR3Load &> load_parameters);
 
   void set_default_robot_behavior();

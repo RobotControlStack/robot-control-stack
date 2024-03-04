@@ -42,7 +42,7 @@ FR3::FR3(const std::string &ip, std::optional<const std::string &> filename)
 
 FR3::~FR3() {}
 
-bool FR3::set_parameters(std::optional<double> speed_factor,
+void FR3::set_parameters(std::optional<double> speed_factor,
                          std::optional<const FR3Load &> load) {
   if (speed_factor.has_value()) {
     // make sure that the speed factor is between 0 and 1
@@ -57,16 +57,8 @@ bool FR3::set_parameters(std::optional<double> speed_factor,
       load_value.load_inertia = Eigen::Matrix3d::Zero();
     }
 
-    // Convert Eigen vector and matrix to std::array
-    std::array<double, 3> f_x_cload_array;
-    Eigen::Vector3d::Map(f_x_cload_array.data()) = load_value.f_x_cload.value();
-
-    std::array<double, 9> load_inertia_array;
-    Eigen::Matrix3d::Map(f_x_cload_array.data()) =
-        load_value.load_inertia.value();
-
-    this->robot.setLoad(load_value.load_mass, f_x_cload_array,
-                        load_inertia_array);
+    this->robot.setLoad(load_value.load_mass, common::eigen2array<3, 1>(load_value.f_x_cload.value()),
+                        common::eigen2array<3, 3>(load_value.load_inertia.value()));
   }
 }
 
