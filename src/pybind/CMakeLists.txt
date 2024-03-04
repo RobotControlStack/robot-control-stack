@@ -26,7 +26,7 @@
 
 # plain pybind11 (no scikit-build)
 pybind11_add_module(_core rcsss.cpp)
-target_link_libraries(_core PUBLIC rcs::hw)
+target_link_libraries(_core PUBLIC hw)
 
 # This is passing in the version as a define
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
