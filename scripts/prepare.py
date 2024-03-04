@@ -1,10 +1,10 @@
 import argparse
-import pyfr3
+import rcsss
 import pw
 import time
 
 def prepare(ip, guiding_mode=False):
-    d = pyfr3.Desk(ip, pw.username, pw.password)
+    d = rcsss.Desk(ip, pw.username, pw.password)
     d.take_control(force=True)
     d.unlock()
     d.activate_fci()

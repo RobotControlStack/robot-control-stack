@@ -2,7 +2,7 @@ from abc import ABC
 import argparse
 from collections import defaultdict
 from typing import Dict, Optional, List, Tuple, Union
-import pyfr3
+import rcss
 import numpy as np
 from time import sleep
 import pickle
@@ -31,10 +31,10 @@ class JointPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, robot: Dict[str, pyfr3.FR3]):
+    def record(self, robot: Dict[str, rcss.FR3]):
         self.pose = robot[self.name].getJointPosition()
 
-    def replay(self, robot: Dict[str, pyfr3.FR3], _: Dict[str, pyfr3.FrankaHand]):
+    def replay(self, robot: Dict[str, rcss.FR3], _: Dict[str, rcss.FrankaHand]):
         robot[self.name].setJointPosition(self.pose)
 
     def __str__(self) -> str:
@@ -55,7 +55,7 @@ class GripperPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, shut: bool, gripper: Dict[str, pyfr3.FrankaHand]):
+    def record(self, shut: bool, gripper: Dict[str, rcss.FrankaHand]):
         if shut:
             gripper[self.name].halt()
             self.pose = 0.1 # gripper[self.name].getState()[1]
@@ -63,7 +63,7 @@ class GripperPose(Pose):
             gripper[self.name].release()
             self.pose = None
 
-    def replay(self, _: Dict[str, pyfr3.FR3], gripper: Dict[str, pyfr3.FrankaHand]):
+    def replay(self, _: Dict[str, rcss.FR3], gripper: Dict[str, rcss.FrankaHand]):
         if self.pose:
             gripper[self.name].setParameters(self.pose, self.SPEED, self.FORCE)
             gripper[self.name].halt()
@@ -105,7 +105,7 @@ class WaitForDoubleTab(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, pyfr3.FR3], _: Dict[str, pyfr3.FrankaHand]):
+    def replay(self, robot: Dict[str, rcss.FR3], _: Dict[str, rcss.FrankaHand]):
         robot[self.name].double_tap_robot_to_continue()
 
     def __str__(self) -> str:
@@ -176,11 +176,11 @@ class PoseList:
         speed_factor: float = 0.2,
         poses: Optional[List[Pose]] = None,
     ):
-        self.r: Dict[str, pyfr3.FR3] = {
-            key: pyfr3.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()
+        self.r: Dict[str, rcss.FR3] = {
+            key: rcss.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()
         }
-        self.g: Dict[str, pyfr3.FR3] = {
-            key: pyfr3.FrankaHand(ip) for key, ip in ip.items()
+        self.g: Dict[str, rcss.FR3] = {
+            key: rcss.FrankaHand(ip) for key, ip in ip.items()
         }
         self.poses: List[Pose] = (
             [ChnageSpeedFactor(speed_factor, key) for key in self.r]
