@@ -3,8 +3,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 // TODO: shouldnt this be .h, but only .cpp works?
-#include "hw/FR3.cpp"
-#include "hw/FrankaHand.cpp"
+// #include "hw/FR3.cpp"
+// #include "hw/FrankaHand.cpp"
+#include <common/Pose.h>
 
 // TODO: define docstring in according python files
 
@@ -73,7 +74,7 @@ PYBIND11_MODULE(_core, m) {
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("__repr__", &rcs::common::Pose::str)
-      .def(py::self + py::self);
+      .def(py::self * py::self);
 
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<>())

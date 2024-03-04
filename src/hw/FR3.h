@@ -1,6 +1,8 @@
 #ifndef RCS_FR3_H
 #define RCS_FR3_H
 
+#include <common/Pose.h>
+#include <common/utils.h>
 #include <franka/robot.h>
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
@@ -18,18 +20,16 @@
 #include <optional>
 #include <string>
 
-#include "common/Pose.h"
-#include "common/utils.h"
-
 namespace rcs {
 namespace hw {
 
-Vector7d q_home(
-    (Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished());
-double DEFAULT_SPEED_FACTOR = 0.2;
+using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
+using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
 
-typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
-typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
+const Vector7d q_home(
+    (Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished());
+const double DEFAULT_SPEED_FACTOR = 0.2;
+
 struct FR3Load {
   double load_mass;
   std::optional<Eigen::Vector3d> f_x_cload;
@@ -48,11 +48,11 @@ class FR3 {
 
  public:
   FR3(const std::string &ip,
-      std::optional<const std::string &> filename = std::nullopt);
+      const std::optional<std::string> filename = std::nullopt);
   ~FR3();
 
   void set_parameters(std::optional<double> speed_factor,
-                      std::optional<const FR3Load &> load_parameters);
+                      const std::optional<FR3Load> &load_parameters);
 
   void set_default_robot_behavior();
 
@@ -74,7 +74,7 @@ class FR3 {
 
   void set_cartesian_position(
       const common::Pose &x, IKController controller,
-      const std::optional<common::Pose &> nominal_end_effector_frame);
+      const std::optional<common::Pose> &nominal_end_effector_frame);
 
   void set_cartesian_position_internal(const common::Pose &dest,
                                        double max_time,

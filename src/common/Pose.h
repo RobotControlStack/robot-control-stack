@@ -8,8 +8,8 @@
 namespace rcs {
 namespace common {
 
-Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
-Eigen::Matrix3d IdentityRotation() { return Eigen::Matrix3d::Identity(); }
+Eigen::Vector3d IdentityTranslation();
+Eigen::Matrix3d IdentityRotation();
 
 struct RPY {
   double roll = 0;
@@ -138,7 +138,7 @@ class Pose {
    *
    * @return 4x4 matrix
    */
-  Eigen::Matrix4d Pose::pose_matrix() const;
+  Eigen::Matrix4d pose_matrix() const;
 
   /**
    * @brief Returns the affine transformation in matrix form
@@ -155,7 +155,7 @@ class Pose {
    *
    * @return RPY struct with roll, pitch and yaw
    */
-  RPY Pose::rpy() const;
+  RPY rpy() const;
 
   /**
    * @brief Interpolates the Pose to a destination Pose

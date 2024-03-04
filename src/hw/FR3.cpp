@@ -24,7 +24,7 @@
 
 namespace rcs {
 namespace hw {
-FR3::FR3(const std::string &ip, std::optional<const std::string &> filename)
+FR3::FR3(const std::string &ip, const std::optional<std::string> filename)
     : robot(ip), model() {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
@@ -43,7 +43,7 @@ FR3::FR3(const std::string &ip, std::optional<const std::string &> filename)
 FR3::~FR3() {}
 
 void FR3::set_parameters(std::optional<double> speed_factor,
-                         std::optional<const FR3Load &> load) {
+                         const std::optional<FR3Load> &load) {
   if (speed_factor.has_value()) {
     // make sure that the speed factor is between 0 and 1
     this->speed_factor = std::min(std::max(speed_factor.value(), 0.0), 1.0);
@@ -210,7 +210,7 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 
 void FR3::set_cartesian_position(
     const common::Pose &x, IKController controller,
-    const std::optional<common::Pose &> nominal_end_effector_frame) {
+    const std::optional<common::Pose> &nominal_end_effector_frame) {
   common::Pose nominal_end_effector_frame_value;
   if (nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value = nominal_end_effector_frame.value();

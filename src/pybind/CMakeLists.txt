@@ -26,6 +26,7 @@
 
 # plain pybind11 (no scikit-build)
 pybind11_add_module(_core rcsss.cpp)
+target_include_directories(_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(_core PUBLIC hw)
 
 # This is passing in the version as a define

@@ -5,6 +5,9 @@
 namespace rcs {
 namespace common {
 
+Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
+Eigen::Matrix3d IdentityRotation() { return Eigen::Matrix3d::Identity(); }
+
 // CONSTRUCTORS
 
 Pose::Pose() {
