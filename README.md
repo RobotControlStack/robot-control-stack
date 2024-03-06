@@ -4,7 +4,7 @@
 ### Dependencies
 To install the dependencies of `libfranka` use the following command for debian based systems:
 ```shell
-sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev clang libboost-all-dev liblzma-dev ninja-build
+sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev clang libboost-all-dev liblzma-dev ninja-build clang-format clang clang-tidy
 ```
 For arch based systems:
 `libpoco` is `poco` and `libeigen` is `eigen` in pacman.
@@ -16,8 +16,18 @@ sudo apt-get install qt5-qmake qtbase5-dev libsoqt520-dev
 
 ### Compile
 ```shell
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+```
+
+### Formatting and Linting
+```shell
+# check for formatting errors
+clang-format --dry-run -Werror -i $(find src -name '*.cpp' -o -name '*.cc' -o -name '*.h')
+# fix them
+clang-format <file_name>
+# Linting
+clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
 ```
 
 ### Python Bindings
