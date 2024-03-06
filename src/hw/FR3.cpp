@@ -83,15 +83,15 @@ common::Pose FR3::get_cartesian_position() {
   return x;
 }
 
-void FR3::set_joint_position(const Vector7d &q) {
+void FR3::set_joint_position(const common::Vector7d &q) {
   // TODO: max force?
   MotionGenerator motion_generator(speed_factor, q);
   this->robot.control(motion_generator);
 }
 
-Vector7d FR3::get_joint_position() {
+common::Vector7d FR3::get_joint_position() {
   franka::RobotState state = this->robot.readOnce();
-  Vector7d joints(state.q.data());
+  common::Vector7d joints(state.q.data());
   return joints;
 }
 

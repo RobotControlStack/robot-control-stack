@@ -23,7 +23,8 @@ void setDefaultBehavior(franka::Robot& robot) {
   robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-MotionGenerator::MotionGenerator(double speed_factor, const Vector7d q_goal)
+MotionGenerator::MotionGenerator(double speed_factor,
+                                 const common::Vector7d q_goal)
     : q_goal_(q_goal) {
   dq_max_ *= speed_factor;
   ddq_max_start_ *= speed_factor;
@@ -37,12 +38,12 @@ MotionGenerator::MotionGenerator(double speed_factor, const Vector7d q_goal)
   q_1_.setZero();
 }
 
-bool MotionGenerator::calculateDesiredValues(double t,
-                                             Vector7d* delta_q_d) const {
-  Vector7i sign_delta_q;
+bool MotionGenerator::calculateDesiredValues(
+    double t, common::Vector7d* delta_q_d) const {
+  common::Vector7i sign_delta_q;
   sign_delta_q << delta_q_.cwiseSign().cast<int>();
-  Vector7d t_d = t_2_sync_ - t_1_sync_;
-  Vector7d delta_t_2_sync = t_f_sync_ - t_2_sync_;
+  common::Vector7d t_d = t_2_sync_ - t_1_sync_;
+  common::Vector7d delta_t_2_sync = t_f_sync_ - t_2_sync_;
   std::array<bool, 7> joint_motion_finished{};
 
   for (size_t i = 0; i < 7; i++) {
@@ -78,12 +79,12 @@ bool MotionGenerator::calculateDesiredValues(double t,
 }
 
 void MotionGenerator::calculateSynchronizedValues() {
-  Vector7d dq_max_reach(dq_max_);
-  Vector7d t_f = Vector7d::Zero();
-  Vector7d delta_t_2 = Vector7d::Zero();
-  Vector7d t_1 = Vector7d::Zero();
-  Vector7d delta_t_2_sync = Vector7d::Zero();
-  Vector7i sign_delta_q;
+  common::Vector7d dq_max_reach(dq_max_);
+  common::Vector7d t_f = common::Vector7d::Zero();
+  common::Vector7d delta_t_2 = common::Vector7d::Zero();
+  common::Vector7d t_1 = common::Vector7d::Zero();
+  common::Vector7d delta_t_2_sync = common::Vector7d::Zero();
+  common::Vector7i sign_delta_q;
   sign_delta_q << delta_q_.cwiseSign().cast<int>();
 
   for (size_t i = 0; i < 7; i++) {
@@ -128,12 +129,12 @@ franka::JointPositions MotionGenerator::operator()(
 
   if (time_ == 0.0) {
     // desired joint position; roughly the measured position +- controller
-    q_start_ = Vector7d(robot_state.q_d.data());
+    q_start_ = common::Vector7d(robot_state.q_d.data());
     delta_q_ = q_goal_ - q_start_;
     calculateSynchronizedValues();
   }
 
-  Vector7d delta_q_d;
+  common::Vector7d delta_q_d;
   bool motion_finished = calculateDesiredValues(time_, &delta_q_d);
 
   std::array<double, 7> joint_positions;

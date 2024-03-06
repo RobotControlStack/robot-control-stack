@@ -2,6 +2,7 @@
 #define RCS_FR3_H
 
 #include <common/Pose.h>
+#include <common/Robot.h>
 #include <common/utils.h>
 #include <franka/robot.h>
 #include <rl/hal/CartesianPositionActuator.h>
@@ -23,11 +24,9 @@
 namespace rcs {
 namespace hw {
 
-using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
-using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
-
-const Vector7d q_home(
-    (Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4).finished());
+const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
+                               0, M_PI_2, M_PI_4)
+                                  .finished());
 const double DEFAULT_SPEED_FACTOR = 0.2;
 
 struct FR3Load {
@@ -58,9 +57,9 @@ class FR3 {
 
   common::Pose get_cartesian_position();
 
-  void set_joint_position(const Vector7d &q);
+  void set_joint_position(const common::Vector7d &q);
 
-  Vector7d get_joint_position();
+  common::Vector7d get_joint_position();
 
   void set_guiding_mode(bool enabled);
 
