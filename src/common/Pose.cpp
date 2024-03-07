@@ -35,10 +35,10 @@ Pose::Pose(const Eigen::Matrix3d &rotation,
   this->m_rotation = Eigen::Quaterniond(rotation);
 }
 
-Pose::Pose(const Eigen::Vector4d &rotation,
+Pose::Pose(const Eigen::Vector4d &quaternion,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation = Eigen::Quaterniond(rotation);
+  this->m_rotation = Eigen::Quaterniond(quaternion);
 }
 
 Pose::Pose(const Eigen::Quaterniond &rotation,
@@ -47,11 +47,12 @@ Pose::Pose(const Eigen::Quaterniond &rotation,
   this->m_rotation = rotation;
 }
 
-Pose::Pose(const RPY &rpy, const Eigen::Vector3d &translation) {
+Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation = Eigen::AngleAxisd(rpy.roll, Eigen::Vector3d::UnitX()) *
-                     Eigen::AngleAxisd(rpy.pitch, Eigen::Vector3d::UnitY()) *
-                     Eigen::AngleAxisd(rpy.yaw, Eigen::Vector3d::UnitZ());
+  this->m_rotation =
+      Eigen::AngleAxisd(rotation.roll, Eigen::Vector3d::UnitX()) *
+      Eigen::AngleAxisd(rotation.pitch, Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(rotation.yaw, Eigen::Vector3d::UnitZ());
 }
 
 // GETTERS
@@ -80,7 +81,7 @@ std::array<double, 16> Pose::affine_array() const {
   return eigen2array<4, 4>(this->affine_matrix().matrix());
 }
 
-RPY Pose::rpy() const {
+RPY Pose::rotation_rpy() const {
   // ZYX, roll, pitch, yaw
   Eigen::Vector3d rpy_vec =
       this->m_rotation.toRotationMatrix().eulerAngles(0, 1, 2);
@@ -105,7 +106,7 @@ Pose Pose::interpolate(const Pose &dest_pose, double progress) const {
 std::string Pose::str() const {
   std::stringstream ss;
 
-  RPY angles = this->rpy();
+  RPY angles = this->rotation_rpy();
 
   ss << this->affine_matrix().matrix() << std::endl;
   ss << "roll: " << angles.roll << "\tpitch: " << angles.pitch

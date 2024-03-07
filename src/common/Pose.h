@@ -85,7 +85,8 @@ class Pose {
    */
   Pose(const Eigen::Vector4d &rotation, const Eigen::Vector3d &translation);
 
-  Pose(const Eigen::Quaterniond &rotation, const Eigen::Vector3d &translation);
+  Pose(const Eigen::Quaterniond &quaternion,
+       const Eigen::Vector3d &translation);
 
   /**
    * @brief Construct a new Pose object from a RPY struct and a 3D translation
@@ -95,7 +96,7 @@ class Pose {
    * @param rpy
    * @param translation
    */
-  Pose(const RPY &rpy, const Eigen::Vector3d &translation);
+  Pose(const RPY &rotation, const Eigen::Vector3d &translation);
 
   // GETTERS
 
@@ -155,7 +156,7 @@ class Pose {
    *
    * @return RPY struct with roll, pitch and yaw
    */
-  RPY rpy() const;
+  RPY rotation_rpy() const;
 
   /**
    * @brief Interpolates the Pose to a destination Pose

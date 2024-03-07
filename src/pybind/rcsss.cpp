@@ -65,15 +65,15 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
            py::arg("rotation"), py::arg("translation"))
       .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
-           py::arg("rpy"), py::arg("translation"))
+           py::arg("quaternion"), py::arg("translation"))
       .def("translation", &rcs::common::Pose::translation)
       .def("rotation_m", &rcs::common::Pose::rotation_m)
       .def("rotation_q", &rcs::common::Pose::rotation_q)
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
-      .def("rpy", &rcs::common::Pose::rpy)
+      .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
-      .def("__repr__", &rcs::common::Pose::str)
+      .def("__str__", &rcs::common::Pose::str)
       .def(py::self * py::self);
 
   py::class_<rcs::common::RPY>(common, "RPY")
@@ -83,7 +83,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("roll", &rcs::common::RPY::roll)
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
-      .def("__repr__", &rcs::common::RPY::str)
+      // TODO: method that returns the rotation matrix
+      .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
 
 #ifdef VERSION_INFO
