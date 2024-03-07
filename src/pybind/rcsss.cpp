@@ -1,11 +1,12 @@
+#include <common/NRobotsWithGripper.h>
+#include <common/Pose.h>
+#include <common/Robot.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-// TODO: shouldnt this be .h, but only .cpp works?
-// #include "hw/FR3.cpp"
-// #include "hw/FrankaHand.cpp"
-#include <common/Pose.h>
+
+#include <memory>
 
 // TODO: define docstring in according python files
 
@@ -25,36 +26,6 @@ PYBIND11_MODULE(_core, m) {
            :toctree: _generate
 
     )pbdoc";
-
-  // py::class_<rcs::hw::FR3>(m, "FR3")
-  //     .def(py::init<const std::string &, const std::string &>(),
-  //     py::arg("ip"),
-  //          py::arg("filename"))
-  //     .def("set_joint_position", &rcs::hw::FR3::set_joint_position,
-  //     py::arg("q")) .def("get_joint_position",
-  //     &rcs::hw::FR3::get_joint_position) .def("get_cartesian_position",
-  //     &rcs::hw::FR3::get_cartesian_position) .def("set_guiding_mode",
-  //     &rcs::hw::FR3::set_guiding_mode, py::arg("enabled")) .def("move_home",
-  //     &rcs::hw::FR3::move_home) .def("automatic_error_recovery",
-  //     &rcs::hw::FR3::automatic_error_recovery)
-  //     .def("double_tap_robot_to_continue",
-  //     &rcs::hw::FR3::double_tap_robot_to_continue) .def("set_parameters",
-  //     &rcs::hw::FR3::set_parameters, py::arg("speed_factor"),
-  //     py::arg("load_parameters")) .def("set_cartesian_position",
-  //     &rcs::hw::FR3::move_cartesian, py::arg("x"),
-  //          py::arg("controller"), py::arg("nominal_end_effector_frame") =
-  //          py::none());
-
-  // py::class_<rcs::hw::FrankaHand>(m, "FrankaHand")
-  //     .def(py::init<const std::string &>(), py::arg("ip"))
-  //     .def("start", &rcs::hw::FrankaHand::start)
-  //     .def("stop", &rcs::hw::FrankaHand::stop)
-  //     .def("setParameters", &rcs::hw::FrankaHand::setParameters,
-  //          py::arg("grapsing_width"), py::arg("speed"), py::arg("force"))
-  //     .def("getState", &rcs::hw::FrankaHand::getState)
-  //     .def("halt", &rcs::hw::FrankaHand::halt)
-  //     .def("release", &rcs::hw::FrankaHand::release)
-  //     .def("shut", &rcs::hw::FrankaHand::shut);
 
   auto common = m.def_submodule("common", "common module");
   py::class_<rcs::common::Pose>(common, "Pose")
@@ -86,6 +57,84 @@ PYBIND11_MODULE(_core, m) {
       // TODO: method that returns the rotation matrix
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
+
+  py::class_<rcs::common::RConfig>(common, "RConfig");
+  py::class_<rcs::common::RState>(common, "RState");
+  py::class_<rcs::common::RState>(common, "GConfig");
+  py::class_<rcs::common::GState>(common, "GState");
+
+  // holder type should be smart pointer as we deal with smart pointer
+  // instances of this class
+  py::class_<rcs::common::Robot, rcs::common::PyRobot<>,
+             std::shared_ptr<rcs::common::Robot>>(common, "Robot")
+      .def(py::init<>())
+      .def("set_parameters", &rcs::common::Robot::set_parameters,
+           py::arg("cfg"))
+      .def("get_parameters", &rcs::common::Robot::get_parameters)
+      .def("get_state", &rcs::common::Robot::get_state)
+      .def("get_cartesian_position",
+           &rcs::common::Robot::get_cartesian_position)
+      .def("set_joint_position", &rcs::common::Robot::set_joint_position,
+           py::arg("q"))
+      .def("get_joint_position", &rcs::common::Robot::get_joint_position)
+      .def("move_home", &rcs::common::Robot::move_home)
+      .def("set_cartesian_position",
+           &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
+
+  py::class_<rcs::common::Gripper, rcs::common::PyGripper<>,
+             std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
+      .def(py::init<>())
+      .def("set_parameters", &rcs::common::Gripper::set_parameters,
+           py::arg("cfg"))
+      .def("get_parameters", &rcs::common::Gripper::get_parameters)
+      .def("get_state", &rcs::common::Gripper::get_state)
+      .def("grasp", &rcs::common::Gripper::grasp)
+      .def("release", &rcs::common::Gripper::release)
+      .def("shut", &rcs::common::Gripper::shut);
+
+  py::class_<rcs::common::RobotWithGripper,
+             std::shared_ptr<rcs::common::RobotWithGripper>>(common,
+                                                             "RobotWithGripper")
+      .def(py::init<std::shared_ptr<rcs::common::Robot>,
+                    std::optional<std::shared_ptr<rcs::common::Gripper>>>(),
+           py::arg("robot"), py::arg("gripper"));
+
+  py::class_<rcs::common::NRobotsWithGripper>(common, "NRobotsWithGripper")
+      .def(py::init<
+               std::vector<std::shared_ptr<rcs::common::RobotWithGripper>>>(),
+           py::arg("robots_with_gripper"))
+      .def("set_parameters_r",
+           &rcs::common::NRobotsWithGripper::set_parameters_r, py::arg("idxs"),
+           py::arg("cfgs"))
+      .def("get_parameters_r",
+           &rcs::common::NRobotsWithGripper::get_parameters_r, py::arg("idxs"))
+      .def("get_state_r", &rcs::common::NRobotsWithGripper::get_state_r,
+           py::arg("idxs"))
+      .def("get_cartesian_position",
+           &rcs::common::NRobotsWithGripper::get_cartesian_position,
+           py::arg("idxs"))
+      .def("set_joint_position",
+           &rcs::common::NRobotsWithGripper::set_joint_position,
+           py::arg("idxs"), py::arg("q"))
+      .def("get_joint_position",
+           &rcs::common::NRobotsWithGripper::get_joint_position,
+           py::arg("idxs"))
+      .def("move_home", &rcs::common::NRobotsWithGripper::move_home,
+           py::arg("idxs"))
+      .def("set_cartesian_position",
+           &rcs::common::NRobotsWithGripper::set_cartesian_position,
+           py::arg("idxs"), py::arg("pose"))
+      .def("set_parameters_g",
+           &rcs::common::NRobotsWithGripper::set_parameters_g, py::arg("idxs"),
+           py::arg("cfgs"))
+      .def("get_parameters_g",
+           &rcs::common::NRobotsWithGripper::get_parameters_g, py::arg("idxs"))
+      .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
+           py::arg("idxs"))
+      .def("grasp", &rcs::common::NRobotsWithGripper::grasp, py::arg("idxs"))
+      .def("release", &rcs::common::NRobotsWithGripper::release,
+           py::arg("idxs"))
+      .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
