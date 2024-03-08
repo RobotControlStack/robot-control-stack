@@ -48,13 +48,12 @@ PYBIND11_MODULE(_core, m) {
       .def(py::self * py::self);
 
   py::class_<rcs::common::RPY>(common, "RPY")
-      .def(py::init<>())
-      .def(py::init<double, double, double>(), py::arg("roll"),
-           py::arg("pitch"), py::arg("yaw"))
+      .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
+           py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
       .def_readwrite("roll", &rcs::common::RPY::roll)
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
-      // TODO: method that returns the rotation matrix
+      .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
 

@@ -39,7 +39,7 @@ class Robot {
   Robot(){};
   virtual ~Robot(){};
 
-  virtual void set_parameters(const RConfig &) = 0;
+  virtual void set_parameters(const RConfig &cfg) = 0;
   virtual RConfig get_parameters() = 0;
 
   virtual RState get_state() = 0;
