@@ -115,6 +115,7 @@ void test_convergence() {
     }
     sim.step(action);
   }
+  sim.close();
 }
 
 int main(void) {
