@@ -24,6 +24,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # turn off libfranka tests
 set(BUILD_TESTS OFF)
+set(BUILD_EXAMPLES OFF)
 set(RL_BUILD_DEMOS OFF)
 set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
@@ -32,7 +33,6 @@ set(MUJOCO_BUILD_EXAMPLES OFF)
 set(MUJOCO_BUILD_SIMULATE OFF)
 set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
-set(BUILD_TESTING OFF)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -55,11 +55,6 @@ FetchContent_Declare(
     mujoco
     GIT_REPOSITORY https://github.com/google-deepmind/mujoco.git
     GIT_TAG 3.1.1
-    GIT_PROGRESS TRUE
-)
-FetchContent_Declare(
-    orl
-    GIT_REPOSITORY https://github.com/marcbone/liborl.git
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
