@@ -14,139 +14,111 @@
 #include <rl/mdl/UrdfFactory.h>
 
 #include <Eigen/Core>
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <string>
 #include <thread>
 
-#include "motion_generator.h"
+#include "MotionGenerator.h"
 
-const size_t DOF = 7;
-const double SPEED_FACTOR = 0.2;
-
-FR3::FR3(const std::string &ip, const std::string &filename)
-    : AxisController(DOF),
-      CartesianPositionActuator(DOF),
-      CartesianPositionSensor(DOF),
-      JointPositionActuator(DOF),
-      JointPositionSensor(DOF),
-      robot(ip),
-      model(),
-      q_home((Vec7() << 0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4)
-                 .finished()) {
+namespace rcs {
+namespace hw {
+FR3::FR3(const std::string &ip, const std::optional<std::string> filename)
+    : robot(ip), model() {
   // set collision behavior and impedance
-  setDefaultRobotBehavior();
-  setGuidingMode(true);
+  this->set_default_robot_behavior();
+  this->set_guiding_mode(true);
 
-  // todo: move this into initialization list
-  rl::mdl::UrdfFactory factory;
-  factory.load(filename, &model);
-  ik = std::make_unique<rl::mdl::JacobianInverseKinematics>(
-      static_cast<rl::mdl::Kinematic *>(&model));
+  if (filename.has_value()) {
+    rl::mdl::UrdfFactory factory;
+    factory.load(filename.value(), &model);
+    ik = std::make_unique<rl::mdl::JacobianInverseKinematics>(
+        static_cast<rl::mdl::Kinematic *>(&model));
+  } else {
+    ik = std::nullopt;
+  }
 }
 
 FR3::~FR3() {}
 
-bool FR3::setParameters(double speed_factor) {
-  if (0.0 < speed_factor && speed_factor <= 1.0) {
-    this->speed_factor = speed_factor;
-    return true;
-  } else {
-    return false;
+void FR3::set_parameters(std::optional<double> speed_factor,
+                         const std::optional<FR3Load> &load) {
+  if (speed_factor.has_value()) {
+    // make sure that the speed factor is between 0 and 1
+    this->speed_factor = std::min(std::max(speed_factor.value(), 0.0), 1.0);
+  }
+  if (load.has_value()) {
+    auto load_value = load.value();
+    if (!load_value.f_x_cload.has_value()) {
+      load_value.f_x_cload = Eigen::Vector3d::Zero();
+    }
+    if (!load_value.load_inertia.has_value()) {
+      load_value.load_inertia = Eigen::Matrix3d::Zero();
+    }
+
+    this->robot.setLoad(
+        load_value.load_mass,
+        common::eigen2array<3, 1>(load_value.f_x_cload.value()),
+        common::eigen2array<3, 3>(load_value.load_inertia.value()));
   }
 }
 
-void FR3::setDefaultRobotBehavior() {
-  robot.setCollisionBehavior({{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-                             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-                             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-                             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-                             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-                             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-                             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-                             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-  robot.setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
-  robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
+void FR3::set_default_robot_behavior() {
+  this->robot.setCollisionBehavior({{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+                                   {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+                                   {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+                                   {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+                                   {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+                                   {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+                                   {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+                                   {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+  this->robot.setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
+  this->robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-// Methods from Device
-void FR3::close() {}
-void FR3::open() {}
-void FR3::start() {}
-void FR3::stop() {}
-
-// Methods from CartesianPositionActuator
-void FR3::setCartesianPosition(const ::rl::math::Transform &x) {
-  // TODO: trajectory planner
-  ik->addGoal(x, 0);
-  bool success = ik->solve();
-  if (success) {
-    rl::math::Vector q(6);
-    q = model.getPosition();
-    setJointPosition(q);
-  } else {
-    // throw error
-    throw rl::mdl::Exception("IK failed");
-  }
-}
-
-// Methods from CartesianPositionSensor
-rl::math::Transform FR3::getCartesianPosition() const {
-  // This const cast is necessary because the readOnce method is not const.
-  // We currently do not know if the state of the robot object changes.
-  franka::RobotState state = const_cast<franka::Robot *>(&robot)->readOnce();
-  Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
-      state.O_T_EE_c.data());
-  rl::math::Transform x;
-  x.matrix() = transMatrix;
+common::Pose FR3::get_cartesian_position() {
+  franka::RobotState state = this->robot.readOnce();
+  common::Pose x(state.O_T_EE_c);
   return x;
 }
-Eigen::Matrix<double, 4, 4, Eigen::ColMajor> FR3::getCartesianPosition2() {
-  Eigen::Matrix<double, 4, 4, Eigen::ColMajor> re(
-      getCartesianPosition().matrix());
-  return re;
-}
 
-// Methods from JointPositionActuator
-void FR3::setJointPosition(const rl::math::Vector &q) {
-  // TODO: how does this motion generator work
+void FR3::set_joint_position(const Vector7d &q) {
+  // TODO: max force?
   MotionGenerator motion_generator(speed_factor, q);
-  robot.control(motion_generator);
+  this->robot.control(motion_generator);
 }
 
-// Methods from JointPositionSensor
-rl::math::Vector FR3::getJointPosition() const {
-  // This const cast is necessary because the readOnce method is not const.
-  // We currently do not know if the state of the robot object changes.
-  franka::RobotState state = const_cast<franka::Robot *>(&robot)->readOnce();
-  Vec7 joints(state.q.data());
+Vector7d FR3::get_joint_position() {
+  franka::RobotState state = this->robot.readOnce();
+  Vector7d joints(state.q.data());
   return joints;
 }
 
-void FR3::setGuidingMode(bool enabled) {
+void FR3::set_guiding_mode(bool enabled) {
   std::array<bool, 6> activated;
   activated.fill(enabled);
-  robot.setGuidingMode(activated, enabled);
-  guiding_mode_enabled = enabled;
+  this->robot.setGuidingMode(activated, enabled);
+  this->guiding_mode_enabled = enabled;
 }
-void FR3::move_home() { setJointPosition(q_home); }
 
-void FR3::automatic_error_recovery() { robot.automaticErrorRecovery(); }
+void FR3::move_home() { this->set_joint_position(q_home); }
+
+void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
 void FR3::wait_milliseconds(int milliseconds) {
   std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
 void FR3::double_tap_robot_to_continue() {
-  // TODO: this is copied code from liborl
-  auto s = robot.readOnce();
+  auto s = this->robot.readOnce();
   int touch_counter = false;
   bool can_be_touched_again = true;
   Eigen::Vector3d start_force;
   auto last_time_something_happened = std::chrono::system_clock::now();
   auto last_time_something_touched = std::chrono::system_clock::now();
   start_force << s.O_F_ext_hat_K[0], s.O_F_ext_hat_K[1], s.O_F_ext_hat_K[2];
-  robot.read([&](const franka::RobotState &robot_state) {
+  this->robot.read([&](const franka::RobotState &robot_state) {
     Eigen::Vector3d force;
     force << robot_state.O_F_ext_hat_K[0], robot_state.O_F_ext_hat_K[1],
         robot_state.O_F_ext_hat_K[2];
@@ -176,9 +148,8 @@ void FR3::double_tap_robot_to_continue() {
   wait_milliseconds(100);
 }
 
-rl::math::Transform interpolate(const rl::math::Transform &start_pose,
-                                const rl::math::Transform &dest_pose,
-                                double progress) {
+Eigen::Affine3d interpolate(const Eigen::Affine3d &start_pose,
+                            const Eigen::Affine3d &dest_pose, double progress) {
   if (progress > 1) {
     progress = 1;
   }
@@ -189,7 +160,7 @@ rl::math::Transform interpolate(const rl::math::Transform &start_pose,
   quat_start = start_pose.rotation();
   quat_end = dest_pose.rotation();
   quat_result = quat_start.slerp(progress, quat_end);
-  rl::math::Transform result_pose;
+  Eigen::Affine3d result_pose;
   result_pose.setIdentity();
   result_pose.translation() = pos_result;
   result_pose.rotate(quat_result);
@@ -197,7 +168,7 @@ rl::math::Transform interpolate(const rl::math::Transform &start_pose,
 }
 
 // todo this should be done with library function
-std::array<double, 16> to_matrix(rl::math::Transform transform) {
+std::array<double, 16> to_matrix(const Eigen::Affine3d &transform) {
   Eigen::Matrix3d rot_mat = transform.rotation();
   std::array<double, 16> mat = {rot_mat(0, 0),
                                 rot_mat(1, 0),
@@ -237,10 +208,50 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 // TODO: relative cartesian movement, cartesian movement with ik, cartesian with
 // same orientation, cartesian with euler rotation
 
-void FR3::move_cartesian(rl::math::Transform dest, double max_time,
-                         std::optional<double> elbow,
-                         std::optional<double> max_force) {
-  rl::math::Transform initial_pose = getCartesianPosition();
+void FR3::set_cartesian_position(
+    const common::Pose &x, IKController controller,
+    const std::optional<common::Pose> &nominal_end_effector_frame) {
+  common::Pose nominal_end_effector_frame_value;
+  if (nominal_end_effector_frame.has_value()) {
+    nominal_end_effector_frame_value = nominal_end_effector_frame.value();
+  } else {
+    // what does this exactly do, does it call the constructor?
+    nominal_end_effector_frame_value = Eigen::Affine3d::Identity();
+  }
+
+  // TODO: trajectory planner
+  if (controller == IKController::internal) {
+    this->robot.setEE(nominal_end_effector_frame_value.affine_array());
+
+    this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
+  } else if (controller == IKController::robotics_library) {
+    this->set_cartesian_position_rl(x);
+  }
+}
+
+void FR3::set_cartesian_position_rl(const common::Pose &x) {
+  if (!this->ik.has_value()) {
+    throw rl::mdl::Exception(
+        "No file for robot model was provided. Cannot use RL for IK.");
+  }
+  this->ik.value()->addGoal(x.affine_matrix(), 0);
+  bool success = this->ik.value()->solve();
+  if (success) {
+    rl::math::Vector q(6);
+    q = this->model.getPosition();
+    this->set_joint_position(q);
+  } else {
+    // throw error
+    throw rl::mdl::Exception("IK failed");
+  }
+}
+
+void FR3::set_cartesian_position_internal(const common::Pose &dest,
+                                          double max_time,
+                                          std::optional<double> elbow,
+                                          std::optional<double> max_force) {
+  // TODO: use speed factor instead of max_time
+  common::Pose initial_pose = this->get_cartesian_position();
 
   auto force_stop_condition = [&max_force](const franka::RobotState &state,
                                            const double progress) {
@@ -255,27 +266,26 @@ void FR3::move_cartesian(rl::math::Transform dest, double max_time,
   double time = 0.0;
   bool should_stop = false;
 
-  robot.control(
-      [=, &initial_elbow, &time, &max_time, &initial_pose, &should_stop](
+  this->robot.control(
+      [=, &initial_elbow, &time, &max_time, &initial_pose, &should_stop, &dest](
           const franka::RobotState &state,
           franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
-              state.O_T_EE_c.data());
-          initial_pose.matrix() = transMatrix;
+          // Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
+          //     state.O_T_EE_c.data());
+          // initial_pose.matrix() = transMatrix;
+          initial_pose = common::Pose(state.O_T_EE_c);
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;
 
-        // calculate new pose
-        rl::math::Transform new_pose_pose =
-            interpolate(initial_pose, dest,
-                        quintic_polynomial_speed_profile(progress, 0, 1));
+        // calculate new pose by interpolating along the linear path
+        common::Pose new_pose = initial_pose.interpolate(
+            dest, quintic_polynomial_speed_profile(progress, 0, 1));
 
-        std::array<double, 16> new_pose = to_matrix(new_pose_pose);
         if (elbow.has_value()) {
           new_elbow[0] += (elbow.value() - initial_elbow[0]) *
                           (1 - std::cos(M_PI * progress)) / 2.0;
@@ -286,14 +296,17 @@ void FR3::move_cartesian(rl::math::Transform dest, double max_time,
         should_stop = force_stop_condition(state, progress);
         if (time >= max_time or should_stop) {
           if (elbow.has_value()) {
-            return franka::MotionFinished({new_pose, new_elbow});
+            return franka::MotionFinished({new_pose.affine_array(), new_elbow});
           }
-          return franka::MotionFinished(new_pose);
+          return franka::MotionFinished(new_pose.affine_array());
         }
         if (elbow.has_value()) {
-          return {new_pose, new_elbow};
+          return {new_pose.affine_array(), new_elbow};
         }
-        return new_pose;
+        return new_pose.affine_array();
       },
       franka::ControllerMode::kCartesianImpedance);
 }
+
+}  // namespace hw
+}  // namespace rcs

@@ -1,0 +1,35 @@
+#ifndef RSC_UTIL_H
+#define RSC_UTIL_H
+
+#include <eigen3/Eigen/Eigen>
+#include <memory>
+
+namespace rcs {
+namespace common {
+
+/***
+ * @brief convert between eigen and flattened array (col major as required by
+ * libfranka)
+ */
+template <auto N, auto M>
+std::array<double, N * M> eigen2array(
+    Eigen::Matrix<double, N, M, Eigen::ColMajor> matrix) {
+  std::array<double, N * M> array;
+  Eigen::Matrix<double, N, M>::Map(array.data()) = matrix;
+  return array;
+}
+
+/***
+ * @brief convert between flattened array (col major as required by libfranka)
+ * and eigen
+ */
+template <auto N, auto M>
+Eigen::Matrix<double, N, M, Eigen::ColMajor> array2eigen(
+    std::array<double, N * M> array) {
+  Eigen::Matrix<double, N, M, Eigen::ColMajor> matrix(array.data());
+  return matrix;
+}
+
+}  // namespace common
+}  // namespace rcs
+#endif  // RSC_UTIL_H

@@ -1,5 +1,5 @@
 import argparse
-import pyfr3
+import rcss
 import pw
 import time
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    f = pyfr3.Desk(args.ip, pw.username, pw.password)
+    f = rcss.Desk(args.ip, pw.username, pw.password)
     f.take_control(force=True)
     f.lock()
     f.shutdown()

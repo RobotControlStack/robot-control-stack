@@ -1,4 +1,7 @@
-#include <franka/vacuum_gripper.h>
+#ifndef RCS_FRANKA_HAND_H
+#define RCS_FRANKA_HAND_H
+
+#include <franka/gripper.h>
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
 #include <rl/hal/Gripper.h>
@@ -10,9 +13,15 @@
 #include <cmath>
 #include <string>
 
+namespace rcs {
+namespace hw {
+
 class FrankaHand : public rl::hal::Gripper {
  private:
-  franka::VacuumGripper gripper;
+  franka::Gripper gripper;
+  double grasping_width = 0;
+  double speed = 0.1;
+  double force = 10;
 
  public:
   FrankaHand(const std::string ip);
@@ -23,9 +32,17 @@ class FrankaHand : public rl::hal::Gripper {
   void open();
   void start();
   void stop();
+  bool setParameters(double grapsing_width, double speed = 0.1,
+                     double force = 10);
+  std::tuple<double, double, bool> getState();
+
+  // method that puts the gripper to certain position
 
   // Methods from Gripper
   void halt();
   void release();
   void shut();
 };
+}  // namespace hw
+}  // namespace rcs
+#endif  // RCS_FRANKA_HAND_H

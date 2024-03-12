@@ -1,12 +1,19 @@
-#pragma once
+#ifndef RCS_MOTION_GENERATOR_H
+#define RCS_MOTION_GENERATOR_H
 
 #include <franka/control_types.h>
 #include <franka/duration.h>
+#include <franka/exception.h>
 #include <franka/robot.h>
 #include <franka/robot_state.h>
 
 #include <Eigen/Core>
 #include <array>
+
+#include "FR3.h"
+
+namespace rcs {
+namespace hw {
 
 using Vector7d = Eigen::Matrix<double, 7, 1, Eigen::ColMajor>;
 using Vector7i = Eigen::Matrix<int, 7, 1, Eigen::ColMajor>;
@@ -74,3 +81,6 @@ class MotionGenerator {
   Vector7d ddq_max_start_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
   Vector7d ddq_max_goal_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
 };
+}  // namespace hw
+}  // namespace rcs
+#endif  // RCS_MOTION_GENERATOR_H

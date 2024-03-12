@@ -24,12 +24,13 @@
 # python_add_library(_core MODULE pyfr3.cpp WITH_SOABI)
 # target_link_libraries(_core PRIVATE pybind11::headers ha)
 
-# plain pybind11 (no sckiit-build)
-pybind11_add_module(_core pyfr3.cpp)
-target_link_libraries(_core PUBLIC ha)
+# plain pybind11 (no scikit-build)
+pybind11_add_module(_core rcsss.cpp)
+target_include_directories(_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(_core PUBLIC hw)
 
-# This is passing in the version as a define just as an example
+# This is passing in the version as a define
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # The install directory is the output (wheel) directory
-install(TARGETS _core DESTINATION pyfr3)
+install(TARGETS _core DESTINATION rcsss)
