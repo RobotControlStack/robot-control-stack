@@ -1,12 +1,6 @@
 #include "FrankaHand.h"
 
 #include <franka/gripper.h>
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-#include <rl/math/Transform.h>
 
 #include <Eigen/Core>
 #include <cmath>
@@ -16,46 +10,57 @@
 namespace rcs {
 namespace hw {
 
-FrankaHand::FrankaHand(const std::string ip) : Gripper(), gripper(ip) {}
+FrankaHand::FrankaHand(const std::string &ip) : gripper(ip) {}
 
 FrankaHand::~FrankaHand() {}
 
-// Methods from Device
-void FrankaHand::close() {}
-void FrankaHand::open() {}
-void FrankaHand::start() {
-  // Do a homing in order to estimate the maximum
-  // grasping width with the current fingers.
-  gripper.homing();
-}
-void FrankaHand::stop() { gripper.stop(); }
+bool FrankaHand::set_parameters(const common::GConfig &cfg) {
+  auto fhcfg = dynamic_cast<const FHConfig &>(cfg);
 
-bool FrankaHand::setParameters(double gw, double sp, double fr) {
   franka::GripperState gripper_state = gripper.readOnce();
-  if (gripper_state.max_width < gw) {
+  if (gripper_state.max_width < fhcfg.grasping_width) {
     return false;
   }
-  this->grasping_width = gw;
-  this->speed = sp;
-  this->force = fr;
+  this->cfg = fhcfg;
   return true;
 }
 
-// Methods to read current state
-std::tuple<double, double, bool> FrankaHand::getState() {
-  franka::GripperState gripper_state = gripper.readOnce();
-  return std::make_tuple(gripper_state.width, gripper_state.max_width,
-                         gripper_state.is_grasped);
+std::unique_ptr<common::GConfig> FrankaHand::get_parameters() {
+  // copy config to heap
+  FHConfig *cfg = new FHConfig();
+  *cfg = this->cfg;
+  auto rcfg = dynamic_cast<common::GConfig *>(cfg);
+  return std::unique_ptr<common::GConfig>(rcfg);
 }
 
-// Methods from Gripper
-void FrankaHand::halt() {
-  gripper.grasp(grasping_width, speed, force, 0.1, 0.1);
+std::unique_ptr<common::GState> FrankaHand::get_state() {
+  franka::GripperState gripper_state = gripper.readOnce();
+  FHState *state = new FHState();
+  state->width = gripper_state.width;
+  state->is_grasped = gripper_state.is_grasped;
+  state->temperature = gripper_state.temperature;
+  common::GState *gstate = static_cast<common::GState *>(state);
+  return std::unique_ptr<common::GState>(gstate);
 }
+
+bool FrankaHand::homing() {
+  // Do a homing in order to estimate the maximum
+  // grasping width with the current fingers.
+  return gripper.homing();
+}
+
+bool FrankaHand::grasp() {
+  return gripper.grasp(this->cfg.grasping_width, this->cfg.speed,
+                       this->cfg.force, this->cfg.epsilon_inner,
+                       this->cfg.epsilon_outer);
+}
+
 void FrankaHand::release() {
   franka::GripperState gripper_state = gripper.readOnce();
-  gripper.move(gripper_state.max_width, speed);
+  gripper.move(gripper_state.max_width, this->cfg.speed);
 }
-void FrankaHand::shut() { gripper.move(grasping_width, speed); }
+void FrankaHand::shut() {
+  gripper.move(this->cfg.grasping_width, this->cfg.speed);
+}
 }  // namespace hw
 }  // namespace rcs

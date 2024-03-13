@@ -23,6 +23,10 @@ class FR3(Robot):
         self, pose: Pose, max_time: float, elbow: float, max_force: float
     ) -> None: ...
 
+class FrankaHand(Gripper):
+    def __init__(self, ip) -> None: ...
+    def homing(self) -> None: ...
+
 class FR3State(RState):
     pass
 
@@ -41,3 +45,15 @@ class FR3Config(RConfig):
     speed_scaling: float
     load_parameters: Optional[FR3Load]
     nominal_end_effector_pose: Optional[Pose]
+
+class FHConfig(GConfig):
+    grasping_width: float
+    speed: float
+    force: float
+    epsilon_inner: float
+    epsilon_outer: float
+
+class FHState(GState):
+    width: float
+    is_grasped: bool
+    temperature: float

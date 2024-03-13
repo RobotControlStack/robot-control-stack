@@ -2,6 +2,7 @@
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <hw/FR3.h>
+#include <hw/FrankaHand.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -162,6 +163,19 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame);
 
+  py::class_<rcs::hw::FHConfig, std::shared_ptr<rcs::hw::FHConfig>>(hw,
+                                                                    "FHConfig")
+      .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
+      .def_readwrite("speed", &rcs::hw::FHConfig::speed)
+      .def_readwrite("force", &rcs::hw::FHConfig::force)
+      .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
+      .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer);
+
+  py::class_<rcs::hw::FHState, std::shared_ptr<rcs::hw::FHState>>(hw, "FHState")
+      .def_readonly("width", &rcs::hw::FHState::width)
+      .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
+      .def_readonly("temperature", &rcs::hw::FHState::temperature);
+
   py::class_<rcs::hw::FR3, rcs::common::Robot,
              rcs::common::PyRobot<rcs::hw::FR3>, std::shared_ptr<rcs::hw::FR3>>(
       hw, "FR3")
@@ -187,6 +201,18 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position_rl",
            &rcs::hw::FR3::set_cartesian_position_internal, py::arg("pose"),
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
+
+  py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
+             rcs::common::PyGripper<rcs::hw::FrankaHand>,
+             std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
+      // No idea why the line below does not compile
+      //   .def(py::init<const std::string&>(), py::arg("ip"))
+      .def(py::init([](const std::string &ip) {
+        return std::shared_ptr<rcs::hw::FrankaHand>(
+            new rcs::hw::FrankaHand(ip));
+      }))
+      .def("homing", &rcs::hw::FrankaHand::homing);
+
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
 #else
