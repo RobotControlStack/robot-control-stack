@@ -19,17 +19,17 @@ void NRobotsWithGripper::set_parameters_r(const std::vector<size_t> &idxs,
   NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-std::vector<RConfig> NRobotsWithGripper::get_parameters_r(
+std::vector<std::unique_ptr<RConfig>> NRobotsWithGripper::get_parameters_r(
     const std::vector<size_t> &idxs) {
-  std::function<RConfig(size_t)> f = [this, &idxs](size_t i) {
+  std::function<std::unique_ptr<RConfig>(size_t)> f = [this, &idxs](size_t i) {
     return this->robots_with_gripper[idxs[i]]->robot->get_parameters();
   };
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-std::vector<RState> NRobotsWithGripper::get_state_r(
+std::vector<std::unique_ptr<RState>> NRobotsWithGripper::get_state_r(
     const std::vector<size_t> &idxs) {
-  std::function<RState(size_t)> f = [this, &idxs](size_t i) {
+  std::function<std::unique_ptr<RState>(size_t)> f = [this, &idxs](size_t i) {
     return this->robots_with_gripper[idxs[i]]->robot->get_state();
   };
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
@@ -90,10 +90,10 @@ void NRobotsWithGripper::set_parameters_g(const std::vector<size_t> idxs,
   NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-std::vector<std::optional<GConfig>> NRobotsWithGripper::get_parameters_g(
-    const std::vector<size_t> &idxs) {
-  std::function<std::optional<GConfig>(size_t)> f =
-      [this, &idxs](size_t i) -> std::optional<GConfig> {
+std::vector<std::optional<std::unique_ptr<GConfig>>>
+NRobotsWithGripper::get_parameters_g(const std::vector<size_t> &idxs) {
+  std::function<std::optional<std::unique_ptr<GConfig>>(size_t)> f =
+      [this, &idxs](size_t i) -> std::optional<std::unique_ptr<GConfig>> {
     if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
       return this->robots_with_gripper[idxs[i]]
           ->gripper.value()
@@ -104,10 +104,10 @@ std::vector<std::optional<GConfig>> NRobotsWithGripper::get_parameters_g(
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-std::vector<std::optional<GState>> NRobotsWithGripper::get_state_g(
-    const std::vector<size_t> &idxs) {
-  std::function<std::optional<GState>(size_t)> f =
-      [this, &idxs](size_t i) -> std::optional<GState> {
+std::vector<std::optional<std::unique_ptr<GState>>>
+NRobotsWithGripper::get_state_g(const std::vector<size_t> &idxs) {
+  std::function<std::optional<std::unique_ptr<GState>>(size_t)> f =
+      [this, &idxs](size_t i) -> std::optional<std::unique_ptr<GState>> {
     if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
       return this->robots_with_gripper[idxs[i]]->gripper.value()->get_state();
     }

@@ -76,9 +76,11 @@ class NRobotsWithGripper {
   void set_parameters_r(const std::vector<size_t> &idxs,
                         const std::vector<RConfig> &cfgs);
 
-  std::vector<RConfig> get_parameters_r(const std::vector<size_t> &idxs);
+  std::vector<std::unique_ptr<RConfig>> get_parameters_r(
+      const std::vector<size_t> &idxs);
 
-  std::vector<RState> get_state_r(const std::vector<size_t> &idxs);
+  std::vector<std::unique_ptr<RState>> get_state_r(
+      const std::vector<size_t> &idxs);
 
   std::vector<Pose> get_cartesian_position(const std::vector<size_t> &idxs);
 
@@ -96,10 +98,10 @@ class NRobotsWithGripper {
   void set_parameters_g(const std::vector<size_t> idxs,
                         const std::vector<GConfig> cfgs);
 
-  std::vector<std::optional<GConfig>> get_parameters_g(
+  std::vector<std::optional<std::unique_ptr<GConfig>>> get_parameters_g(
       const std::vector<size_t> &idxs);
 
-  std::vector<std::optional<GState>> get_state_g(
+  std::vector<std::optional<std::unique_ptr<GState>>> get_state_g(
       const std::vector<size_t> &idxs);
 
   std::vector<std::optional<bool>> grasp(const std::vector<size_t> &idxs);
