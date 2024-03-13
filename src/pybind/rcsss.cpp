@@ -1,6 +1,7 @@
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
+#include <hw/FR3.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -8,7 +9,7 @@
 
 #include <memory>
 
-// TODO: define docstring in according python files
+// TODO: define exceptions
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -27,6 +28,7 @@ PYBIND11_MODULE(_core, m) {
 
     )pbdoc";
 
+  // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
@@ -137,6 +139,54 @@ PYBIND11_MODULE(_core, m) {
            py::arg("idxs"))
       .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
+  // HARDWARE MODULE
+  auto hw = m.def_submodule("hw", "hardware module");
+
+  py::class_<rcs::hw::FR3State>(hw, "FR3State");
+  py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
+      .def_readwrite("load_mass", &rcs::hw::FR3Load::load_mass)
+      .def_readwrite("f_x_cload", &rcs::hw::FR3Load::f_x_cload)
+      .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
+
+  py::enum_<rcs::hw::IKController>(hw, "IKController")
+      .value("internal", rcs::hw::IKController::internal)
+      .value("robotics_library", rcs::hw::IKController::robotics_library)
+      .export_values();
+
+  py::class_<rcs::hw::FR3Config, std::shared_ptr<rcs::hw::FR3Config>>(
+      hw, "FR3Config")
+      .def_readwrite("controller", &rcs::hw::FR3Config::controller)
+      .def_readwrite("guiding_mode_enabled",
+                     &rcs::hw::FR3Config::guiding_mode_enabled)
+      .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
+      .def_readwrite("nominal_end_effector_frame",
+                     &rcs::hw::FR3Config::nominal_end_effector_frame);
+
+  py::class_<rcs::hw::FR3, rcs::common::Robot,
+             rcs::common::PyRobot<rcs::hw::FR3>, std::shared_ptr<rcs::hw::FR3>>(
+      hw, "FR3")
+      // No idea why the line below does not compile
+      //  .def(py::init<const std::string &, const std::optional<std::string>
+      //  &>(),
+      //       py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def(py::init([](const std::string &ip,
+                       const std::optional<std::string> &filename) {
+             return std::shared_ptr<rcs::hw::FR3>(
+                 new rcs::hw::FR3(ip, filename));
+           }),
+           py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def("set_default_robot_behavior",
+           &rcs::hw::FR3::set_default_robot_behavior)
+      .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
+           py::arg("enabled"))
+      .def("automatic_error_recovery", &rcs::hw::FR3::automatic_error_recovery)
+      .def("double_tap_robot_to_continue",
+           &rcs::hw::FR3::double_tap_robot_to_continue)
+      .def("set_cartesian_position_internal",
+           &rcs::hw::FR3::set_cartesian_position_rl, py::arg("pose"))
+      .def("set_cartesian_position_rl",
+           &rcs::hw::FR3::set_cartesian_position_internal, py::arg("pose"),
+           py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
 #else

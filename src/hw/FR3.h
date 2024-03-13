@@ -34,36 +34,49 @@ struct FR3Load {
   std::optional<Eigen::Vector3d> f_x_cload;
   std::optional<Eigen::Matrix3d> load_inertia;
 };
-enum IKController { internal, robotics_library };
+enum IKController { internal = 0, robotics_library };
+struct FR3Config : common::RConfig {
+  // TODO: max force and elbow?
+  // TODO: we can either write specific bindings for each, or we use python
+  // dictionaries with these objects
+  IKController controller = IKController::internal;
+  bool guiding_mode_enabled = true;
+  double speed_factor = DEFAULT_SPEED_FACTOR;
+  std::optional<FR3Load> load_parameters = std::nullopt;
+  std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
+};
 
-class FR3 {
+struct FR3State : common::RState {};
+
+class FR3 : public common::Robot {
  private:
   franka::Robot robot;
   rl::mdl::Dynamic model;
   std::optional<std::unique_ptr<rl::mdl::JacobianInverseKinematics>> ik;
-  double speed_factor = DEFAULT_SPEED_FACTOR;
-  bool guiding_mode_enabled;
-  // TODO: add max force
+  FR3Config cfg;
 
  public:
   FR3(const std::string &ip,
-      const std::optional<std::string> filename = std::nullopt);
-  ~FR3();
+      const std::optional<std::string> &filename = std::nullopt);
+  ~FR3() override;
 
-  void set_parameters(std::optional<double> speed_factor,
-                      const std::optional<FR3Load> &load_parameters);
+  bool set_parameters(const common::RConfig &cfg) override;
+
+  std::unique_ptr<common::RConfig> get_parameters() override;
+
+  std::unique_ptr<common::RState> get_state() override;
 
   void set_default_robot_behavior();
 
-  common::Pose get_cartesian_position();
+  common::Pose get_cartesian_position() override;
 
-  void set_joint_position(const common::Vector7d &q);
+  void set_joint_position(const common::Vector7d &q) override;
 
-  common::Vector7d get_joint_position();
+  common::Vector7d get_joint_position() override;
 
   void set_guiding_mode(bool enabled);
 
-  void move_home();
+  void move_home() override;
 
   void automatic_error_recovery();
 
@@ -71,11 +84,9 @@ class FR3 {
 
   void double_tap_robot_to_continue();
 
-  void set_cartesian_position(
-      const common::Pose &x, IKController controller,
-      const std::optional<common::Pose> &nominal_end_effector_frame);
+  void set_cartesian_position(const common::Pose &pose) override;
 
-  void set_cartesian_position_internal(const common::Pose &dest,
+  void set_cartesian_position_internal(const common::Pose &pose,
                                        double max_time,
                                        std::optional<double> elbow,
                                        std::optional<double> max_force = 5);
