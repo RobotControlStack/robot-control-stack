@@ -57,7 +57,8 @@ class FR3 : public common::Robot {
 
  public:
   FR3(const std::string &ip,
-      const std::optional<std::string> &filename = std::nullopt);
+      const std::optional<std::string> &filename = std::nullopt,
+      const std::optional<FR3Config> &cfg = std::nullopt);
   ~FR3() override;
 
   bool set_parameters(const common::RConfig &cfg) override;

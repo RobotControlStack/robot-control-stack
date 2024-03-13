@@ -10,7 +10,13 @@
 namespace rcs {
 namespace hw {
 
-FrankaHand::FrankaHand(const std::string &ip) : gripper(ip) {}
+FrankaHand::FrankaHand(const std::string &ip,
+                       const std::optional<FHConfig> &cfg)
+    : gripper(ip) {
+  if (cfg.has_value()) {
+    this->cfg = cfg.value();
+  }  // else default constructor
+}
 
 FrankaHand::~FrankaHand() {}
 
@@ -59,8 +65,6 @@ void FrankaHand::release() {
   franka::GripperState gripper_state = gripper.readOnce();
   gripper.move(gripper_state.max_width, this->cfg.speed);
 }
-void FrankaHand::shut() {
-  gripper.move(this->cfg.grasping_width, this->cfg.speed);
-}
+void FrankaHand::shut() { gripper.move(0, this->cfg.speed); }
 }  // namespace hw
 }  // namespace rcs

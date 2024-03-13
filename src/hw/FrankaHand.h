@@ -19,9 +19,9 @@ namespace rcs {
 namespace hw {
 
 struct FHConfig : common::GConfig {
-  double grasping_width;
-  double speed;
-  double force;
+  double grasping_width = 0.05;
+  double speed = 0.1;
+  double force = 5;
   double epsilon_inner = 0.005;
   double epsilon_outer = 0.005;
 };
@@ -38,7 +38,8 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
 
  public:
-  FrankaHand(const std::string &ip);
+  FrankaHand(const std::string &ip,
+             const std::optional<FHConfig> &cfg = std::nullopt);
   ~FrankaHand() override;
 
   bool set_parameters(const common::GConfig &cfg) override;

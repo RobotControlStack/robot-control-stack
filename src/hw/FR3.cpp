@@ -24,12 +24,16 @@
 
 namespace rcs {
 namespace hw {
-FR3::FR3(const std::string &ip, const std::optional<std::string> &filename)
+FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
+         const std::optional<FR3Config> &cfg)
     : robot(ip), model() {
-  // TODO: add initial config
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true);
+
+  if (cfg.has_value()) {
+    this->cfg = cfg.value();
+  }  // else default constructor
 
   if (filename.has_value()) {
     rl::mdl::UrdfFactory factory;
