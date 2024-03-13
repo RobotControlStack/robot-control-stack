@@ -57,16 +57,19 @@ PYBIND11_MODULE(_core, m) {
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
 
-  py::class_<rcs::common::RConfig>(common, "RConfig");
-  py::class_<rcs::common::RState>(common, "RState");
-  py::class_<rcs::common::RState>(common, "GConfig");
-  py::class_<rcs::common::GState>(common, "GState");
+  py::class_<rcs::common::RConfig, std::shared_ptr<rcs::common::RConfig>>(
+      common, "RConfig");
+  py::class_<rcs::common::RState, std::shared_ptr<rcs::common::RState>>(
+      common, "RState");
+  py::class_<rcs::common::GConfig, std::shared_ptr<rcs::common::GConfig>>(
+      common, "GConfig");
+  py::class_<rcs::common::GState, std::shared_ptr<rcs::common::GState>>(
+      common, "GState");
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
   py::class_<rcs::common::Robot, rcs::common::PyRobot<>,
              std::shared_ptr<rcs::common::Robot>>(common, "Robot")
-      .def(py::init<>())
       .def("set_parameters", &rcs::common::Robot::set_parameters,
            py::arg("cfg"))
       .def("get_parameters", &rcs::common::Robot::get_parameters)
@@ -82,7 +85,6 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Gripper, rcs::common::PyGripper<>,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
-      .def(py::init<>())
       .def("set_parameters", &rcs::common::Gripper::set_parameters,
            py::arg("cfg"))
       .def("get_parameters", &rcs::common::Gripper::get_parameters)

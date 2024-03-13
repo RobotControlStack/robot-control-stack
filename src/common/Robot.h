@@ -36,13 +36,14 @@ struct GState {
 
 class Robot {
  public:
-  Robot(){};
   virtual ~Robot(){};
 
-  virtual void set_parameters(const RConfig &cfg) = 0;
-  virtual RConfig get_parameters() = 0;
+  // set_parameters could also be used for signaling e.g. error recovery and the
+  // like
+  virtual bool set_parameters(const RConfig &cfg) = 0;
+  virtual std::unique_ptr<RConfig> get_parameters() = 0;
 
-  virtual RState get_state() = 0;
+  virtual std::unique_ptr<RState> get_state() = 0;
 
   virtual Pose get_cartesian_position() = 0;
 
@@ -55,21 +56,28 @@ class Robot {
   virtual void set_cartesian_position(const Pose &pose) = 0;
 };
 
+/**
+ * @brief Trampoline class for python bindings,
+ * needed for pybind11 to override virtual functions,
+ * see
+ * https://pybind11.readthedocs.io/en/stable/advanced/classes.html#virtual-and-inheritance
+ */
 template <class RobotBase = Robot>
 class PyRobot : public RobotBase {
  public:
   using RobotBase::RobotBase;  // Inherit constructors
 
-  void set_parameters(const RConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(void, RobotBase, set_parameters, cfg);
+  bool set_parameters(const RConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, RobotBase, set_parameters, cfg);
   }
 
-  RConfig get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(RConfig, RobotBase, get_parameters, );
+  std::unique_ptr<RConfig> get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<RConfig>, RobotBase,
+                           get_parameters, );
   }
 
-  RState get_state() override {
-    PYBIND11_OVERRIDE_PURE(RState, RobotBase, get_state, );
+  std::unique_ptr<RState> get_state() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<RState>, RobotBase, get_state, );
   }
 
   Pose get_cartesian_position() override {
@@ -95,12 +103,11 @@ class PyRobot : public RobotBase {
 
 class Gripper {
  public:
-  Gripper(){};
   virtual ~Gripper(){};
 
-  virtual void set_parameters(const GConfig &cfg) = 0;
-  virtual GConfig get_parameters() = 0;
-  virtual GState get_state() = 0;
+  virtual bool set_parameters(const GConfig &cfg) = 0;
+  virtual std::unique_ptr<GConfig> get_parameters() = 0;
+  virtual std::unique_ptr<GState> get_state() = 0;
 
   // close gripper with force, return true if the object is grasped successfully
   virtual bool grasp() = 0;
@@ -112,21 +119,25 @@ class Gripper {
   virtual void shut() = 0;
 };
 
+/**
+ * @brief Trampoline class for python bindings
+ */
 template <class GripperBase = Gripper>
 class PyGripper : public GripperBase {
  public:
   using GripperBase::GripperBase;  // Inherit constructors
 
-  void set_parameters(const GConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(void, GripperBase, set_parameters, cfg);
+  bool set_parameters(const GConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, GripperBase, set_parameters, cfg);
   }
 
-  GConfig get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(GConfig, GripperBase, get_parameters, );
+  std::unique_ptr<GConfig> get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<GConfig>, GripperBase,
+                           get_parameters, );
   }
 
-  GState get_state() override {
-    PYBIND11_OVERRIDE_PURE(GState, GripperBase, get_state, );
+  std::unique_ptr<GState> get_state() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<GState>, GripperBase, get_state, );
   }
 
   bool grasp() override { PYBIND11_OVERRIDE_PURE(bool, GripperBase, grasp, ); }
