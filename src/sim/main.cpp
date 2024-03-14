@@ -33,7 +33,7 @@ float measure_speed() {
   }
   Simulation sim = Simulation(m, fr3_rlmdls, true, NUM_THREADS);
   sim.reset();
-  std::vector<rl::math::Transform> action(NUM_THREADS);
+  std::vector<rcs::common::Pose> action(NUM_THREADS);
   // run every thread for 2 minutes. With 30 threads this is one hour of
   // experience.
   std::chrono::steady_clock::time_point begin =
@@ -99,19 +99,17 @@ void test_convergence() {
       mj_loadXML(MODEL_DIR "/mjcf/scene.xml", NULL, NULL, 0));
   Simulation sim = Simulation(fr3_mjmdl, fr3_rlmdls, true, NUM_THREADS);
   sim.reset();
-  std::vector<rl::math::Transform> action(NUM_THREADS);
+  std::vector<rcs::common::Pose> action(NUM_THREADS);
   for (size_t i = 0; i < 100; ++i) {
     for (size_t j = 0; j < NUM_THREADS; ++j) {
       std::array<double, 6> random_action = random_point_in_iso_cube();
-      action[j].setIdentity();
-      action[j].translation() << random_action[0], random_action[1],
-          random_action[2];
-      action[j].rotate(
-          rl::math::AngleAxis(random_action[3], rl::math::Vector3::UnitX()));
-      action[j].rotate(
-          rl::math::AngleAxis(random_action[4], rl::math::Vector3::UnitY()));
-      action[j].rotate(
-          rl::math::AngleAxis(random_action[5], rl::math::Vector3::UnitZ()));
+      rl::math::Transform t;
+      t.setIdentity();
+      t.translation() << random_action[0], random_action[1], random_action[2];
+      t.rotate(rl::math::AngleAxis(random_action[3], rl::math::Vector3::UnitX()));
+      t.rotate(rl::math::AngleAxis(random_action[4], rl::math::Vector3::UnitY()));
+      t.rotate(rl::math::AngleAxis(random_action[5], rl::math::Vector3::UnitZ()));
+      action[j] = rcs::common::Pose(t);
     }
     sim.step(action);
   }

@@ -20,7 +20,7 @@ target_sources(simulation
     PRIVATE sim.cpp
     )
 target_include_directories(simulation PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(simulation PUBLIC platform_ui_adapter mujoco mdl)
+target_link_libraries(simulation PUBLIC platform_ui_adapter mujoco mdl common)
 
 add_executable(test_sim main.cpp)
 target_link_libraries(test_sim PRIVATE simulation)

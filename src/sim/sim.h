@@ -8,6 +8,7 @@
 #include "rl/math/Transform.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Model.h"
+#include "Pose.h"
 
 #define SIM_MAX_THREADS 128
 
@@ -19,7 +20,7 @@ class Simulation {
   std::shared_ptr<mjModel> fr3_mjmdl;
   std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls;
   std::vector<std::shared_ptr<mjData>> mujoco_data;
-  std::vector<std::shared_ptr<rl::math::Transform>> targets;
+  std::vector<std::shared_ptr<rcs::common::Pose>> targets;
   std::jthread render_thread;
   std::vector<std::jthread> physics_threads;
   std::barrier<std::function<void(void)>> sync_point;
@@ -29,7 +30,7 @@ class Simulation {
   void syncfn() noexcept;
   void render_loop();
   void physics_loop(std::shared_ptr<mjData> data,
-                    std::shared_ptr<rl::math::Transform> target_transform,
+                    std::shared_ptr<rcs::common::Pose> target_pose,
                     std::shared_ptr<rl::mdl::Model> rlmdl);
 
  public:
@@ -37,6 +38,6 @@ class Simulation {
              std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls,
              bool render, size_t n_threads);
   rl::math::Matrix reset();
-  rl::math::Matrix step(std::vector<rl::math::Transform> act);
+  rl::math::Matrix step(std::vector<rcs::common::Pose> act);
   void close();
 };

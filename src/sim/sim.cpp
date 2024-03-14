@@ -1,4 +1,5 @@
 #include "sim.h"
+#include "rcsssim.h"
 
 #include <cmath>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "Pose.h"
 #include "glfw_adapter.h"
 #include "mujoco/mjdata.h"
 #include "mujoco/mujoco.h"
@@ -17,6 +19,7 @@
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Kinematic.h"
 #include "rl/mdl/UrdfFactory.h"
+
 
 Simulation::Simulation(std::shared_ptr<mjModel> fr3_mjmdl,
                        std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls,
@@ -31,7 +34,7 @@ Simulation::Simulation(std::shared_ptr<mjModel> fr3_mjmdl,
       exit_requested(false) {
   targets.reserve(n_threads);
   for (size_t i = 0; i < n_threads; ++i) {
-    targets.emplace_back(std::make_shared<rl::math::Transform>());
+    targets.emplace_back(std::make_shared<rcs::common::Pose>());
   }
   for (size_t i = 0; i < n_threads; ++i) {
     this->mujoco_data[i] =
@@ -63,7 +66,7 @@ rl::math::Matrix Simulation::reset() {
 
 void Simulation::physics_loop(
     std::shared_ptr<mjData> data,
-    std::shared_ptr<rl::math::Transform> target_transform,
+    std::shared_ptr<rcs::common::Pose> target_transform,
     std::shared_ptr<rl::mdl::Model> rlmdl) {
   std::shared_ptr<rl::mdl::Kinematic> kin =
       std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl);
@@ -78,7 +81,7 @@ void Simulation::physics_loop(
     {  // This is one step
       // Solve IK
       bool converged = false;
-      ik.addGoal(*target_transform, 0);
+      ik.addGoal(target_transform->affine_matrix(), -1);
       bool ik_success = ik.solve();
       if (ik_success) {
         // Set control in mujoco sim
@@ -157,7 +160,7 @@ void Simulation::close() {
 
 void Simulation::syncfn() noexcept { this->semaphores.second.release(); }
 
-rl::math::Matrix Simulation::step(std::vector<rl::math::Transform> act) {
+rl::math::Matrix Simulation::step(std::vector<rcs::common::Pose> act) {
   // set IK targets
   for (size_t i = 0; i < std::size(this->targets); ++i) {
     *this->targets[i] = act[i];
@@ -173,5 +176,29 @@ rl::math::Matrix Simulation::step(std::vector<rl::math::Transform> act) {
     mj_getState(fr3_mjmdl.get(), mujoco_data[i].get(), &ret(i, 0),
                 mjSTATE_PHYSICS);
   }
+  return ret;
+}
+
+struct sim {
+  Simulation* s;
+  std::vector<std::shared_ptr<rl::mdl::Model>>* fr3_rlmdls;
+  std::shared_ptr<mjModel> fr3_mjmdl;
+};
+
+Sim* sim_init(size_t n_threads) {
+  rl::mdl::UrdfFactory factory{};
+  std::vector<std::shared_ptr<rl::mdl::Model>>* fr3_rlmdls = new std::vector<std::shared_ptr<rl::mdl::Model>>(0);
+  fr3_rlmdls->reserve(n_threads);
+  for (size_t i = 0; i < n_threads; ++i) {
+    fr3_rlmdls->emplace_back(
+        factory.create(MODEL_DIR "/urdf/fr3_from_panda.urdf"));
+  }
+  std::shared_ptr<mjModel> fr3_mjmdl = std::shared_ptr<mjModel>(
+      mj_loadXML(MODEL_DIR "/mjcf/scene.xml", NULL, NULL, 0));
+  Simulation* sim = new Simulation(fr3_mjmdl, *fr3_rlmdls, true, n_threads);
+  struct sim* ret = new struct sim();
+  ret->s = sim;
+  ret->fr3_rlmdls = fr3_rlmdls;
+  ret->fr3_mjmdl = fr3_mjmdl;
   return ret;
 }
