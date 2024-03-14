@@ -16,8 +16,10 @@ enum { SIM_KF_HOME = 0 };
 
 class Simulation {
  private:
-  std::shared_ptr<mjModel> model;
+  std::shared_ptr<mjModel> fr3_mjmdl;
+  std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls;
   std::vector<std::shared_ptr<mjData>> mujoco_data;
+  std::vector<std::shared_ptr<rl::math::Transform>> targets;
   std::jthread render_thread;
   std::vector<std::jthread> physics_threads;
   std::barrier<std::function<void(void)>> sync_point;
@@ -26,11 +28,15 @@ class Simulation {
   bool exit_requested;
   void syncfn() noexcept;
   void render_loop();
-  void physics_loop(std::shared_ptr<mjData> data);
+  void physics_loop(std::shared_ptr<mjData> data,
+                    std::shared_ptr<rl::math::Transform> target_transform,
+                    std::shared_ptr<rl::mdl::Model> rlmdl);
 
  public:
-  Simulation(std::shared_ptr<mjModel> model, bool render, size_t n_threads);
+  Simulation(std::shared_ptr<mjModel> fr3_mjmdl,
+             std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls,
+             bool render, size_t n_threads);
   rl::math::Matrix reset();
-  rl::math::Matrix step(rl::math::Matrix act);
+  rl::math::Matrix step(std::vector<rl::math::Transform> act);
   void close();
 };
