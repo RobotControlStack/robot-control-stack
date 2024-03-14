@@ -38,7 +38,7 @@ clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
 
-# install pyfr3
+# install rcsss
 pip install .
 
 # add dynamic linking paths
@@ -46,5 +46,5 @@ export LD_LIBRARY_PATH=build/lib:build/_deps/rl-build/lib
 ```
 Open python and try to import the lib:
 ```python
-import pyfr3
+import rcsss
 ```

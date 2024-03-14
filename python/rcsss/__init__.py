@@ -15,9 +15,9 @@ from requests.packages import urllib3
 from websockets.sync.client import connect
 
 
-from ._core.common import __doc__, __version__, common
+from ._core import __doc__, __version__, common, hw
 
-__all__ = ["__doc__", "__version__", "Desk", "common"]
+__all__ = ["__doc__", "__version__", "Desk", "common", "hw"]
 
 
 _logger = logging.getLogger('desk')
