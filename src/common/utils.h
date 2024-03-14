@@ -1,5 +1,5 @@
-#ifndef RSC_UTIL_H
-#define RSC_UTIL_H
+#ifndef RCS_UTIL_H
+#define RCS_UTIL_H
 
 #include <eigen3/Eigen/Eigen>
 #include <memory>
@@ -32,4 +32,5 @@ Eigen::Matrix<double, N, M, Eigen::ColMajor> array2eigen(
 
 }  // namespace common
 }  // namespace rcs
-#endif  // RSC_UTIL_H
+
+#endif  // RCS_UTIL_H

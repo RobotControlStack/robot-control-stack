@@ -1,47 +1,62 @@
 #ifndef RCS_FRANKA_HAND_H
 #define RCS_FRANKA_HAND_H
 
+#include <common/Robot.h>
 #include <franka/gripper.h>
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-#include <rl/math/Transform.h>
 
 #include <Eigen/Core>
 #include <cmath>
 #include <string>
 
+// TODO: we need a common interface for the gripper, maybe we do use the hal
+// we need to create a robot class that has both the robot and the gripper
+
+// TODO: find out exact difference between grasp and move
+// implement function to put the gripper to a specific position
+// this might be done with a thread as the command is blocking
+
 namespace rcs {
 namespace hw {
 
-class FrankaHand : public rl::hal::Gripper {
+struct FHConfig : common::GConfig {
+  double grasping_width = 0.05;
+  double speed = 0.1;
+  double force = 5;
+  double epsilon_inner = 0.005;
+  double epsilon_outer = 0.005;
+};
+
+struct FHState : common::GState {
+  double width;
+  bool is_grasped;
+  uint16_t temperature;
+};
+
+class FrankaHand : public common::Gripper {
  private:
   franka::Gripper gripper;
-  double grasping_width = 0;
-  double speed = 0.1;
-  double force = 10;
+  FHConfig cfg;
 
  public:
-  FrankaHand(const std::string ip);
-  ~FrankaHand();
+  FrankaHand(const std::string &ip,
+             const std::optional<FHConfig> &cfg = std::nullopt);
+  ~FrankaHand() override;
 
-  // Methods from Device
-  void close();
-  void open();
-  void start();
-  void stop();
-  bool setParameters(double grapsing_width, double speed = 0.1,
-                     double force = 10);
-  std::tuple<double, double, bool> getState();
+  bool set_parameters(const common::GConfig &cfg) override;
 
-  // method that puts the gripper to certain position
+  std::unique_ptr<common::GConfig> get_parameters() override;
 
-  // Methods from Gripper
-  void halt();
-  void release();
-  void shut();
+  std::unique_ptr<common::GState> get_state() override;
+
+  // TODO: method that puts the gripper to certain position
+  // the move method should do this but it certainly does not work
+  // we should be able to do this with the stop command
+
+  bool homing();
+
+  bool grasp() override;
+  void release() override;
+  void shut() override;
 };
 }  // namespace hw
 }  // namespace rcs

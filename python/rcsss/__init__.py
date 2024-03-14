@@ -15,11 +15,9 @@ from requests.packages import urllib3
 from websockets.sync.client import connect
 
 
-from ._core import __doc__, __version__, add, subtract, FR3, FrankaHand
+from ._core.common import __doc__, __version__, common
 
-__all__ = ["__doc__", "__version__", "add", "subtract", "FR3", "FrankaHand", "Desk"]
-
-__version__ = '0.0.3'
+__all__ = ["__doc__", "__version__", "Desk", "common"]
 
 
 _logger = logging.getLogger('desk')

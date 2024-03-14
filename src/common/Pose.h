@@ -15,12 +15,21 @@ struct RPY {
   double roll = 0;
   double pitch = 0;
   double yaw = 0;
+  RPY(double roll = 0, double pitch = 0, double yaw = 0)
+      : roll(roll), pitch(pitch), yaw(yaw) {}
   std::string str() const {
     return "RPY(" + std::to_string(roll) + ", " + std::to_string(pitch) + ", " +
            std::to_string(yaw) + ")";
   }
   RPY operator+(const RPY &rpy_b) const {
     return RPY{roll + rpy_b.roll, pitch + rpy_b.pitch, yaw + rpy_b.yaw};
+  }
+  Eigen::Matrix3d rotation_matrix() const {
+    Eigen::Matrix3d rotation;
+    rotation = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+               Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+               Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+    return rotation;
   }
 };
 
@@ -85,7 +94,8 @@ class Pose {
    */
   Pose(const Eigen::Vector4d &rotation, const Eigen::Vector3d &translation);
 
-  Pose(const Eigen::Quaterniond &rotation, const Eigen::Vector3d &translation);
+  Pose(const Eigen::Quaterniond &quaternion,
+       const Eigen::Vector3d &translation);
 
   /**
    * @brief Construct a new Pose object from a RPY struct and a 3D translation
@@ -95,7 +105,7 @@ class Pose {
    * @param rpy
    * @param translation
    */
-  Pose(const RPY &rpy, const Eigen::Vector3d &translation);
+  Pose(const RPY &rotation, const Eigen::Vector3d &translation);
 
   // GETTERS
 
@@ -155,7 +165,7 @@ class Pose {
    *
    * @return RPY struct with roll, pitch and yaw
    */
-  RPY rpy() const;
+  RPY rotation_rpy() const;
 
   /**
    * @brief Interpolates the Pose to a destination Pose
