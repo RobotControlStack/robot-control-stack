@@ -41,7 +41,7 @@ line-length = 120
 [tool.ruff.lint]
 extend-select = [
   "B",           # flake8-bugbear
-  "I",           # isort
+  # "I",           # isort
   "ARG",         # flake8-unused-arguments
   "C4",          # flake8-comprehensions
   "EM",          # flake8-errmsg

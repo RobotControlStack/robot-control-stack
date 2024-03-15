@@ -7,11 +7,11 @@ import logging
 import os
 import ssl
 import threading
-import typing
+from typing import Callable, Dict, Literal, Optional
 from urllib import parse
 
 import requests
-from requests.packages import urllib3
+from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
 _logger = logging.getLogger("desk")
@@ -67,7 +67,7 @@ class Desk:
         self._logged_in = False
         self._token = self._load_token()
         self._listening = False
-        self._listen_thread = None
+        self._listen_thread: Optional[threading.Thread] = None
         self.login()
         self.take_control()
 
@@ -75,7 +75,8 @@ class Desk:
         """
         Locks the brakes. API call blocks until the brakes are locked.
         """
-        self._request("post", "/desk/api/joints/lock", files={"force": force})
+        # TODO: check why they use files instead of json
+        self._request("post", "/desk/api/joints/lock", files={"force": force})  # type: ignore[dict-item]
 
     def unlock(self, force: bool = True) -> None:
         """
@@ -84,7 +85,7 @@ class Desk:
         self._request(
             "post",
             "/desk/api/joints/unlock",
-            files={"force": force},
+            files={"force": force},  # type: ignore[dict-item]
             headers={"X-Control-Token": self._token.token},
         )
 
@@ -204,10 +205,9 @@ class Desk:
                 additional_headers={"authorization": self._session.cookies.get("authorization")},
             ) as websocket:
                 while True:
-                    event: typing.Dict = json_module.loads(websocket.recv(timeout))
-                    if "circle" in event.keys():
-                        if event["circle"]:
-                            break
+                    event: Dict = json_module.loads(websocket.recv(timeout))
+                    if "circle" in event and event["circle"] is not None:
+                        break
         self._save_token(Token(str(response["id"]), self._username, response["token"]))
         _logger.info("Taken control.")
         return True
@@ -229,7 +229,7 @@ class Desk:
         self._token = Token()
 
     @staticmethod
-    def encode_password(username: str, password: str) -> bytes:
+    def encode_password(username: str, password: str) -> str:
         """
         Encodes the password into the form needed to log into the Desk interface.
         """
@@ -283,11 +283,11 @@ class Desk:
 
     def _request(
         self,
-        method: typing.Literal["post", "get", "delete"],
+        method: Literal["post", "get", "delete"],
         url: str,
-        json: typing.Dict[str, str] = None,
-        headers: typing.Dict[str, str] = None,
-        files: typing.Dict[str, str] = None,
+        json: Optional[Dict[str, str]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        files: Optional[Dict[str, str]] = None,
     ) -> requests.Response:
         fun = getattr(self._session, method)
         response: requests.Response = fun(
@@ -313,12 +313,12 @@ class Desk:
             self._listening = True
             while self._listening:
                 try:
-                    event: typing.Dict = json_module.loads(websocket.recv(timeout))
+                    event: Dict = json_module.loads(websocket.recv(timeout))
                     cb(event)
                 except TimeoutError:
                     pass
 
-    def listen(self, cb: typing.Callable[[typing.Dict], None]) -> None:
+    def listen(self, cb: Callable[[Dict], None]) -> None:
         """
         Starts a thread listening to Pilot button events. All the Pilot buttons,
         except for the `Pilot Mode` button can be captured. Make sure Pilot Mode is
