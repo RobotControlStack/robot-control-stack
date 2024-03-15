@@ -1,15 +1,16 @@
 from enum import Enum
 from typing import Optional
+
 from _core.common import (
     GConfig,
+    Gripper,
     GState,
+    Matrix3d,
+    Pose,
     RConfig,
     Robot,
-    Pose,
-    Gripper,
     RState,
     Vector3d,
-    Matrix3d,
 )
 
 class FR3(Robot):
@@ -19,9 +20,7 @@ class FR3(Robot):
     def automatic_error_recovery(self) -> None: ...
     def double_tap_robot_to_continue(self) -> None: ...
     def set_cartesian_position_internal(self, pose: Pose) -> None: ...
-    def set_cartesian_position_rl(
-        self, pose: Pose, max_time: float, elbow: float, max_force: float
-    ) -> None: ...
+    def set_cartesian_position_rl(self, pose: Pose, max_time: float, elbow: float, max_force: float) -> None: ...
 
 class FrankaHand(Gripper):
     def __init__(self, ip) -> None: ...
