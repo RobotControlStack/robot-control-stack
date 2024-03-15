@@ -43,11 +43,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CPP dependencies
-        # run: sudo apt-get install --yes build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
-          version: 1.0
+        run: sudo apt-get install --yes build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15
+        # uses: awalsh128/cache-apt-pkgs-action@latest
+        # with:
+        #   packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
+        #   version: 1.0
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
