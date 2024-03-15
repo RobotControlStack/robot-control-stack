@@ -1,0 +1,60 @@
+name: Python
+on:
+  workflow_call:
+  pull_request:
+    paths:
+    - "python/**"
+    - "src/pybind/**"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Code linting
+        run: make pylint
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Check formatting
+        run: make pycheckformat
+
+  pythonpackage:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang-15
+      CXX: clang++-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CPP dependencies
+        # run: sudo apt-get install --yes build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
+          version: 1.0
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Create python wheel
+        run: python -m build --wheel --outdir dist/
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcsss
+          path: dist/*.whl
+          retention-days: 30
