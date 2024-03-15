@@ -1,0 +1,6 @@
+ruff==0.3.2
+black==24.1.1
+isort==5.13.2
+mypy==1.4.1
+types-requests~=2.31
+build

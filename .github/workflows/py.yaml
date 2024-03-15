@@ -15,8 +15,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
-      - name: Install dependencies
-        run: python -m pip install -e '.[dev]'
+          cache: 'pip'
+      - name: Install linting and formatting dependencies
+        run: python -m pip install -r requirements_dev.txt
       - name: Code linting
         run: make pylint
 
@@ -28,8 +29,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
-      - name: Install dependencies
-        run: python -m pip install -e '.[dev]'
+          cache: 'pip'
+      - name: Install linting and formatting dependencies
+        run: python -m pip install -r requirements_dev.txt
       - name: Check formatting
         run: make pycheckformat
 
@@ -50,6 +52,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
+          cache: 'pip'
+      - name: Install building dependencies
+        run: python -m pip install -r requirements_dev.txt
       - name: Create python wheel
         run: python -m build --wheel --outdir dist/
       - name: 'Upload Artifact'

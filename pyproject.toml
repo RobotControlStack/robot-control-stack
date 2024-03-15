@@ -23,13 +23,15 @@ classifiers = [
   "Programming Language :: Python :: 3",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "ruff==0.3.2",
-    "black==24.1.1",
-    "isort==5.13.2",
-    "mypy==1.4.1",
-]
+# until https://github.com/pypa/pip/issues/11440 is resolved
+# we use requirements_dev.txt for linter and formatter dependencies
+# [project.optional-dependencies]
+# dev = [
+#     "ruff==0.3.2",
+#     "black==24.1.1",
+#     "isort==5.13.2",
+#     "mypy==1.4.1",
+# ]
 
 
 [tool.scikit-build]
