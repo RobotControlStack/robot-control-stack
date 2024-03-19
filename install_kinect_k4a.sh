@@ -7,6 +7,7 @@
 # force input to continue
 echo "Ensure that you have sourced a virtual python environment before continuing"
 read -p "Press enter to continue"
+echo "continuing..."
 
 # store current path
 cwd=$(pwd)
@@ -25,13 +26,11 @@ wget https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.4/l
 
 # unzip binaries
 dpkg -x libk4a1.4_1.4.1_amd64.deb extracted
-read -p "Press enter to continue"
 
 
 # copy files
 cp -r extracted/usr/lib/x86_64-linux-gnu/libk4a.* Azure-Kinect-Sensor-SDK/src/python/k4a/src/k4a/_libs
 cp -r extracted/usr/lib/x86_64-linux-gnu/libk4a1.4/libdepthengine.* Azure-Kinect-Sensor-SDK/src/python/k4a/src/k4a/_libs
-read -p "Press enter to continue"
 
 pushd Azure-Kinect-Sensor-SDK/src/python/k4a
 
