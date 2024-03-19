@@ -1,5 +1,4 @@
 #include "sim.h"
-#include "rcsssim.h"
 
 #include <cmath>
 #include <iostream>
@@ -185,7 +184,7 @@ struct sim {
   std::shared_ptr<mjModel> fr3_mjmdl;
 };
 
-Sim* sim_init(size_t n_threads) {
+sim* sim_init(size_t n_threads) {
   rl::mdl::UrdfFactory factory{};
   std::vector<std::shared_ptr<rl::mdl::Model>>* fr3_rlmdls = new std::vector<std::shared_ptr<rl::mdl::Model>>(0);
   fr3_rlmdls->reserve(n_threads);
