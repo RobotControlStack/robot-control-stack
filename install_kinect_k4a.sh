@@ -38,6 +38,8 @@ pip install build
 
 python -m build --wheel --outdir dist/
 
+mkdir $cwd/dist
+
 # copy wheel file
 cp dist/*.whl $cwd/dist
 
