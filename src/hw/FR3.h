@@ -4,14 +4,14 @@
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
+#include <franka/robot.h>
+#include <rl/mdl/Dynamic.h>
+#include <rl/mdl/JacobianInverseKinematics.h>
 
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <string>
-#include <franka/robot.h>
-#include <rl/mdl/Dynamic.h>
-#include <rl/mdl/JacobianInverseKinematics.h>
 
 namespace rcs {
 namespace hw {

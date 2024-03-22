@@ -38,11 +38,13 @@ class PyRobot : public RobotBase {
   }
 
   std::unique_ptr<rcs::common::RState> get_state() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RState>, RobotBase, get_state, );
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RState>, RobotBase,
+                           get_state, );
   }
 
   rcs::common::Pose get_cartesian_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, RobotBase, get_cartesian_position, );
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, RobotBase,
+                           get_cartesian_position, );
   }
 
   void set_joint_position(const rcs::common::Vector7d &q) override {
@@ -50,7 +52,8 @@ class PyRobot : public RobotBase {
   }
 
   rcs::common::Vector7d get_joint_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, RobotBase, get_joint_position, );
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, RobotBase,
+                           get_joint_position, );
   }
 
   void move_home() override {
@@ -80,7 +83,8 @@ class PyGripper : public GripperBase {
   }
 
   std::unique_ptr<rcs::common::GState> get_state() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GState>, GripperBase, get_state, );
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GState>, GripperBase,
+                           get_state, );
   }
 
   bool grasp() override { PYBIND11_OVERRIDE_PURE(bool, GripperBase, grasp, ); }
@@ -256,9 +260,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
-  py::class_<rcs::hw::FR3, rcs::common::Robot,
-             PyRobot<rcs::hw::FR3>, std::shared_ptr<rcs::hw::FR3>>(
-      hw, "FR3")
+  py::class_<rcs::hw::FR3, rcs::common::Robot, PyRobot<rcs::hw::FR3>,
+             std::shared_ptr<rcs::hw::FR3>>(hw, "FR3")
       // No idea why the line below does not compile
       //  .def(py::init<const std::string &, const std::optional<std::string>
       //  &>(),
@@ -292,5 +295,4 @@ PYBIND11_MODULE(_core, m) {
             new rcs::hw::FrankaHand(ip));
       }))
       .def("homing", &rcs::hw::FrankaHand::homing);
-
 }
