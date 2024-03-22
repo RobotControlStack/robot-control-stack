@@ -17,17 +17,97 @@
 
 namespace py = pybind11;
 
+/**
+ * @brief Trampoline class for python bindings,
+ * needed for pybind11 to override virtual functions,
+ * see
+ * https://pybind11.readthedocs.io/en/stable/advanced/classes.html#virtual-and-inheritance
+ */
+template <class RobotBase = rcs::common::Robot>
+class PyRobot : public RobotBase {
+ public:
+  using RobotBase::RobotBase;  // Inherit constructors
+
+  bool set_parameters(const rcs::common::RConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, RobotBase, set_parameters, cfg);
+  }
+
+  std::unique_ptr<rcs::common::RConfig> get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RConfig>, RobotBase,
+                           get_parameters, );
+  }
+
+  std::unique_ptr<rcs::common::RState> get_state() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RState>, RobotBase, get_state, );
+  }
+
+  rcs::common::Pose get_cartesian_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, RobotBase, get_cartesian_position, );
+  }
+
+  void set_joint_position(const rcs::common::Vector7d &q) override {
+    PYBIND11_OVERRIDE_PURE(void, RobotBase, set_joint_position, q);
+  }
+
+  rcs::common::Vector7d get_joint_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, RobotBase, get_joint_position, );
+  }
+
+  void move_home() override {
+    PYBIND11_OVERRIDE_PURE(void, RobotBase, move_home, );
+  }
+
+  void set_cartesian_position(const rcs::common::Pose &pose) override {
+    PYBIND11_OVERRIDE_PURE(void, RobotBase, set_cartesian_position, pose);
+  }
+};
+
+/**
+ * @brief Trampoline class for python bindings
+ */
+template <class GripperBase = rcs::common::Gripper>
+class PyGripper : public GripperBase {
+ public:
+  using GripperBase::GripperBase;  // Inherit constructors
+
+  bool set_parameters(const rcs::common::GConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, GripperBase, set_parameters, cfg);
+  }
+
+  std::unique_ptr<rcs::common::GConfig> get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GConfig>, GripperBase,
+                           get_parameters, );
+  }
+
+  std::unique_ptr<rcs::common::GState> get_state() override {
+    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GState>, GripperBase, get_state, );
+  }
+
+  bool grasp() override { PYBIND11_OVERRIDE_PURE(bool, GripperBase, grasp, ); }
+
+  void release() override {
+    PYBIND11_OVERRIDE_PURE(void, GripperBase, release, );
+  }
+
+  void shut() override { PYBIND11_OVERRIDE_PURE(void, GripperBase, shut, ); }
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
         Robot Control Stack Python Bindings
         -----------------------
 
-        .. currentmodule:: rcsss
+        .. currentmodule:: _core
 
         .. autosummary::
            :toctree: _generate
 
     )pbdoc";
+#ifdef VERSION_INFO
+  m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
+#else
+  m.attr("__version__") = "dev";
+#endif
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
@@ -71,7 +151,7 @@ PYBIND11_MODULE(_core, m) {
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
-  py::class_<rcs::common::Robot, rcs::common::PyRobot<>,
+  py::class_<rcs::common::Robot, PyRobot<>,
              std::shared_ptr<rcs::common::Robot>>(common, "Robot")
       .def("set_parameters", &rcs::common::Robot::set_parameters,
            py::arg("cfg"))
@@ -86,7 +166,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
 
-  py::class_<rcs::common::Gripper, rcs::common::PyGripper<>,
+  py::class_<rcs::common::Gripper, PyGripper<>,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("set_parameters", &rcs::common::Gripper::set_parameters,
            py::arg("cfg"))
@@ -177,7 +257,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
   py::class_<rcs::hw::FR3, rcs::common::Robot,
-             rcs::common::PyRobot<rcs::hw::FR3>, std::shared_ptr<rcs::hw::FR3>>(
+             PyRobot<rcs::hw::FR3>, std::shared_ptr<rcs::hw::FR3>>(
       hw, "FR3")
       // No idea why the line below does not compile
       //  .def(py::init<const std::string &, const std::optional<std::string>
@@ -203,7 +283,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
-             rcs::common::PyGripper<rcs::hw::FrankaHand>,
+             PyGripper<rcs::hw::FrankaHand>,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
       // No idea why the line below does not compile
       //   .def(py::init<const std::string&>(), py::arg("ip"))
@@ -213,9 +293,4 @@ PYBIND11_MODULE(_core, m) {
       }))
       .def("homing", &rcs::hw::FrankaHand::homing);
 
-#ifdef VERSION_INFO
-  m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
-#else
-  m.attr("__version__") = "dev";
-#endif
 }

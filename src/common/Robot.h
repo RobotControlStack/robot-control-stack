@@ -1,13 +1,6 @@
 #ifndef RCS_ROBOT_H
 #define RCS_ROBOT_H
 
-#include <pybind11/pybind11.h>
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-
 #include <memory>
 #include <optional>
 #include <string>

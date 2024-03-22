@@ -4,22 +4,14 @@
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
-#include <franka/robot.h>
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-#include <rl/math/Transform.h>
-#include <rl/mdl/Dynamic.h>
-#include <rl/mdl/JacobianInverseKinematics.h>
-#include <rl/mdl/UrdfFactory.h>
 
-#include <Eigen/Core>
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <string>
+#include <franka/robot.h>
+#include <rl/mdl/Dynamic.h>
+#include <rl/mdl/JacobianInverseKinematics.h>
 
 namespace rcs {
 namespace hw {
