@@ -16,6 +16,11 @@ cpplint:
 
 .PHONY: compile
 compile: 
+	cmake -DCMAKE_BUILD_TYPE=Release -B build -G Ninja
+	cmake --build build
+
+.PHONY: clangcompile
+compile: 
 	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja -S .
 	cmake --build build
 
