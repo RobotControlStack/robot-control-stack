@@ -12,6 +12,8 @@ target_include_directories(
                              $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
 )
 target_link_libraries(platform_ui_adapter PUBLIC mujoco glfw)
+set_target_properties(platform_ui_adapter PROPERTIES POSITION_INDEPENDENT_CODE True)
+
 add_library(sim SHARED $<TARGET_OBJECTS:platform_ui_adapter>)
 target_sources(sim
     PUBLIC sim.h
