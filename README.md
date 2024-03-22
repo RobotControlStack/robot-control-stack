@@ -33,6 +33,8 @@ clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '
 ### Python Bindings
 ```shell
 # create new virtual env and activate it
+virtualenv --python=python3.11 venv
+source venv/bin/activate
 
 # export CC and CXX env vars to use clang compile (needed for mujoco)
 export CC=/usr/bin/clang
@@ -42,9 +44,31 @@ export CXX=/usr/bin/clang++
 pip install .
 
 # add dynamic linking paths
-export LD_LIBRARY_PATH=build/lib:build/_deps/rl-build/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:build/lib:build/_deps/rl-build/lib
 ```
 Open python and try to import the lib:
 ```python
 import rcsss
+```
+
+## Sensors
+### Microsoft Azure Kinect
+Use the following install script to install k4a on debian-based systems:
+```shell
+# source your virtual env before
+source venv/bin/activate
+# install the python lib
+./install_kinect_4ak.sh
+```
+or download the wheel package from the github pipeline artifacts and install it with
+```shell
+# source your virtual env before
+source venv/bin/activate
+# install wheel
+python -m pip install <name>.whl
+```
+
+In order to avoid putting `libdepthengine.so.2.0` into `/usr/lib/x86_64-linux-gnu` (see [this issue](https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1707)) export `LD_LIBRARY_PATH`:
+```shell
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:venv/lib/python3.11/site-packages/k4a/_libs
 ```
