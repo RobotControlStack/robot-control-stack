@@ -1,26 +1,32 @@
-from abc import ABC
 import argparse
-from collections import defaultdict
-from typing import Dict, Optional, List, Tuple, Union
+import logging
+from abc import ABC, abstractmethod
+from time import sleep
+from typing import Dict, List, Optional
+
+import numpy as np
 from rcsss import desk
 from rcsss.common import FR3, FrankaHand
-import numpy as np
-from time import sleep
-import pickle
 
 np.set_printoptions(precision=27)
 
+_logger = logging.getLogger("record")
+
 
 class Pose(ABC):
+    @abstractmethod
     def record(self):
         pass
 
+    @abstractmethod
     def replay(self):
         pass
 
+    @abstractmethod
     def __str__(self) -> str:
         pass
 
+    @abstractmethod
     @classmethod
     def from_str(cls, line: str) -> "Pose":
         pass
@@ -86,15 +92,14 @@ class WaitForInput(Pose):
     def record(self):
         pass
 
-    def replay(self, *args):
+    def replay(self, *args):  # noqa: ARG002
         input("Press enter to continue")
 
     def __str__(self) -> str:
         return "WaitForInput"
 
     @classmethod
-    def from_str(cls, line: str) -> Pose:
-        l = line.replace("\n", "").split(";")
+    def from_str(cls, line: str) -> Pose:  # noqa: ARG003
         return cls()
 
 
@@ -124,7 +129,7 @@ class Sleep(Pose):
     def record(self):
         pass
 
-    def replay(self, *args):
+    def replay(self, *args):  # noqa: ARG002
         sleep(self.t)
 
     def __str__(self) -> str:
@@ -184,18 +189,17 @@ class PoseList:
     def load(cls, ip: Dict[str, str], filenames: List[str]):
         poses = []
         for filename in filenames:
-            pose_dict = {
-                "JointPose": JointPose,
-                "GripperPose": GripperPose,
-                "WaitForInput": WaitForInput,
-                "Sleep": Sleep,
-                "ChnageSpeedFactor": ChnageSpeedFactor,
-                "WaitForDoubleTab": WaitForDoubleTab,
-            }
 
             def get_class(line: str) -> Pose:
+                pose_dict = {
+                    "JointPose": JointPose,
+                    "GripperPose": GripperPose,
+                    "WaitForInput": WaitForInput,
+                    "Sleep": Sleep,
+                    "ChnageSpeedFactor": ChnageSpeedFactor,
+                    "WaitForDoubleTab": WaitForDoubleTab,
+                }
                 first = line.split(";")[0].replace("\n", "")
-                print(line)
                 return pose_dict[first]
 
             with open(filename, "r") as f:
@@ -214,7 +218,7 @@ class PoseList:
             )
             if i.split(" ")[0] == "p":
                 if not check_pose(self.r[i.split(" ")[1]].getJointPosition()):
-                    print("REJECTED due to joint constraints")
+                    _logger.warning("REJECTED due to joint constraints")
                     continue
                 j = JointPose(name=i.split(" ")[1])
                 j.record(self.r)
@@ -247,12 +251,11 @@ class PoseList:
                     i.split(" ")[1],
                     self.r[i.split(" ")[1]].getJointPosition(),
                 )
+            elif i in self.m:
+                j = JointPose(name=self.m[i][0], pose=self.m[i][1])
+                self.poses.append(j)
             else:
-                if i in self.m:
-                    j = JointPose(name=self.m[i][0], pose=self.m[i][1])
-                    self.poses.append(j)
-                else:
-                    print("Invalid input")
+                _logger.warning("Invalid input")
 
     def replay(self):
         for pose in self.poses:
@@ -270,14 +273,14 @@ if __name__ == "__main__":
     ip = eval(args.ip)
 
     if len(args.lpaths) != 0:
-        for robot, r_ip in ip.items():
+        for r_ip in ip.values():
             desk.prepare(r_ip, guiding_mode=False)
         p = PoseList.load(ip, args.lpaths)
         input("Press any key to replay")
         p.replay()
     else:
-        for robot, ip in ip.items():
-            desk.prepare(ip, guiding_mode=True)
+        for r_ip in ip.values():
+            desk.prepare(r_ip, guiding_mode=True)
         p = PoseList(ip)
         p.record()
         if args.spath:

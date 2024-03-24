@@ -1,6 +1,7 @@
 from typing import Annotated
-import typer
+
 import rcsss
+import typer
 import yaml
 
 cli = typer.Typer()
