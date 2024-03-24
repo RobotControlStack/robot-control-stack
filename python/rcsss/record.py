@@ -2,11 +2,11 @@ import argparse
 import logging
 from abc import ABC, abstractmethod
 from time import sleep
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from rcsss import desk
-from rcsss.common import FR3, FrankaHand
+from rcsss._core.hw import FR3, FHConfig, FR3Config, FrankaHand
 
 np.set_printoptions(precision=27)
 
@@ -14,12 +14,9 @@ _logger = logging.getLogger("record")
 
 
 class Pose(ABC):
-    @abstractmethod
-    def record(self):
-        pass
 
     @abstractmethod
-    def replay(self):
+    def replay(self, robot: Dict[str, FR3], gripper: Dict[str, FrankaHand]):
         pass
 
     @abstractmethod
@@ -38,12 +35,14 @@ class JointPose(Pose):
         self.name = name
 
     def record(self, robot: Dict[str, FR3]):
-        self.pose = robot[self.name].getJointPosition()
+        self.pose = robot[self.name].get_joint_position()
 
     def replay(self, robot: Dict[str, FR3], _: Dict[str, FrankaHand]):
-        robot[self.name].setJointPosition(self.pose)
+        robot[self.name].set_joint_position(self.pose)
 
     def __str__(self) -> str:
+        if self.pose is None:
+            return f"JointPose;{self.name};None"
         ps = np.array2string(self.pose).replace("\n", "")
         return f"JointPose;{self.name};{ps}"
 
@@ -56,6 +55,7 @@ class JointPose(Pose):
 class GripperPose(Pose):
     SPEED = 0.1
     FORCE = 5
+    EPSILON = 0.1
 
     def __init__(self, name: str, pose: Optional[float] = None):
         self.pose = pose
@@ -63,7 +63,7 @@ class GripperPose(Pose):
 
     def record(self, shut: bool, gripper: Dict[str, FrankaHand]):
         if shut:
-            gripper[self.name].halt()
+            gripper[self.name].grasp()
             self.pose = 0.1  # gripper[self.name].getState()[1]
         else:
             gripper[self.name].release()
@@ -71,8 +71,15 @@ class GripperPose(Pose):
 
     def replay(self, _: Dict[str, FR3], gripper: Dict[str, FrankaHand]):
         if self.pose:
-            gripper[self.name].setParameters(self.pose, self.SPEED, self.FORCE)
-            gripper[self.name].halt()
+            config = FHConfig()
+            config.speed = self.SPEED
+            config.force = self.FORCE
+            config.grasping_width = self.pose
+            config.epsilon_inner = self.EPSILON
+            config.epsilon_outer = self.EPSILON
+
+            gripper[self.name].set_parameters(config)
+            gripper[self.name].grasp()
         else:
             gripper[self.name].release()
 
@@ -157,8 +164,10 @@ class ChnageSpeedFactor(Pose):
     def record(self):
         pass
 
-    def replay(self, robot, _):
-        robot[self.name].setParameters(self.speed)
+    def replay(self, robot: Dict[str, FR3], _):
+        config: FR3Config = robot[self.name].get_paramaters()
+        config.speed_scaling = self.speed
+        robot[self.name].set_paramaters(config)
 
     def __str__(self) -> str:
         return f"ChnageSpeedFactor;{self.name};{self.speed}"
@@ -183,15 +192,15 @@ class PoseList:
         self.g: Dict[str, FR3] = {key: FrankaHand(ip) for key, ip in ip.items()}
         self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
-        self.m = {}
+        self.m: Dict[str, Tuple[str, np.ndarray]] = {}
 
     @classmethod
     def load(cls, ip: Dict[str, str], filenames: List[str]):
         poses = []
         for filename in filenames:
 
-            def get_class(line: str) -> Pose:
-                pose_dict = {
+            def get_class(line: str) -> type[Pose]:
+                pose_dict: Dict[str, type[Pose]] = {
                     "JointPose": JointPose,
                     "GripperPose": GripperPose,
                     "WaitForInput": WaitForInput,
@@ -217,7 +226,7 @@ class PoseList:
                 "Press p to record a pose, press s to shut the gripper, press r to release the gripper, press w to have a wait for input pose\n"
             )
             if i.split(" ")[0] == "p":
-                if not check_pose(self.r[i.split(" ")[1]].getJointPosition()):
+                if not check_pose(self.r[i.split(" ")[1]].get_joint_position()):
                     _logger.warning("REJECTED due to joint constraints")
                     continue
                 j = JointPose(name=i.split(" ")[1])
@@ -232,24 +241,24 @@ class PoseList:
                 g.record(False, self.g)
                 self.poses.append(g)
             elif i == "w":
-                p = WaitForInput()
-                self.poses.append(p)
+                w = WaitForInput()
+                self.poses.append(w)
             elif i == "wd":
-                p = WaitForDoubleTab(name=i.split(" ")[1])
-                self.poses.append(p)
+                wd = WaitForDoubleTab(name=i.split(" ")[1])
+                self.poses.append(wd)
             elif i.split(" ")[0] == "sl":
-                p = Sleep(float(i.split(" ")[1]))
-                self.poses.append(p)
+                sl = Sleep(float(i.split(" ")[1]))
+                self.poses.append(sl)
             elif i.split(" ")[0] == "sp":
-                p = ChnageSpeedFactor(name=i.split(" ")[1], speed=float(i.split(" ")[2]))
-                self.poses.append(p)
+                sp = ChnageSpeedFactor(name=i.split(" ")[1], speed=float(i.split(" ")[2]))
+                self.poses.append(sp)
             elif i == "q":
                 break
             elif i.split(" ")[0] == "re":
                 # re robotname savename
                 self.m[i.split(" ")[2]] = (
                     i.split(" ")[1],
-                    self.r[i.split(" ")[1]].getJointPosition(),
+                    self.r[i.split(" ")[1]].get_joint_position(),
                 )
             elif i in self.m:
                 j = JointPose(name=self.m[i][0], pose=self.m[i][1])
