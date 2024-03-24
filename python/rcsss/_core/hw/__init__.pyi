@@ -14,7 +14,7 @@ from _core.common import (
 )
 
 class FR3(Robot):
-    def __init__(self, ip: str, filename: str) -> None: ...
+    def __init__(self, ip: str, filename: Optional[str], cfg: Optional[FR3Config]) -> None: ...
     def set_default_robot_behavior(self) -> None: ...
     def set_guiding_mode(self, enabled: bool) -> None: ...
     def automatic_error_recovery(self) -> None: ...
@@ -39,6 +39,7 @@ class IKController(Enum):
     robotics_library = 1
 
 class FR3Config(RConfig):
+    # TODO: we need to add a constructor for this
     controller: IKController
     guiding_mode_enabled: bool
     speed_scaling: float

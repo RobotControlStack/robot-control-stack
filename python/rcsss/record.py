@@ -2,11 +2,11 @@ from abc import ABC
 import argparse
 from collections import defaultdict
 from typing import Dict, Optional, List, Tuple, Union
-import rcss
+from rcsss import desk
+from rcsss.common import FR3, FrankaHand
 import numpy as np
 from time import sleep
 import pickle
-import prepare
 
 np.set_printoptions(precision=27)
 
@@ -31,10 +31,10 @@ class JointPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, robot: Dict[str, rcss.FR3]):
+    def record(self, robot: Dict[str, FR3]):
         self.pose = robot[self.name].getJointPosition()
 
-    def replay(self, robot: Dict[str, rcss.FR3], _: Dict[str, rcss.FrankaHand]):
+    def replay(self, robot: Dict[str, FR3], _: Dict[str, FrankaHand]):
         robot[self.name].setJointPosition(self.pose)
 
     def __str__(self) -> str:
@@ -55,15 +55,15 @@ class GripperPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, shut: bool, gripper: Dict[str, rcss.FrankaHand]):
+    def record(self, shut: bool, gripper: Dict[str, FrankaHand]):
         if shut:
             gripper[self.name].halt()
-            self.pose = 0.1 # gripper[self.name].getState()[1]
+            self.pose = 0.1  # gripper[self.name].getState()[1]
         else:
             gripper[self.name].release()
             self.pose = None
 
-    def replay(self, _: Dict[str, rcss.FR3], gripper: Dict[str, rcss.FrankaHand]):
+    def replay(self, _: Dict[str, FR3], gripper: Dict[str, FrankaHand]):
         if self.pose:
             gripper[self.name].setParameters(self.pose, self.SPEED, self.FORCE)
             gripper[self.name].halt()
@@ -105,7 +105,7 @@ class WaitForDoubleTab(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, rcss.FR3], _: Dict[str, rcss.FrankaHand]):
+    def replay(self, robot: Dict[str, FR3], _: Dict[str, FrankaHand]):
         robot[self.name].double_tap_robot_to_continue()
 
     def __str__(self) -> str:
@@ -137,9 +137,7 @@ class Sleep(Pose):
 
 
 def check_pose(pose: np.ndarray):
-    if np.all(
-        pose <= np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895])
-    ) and np.all(
+    if np.all(pose <= np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895])) and np.all(
         np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]) <= pose
     ):
         return True
@@ -176,17 +174,9 @@ class PoseList:
         speed_factor: float = 0.2,
         poses: Optional[List[Pose]] = None,
     ):
-        self.r: Dict[str, rcss.FR3] = {
-            key: rcss.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()
-        }
-        self.g: Dict[str, rcss.FR3] = {
-            key: rcss.FrankaHand(ip) for key, ip in ip.items()
-        }
-        self.poses: List[Pose] = (
-            [ChnageSpeedFactor(speed_factor, key) for key in self.r]
-            if poses is None
-            else poses
-        )
+        self.r: Dict[str, FR3] = {key: FR3(ip, self.MODEL_PATH) for key, ip in ip.items()}
+        self.g: Dict[str, FR3] = {key: FrankaHand(ip) for key, ip in ip.items()}
+        self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
         self.m = {}
 
@@ -247,9 +237,7 @@ class PoseList:
                 p = Sleep(float(i.split(" ")[1]))
                 self.poses.append(p)
             elif i.split(" ")[0] == "sp":
-                p = ChnageSpeedFactor(
-                    name=i.split(" ")[1], speed=float(i.split(" ")[2])
-                )
+                p = ChnageSpeedFactor(name=i.split(" ")[1], speed=float(i.split(" ")[2]))
                 self.poses.append(p)
             elif i == "q":
                 break
@@ -275,27 +263,21 @@ class PoseList:
 record = False
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tool to record poses with FR3.")
-    parser.add_argument(
-        "ip", type=str, help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\""
-    )
-    parser.add_argument(
-        "--lpaths", type=str, nargs="+", help="Paths to load n recordings", default=[]
-    )
-    parser.add_argument(
-        "--spath", type=str, help="Path to store the recoding", default=None
-    )
+    parser.add_argument("ip", type=str, help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")
+    parser.add_argument("--lpaths", type=str, nargs="+", help="Paths to load n recordings", default=[])
+    parser.add_argument("--spath", type=str, help="Path to store the recoding", default=None)
     args = parser.parse_args()
     ip = eval(args.ip)
 
     if len(args.lpaths) != 0:
         for robot, r_ip in ip.items():
-            prepare.prepare(r_ip, guiding_mode=False)
+            desk.prepare(r_ip, guiding_mode=False)
         p = PoseList.load(ip, args.lpaths)
         input("Press any key to replay")
         p.replay()
     else:
         for robot, ip in ip.items():
-            prepare.prepare(ip, guiding_mode=True)
+            desk.prepare(ip, guiding_mode=True)
         p = PoseList(ip)
         p.record()
         if args.spath:
