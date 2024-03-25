@@ -1,15 +1,16 @@
 from enum import Enum
 from typing import Optional
+
 from _core.common import (
     GConfig,
+    Gripper,
     GState,
+    Matrix3d,
+    Pose,
     RConfig,
     Robot,
-    Pose,
-    Gripper,
     RState,
     Vector3d,
-    Matrix3d,
 )
 
 class FR3(Robot):

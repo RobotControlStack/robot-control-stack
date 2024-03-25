@@ -1,5 +1,6 @@
 import typing
-from typing import Annotated, List, Literal, Optional, TypeVar
+from typing import Annotated, List, Literal, Optional
+
 import numpy as np
 import numpy.typing as npt
 
@@ -14,8 +15,9 @@ Matrix4d = Annotated[npt.NDArray[np.float64], Literal[4, 4]]
 
 class RPY:
     @typing.overload
-    def __init__(self, roll: float, pitch: float, yaw: float) -> None: ...
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, roll: float, pitch: float, yaw: float) -> None: ...
     def __add__(self, other: RPY) -> RPY: ...
 
 class Pose:
