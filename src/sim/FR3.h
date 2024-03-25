@@ -1,17 +1,16 @@
 #ifndef RCS_FR3SIM_H
 #define RCS_FR3SIM_H
-#include <Pose.h>
-#include <Robot.h>
+#include <common/Pose.h>
+#include <common/Robot.h>
 #include <mujoco/mujoco.h>
-#include <rl/mdl/Model.h>
-#include <utils.h>
+#include <common/utils.h>
 
 #include <Eigen/Eigen>
-#include <cmath>
-#include <optional>
 #include <thread>
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Kinematic.h"
+#include "rl/mdl/Model.h"
+
 namespace rcs {
 namespace sim {
 const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
@@ -23,8 +22,12 @@ struct FR3Load {
   std::optional<Eigen::Vector3d> f_x_cload;
   std::optional<Eigen::Matrix3d> load_inertia;
 };
+
 struct FR3Config : common::RConfig {
   double speed_factor;
+  bool render;
+  bool realtime;
+  FR3Config(double speed_factor, bool render, bool realtime) : speed_factor(speed_factor), render(render), realtime(realtime) {};
 };
 
 struct FR3State : common::RState {};
