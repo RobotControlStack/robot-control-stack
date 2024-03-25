@@ -1,13 +1,16 @@
 import typing
 from typing import Annotated, List, Literal, Optional, TypeVar
-import numpy
-import numpy.typing
+import numpy as np
+import numpy.typing as npt
 
-Vector3d = Annotated[numpy.typing.NDArray[numpy.float64], Literal[3, 1]]
-Vector4d = Annotated[numpy.typing.NDArray[numpy.float64], Literal[4, 1]]
-Vector7d = Annotated[numpy.typing.NDArray[numpy.float64], Literal[7, 1]]
-Matrix3d = Annotated[numpy.typing.NDArray[numpy.float64], Literal[3, 3]]
-Matrix4d = Annotated[numpy.typing.NDArray[numpy.float64], Literal[4, 4]]
+# _Shape = typing.Tuple[int, ...]
+# https://stackoverflow.com/questions/71109838/numpy-typing-with-specific-shape-and-datatype
+
+Vector3d = Annotated[npt.NDArray[np.float64], Literal[3, 1]]
+Vector4d = Annotated[npt.NDArray[np.float64], Literal[4, 1]]
+Vector7d = Annotated[npt.NDArray[np.float64], Literal[7, 1]]
+Matrix3d = Annotated[npt.NDArray[np.float64], Literal[3, 3]]
+Matrix4d = Annotated[npt.NDArray[np.float64], Literal[4, 4]]
 
 class RPY:
     @typing.overload
