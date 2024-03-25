@@ -39,4 +39,4 @@ ruff:
 
 .PHONY: mypy
 mypy:
-	mypy $(PYSRC) --explicit-package-bases
+	python -m mypy $(PYSRC) --explicit-package-bases --install-types --non-interactive
