@@ -64,8 +64,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
 
-find_package(Python COMPONENTS Interpreter Development)
-find_package(pybind11 CONFIG)
 find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 
