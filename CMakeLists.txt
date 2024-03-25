@@ -7,10 +7,15 @@ project(
     DESCRIPTION "UTNs Robot Control Stack Library"
 )
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Set version in project
 set(CMAKE_POLICY_DEFAULT_CMP0072 NEW) # Use GLVND instead of legacy libGL.so
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Allow us to set options for subprojects
+
+if (DEFINED SKBUILD)
+    # Set library runpath so the python bindings shared object finds the other
+    # bundled shared objects
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN")
+endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -58,5 +63,8 @@ FetchContent_Declare(
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
+
+find_package(Eigen3 REQUIRED)
+find_package(glfw3 REQUIRED)
 
 add_subdirectory(src)

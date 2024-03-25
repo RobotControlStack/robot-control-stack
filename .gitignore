@@ -6,3 +6,6 @@ plugin.h
 .projections.json
 pw.py
 __pycache__
+.ruff_cache
+.mypy_cache
+dist

@@ -4,14 +4,14 @@
 #include <cstring>
 #include <memory>
 
-#include "Robot.h"
 #include "glfw_adapter.h"
+#include "mujoco/mujoco.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/UrdfFactory.h"
 
 namespace rcs {
 namespace sim {
-FR3::FR3(std::string const mjmdl, std::string const rlmdl) : ikmdl(NULL) {
+FR3::FR3(std::string const mjmdl, std::string const rlmdl) : ikmdl(NULL), cfg(0, false, false){
   this->mjmdl =
       std::shared_ptr<mjModel>(mj_loadXML(mjmdl.c_str(), NULL, NULL, 0));
   this->rlmdl = rl::mdl::UrdfFactory().create(rlmdl);
@@ -21,7 +21,10 @@ FR3::FR3(std::string const mjmdl, std::string const rlmdl) : ikmdl(NULL) {
   this->kinmdl = std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rlmdl);
   this->ikmdl = rl::mdl::JacobianInverseKinematics(this->kinmdl.get());
   ikmdl.setDuration(std::chrono::milliseconds(100));
+  mj_step(this->mjmdl.get(), this->mujoco_data.get());
 }
+
+FR3::~FR3() {}
 
 bool FR3::set_parameters(common::RConfig const& cfg) {
   this->cfg = dynamic_cast<FR3Config const&>(cfg);
