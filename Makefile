@@ -21,7 +21,7 @@ compile:
 # Auto generation of CPP binding stub files
 .PHONY: genstub
 genstub:
-	pybind11-stubgen -o python rcsss
+	pybind11-stubgen -o python --numpy-array-use-type-var rcsss
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make genstub` to update!\n/'
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
 	isort python/rcsss/_core/*.pyi

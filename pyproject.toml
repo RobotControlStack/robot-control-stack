@@ -70,6 +70,7 @@ extend-select = [
 ignore = [
   "PLR09",    # Too many X
   "PLR2004",  # Magic comparison
+  "ICN001",  #  `numpy` should be imported as `np`
 ]
 
 [tool.pylint.format]
