@@ -17,7 +17,7 @@ readme = "README.md"
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -37,7 +37,10 @@ classifiers = [
 
 
 [tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+cmake.verbose = true
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["python/rcsss"]
 
 [tool.ruff]
 line-length = 120
@@ -70,6 +73,7 @@ ignore = [
   "PLR09",    # Too many X
   "PLR2004",  # Magic comparison
   "E741",    # ambiguous variable name
+  "ICN001",  #  `numpy` should be imported as `np`
 ]
 
 [tool.pylint.format]
@@ -88,7 +92,7 @@ disable = [
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"

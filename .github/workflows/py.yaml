@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.10'
           cache: 'pip'
       - name: Install linting and formatting dependencies
         run: python -m pip install -r requirements_dev.txt
@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.10'
           cache: 'pip'
       - name: Install linting and formatting dependencies
         run: python -m pip install -r requirements_dev.txt
@@ -48,15 +48,19 @@ jobs:
         # with:
         #   packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
         #   version: 1.0
-      - name: Set up Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.10'
           cache: 'pip'
       - name: Install building dependencies
         run: python -m pip install -r requirements_dev.txt
       - name: Create python wheel
         run: python -m build --wheel --outdir dist/
+      - name: Install the wheel package
+        run: python -m pip install dist/*.whl
+      - name: Check that stub files are up-to-date
+        run: make genstub && git diff --exit-code
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -68,10 +72,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.10'
           cache: 'pip'
       - name: Create python wheel
         run: ./install_kinect_k4a.sh
