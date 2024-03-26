@@ -15,7 +15,7 @@ readme = "README.md"
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -35,7 +35,10 @@ classifiers = [
 
 
 [tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+cmake.verbose = true
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["python/rcsss"]
 
 [tool.ruff]
 line-length = 120
@@ -85,7 +88,7 @@ disable = [
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"

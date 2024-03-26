@@ -1,12 +1,6 @@
 #ifndef RCS_NROBOTSWITHGRIPPER_H
 #define RCS_NROBOTSWITHGRIPPER_H
 
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-
 #include <future>
 #include <memory>
 #include <optional>
