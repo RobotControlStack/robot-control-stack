@@ -23,12 +23,12 @@ compile:
 .PHONY: pycheckformat
 pycheckformat:
 	isort --check-only ${PYSRC}
-	black --target-version py310 --check ${PYSRC}
+	black py310 --check ${PYSRC}
 
 .PHONY: pyformat
 pyformat:
 	isort ${PYSRC}
-	black --target-version py310 ${PYSRC}
+	black ${PYSRC}
 
 .PHONY: pylint
 pylint: ruff mypy
