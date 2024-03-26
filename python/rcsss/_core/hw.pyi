@@ -55,8 +55,8 @@ class FR3Config:
     nominal_end_effector_frame: rcsss._core.common.Pose | None
 
 class FR3Load:
-    f_x_cload: numpy.ndarray[numpy.float64[3, 1]] | None
-    load_inertia: numpy.ndarray[numpy.float64[3, 3]] | None
+    f_x_cload: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[1]], numpy.dtype[numpy.float64]] | None
+    load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
 
 class FR3State:
