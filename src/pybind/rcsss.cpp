@@ -108,6 +108,11 @@ PYBIND11_MODULE(_core, m) {
            :toctree: _generate
 
     )pbdoc";
+#ifdef VERSION_INFO
+  m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
+#else
+  m.attr("__version__") = "dev";
+#endif
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
@@ -303,10 +308,4 @@ PYBIND11_MODULE(_core, m) {
                   new rcs::sim::FR3(mjmdl, rlmdl));
             }),
             py::arg("mjmdl"), py::arg("rlmdl"));
-
-#ifdef VERSION_INFO
-    m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
-#else
-    m.attr("__version__") = "dev";
-#endif
 }

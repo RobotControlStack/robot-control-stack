@@ -11,4 +11,4 @@ target_link_libraries(
 )
 
 add_executable(test_hw main.cpp)
-target_link_libraries(test_hw hw)
+target_link_libraries(test_hw PRIVATE hw)

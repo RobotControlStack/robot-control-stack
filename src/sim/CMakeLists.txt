@@ -16,7 +16,5 @@ set_target_properties(platform_ui_adapter PROPERTIES POSITION_INDEPENDENT_CODE T
 
 add_library(sim SHARED FR3.cpp FR3.h)
 target_link_libraries(sim PUBLIC common mujoco mdl platform_ui_adapter)
-
-#add_executable(test_sim main.cpp sim.h sim.cpp)
-add_executable(test_fr3 test_fr3.cpp)
-target_link_libraries(test_fr3 sim)
+add_executable(test_sim main.cpp)
+target_link_libraries(test_sim PRIVATE sim)
