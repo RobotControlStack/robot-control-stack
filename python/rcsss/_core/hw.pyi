@@ -22,14 +22,16 @@ __all__ = [
     "robotics_library",
 ]
 
-class FHConfig:
+class FHConfig(rcsss._core.common.GConfig):
     epsilon_inner: float
     epsilon_outer: float
     force: float
     grasping_width: float
     speed: float
+    def __init__(self) -> None: ...
 
-class FHState:
+class FHState(rcsss._core.common.GState):
+    def __init__(self) -> None: ...
     @property
     def is_grasped(self) -> bool: ...
     @property
@@ -48,19 +50,21 @@ class FR3(rcsss._core.common.Robot):
     def set_default_robot_behavior(self) -> None: ...
     def set_guiding_mode(self, enabled: bool) -> None: ...
 
-class FR3Config:
+class FR3Config(rcsss._core.common.RConfig):
     controller: IKController
     guiding_mode_enabled: bool
     load_parameters: FR3Load | None
     nominal_end_effector_frame: rcsss._core.common.Pose | None
+    def __init__(self) -> None: ...
 
 class FR3Load:
     f_x_cload: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[1]], numpy.dtype[numpy.float64]] | None
     load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
+    def __init__(self) -> None: ...
 
-class FR3State:
-    pass
+class FR3State(rcsss._core.common.RState):
+    def __init__(self) -> None: ...
 
 class FrankaHand(rcsss._core.common.Gripper):
     def __init__(self, arg0: str) -> None: ...
