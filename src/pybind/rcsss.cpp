@@ -115,25 +115,6 @@ PYBIND11_MODULE(_core, m) {
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
-  py::class_<rcs::common::Pose>(common, "Pose")
-      .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
-      .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
-           py::arg("rotation"), py::arg("translation"))
-      .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
-           py::arg("rotation"), py::arg("translation"))
-      .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
-           py::arg("quaternion"), py::arg("translation"))
-      .def("translation", &rcs::common::Pose::translation)
-      .def("rotation_m", &rcs::common::Pose::rotation_m)
-      .def("rotation_q", &rcs::common::Pose::rotation_q)
-      .def("pose_matrix", &rcs::common::Pose::pose_matrix)
-      .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
-      .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
-           py::arg("progress"))
-      .def("__str__", &rcs::common::Pose::str)
-      .def(py::self * py::self);
-
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -143,6 +124,25 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
+
+  py::class_<rcs::common::Pose>(common, "Pose")
+      .def(py::init<>())
+      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
+           py::arg("rotation"), py::arg("translation"))
+      .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
+           py::arg("quaternion"), py::arg("translation"))
+      .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
+           py::arg("rpy"), py::arg("translation"))
+      .def("translation", &rcs::common::Pose::translation)
+      .def("rotation_m", &rcs::common::Pose::rotation_m)
+      .def("rotation_q", &rcs::common::Pose::rotation_q)
+      .def("pose_matrix", &rcs::common::Pose::pose_matrix)
+      .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
+      .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
+           py::arg("progress"))
+      .def("__str__", &rcs::common::Pose::str)
+      .def(py::self * py::self);
 
   py::class_<rcs::common::RConfig, std::shared_ptr<rcs::common::RConfig>>(
       common, "RConfig");

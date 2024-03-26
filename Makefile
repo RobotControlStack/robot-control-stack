@@ -18,6 +18,15 @@ compile:
 	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja -S .
 	cmake --build build
 
+# Auto generation of CPP binding stub files
+.PHONY: genstub
+genstub:
+	pybind11-stubgen -o python rcsss
+	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make genstub` to update!\n/'
+	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
+	isort python/rcsss/_core/*.pyi
+	black python/rcsss/_core/*.pyi
+
 # Python
 .PHONY: pycheckformat
 pycheckformat:
