@@ -2,7 +2,6 @@ PYSRC = python/rcsss
 CPPSRC = src
 
 # CPP
-.PHONY: cppcheckformat
 cppcheckformat:
 	clang-format --dry-run -Werror -i $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -o -name '*.h')
 
@@ -23,7 +22,7 @@ compile:
 .PHONY: pycheckformat
 pycheckformat:
 	isort --check-only ${PYSRC}
-	black py310 --check ${PYSRC}
+	black --check ${PYSRC}
 
 .PHONY: pyformat
 pyformat:
