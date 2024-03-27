@@ -5,4 +5,4 @@ target_link_libraries(_core PRIVATE hw sim common)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # Put the shared object files of these targets in site-packages/rcsss
-install(TARGETS _core hw sim common DESTINATION rcsss)
+install(TARGETS _core DESTINATION rcsss COMPONENT python_package)
