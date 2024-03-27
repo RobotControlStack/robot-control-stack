@@ -60,7 +60,7 @@ jobs:
       - name: Install the wheel package
         run: python -m pip install dist/*.whl
       - name: Check that stub files are up-to-date
-        run: make genstub && git diff --exit-code
+        run: make stubgen && git diff --exit-code
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
