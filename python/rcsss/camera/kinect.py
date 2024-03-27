@@ -1,6 +1,7 @@
 import typing
 
 import k4a
+import numpy as np
 from rcsss.camera.interface import (
     Camera,
     CameraFrame,
@@ -52,10 +53,12 @@ class KinectCamera(Camera):
             if imu_sample is None:
                 msg = "Timeout error while waiting for IMU sample."
                 raise IOError(msg)
+            imu_sample_np = np.array((imu_sample.acc_sample.x, imu_sample.acc_sample.y, imu_sample.acc_sample.z))
+            gyro_sample_np = np.array((imu_sample.gyro_sample.x, imu_sample.gyro_sample.y, imu_sample.gyro_sample.z))
             imu_frame = IMUFrame(
-                acc_sample=imu_sample.acc_sample,
+                acc_sample=imu_sample_np,
                 acc_sample_usec=imu_sample.acc_sample_usec,
-                gyro_sample=imu_sample.gyro_sample,
+                gyro_sample=gyro_sample_np,
                 gyro_sample_usec=imu_sample.gyro_sample_usec,
                 temperature=imu_sample.temperature,
             )

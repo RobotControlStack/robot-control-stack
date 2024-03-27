@@ -8,9 +8,6 @@ from pydantic import BaseModel
 class GenericCameraConfig(BaseModel): ...
 
 
-class GenericIMUConfig(BaseModel): ...
-
-
 class CameraFrame(BaseModel):
     color: np.ndarray
     ir: Optional[np.ndarray]
