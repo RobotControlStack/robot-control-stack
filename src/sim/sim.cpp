@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "Pose.h"
+#include "common/Pose.h"
 #include "glfw_adapter.h"
 #include "mujoco/mjdata.h"
 #include "mujoco/mujoco.h"

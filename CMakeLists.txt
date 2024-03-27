@@ -8,6 +8,7 @@ project(
 )
 
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Set version in project
+set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0072 NEW) # Use GLVND instead of legacy libGL.so
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Allow us to set options for subprojects
 
