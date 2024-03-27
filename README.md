@@ -50,3 +50,9 @@ Import the library in python:
 ```python
 import rcsss
 ```
+
+The config file for the FR3 desk cli should be in yaml format:
+```yaml
+username=...
+password=...
+```
