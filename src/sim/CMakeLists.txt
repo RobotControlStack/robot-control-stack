@@ -8,8 +8,8 @@ target_sources(platform_ui_adapter
 target_link_libraries(platform_ui_adapter PUBLIC mujoco glfw)
 
 add_library(sim)
-target_sources(sim PRIVATE sim.cpp)
+target_sources(sim PRIVATE FR3.cpp)
 target_link_libraries(sim PUBLIC common mujoco mdl platform_ui_adapter)
 
 add_executable(test_sim main.cpp sim.cpp)
-target_link_libraries(test_sim PRIVATE mujoco mdl platform_ui_adapter)
+target_link_libraries(test_sim PRIVATE mujoco common mdl platform_ui_adapter)

@@ -42,10 +42,17 @@ Export CC and CXX env vars, if you use clang (cf. above why you might want to):
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
 ```
+
 then install the pip package:
 ```shell
 pip install .
 ```
+
+then stubgen the genstub bindings
+```shell
+make stubgen
+```
+
 Import the library in python:
 ```python
 import rcsss

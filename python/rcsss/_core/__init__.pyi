@@ -1,4 +1,4 @@
-# ATTENTION: auto generated from C++ code, use `make genstub` to update!
+# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
 """
 
         Robot Control Stack Python Bindings
@@ -13,7 +13,7 @@
 """
 from __future__ import annotations
 
-from . import common, hw
+from . import common, hw, sim
 
-__all__ = ["common", "hw"]
+__all__ = ["common", "hw", "sim"]
 __version__: str = "0.1.0"

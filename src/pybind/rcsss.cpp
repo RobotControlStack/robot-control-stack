@@ -7,6 +7,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <sim/FR3.h>
 
 #include <memory>
 
@@ -303,4 +304,18 @@ PYBIND11_MODULE(_core, m) {
             new rcs::hw::FrankaHand(ip));
       }))
       .def("homing", &rcs::hw::FrankaHand::homing);
+
+  // SIM MODULE
+  auto sim = m.def_submodule("sim", "sim module");
+  py::class_<rcs::sim::FR3State>(sim, "FR3State");
+  py::class_<rcs::sim::FR3Load>(sim, "FR3Load");
+  py::class_<rcs::sim::FR3Config, std::shared_ptr<rcs::sim::FR3Config>>(
+      sim, "FR3Config");
+  py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
+             std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
+      .def(py::init([](const std::string mjmdl, const std::string rlmdl) {
+             return std::shared_ptr<rcs::sim::FR3>(
+                 new rcs::sim::FR3(mjmdl, rlmdl));
+           }),
+           py::arg("mjmdl"), py::arg("rlmdl"));
 }
