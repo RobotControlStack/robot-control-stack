@@ -245,6 +245,7 @@ PYBIND11_MODULE(_core, m) {
              std::shared_ptr<rcs::hw::FR3Config>>(hw, "FR3Config")
       .def(py::init<>())
       .def_readwrite("controller", &rcs::hw::FR3Config::controller)
+      .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
       .def_readwrite("guiding_mode_enabled",
                      &rcs::hw::FR3Config::guiding_mode_enabled)
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)

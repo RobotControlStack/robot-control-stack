@@ -2,11 +2,11 @@ import argparse
 import logging
 from abc import ABC, abstractmethod
 from time import sleep
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
-from rcsss import desk
-from rcsss._core.hw import FR3, FHConfig, FR3Config, FrankaHand
+from rcsss import desk, hw
+from rcsss.cli.main import read_config_yaml
 
 np.set_printoptions(precision=27)
 
@@ -16,7 +16,7 @@ _logger = logging.getLogger("record")
 class Pose(ABC):
 
     @abstractmethod
-    def replay(self, robot: Dict[str, FR3], gripper: Dict[str, FrankaHand]):
+    def replay(self, robot: Dict[str, hw.FR3], gripper: Dict[str, hw.FrankaHand]):
         pass
 
     @abstractmethod
@@ -34,11 +34,12 @@ class JointPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, robot: Dict[str, FR3]):
+    def record(self, robot: Dict[str, hw.FR3]):
         self.pose = robot[self.name].get_joint_position()
 
-    def replay(self, robot: Dict[str, FR3], _: Dict[str, FrankaHand]):
-        robot[self.name].set_joint_position(self.pose)
+    def replay(self, robot: Dict[str, hw.FR3], _: Dict[str, hw.FrankaHand]):
+        if self.pose is not None:
+            robot[self.name].set_joint_position(self.pose)
 
     def __str__(self) -> str:
         if self.pose is None:
@@ -61,7 +62,7 @@ class GripperPose(Pose):
         self.pose = pose
         self.name = name
 
-    def record(self, shut: bool, gripper: Dict[str, FrankaHand]):
+    def record(self, shut: bool, gripper: Dict[str, hw.FrankaHand]):
         if shut:
             gripper[self.name].grasp()
             self.pose = 0.1  # gripper[self.name].getState()[1]
@@ -69,9 +70,9 @@ class GripperPose(Pose):
             gripper[self.name].release()
             self.pose = None
 
-    def replay(self, _: Dict[str, FR3], gripper: Dict[str, FrankaHand]):
+    def replay(self, _: Dict[str, hw.FR3], gripper: Dict[str, hw.FrankaHand]):
         if self.pose:
-            config = FHConfig()
+            config = hw.FHConfig()
             config.speed = self.SPEED
             config.force = self.FORCE
             config.grasping_width = self.pose
@@ -117,7 +118,7 @@ class WaitForDoubleTab(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, FR3], _: Dict[str, FrankaHand]):
+    def replay(self, robot: Dict[str, hw.FR3], _: Dict[str, hw.FrankaHand]):
         robot[self.name].double_tap_robot_to_continue()
 
     def __str__(self) -> str:
@@ -164,10 +165,10 @@ class ChnageSpeedFactor(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, FR3], _):
-        config: FR3Config = robot[self.name].get_paramaters()
-        config.speed_scaling = self.speed
-        robot[self.name].set_paramaters(config)
+    def replay(self, robot: Dict[str, hw.FR3], _):
+        config: hw.FR3Config = cast(hw.FR3Config, robot[self.name].get_parameters())
+        config.speed_factor = self.speed
+        robot[self.name].set_parameters(config)
 
     def __str__(self) -> str:
         return f"ChnageSpeedFactor;{self.name};{self.speed}"
@@ -188,8 +189,8 @@ class PoseList:
         speed_factor: float = 0.2,
         poses: Optional[List[Pose]] = None,
     ):
-        self.r: Dict[str, FR3] = {key: FR3(ip, self.MODEL_PATH) for key, ip in ip.items()}
-        self.g: Dict[str, FR3] = {key: FrankaHand(ip) for key, ip in ip.items()}
+        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()}
+        self.g: Dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
         self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
         self.m: Dict[str, Tuple[str, np.ndarray]] = {}
@@ -281,15 +282,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
     ip = eval(args.ip)
 
+    username, password = read_config_yaml("")
     if len(args.lpaths) != 0:
         for r_ip in ip.values():
-            desk.prepare(r_ip, guiding_mode=False)
+            desk.prepare(r_ip, guiding_mode=False, username=username, password=password)
         p = PoseList.load(ip, args.lpaths)
         input("Press any key to replay")
         p.replay()
     else:
         for r_ip in ip.values():
-            desk.prepare(r_ip, guiding_mode=True)
+            desk.prepare(r_ip, guiding_mode=True, username=username, password=password)
         p = PoseList(ip)
         p.record()
         if args.spath:

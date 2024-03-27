@@ -19,13 +19,13 @@ def home(
     shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
 ):
     """Moves the FR3 to home position"""
-    f = rcsss.common.FR3(ip)
+    f = rcsss.hw.FR3(ip)
     config = rcsss.hw.FR3Config()
-    config.speed_scaling = 0.7
+    config.speed_factor = 0.7
     config.controller = rcsss.hw.IKController.internal
     config.guiding_mode_enabled = False
     f.set_parameters(config)
-    g = rcsss.common.FrankaHand(ip)
+    g = rcsss.hw.FrankaHand(ip)
     if shut:
         g.shut()
     else:
