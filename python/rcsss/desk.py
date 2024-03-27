@@ -25,6 +25,32 @@ in this file under the unit's IP address or hostname.
 """
 
 
+def lock(ip: str, username: str, password: str):
+    d = Desk(ip, username, password)
+    d.take_control(force=True)
+    d.lock()
+    d.release_control()
+
+
+def prepare(ip: str, username: str, password: str, guiding_mode: bool = False):
+    d = Desk(ip, username, password)
+    d.take_control(force=True)
+    d.unlock()
+    d.activate_fci()
+    if guiding_mode:
+        d.enable_guiding_mode()
+    else:
+        d.disable_guiding_mode()
+    d.release_control()
+
+
+def shutdown(ip: str, username: str, password: str):
+    d = Desk(ip, username, password)
+    d.take_control(force=True)
+    d.lock()
+    d.shutdown()
+
+
 @dataclasses.dataclass
 class Token:
     """

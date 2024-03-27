@@ -16,10 +16,14 @@ sudo apt-get install qt5-qmake qtbase5-dev libsoqt520-dev
 
 ### Compile
 ```shell
-# default compiler
-make compile
-# clang compiler
-make clangcompile
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+If you build with GCC >= 12 you will get a false positive array-bounds error.
+Cf. [here](https://github.com/google-deepmind/mujoco/issues/1489) for solutions.
+Otherwise, just use clang instead.
+```shell
+cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
 ```
 
 ### Formatting and Linting
@@ -37,18 +41,17 @@ make cpplint
 # create new virtual env and activate it
 virtualenv --python=python3.11 venv
 source venv/bin/activate
-
-# export CC and CXX env vars to use clang compile (needed for mujoco)
+```
+Export CC and CXX env vars, if you use clang (cf. above why you might want to):
+```shell
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
-
-# install rcsss
-pip install .
-
-# add dynamic linking paths
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:build/lib:build/_deps/rl-build/lib
 ```
-Open python and try to import the lib:
+then install the pip package:
+```shell
+pip install .
+```
+Import the library in python:
 ```python
 import rcsss
 ```
@@ -64,7 +67,7 @@ make pyformat
 make pylint
 ```
 
-## Sensors
+## Hardware
 ### Microsoft Azure Kinect
 Use the following install script to install k4a on debian-based systems:
 ```shell
@@ -84,4 +87,10 @@ python -m pip install <name>.whl
 In order to avoid putting `libdepthengine.so.2.0` into `/usr/lib/x86_64-linux-gnu` (see [this issue](https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1707)) export `LD_LIBRARY_PATH`:
 ```shell
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:venv/lib/python3.11/site-packages/k4a/_libs
+```
+### Franka Desk
+The config file for the FR3 desk cli should be in yaml format:
+```yaml
+username=...
+password=...
 ```

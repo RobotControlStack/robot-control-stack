@@ -8,14 +8,16 @@ name = "rcsss"
 version = "0.0.2"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
-    "requests",
-    "numpy"
+    "requests~=2.31",
+    "numpy~=1.26",
+    "typer==0.9.0",
+    "pyyaml~=6.0",
 ]
 readme = "README.md"
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -35,7 +37,11 @@ classifiers = [
 
 
 [tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["python/rcsss"]
+cmake.targets = ["_core"]
+install.components = ["python_package"]
 
 [tool.ruff]
 line-length = 120
@@ -67,6 +73,8 @@ extend-select = [
 ignore = [
   "PLR09",    # Too many X
   "PLR2004",  # Magic comparison
+  "E741",    # ambiguous variable name
+  "ICN001",  #  `numpy` should be imported as `np`
 ]
 
 [tool.pylint.format]
@@ -85,7 +93,7 @@ disable = [
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
