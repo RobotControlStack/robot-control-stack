@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
     - "install_kinect_k4a.sh"
+
+jobs:
   k4a:
     runs-on: ubuntu-latest
     steps:

@@ -16,14 +16,13 @@ sudo apt-get install qt5-qmake qtbase5-dev libsoqt520-dev
 
 ### Compile
 ```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+make gcccompile
 ```
 If you build with GCC >= 12 you will get a false positive array-bounds error.
 Cf. [here](https://github.com/google-deepmind/mujoco/issues/1489) for solutions.
 Otherwise, just use clang instead.
 ```shell
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+make clangcompile
 ```
 
 ### Formatting and Linting
@@ -93,7 +92,7 @@ python -m pip install <name>.whl
 
 In order to avoid putting `libdepthengine.so.2.0` into `/usr/lib/x86_64-linux-gnu` (see [this issue](https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1707)) export `LD_LIBRARY_PATH`:
 ```shell
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:venv/lib/python3.11/site-packages/k4a/_libs
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:venv/lib/python3.xy/site-packages/k4a/_libs
 ```
 ### Franka Desk
 The config file for the FR3 desk cli should be in yaml format:
