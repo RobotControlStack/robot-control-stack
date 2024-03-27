@@ -1,7 +1,8 @@
 # is this needed?
 # import rcsss.common
 import typing
-from typing import Annotated, List, Literal, Optional, TypeVar
+from typing import Annotated, List, Literal, Optional
+
 import numpy as np
 import numpy.typing as npt
 

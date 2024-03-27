@@ -19,7 +19,6 @@
 #include "rl/mdl/Kinematic.h"
 #include "rl/mdl/UrdfFactory.h"
 
-
 Simulation::Simulation(std::shared_ptr<mjModel> fr3_mjmdl,
                        std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls,
                        bool render, size_t n_threads)
@@ -186,7 +185,8 @@ struct sim {
 
 sim* sim_init(size_t n_threads) {
   rl::mdl::UrdfFactory factory{};
-  std::vector<std::shared_ptr<rl::mdl::Model>>* fr3_rlmdls = new std::vector<std::shared_ptr<rl::mdl::Model>>(0);
+  std::vector<std::shared_ptr<rl::mdl::Model>>* fr3_rlmdls =
+      new std::vector<std::shared_ptr<rl::mdl::Model>>(0);
   fr3_rlmdls->reserve(n_threads);
   for (size_t i = 0; i < n_threads; ++i) {
     fr3_rlmdls->emplace_back(

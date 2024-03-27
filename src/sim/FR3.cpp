@@ -11,7 +11,8 @@
 
 namespace rcs {
 namespace sim {
-FR3::FR3(std::string const mjmdl, std::string const rlmdl) : ikmdl(NULL), cfg(0, false, false){
+FR3::FR3(std::string const mjmdl, std::string const rlmdl)
+    : ikmdl(NULL), cfg(0, false, false) {
   this->mjmdl =
       std::shared_ptr<mjModel>(mj_loadXML(mjmdl.c_str(), NULL, NULL, 0));
   this->rlmdl = rl::mdl::UrdfFactory().create(rlmdl);
@@ -60,7 +61,7 @@ common::Vector7d FR3::get_joint_position() {
 
 void FR3::move_home() { this->set_joint_position(q_home); }
 
-void FR3::set_cartesian_position(common::Pose const& pose) { 
+void FR3::set_cartesian_position(common::Pose const& pose) {
   this->kinmdl->setPosition(common::Vector7d(this->mujoco_data->qpos));
   this->kinmdl->forwardPosition();
   this->ikmdl.addGoal(pose.affine_matrix(), 0);
@@ -68,7 +69,8 @@ void FR3::set_cartesian_position(common::Pose const& pose) {
   bool success = this->ikmdl.solve();
   if (success) {
     this->kinmdl->forwardPosition();
-    std::copy(this->kinmdl->getPosition().begin(), this->kinmdl->getPosition().end(), this->mujoco_data->ctrl);
+    std::copy(this->kinmdl->getPosition().begin(),
+              this->kinmdl->getPosition().end(), this->mujoco_data->ctrl);
   }
 }
 

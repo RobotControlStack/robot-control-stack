@@ -2,11 +2,12 @@
 #define RCS_FR3SIM_H
 #include <common/Pose.h>
 #include <common/Robot.h>
-#include <mujoco/mujoco.h>
 #include <common/utils.h>
+#include <mujoco/mujoco.h>
 
 #include <Eigen/Eigen>
 #include <thread>
+
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Kinematic.h"
 #include "rl/mdl/Model.h"
@@ -27,7 +28,8 @@ struct FR3Config : common::RConfig {
   double speed_factor;
   bool render;
   bool realtime;
-  FR3Config(double speed_factor, bool render, bool realtime) : speed_factor(speed_factor), render(render), realtime(realtime) {};
+  FR3Config(double speed_factor, bool render, bool realtime)
+      : speed_factor(speed_factor), render(render), realtime(realtime){};
 };
 
 struct FR3State : common::RState {};

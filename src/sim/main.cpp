@@ -106,9 +106,12 @@ void test_convergence() {
       rl::math::Transform t;
       t.setIdentity();
       t.translation() << random_action[0], random_action[1], random_action[2];
-      t.rotate(rl::math::AngleAxis(random_action[3], rl::math::Vector3::UnitX()));
-      t.rotate(rl::math::AngleAxis(random_action[4], rl::math::Vector3::UnitY()));
-      t.rotate(rl::math::AngleAxis(random_action[5], rl::math::Vector3::UnitZ()));
+      t.rotate(
+          rl::math::AngleAxis(random_action[3], rl::math::Vector3::UnitX()));
+      t.rotate(
+          rl::math::AngleAxis(random_action[4], rl::math::Vector3::UnitY()));
+      t.rotate(
+          rl::math::AngleAxis(random_action[5], rl::math::Vector3::UnitZ()));
       action[j] = rcs::common::Pose(t);
     }
     sim.step(action);
