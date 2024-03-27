@@ -25,7 +25,9 @@ FR3::FR3(std::string const mjmdl, std::string const rlmdl)
   mj_step(this->mjmdl.get(), this->mujoco_data.get());
 }
 
-FR3::~FR3() {}
+FR3::~FR3() {
+  this->exit_requested = true;
+}
 
 bool FR3::set_parameters(common::RConfig const& cfg) {
   this->cfg = dynamic_cast<FR3Config const&>(cfg);
