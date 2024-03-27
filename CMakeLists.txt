@@ -8,15 +8,10 @@ project(
 )
 
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Set version in project
+# Allow target properties affecting visibility during linking in static libraries
 set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0072 NEW) # Use GLVND instead of legacy libGL.so
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Allow us to set options for subprojects
-
-if (DEFINED SKBUILD)
-    # Set library runpath so the python bindings shared object finds the other
-    # bundled shared objects
-    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN")
-endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -27,6 +22,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if (DEFINED SKBUILD)
+    # Set library runpath so the python bindings shared object finds the other
+    # bundled shared objects
+    set(CMAKE_INSTALL_RPATH ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 # turn off libfranka tests
 set(BUILD_TESTS OFF)

@@ -79,7 +79,7 @@ void Simulation::physics_loop(
     {  // This is one step
       // Solve IK
       bool converged = false;
-      ik.addGoal(target_transform->affine_matrix(), -1);
+      ik.addGoal(target_transform->affine_matrix(), 0);
       bool ik_success = ik.solve();
       if (ik_success) {
         // Set control in mujoco sim

@@ -19,7 +19,7 @@
 namespace py = pybind11;
 
 /**
- * @brief Trampoline class for python bindings,
+ * @brief Robot trampoline class for python bindings,
  * needed for pybind11 to override virtual functions,
  * see
  * https://pybind11.readthedocs.io/en/stable/advanced/classes.html#virtual-and-inheritance
@@ -67,7 +67,7 @@ class PyRobot : public RobotBase {
 };
 
 /**
- * @brief Trampoline class for python bindings
+ * @brief Gripper trampoline class for python bindings
  */
 template <class GripperBase = rcs::common::Gripper>
 class PyGripper : public GripperBase {
@@ -116,25 +116,6 @@ PYBIND11_MODULE(_core, m) {
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
-  py::class_<rcs::common::Pose>(common, "Pose")
-      .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
-      .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
-           py::arg("rotation"), py::arg("translation"))
-      .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
-           py::arg("rotation"), py::arg("translation"))
-      .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
-           py::arg("quaternion"), py::arg("translation"))
-      .def("translation", &rcs::common::Pose::translation)
-      .def("rotation_m", &rcs::common::Pose::rotation_m)
-      .def("rotation_q", &rcs::common::Pose::rotation_q)
-      .def("pose_matrix", &rcs::common::Pose::pose_matrix)
-      .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
-      .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
-           py::arg("progress"))
-      .def("__str__", &rcs::common::Pose::str)
-      .def(py::self * py::self);
-
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -144,6 +125,25 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self);
+
+  py::class_<rcs::common::Pose>(common, "Pose")
+      .def(py::init<>())
+      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
+           py::arg("rotation"), py::arg("translation"))
+      .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
+           py::arg("quaternion"), py::arg("translation"))
+      .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
+           py::arg("rpy"), py::arg("translation"))
+      .def("translation", &rcs::common::Pose::translation)
+      .def("rotation_m", &rcs::common::Pose::rotation_m)
+      .def("rotation_q", &rcs::common::Pose::rotation_q)
+      .def("pose_matrix", &rcs::common::Pose::pose_matrix)
+      .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
+      .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
+           py::arg("progress"))
+      .def("__str__", &rcs::common::Pose::str)
+      .def(py::self * py::self);
 
   py::class_<rcs::common::RConfig, std::shared_ptr<rcs::common::RConfig>>(
       common, "RConfig");
@@ -228,8 +228,11 @@ PYBIND11_MODULE(_core, m) {
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "hardware module");
 
-  py::class_<rcs::hw::FR3State>(hw, "FR3State");
+  py::class_<rcs::hw::FR3State, rcs::common::RState,
+             std::shared_ptr<rcs::hw::FR3State>>(hw, "FR3State")
+      .def(py::init<>());
   py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
+      .def(py::init<>())
       .def_readwrite("load_mass", &rcs::hw::FR3Load::load_mass)
       .def_readwrite("f_x_cload", &rcs::hw::FR3Load::f_x_cload)
       .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
@@ -239,24 +242,29 @@ PYBIND11_MODULE(_core, m) {
       .value("robotics_library", rcs::hw::IKController::robotics_library)
       .export_values();
 
-  py::class_<rcs::hw::FR3Config, std::shared_ptr<rcs::hw::FR3Config>>(
-      hw, "FR3Config")
+  py::class_<rcs::hw::FR3Config, rcs::common::RConfig,
+             std::shared_ptr<rcs::hw::FR3Config>>(hw, "FR3Config")
+      .def(py::init<>())
       .def_readwrite("controller", &rcs::hw::FR3Config::controller)
+      .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
       .def_readwrite("guiding_mode_enabled",
                      &rcs::hw::FR3Config::guiding_mode_enabled)
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame);
 
-  py::class_<rcs::hw::FHConfig, std::shared_ptr<rcs::hw::FHConfig>>(hw,
-                                                                    "FHConfig")
+  py::class_<rcs::hw::FHConfig, rcs::common::GConfig,
+             std::shared_ptr<rcs::hw::FHConfig>>(hw, "FHConfig")
+      .def(py::init<>())
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
       .def_readwrite("force", &rcs::hw::FHConfig::force)
       .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
       .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer);
 
-  py::class_<rcs::hw::FHState, std::shared_ptr<rcs::hw::FHState>>(hw, "FHState")
+  py::class_<rcs::hw::FHState, rcs::common::GState,
+             std::shared_ptr<rcs::hw::FHState>>(hw, "FHState")
+      .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);

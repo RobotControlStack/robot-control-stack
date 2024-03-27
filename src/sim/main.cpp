@@ -4,7 +4,6 @@
 #include <memory>
 #include <random>
 
-#include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 #include "rl/math/Matrix.h"
 #include "rl/math/Rotation.h"

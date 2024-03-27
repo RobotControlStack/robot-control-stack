@@ -1,5 +1,6 @@
 """Robot control stack python bindings."""
 
-from rcsss._core import common, hw, sim
+from rcsss import desk
+from rcsss._core import __version__, common, hw, sim
 
-__all__ = ["__doc__", "common", "hw", "desk", "sim"]
+__all__ = ["__doc__", "__version__", "common", "hw", "sim", "desk"]
