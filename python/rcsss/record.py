@@ -12,7 +12,6 @@ _logger = logging.getLogger("record")
 
 
 class Pose(ABC):
-
     @abstractmethod
     def replay(self, robot: Dict[str, hw.FR3], gripper: Dict[str, hw.FrankaHand]):
         pass

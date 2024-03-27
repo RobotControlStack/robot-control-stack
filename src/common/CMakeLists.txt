@@ -1,2 +1,3 @@
-add_library(common SHARED Pose.cpp Pose.h utils.h Robot.h NRobotsWithGripper.cpp NRobotsWithGripper.h)
-target_link_libraries(common PUBLIC Eigen3::Eigen pybind11::module)
+add_library(common)
+target_sources(common PRIVATE Pose.cpp NRobotsWithGripper.cpp)
+target_link_libraries(common PUBLIC Eigen3::Eigen)

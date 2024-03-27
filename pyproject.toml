@@ -37,10 +37,11 @@ classifiers = [
 
 
 [tool.scikit-build]
-cmake.verbose = true
 logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["python/rcsss"]
+cmake.targets = ["_core"]
+install.components = ["python_package"]
 
 [tool.ruff]
 line-length = 120
