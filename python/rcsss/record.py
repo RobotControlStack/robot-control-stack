@@ -1,12 +1,10 @@
-import argparse
 import logging
 from abc import ABC, abstractmethod
 from time import sleep
 from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
-from rcsss import desk, hw
-from rcsss.cli.main import read_config_yaml
+from rcsss import hw
 
 np.set_printoptions(precision=27)
 
@@ -270,29 +268,3 @@ class PoseList:
     def replay(self):
         for pose in self.poses:
             pose.replay(self.r, self.g)
-            # sleep(0.1)
-
-
-record = False
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Tool to record poses with FR3.")
-    parser.add_argument("ip", type=str, help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")
-    parser.add_argument("--lpaths", type=str, nargs="+", help="Paths to load n recordings", default=[])
-    parser.add_argument("--spath", type=str, help="Path to store the recoding", default=None)
-    args = parser.parse_args()
-    ip = eval(args.ip)
-
-    username, password = read_config_yaml("")
-    if len(args.lpaths) != 0:
-        for r_ip in ip.values():
-            desk.prepare(r_ip, guiding_mode=False, username=username, password=password)
-        p = PoseList.load(ip, args.lpaths)
-        input("Press any key to replay")
-        p.replay()
-    else:
-        for r_ip in ip.values():
-            desk.prepare(r_ip, guiding_mode=True, username=username, password=password)
-        p = PoseList(ip)
-        p.record()
-        if args.spath:
-            p.save(args.spath)

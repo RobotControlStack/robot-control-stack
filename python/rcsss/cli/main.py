@@ -1,8 +1,9 @@
-from typing import Annotated
+from typing import Annotated, Dict, List, Optional
 
 import rcsss
 import typer
 import yaml
+from rcsss.record import PoseList
 
 cli = typer.Typer()
 
@@ -62,6 +63,34 @@ def shutdown(
     """Shuts the robot down"""
     username, password = read_config_yaml(path)
     rcsss.desk.shutdown(ip, username, password)
+
+
+@cli.command()
+def record(
+    ip_str: Annotated[str, typer.Argument(help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")],
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    lpaths: Annotated[Optional[List[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
+    spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
+):
+    """Shuts the robot down"""
+    username, password = read_config_yaml(path)
+
+    ip: Dict[str, str] = eval(ip_str)
+
+    username, password = read_config_yaml("")
+    if lpaths is not None:
+        for r_ip in ip.values():
+            rcsss.desk.prepare(r_ip, guiding_mode=False, username=username, password=password)
+        p = PoseList.load(ip, lpaths)
+        input("Press any key to replay")
+        p.replay()
+    else:
+        for r_ip in ip.values():
+            rcsss.desk.prepare(r_ip, guiding_mode=True, username=username, password=password)
+        p = PoseList(ip)
+        p.record()
+        if spath is not None:
+            p.save(spath)
 
 
 def main():
