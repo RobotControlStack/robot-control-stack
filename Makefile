@@ -13,9 +13,14 @@ cppformat:
 cpplint: 
 	clang-tidy -p=build --warnings-as-errors='*' $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -name '*.h')
 
-.PHONY: compile
+.PHONY: gcccompile
 compile: 
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja -S .
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
+	cmake --build build
+
+.PHONY: clangcompile
+compile: 
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
 	cmake --build build
 
 # Auto generation of CPP binding stub files
