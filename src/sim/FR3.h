@@ -44,9 +44,13 @@ class FR3 : public common::Robot {
   bool exit_requested;
   std::shared_ptr<rl::mdl::Kinematic> kinmdl;
   rl::mdl::JacobianInverseKinematics ikmdl;
+  std::set<int> collision_geom_ids;
+  int hand_geom_id;
+  void wait_for_convergence(rcs::common::Vector7d target_angles);
+  bool collision();
 
  public:
-  FR3(const std::string mjmdl, const std::string rlmdl);
+  FR3(const std::string &mjmdl, const std::string &rlmdl);
   ~FR3() override;
   bool set_parameters(const common::RConfig &cfg) override;
   std::unique_ptr<common::RConfig> get_parameters() override;

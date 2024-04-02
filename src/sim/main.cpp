@@ -3,8 +3,11 @@
 #include <iostream>
 #include <memory>
 #include <random>
+#include <string>
 
+#include "common/Pose.h"
 #include "mujoco/mujoco.h"
+#include "plugin.h"
 #include "rl/math/Matrix.h"
 #include "rl/math/Rotation.h"
 #include "rl/math/Transform.h"
@@ -14,6 +17,7 @@
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/UrdfFactory.h"
 #include "sim.h"
+#include "sim/FR3.h"
 
 static const size_t NUM_THREADS = 30;
 static const Eigen::Matrix<double, 1, 3, Eigen::RowMajor> iso_cube_center(
@@ -63,10 +67,17 @@ bool test_ik() {
   return EXIT_SUCCESS;
 }
 
-std::array<double, 6> random_point_in_iso_cube() {
+rcs::common::RPY random_rpy() {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::array<double, 6> ret;
+  std::uniform_real_distribution<double> distr_angle(-std::numbers::pi,
+                                                     std::numbers::pi);
+  return rcs::common::RPY(distr_angle(gen), distr_angle(gen), distr_angle(gen));
+}
+
+Eigen::Vector3d random_point_in_iso_cube() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
   std::uniform_real_distribution<double> distr_x(
       iso_cube_center[0] - iso_cube_size / 2,
       iso_cube_center[0] + iso_cube_size / 2);
@@ -76,16 +87,13 @@ std::array<double, 6> random_point_in_iso_cube() {
   std::uniform_real_distribution<double> distr_z(
       iso_cube_center[2] - iso_cube_size / 2,
       iso_cube_center[2] + iso_cube_size / 2);
-  std::uniform_real_distribution<double> distr_angle(-std::numbers::pi,
-                                                     std::numbers::pi);
-  ret[0] = distr_x(gen);
-  ret[1] = distr_y(gen);
-  ret[2] = distr_z(gen);
-  ret[3] = distr_angle(gen);
-  ret[4] = distr_angle(gen);
-  ret[5] = distr_angle(gen);
-  return ret;
+  return Eigen::Vector3d(distr_x(gen), distr_y(gen), distr_z(gen));
 }
+
+rcs::common::Pose random_pose_in_iso_cube() {
+  return rcs::common::Pose(random_rpy(), random_point_in_iso_cube());
+}
+
 void test_convergence() {
   rl::mdl::UrdfFactory factory{};
   std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls(0);
@@ -101,24 +109,37 @@ void test_convergence() {
   std::vector<rcs::common::Pose> action(NUM_THREADS);
   for (size_t i = 0; i < 100; ++i) {
     for (size_t j = 0; j < NUM_THREADS; ++j) {
-      std::array<double, 6> random_action = random_point_in_iso_cube();
-      rl::math::Transform t;
-      t.setIdentity();
-      t.translation() << random_action[0], random_action[1], random_action[2];
-      t.rotate(
-          rl::math::AngleAxis(random_action[3], rl::math::Vector3::UnitX()));
-      t.rotate(
-          rl::math::AngleAxis(random_action[4], rl::math::Vector3::UnitY()));
-      t.rotate(
-          rl::math::AngleAxis(random_action[5], rl::math::Vector3::UnitZ()));
-      action[j] = rcs::common::Pose(t);
+      action[j] = random_pose_in_iso_cube();
     }
     sim.step(action);
   }
   sim.close();
 }
 
+void test_fr3() {
+  const std::string mjcf = MODEL_DIR "/mjcf/scene.xml";
+  const std::string urdf = MODEL_DIR "/urdf/fr3_from_panda.urdf";
+  rcs::sim::FR3 robot(mjcf, urdf);
+  for (size_t i = 0; i < 100; ++i) {
+    std::cout << "Setting cartesian position... " << std::endl;
+    rcs::common::Pose target = random_pose_in_iso_cube();
+    std::cout<< "Translation:" << std::endl;
+    std::cout << target.translation() << std::endl;
+    std::cout << "RPY:" << std::endl;
+    std::cout << target.rotation_rpy().str() << std::endl;
+    std::cout << "Transformation matrix:" << std::endl;
+    std::cout<< target.affine_matrix().matrix() << std::endl;
+    robot.set_cartesian_position(target);
+    std::cout << "Done!" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::cout << "Moving home... ";
+    robot.move_home();
+    std::cout << "Done!" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+}
+
 int main(void) {
-  test_convergence();
+  test_fr3();
   return EXIT_SUCCESS;
 }
