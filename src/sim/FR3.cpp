@@ -23,13 +23,28 @@ enum { SIM_KF_HOME = 0 };
 
 double const POSE_REPEATABILITY = 0.0001;  // in meters
 
-/* Collision geoms:
- * link0_c link1_c link2_c link3_c link4_c link5_c0 link5_c1 link5_c2 link6_c
- * link7_c
- */
-std::array collision_geom_names{"link0_c", "link1_c",  "link2_c",  "link3_c",
-                                "link4_c", "link5_c0", "link5_c1", "link5_c2",
-                                "link6_c", "link7_c"};
+std::array arm_collision_geom_names = {
+    "link0_c",  "link1_c",  "link2_c",  "link3_c", "link4_c",
+    "link5_c0", "link5_c1", "link5_c2", "link6_c", "link7_c"};
+
+char hand_collision_geom_name[] = "hand_c";
+
+std::array finger_collision_geom_names = {
+    "finger_0_left",
+    "fingertip_pad_collision_1_left",
+    "fingertip_pad_collision_2_left",
+    "fingertip_pad_collision_3_left",
+    "fingertip_pad_collision_4_left",
+    "fingertip_pad_collision_5_left",
+    "finger_0_right",
+    "fingertip_pad_collision_1_right",
+    "fingertip_pad_collision_2_right",
+    "fingertip_pad_collision_3_right",
+    "fingertip_pad_collision_4_right",
+    "fingertip_pad_collision_5_right",
+};
+
+// TODO: Choose error handling strategy
 
 namespace rcs {
 namespace sim {
@@ -37,22 +52,44 @@ using std::endl;
 
 FR3::FR3(const std::string& mjmdl, const std::string& rlmdl)
     : ikmdl(NULL), cfg(0, false, false) {
-  this->mjmdl =
-      std::shared_ptr<mjModel>(mj_loadXML(mjmdl.c_str(), NULL, NULL, 0));
+  char err[1024];
+  this->mjmdl = std::shared_ptr<mjModel>(
+      mj_loadXML(mjmdl.c_str(), NULL, err, sizeof(err)));
+  if (!this->mjmdl.get()) {
+    std::cerr << "Failed loading " << mjmdl << ":" << std::endl;
+    std::cerr << err << std::endl;
+    exit(EXIT_FAILURE); 
+  }
   this->rlmdl = rl::mdl::UrdfFactory().create(rlmdl);
   this->mujoco_data = std::shared_ptr<mjData>(mj_makeData(this->mjmdl.get()));
   this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
   this->exit_requested = false;
   this->kinmdl = std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rlmdl);
   this->ikmdl = rl::mdl::JacobianInverseKinematics(this->kinmdl.get());
-  for (size_t i = 0; i < std::size(collision_geom_names); ++i) {
-    collision_geom_ids.insert(
-        mj_name2id(this->mjmdl.get(), mjOBJ_GEOM, collision_geom_names[i]));
+  for (size_t i = 0; i < std::size(arm_collision_geom_names); ++i) {
+    int id =
+        mj_name2id(this->mjmdl.get(), mjOBJ_GEOM, arm_collision_geom_names[i]);
+    if (id == -1) {
+      std::cerr << "No geom named " << arm_collision_geom_names[i] << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    collision_geom_ids.insert(id);
   }
-  this->hand_geom_id = mj_name2id(this->mjmdl.get(), mjOBJ_GEOM, "hand_c");
+  this->hand_geom_id =
+      mj_name2id(this->mjmdl.get(), mjOBJ_GEOM, hand_collision_geom_name);
   if (hand_geom_id == -1) {
-    std::cerr << "No geome named \"hand_c\" in the model\"" << std::endl;
+    std::cerr << "No geom named \"hand_c\"" << std::endl;
     exit(EXIT_FAILURE);
+  }
+  for (size_t i = 0; i < std::size(finger_collision_geom_names); ++i) {
+    int id = mj_name2id(this->mjmdl.get(), mjOBJ_GEOM,
+                        finger_collision_geom_names[i]);
+    if (id == -1) {
+      std::cerr << "No geom named " << finger_collision_geom_names[i]
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    this->finger_collision_geom_ids.insert(id);
   }
   collision_geom_ids.insert(this->hand_geom_id);
   ikmdl.setDuration(std::chrono::milliseconds(300));
@@ -79,7 +116,11 @@ std::unique_ptr<common::RState> FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  // TODO: Move to init, add hand_id as class member?
+  int   hand_body_id  = mj_name2id(this->mjmdl.get(), mjOBJ_BODY, "hand");
+  if (hand_body_id == -1) {
+    std::cerr << "No body named \"hand\"" << std::endl;
+    exit(EXIT_FAILURE);
+  }
   return common::Pose(
       Eigen::Vector4d(this->mujoco_data->xquat + 4 * hand_geom_id),
       Eigen::Vector3d(this->mujoco_data->xpos + 3 * hand_geom_id));
@@ -100,10 +141,9 @@ void FR3::set_cartesian_position(common::Pose const& pose) {
   this->kinmdl->setPosition(common::Vector7d(this->mujoco_data->qpos));
   this->kinmdl->forwardPosition();
   this->ikmdl.addGoal(pose.affine_matrix(), 0);
-  // TODO: IK failure error reporting
   bool success = this->ikmdl.solve();
   if (not success) {
-  std::cout << "IK failed" <<std::endl;
+    std::cerr << "IK failed" << std::endl;
   }
   if (success) {
     this->kinmdl->forwardPosition();
@@ -117,16 +157,40 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
   bool arrived, moving = false;
   std::pair<common::Vector7d, Eigen::Map<common::Vector7d>> angles(
       this->mujoco_data->qpos, this->mujoco_data->qpos);
-  std::set<int> collision_geoms{};
   while ((not arrived) or moving) {
     mj_step(this->mjmdl.get(), this->mujoco_data.get());
-    moving = not angles.first.isApprox(angles.second, 0.5 * (M_PI / 180));
-    arrived = angles.second.isApprox(target_angles, 1 * (M_PI / 180));
+    moving =
+        not angles.first.isApprox(angles.second, .5 * (std::numbers::pi / 180));
+    arrived =
+        angles.second.isApprox(target_angles, .5 * (std::numbers::pi / 180));
     angles.first = angles.second;
     if (this->collision()) {
-      puts("Collision detected, resetting");
-      mj_resetDataKeyframe(this->mjmdl.get(), this->mujoco_data.get(), SIM_KF_HOME);
+      mj_resetDataKeyframe(this->mjmdl.get(), this->mujoco_data.get(),
+                           SIM_KF_HOME);
+      mj_step(this->mjmdl.get(), this->mujoco_data.get());
       return;
+    }
+    /* If we stopped moving but have not reached our target yet, check if there
+     * is a collision with the gripper and stop if there is. */
+    bool hand_collision = false;
+    if (not moving and not arrived) {
+      for (size_t i = 0; i < this->mujoco_data->ncon; ++i) {
+        hand_collision =
+            (this->finger_collision_geom_ids.contains(
+                 this->mujoco_data->contact[i].geom[0]) ||
+             this->finger_collision_geom_ids.contains(
+                 this->mujoco_data->contact[i].geom[1]) ||
+             this->mujoco_data->contact[i].geom[0] == this->hand_geom_id ||
+             this->mujoco_data->contact[i].geom[1] ==
+                 this->hand_geom_id);
+        if (hand_collision) break;
+      }
+      if (hand_collision) {
+        mj_resetDataKeyframe(this->mjmdl.get(), this->mujoco_data.get(),
+                             SIM_KF_HOME);
+        mj_step(this->mjmdl.get(), this->mujoco_data.get());
+        break;
+      }
     }
   }
 }

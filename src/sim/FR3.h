@@ -45,6 +45,7 @@ class FR3 : public common::Robot {
   std::shared_ptr<rl::mdl::Kinematic> kinmdl;
   rl::mdl::JacobianInverseKinematics ikmdl;
   std::set<int> collision_geom_ids;
+  std::set<int> finger_collision_geom_ids;
   int hand_geom_id;
   void wait_for_convergence(rcs::common::Vector7d target_angles);
   bool collision();
