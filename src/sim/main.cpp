@@ -72,7 +72,7 @@ rcs::common::RPY random_rpy() {
   std::mt19937 gen(rd());
   std::uniform_real_distribution<double> distr_angle(-std::numbers::pi,
                                                      std::numbers::pi);
-  return rcs::common::RPY(distr_angle(gen), distr_angle(gen), distr_angle(gen));
+  return rcs::common::RPY(0, 180 * std::numbers::pi / 180, distr_angle(gen));
 }
 
 Eigen::Vector3d random_point_in_iso_cube() {
@@ -123,12 +123,6 @@ void test_fr3() {
   for (size_t i = 0; i < 100; ++i) {
     std::cout << "Setting cartesian position... " << std::endl;
     rcs::common::Pose target = random_pose_in_iso_cube();
-    std::cout<< "Translation:" << std::endl;
-    std::cout << target.translation() << std::endl;
-    std::cout << "RPY:" << std::endl;
-    std::cout << target.rotation_rpy().str() << std::endl;
-    std::cout << "Transformation matrix:" << std::endl;
-    std::cout<< target.affine_matrix().matrix() << std::endl;
     robot.set_cartesian_position(target);
     std::cout << "Done!" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
