@@ -150,7 +150,8 @@ void FR3::set_cartesian_position(common::Pose const& pose) {
 }
 
 void FR3::wait_for_convergence(common::Vector7d target_angles) {
-  bool arrived, moving = false;
+  bool arrived = false;
+  bool moving = false;
   std::pair<common::Vector7d, Eigen::Map<common::Vector7d>> angles(
       this->models.mj.data->qpos, this->models.mj.data->qpos);
   // TODO: move to config
