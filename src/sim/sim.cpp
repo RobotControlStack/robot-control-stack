@@ -139,6 +139,7 @@ void Simulation::render_loop() {
     scn.flags[mjRND_SHADOW] = 0;
     scn.flags[mjRND_REFLECTION] = 0;
   }
+  ui_adapter.SetVSync(true);
   while (!(ui_adapter.ShouldCloseWindow() or exit_requested)) {
     std::tie(uistate.rect[0].width, uistate.rect[0].height) =
         ui_adapter.GetFramebufferSize();
