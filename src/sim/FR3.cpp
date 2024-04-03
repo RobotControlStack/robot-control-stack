@@ -162,7 +162,8 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
     angles.first = angles.second;
     if (this->collision(this->cgeom_ids.arm)) return this->reset();
     if (not moving and not arrived and
-        this->collision(set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper)))
+        this->collision(
+            set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper)))
       return this->reset();
   }
 }

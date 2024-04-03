@@ -68,10 +68,9 @@ class FR3 : public common::Robot {
   std::jthread render_thread;
   bool exit_requested;
   void wait_for_convergence(rcs::common::Vector7d target_angles);
-  bool collision(std::set<size_t> const& geom_ids);
+  bool collision(std::set<size_t> const &geom_ids);
   void render_loop();
   void reset();
-
 };
 }  // namespace sim
 }  // namespace rcs
