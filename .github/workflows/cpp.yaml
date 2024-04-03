@@ -18,13 +18,11 @@ jobs:
         #   version: 1.0
       - name: Check clang format
         run: make cppcheckformat
-        #      - name: Cmake configure with clang
-        #        # clang version bind, workaround for https://github.com/actions/runner-images/discussions/9446
-        #        run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -B build -G Ninja -S .
-        #      - name: Clang build
-        #        run: cmake --build build
+      - name: Cmake configure with clang
+        # clang version bind, workaround for https://github.com/actions/runner-images/discussions/9446
+        run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -B build -G Ninja -S .
       - name: Clang build
-        run: make clangcompile
+        run: cmake --build build
       - name: Clang Tidy
         run: clang-tidy-15 -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
 
