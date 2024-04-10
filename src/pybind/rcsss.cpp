@@ -145,14 +145,10 @@ PYBIND11_MODULE(_core, m) {
       .def("__str__", &rcs::common::Pose::str)
       .def(py::self * py::self);
 
-  py::class_<rcs::common::RConfig, std::shared_ptr<rcs::common::RConfig>>(
-      common, "RConfig");
-  py::class_<rcs::common::RState, std::shared_ptr<rcs::common::RState>>(
-      common, "RState");
-  py::class_<rcs::common::GConfig, std::shared_ptr<rcs::common::GConfig>>(
-      common, "GConfig");
-  py::class_<rcs::common::GState, std::shared_ptr<rcs::common::GState>>(
-      common, "GState");
+  py::class_<rcs::common::RConfig>(common, "RConfig");
+  py::class_<rcs::common::RState>(common, "RState");
+  py::class_<rcs::common::GConfig>(common, "GConfig");
+  py::class_<rcs::common::GState>(common, "GState");
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
@@ -228,8 +224,7 @@ PYBIND11_MODULE(_core, m) {
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "hardware module");
 
-  py::class_<rcs::hw::FR3State, rcs::common::RState,
-             std::shared_ptr<rcs::hw::FR3State>>(hw, "FR3State")
+  py::class_<rcs::hw::FR3State, rcs::common::RState>(hw, "FR3State")
       .def(py::init<>());
   py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
       .def(py::init<>())
@@ -242,8 +237,7 @@ PYBIND11_MODULE(_core, m) {
       .value("robotics_library", rcs::hw::IKController::robotics_library)
       .export_values();
 
-  py::class_<rcs::hw::FR3Config, rcs::common::RConfig,
-             std::shared_ptr<rcs::hw::FR3Config>>(hw, "FR3Config")
+  py::class_<rcs::hw::FR3Config, rcs::common::RConfig>(hw, "FR3Config")
       .def(py::init<>())
       .def_readwrite("controller", &rcs::hw::FR3Config::controller)
       .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
@@ -253,8 +247,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame);
 
-  py::class_<rcs::hw::FHConfig, rcs::common::GConfig,
-             std::shared_ptr<rcs::hw::FHConfig>>(hw, "FHConfig")
+  py::class_<rcs::hw::FHConfig, rcs::common::GConfig>(hw, "FHConfig")
       .def(py::init<>())
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
@@ -262,8 +255,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
       .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer);
 
-  py::class_<rcs::hw::FHState, rcs::common::GState,
-             std::shared_ptr<rcs::hw::FHState>>(hw, "FHState")
+  py::class_<rcs::hw::FHState, rcs::common::GState>(hw, "FHState")
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
@@ -309,8 +301,7 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3State>(sim, "FR3State");
   py::class_<rcs::sim::FR3Load>(sim, "FR3Load");
-  py::class_<rcs::sim::FR3Config, std::shared_ptr<rcs::sim::FR3Config>>(
-      sim, "FR3Config");
+  py::class_<rcs::sim::FR3Config>(sim, "FR3Config");
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
       .def(py::init([](const std::string mjmdl, const std::string rlmdl) {
