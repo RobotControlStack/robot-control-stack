@@ -6,10 +6,17 @@ from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.desk import Desk
 from rcsss.record import PoseList
 
-cli = typer.Typer()
+main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
+
+fr3_app = typer.Typer()
+main_app.add_typer(
+    fr3_app,
+    name="fr3",
+    help="Commands to control a Franka Research 3. This includes tools that you would usually do with Franka's Desk interface.",
+)
 
 
-@cli.command()
+@main_app.command()
 def sample_config(
     path: Annotated[
         str, typer.Option("-p", help="Path to where the default config file should be saved")
@@ -19,7 +26,7 @@ def sample_config(
     create_sample_config_yaml(path)
 
 
-@cli.command()
+@fr3_app.command()
 def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -47,7 +54,7 @@ def home(
     d.release_control()
 
 
-@cli.command()
+@fr3_app.command()
 def lock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -57,7 +64,7 @@ def lock(
     rcsss.desk.lock(ip, cfg.hw.username, cfg.hw.password)
 
 
-@cli.command()
+@fr3_app.command()
 def unlock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -67,7 +74,7 @@ def unlock(
     rcsss.desk.unlock(ip, cfg.hw.username, cfg.hw.password)
 
 
-@cli.command()
+@fr3_app.command()
 def guiding_mode(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -78,7 +85,7 @@ def guiding_mode(
     rcsss.desk.guiding_mode(ip, cfg.hw.username, cfg.hw.password, disable)
 
 
-@cli.command()
+@fr3_app.command()
 def shutdown(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -88,7 +95,7 @@ def shutdown(
     rcsss.desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
 
 
-@cli.command()
+@fr3_app.command()
 def record(
     ip_str: Annotated[str, typer.Argument(help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
@@ -119,4 +126,4 @@ def record(
 
 
 def main():
-    cli()
+    main_app()
