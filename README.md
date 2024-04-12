@@ -49,7 +49,7 @@ export CXX=/usr/bin/clang++
 
 then install the pip package:
 ```shell
-pip install .
+pip install -e .
 ```
 
 then stubgen the genstub bindings
@@ -97,6 +97,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:venv/lib/python3.xy/site-packages/k4a/_l
 ### Franka Desk
 The config file for the FR3 desk cli should be in yaml format:
 ```yaml
-username=...
-password=...
+# Franka Desk credentials
+username: "..."
+password: "..."
 ```
