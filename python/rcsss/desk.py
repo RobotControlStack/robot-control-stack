@@ -32,15 +32,22 @@ def lock(ip: str, username: str, password: str):
     d.release_control()
 
 
-def prepare(ip: str, username: str, password: str, guiding_mode: bool = False):
+def unlock(ip: str, username: str, password: str):
     d = Desk(ip, username, password)
     d.take_control(force=True)
     d.unlock()
+    d.disable_guiding_mode()
     d.activate_fci()
-    if guiding_mode:
-        d.enable_guiding_mode()
-    else:
+    d.release_control()
+
+
+def guiding_mode(ip: str, username: str, password: str, disable: bool = False):
+    d = Desk(ip, username, password)
+    d.take_control(force=True)
+    if disable:
         d.disable_guiding_mode()
+    else:
+        d.enable_guiding_mode()
     d.release_control()
 
 
@@ -62,6 +69,7 @@ class Token:
     token: str = ""
 
 
+# TODO: Create with statement for Desk class
 class Desk:
     """
     Connects to the control unit running the web-based Desk interface
@@ -95,7 +103,6 @@ class Desk:
         self._listening = False
         self._listen_thread: Optional[threading.Thread] = None
         self.login()
-        self.take_control()
 
     def lock(self, force: bool = True) -> None:
         """
@@ -168,7 +175,12 @@ class Desk:
         Deactivates the Franka Research Interface (FCI). For older
         Desk versions, this function does nothing.
         """
-        self._request("delete", "/admin/api/control-token/fci", json={"token": self._token.token})
+        self._request(
+            "delete",
+            "/admin/api/control-token/fci",
+            headers={"X-Control-Token": self._token.token},
+            json={"token": self._token.token},
+        )
 
     def _load_token(self) -> Token:
         config_path = os.path.expanduser(TOKEN_PATH)
@@ -232,7 +244,7 @@ class Desk:
             ) as websocket:
                 while True:
                     event: Dict = json_module.loads(websocket.recv(timeout))
-                    if "circle" in event and event["circle"] is not None:
+                    if event["circle"]:
                         break
         self._save_token(Token(str(response["id"]), self._username, response["token"]))
         _logger.info("Taken control.")
@@ -314,6 +326,7 @@ class Desk:
         json: Optional[Dict[str, str]] = None,
         headers: Optional[Dict[str, str]] = None,
         files: Optional[Dict[str, str]] = None,
+        data: Optional[bytes] = None,
     ) -> requests.Response:
         fun = getattr(self._session, method)
         response: requests.Response = fun(
@@ -321,8 +334,10 @@ class Desk:
             json=json,
             headers=headers,
             files=files,
+            data=data,
         )
         if response.status_code != 200:
+            _logger.error("Request failed with status code %d and response %s", response.status_code, response.text)
             raise ConnectionError(response.text)
         return response
 
