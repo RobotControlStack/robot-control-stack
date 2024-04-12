@@ -1,9 +1,9 @@
+from contextlib import ExitStack
 from typing import Annotated, Dict, List, Optional
 
 import rcsss
 import typer
 from rcsss.config import create_sample_config_yaml, read_config_yaml
-from rcsss.desk import Desk
 from rcsss.record import PoseList
 
 main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
@@ -34,24 +34,7 @@ def home(
 ):
     """Moves the FR3 to home position"""
     cfg = read_config_yaml(path)
-    d = Desk(ip, cfg.hw.username, cfg.hw.password)
-    d.take_control(force=True)
-    d.disable_guiding_mode()
-    d.activate_fci()
-
-    f = rcsss.hw.FR3(ip)
-    config = rcsss.hw.FR3Config()
-    config.speed_factor = 0.7
-    config.controller = rcsss.hw.IKController.internal
-    config.guiding_mode_enabled = False
-    f.set_parameters(config)
-    g = rcsss.hw.FrankaHand(ip)
-    if shut:
-        g.shut()
-    else:
-        g.release()
-    f.move_home()
-    d.release_control()
+    rcsss.desk.home(ip, cfg.hw.username, cfg.hw.password, shut)
 
 
 @fr3_app.command()
@@ -102,27 +85,32 @@ def record(
     lpaths: Annotated[Optional[List[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
     spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
 ):
-    """Shuts the robot down"""
+    """Tool to record poses with multiple FR3 robots."""
     cfg = read_config_yaml(path)
 
     ip: Dict[str, str] = eval(ip_str)
 
-    # TODO: do not use desk functions but create an own desk instance
-
     if lpaths is not None:
-        for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=cfg.hw.username, password=cfg.hw.password)
-        p = PoseList.load(ip, lpaths, cfg.hw.urdf_model_path)
-        input("Press any key to replay")
-        p.replay()
+        with ExitStack() as stack:
+            for r_ip in ip.values():
+                stack.enter_context(
+                    rcsss.desk.Desk.fci(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                )
+
+            p = PoseList.load(ip, lpaths, cfg.hw.urdf_model_path)
+            input("Press any key to replay")
+            p.replay()
     else:
-        for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=cfg.hw.username, password=cfg.hw.password)
-            rcsss.desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, disable=False)
-        p = PoseList(ip, urdf_path=cfg.hw.urdf_model_path)
-        p.record()
-        if spath is not None:
-            p.save(spath)
+        with ExitStack() as stack:
+            for r_ip in ip.values():
+                stack.enter_context(
+                    rcsss.desk.Desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                )
+
+            p = PoseList(ip, urdf_path=cfg.hw.urdf_model_path)
+            p.record()
+            if spath is not None:
+                p.save(spath)
 
 
 def main():

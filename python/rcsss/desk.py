@@ -1,15 +1,14 @@
 import base64
-import configparser
 import dataclasses
 import hashlib
 import json as json_module
 import logging
-import os
 import ssl
 import threading
 from typing import Callable, Dict, Literal, Optional
 from urllib import parse
 
+import rcsss
 import requests
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
@@ -25,30 +24,38 @@ in this file under the unit's IP address or hostname.
 """
 
 
+def home(ip: str, username: str, password: str, shut: bool):
+    with Desk.fci(ip, username, password, unlock=True):
+        f = rcsss.hw.FR3(ip)
+        config = rcsss.hw.FR3Config()
+        config.speed_factor = 0.7
+        config.controller = rcsss.hw.IKController.internal
+        config.guiding_mode_enabled = False
+        f.set_parameters(config)
+        g = rcsss.hw.FrankaHand(ip)
+        if shut:
+            g.shut()
+        else:
+            g.release()
+        f.move_home()
+
+
 def lock(ip: str, username: str, password: str):
-    d = Desk(ip, username, password)
-    d.take_control(force=True)
-    d.lock()
-    d.release_control()
+    with Desk(ip, username, password) as d:
+        d.lock()
 
 
 def unlock(ip: str, username: str, password: str):
-    d = Desk(ip, username, password)
-    d.take_control(force=True)
-    d.unlock()
-    d.disable_guiding_mode()
-    d.activate_fci()
-    d.release_control()
+    with Desk(ip, username, password) as d:
+        d.unlock()
 
 
 def guiding_mode(ip: str, username: str, password: str, disable: bool = False):
-    d = Desk(ip, username, password)
-    d.take_control(force=True)
-    if disable:
-        d.disable_guiding_mode()
-    else:
-        d.enable_guiding_mode()
-    d.release_control()
+    with Desk(ip, username, password) as d:
+        if disable:
+            d.disable_guiding_mode()
+        else:
+            d.enable_guiding_mode()
 
 
 def shutdown(ip: str, username: str, password: str):
@@ -69,7 +76,6 @@ class Token:
     token: str = ""
 
 
-# TODO: Create with statement for Desk class
 class Desk:
     """
     Connects to the control unit running the web-based Desk interface
@@ -89,7 +95,12 @@ class Desk:
     forcefully (cf. :py:func:`Desk.take_control`) but needs to confirm
     physical access to the robot by pressing the circle button on the
     robot's Pilot interface.
+
+    Can also be used as a context manager to ensure that control is
+    taken and released correctly.
     """
+
+    # TODO: method that checks if robot is on?
 
     def __init__(self, hostname: str, username: str, password: str) -> None:
         urllib3.disable_warnings()
@@ -99,17 +110,39 @@ class Desk:
         self._username = username
         self._password = password
         self._logged_in = False
-        self._token = self._load_token()
+        self._token = Token()
         self._listening = False
         self._listen_thread: Optional[threading.Thread] = None
+
+        # the following variables might be out of sync
+        # TODO: is there a way to check for the robot's state?
+        self.guiding_mode_enabled = False
+        self.fci_enabled = False
+        self.locked = True
         self.login()
+
+    def __enter__(self) -> "Desk":
+        self.take_control(force=True)
+        return self
+
+    def __exit__(self, *args):
+        self.stop_listen()
+        self.release_control()
+
+    @classmethod
+    def fci(cls, hostname: str, username: str, password: str, unlock: bool = False) -> "FCI":
+        return FCI(cls(hostname, username, password), unlock)
+
+    @classmethod
+    def guiding_mode(cls, hostname: str, username: str, password: str, unlock: bool = False) -> "GuidingMode":
+        return GuidingMode(cls(hostname, username, password), unlock)
 
     def lock(self, force: bool = True) -> None:
         """
         Locks the brakes. API call blocks until the brakes are locked.
         """
-        # TODO: check why they use files instead of json
         self._request("post", "/desk/api/joints/lock", files={"force": force})  # type: ignore[dict-item]
+        self.locked = True
 
     def unlock(self, force: bool = True) -> None:
         """
@@ -121,6 +154,7 @@ class Desk:
             files={"force": force},  # type: ignore[dict-item]
             headers={"X-Control-Token": self._token.token},
         )
+        self.locked = False
 
     def enable_guiding_mode(self) -> None:
         """
@@ -131,6 +165,7 @@ class Desk:
             "/desk/api/operating-mode/programming",
             headers={"X-Control-Token": self._token.token},
         )
+        self.guiding_mode_enabled = True
 
     def disable_guiding_mode(self) -> None:
         """
@@ -141,12 +176,15 @@ class Desk:
             "/desk/api/operating-mode/execution",
             headers={"X-Control-Token": self._token.token},
         )
+        self.guiding_mode_enabled = False
 
     def reboot(self) -> None:
         """
         Reboots the robot hardware (this will close open connections).
         """
         self._request("post", "/admin/api/reboot", headers={"X-Control-Token": self._token.token})
+        self.guiding_mode_enabled = False
+        self.fci_enabled = False
 
     def shutdown(self) -> None:
         """
@@ -157,6 +195,8 @@ class Desk:
             "/admin/api/shutdown",
             headers={"X-Control-Token": self._token.token},
         )
+        self.guiding_mode_enabled = False
+        self.fci_enabled = False
 
     def activate_fci(self) -> None:
         """
@@ -169,6 +209,7 @@ class Desk:
             "/desk/api/system/fci",
             headers={"X-Control-Token": self._token.token},
         )
+        self.fci_enabled = True
 
     def deactivate_fci(self) -> None:
         """
@@ -181,33 +222,7 @@ class Desk:
             headers={"X-Control-Token": self._token.token},
             json={"token": self._token.token},
         )
-
-    def _load_token(self) -> Token:
-        config_path = os.path.expanduser(TOKEN_PATH)
-        config = configparser.ConfigParser()
-        token = Token()
-        if os.path.exists(config_path):
-            config.read(config_path)
-            if config.has_section(self._hostname):
-                token.id = config.get(self._hostname, "id")
-                token.owned_by = config.get(self._hostname, "owned_by")
-                token.token = config.get(self._hostname, "token")
-        return token
-
-    def _save_token(self, token: Token) -> None:
-        config_path = os.path.expanduser(TOKEN_PATH)
-        config = configparser.ConfigParser()
-        if os.path.exists(config_path):
-            config.read(config_path)
-        config[self._hostname] = {
-            "id": token.id,
-            "owned_by": token.owned_by,
-            "token": token.token,
-        }
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        with open(config_path, "w") as config_file:
-            config.write(config_file)
-        self._token = token
+        self.fci_enabled = False
 
     def take_control(self, force: bool = False) -> bool:
         """
@@ -246,7 +261,7 @@ class Desk:
                     event: Dict = json_module.loads(websocket.recv(timeout))
                     if event["circle"]:
                         break
-        self._save_token(Token(str(response["id"]), self._username, response["token"]))
+        self._token = Token(str(response["id"]), self._username, response["token"])
         _logger.info("Taken control.")
         return True
 
@@ -292,7 +307,7 @@ class Desk:
         )
         self._session.cookies.set("authorization", login.text)
         self._logged_in = True
-        _logger.info("Login succesful.")
+        _logger.info("Login successful.")
 
     def logout(self) -> None:
         """
@@ -385,3 +400,46 @@ class Desk:
         self._listening = False
         if self._listen_thread is not None:
             self._listen_thread.join()
+
+
+class FCI:
+    """
+    Can be used as a context manager to activate the Franka Control Interface (FCI).
+    """
+
+    def __init__(self, desk: Desk, unlock: bool = False):
+        self.desk = desk
+        self.unlock = unlock
+
+    def __enter__(self) -> Desk:
+        self.desk.__enter__()
+        if self.unlock:
+            self.desk.unlock()
+        self.desk.disable_guiding_mode()
+        self.desk.activate_fci()
+        return self.desk
+
+    def __exit__(self, *args):
+        self.desk.deactivate_fci()
+        self.desk.__exit__()
+
+
+class GuidingMode:
+    """
+    Can be used as a context manager to enable or disable guiding mode.
+    """
+
+    def __init__(self, desk: Desk, unlock: bool = False):
+        self.desk = desk
+        self.unlock = unlock
+
+    def __enter__(self) -> Desk:
+        self.desk.__enter__()
+        if self.unlock:
+            self.desk.unlock()
+        self.desk.enable_guiding_mode()
+        return self.desk
+
+    def __exit__(self, *args):
+        self.desk.disable_guiding_mode()
+        self.desk.__exit__()
