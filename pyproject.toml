@@ -12,6 +12,7 @@ dependencies = ["websockets>=11.0",
     "numpy~=1.26",
     "typer==0.9.0",
     "pyyaml~=6.0",
+    "pydantic~=2.6",
 ]
 readme = "README.md"
 authors = [

@@ -67,8 +67,13 @@ namespace rcs {
 namespace sim {
 using std::endl;
 
+<<<<<<< HEAD
 FR3::FR3(const std::string& mjmdl, const std::string& rlmdl, std::optional<bool> render)
     : models(), exit_requested(false) {
+=======
+FR3::FR3(const std::string& mjmdl, const std::string& rlmdl)
+    : models(), cfg(0, true, false), exit_requested(false) {
+>>>>>>> master
   /* Load models */
   char err[1024];
   this->models.mj.mdl = std::shared_ptr<mjModel>(
@@ -89,10 +94,18 @@ FR3::FR3(const std::string& mjmdl, const std::string& rlmdl, std::optional<bool>
   init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
                 *this->models.mj.mdl);
   init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
+<<<<<<< HEAD
   this->models.rl.ik->setDuration(std::chrono::milliseconds(this->cfg.ik_duration));
   /* Initialize sim */
   this->reset();
   if (render.value_or(true))
+=======
+  // TODO: move to config
+  this->models.rl.ik->setDuration(std::chrono::milliseconds(300));
+  /* Initialize sim */
+  this->reset();
+  if (cfg.render)
+>>>>>>> master
     this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
 }
 
@@ -100,7 +113,11 @@ FR3::~FR3() { this->exit_requested = true; }
 
 bool FR3::set_parameters(common::RConfig const& cfg) {
   this->cfg = dynamic_cast<FR3Config const&>(cfg);
+<<<<<<< HEAD
   this->models.rl.ik->setDuration(std::chrono::milliseconds(this->cfg.ik_duration));
+=======
+  this->cfg.speed_factor = std::min(std::max(this->cfg.speed_factor, 0.0), 1.0);
+>>>>>>> master
   return true;
 }
 
@@ -111,8 +128,12 @@ std::unique_ptr<common::RConfig> FR3::get_parameters() {
 }
 
 std::unique_ptr<common::RState> FR3::get_state() {
+<<<<<<< HEAD
   std::unique_ptr<FR3State> ret = std::make_unique<FR3State>();
   return ret;
+=======
+  return std::make_unique<common::RState>();
+>>>>>>> master
 }
 
 common::Pose FR3::get_cartesian_position() {
@@ -145,7 +166,11 @@ void FR3::set_cartesian_position(common::Pose const& pose) {
     std::copy(pos.begin(), pos.end(), this->models.mj.data->ctrl);
     this->wait_for_convergence(pos);
   } else {
+<<<<<<< HEAD
     this->state.ik_success = false;
+=======
+    std::cerr << "IK failed" << std::endl;
+>>>>>>> master
   }
 }
 
@@ -161,10 +186,14 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
     moving = not angles.first.isApprox(angles.second, tolerance);
     arrived = angles.second.isApprox(target_angles, tolerance);
     angles.first = angles.second;
+<<<<<<< HEAD
     if (this->collision(this->cgeom_ids.arm)) {
       this->state.collision = true;
       return this->reset();
     }
+=======
+    if (this->collision(this->cgeom_ids.arm)) return this->reset();
+>>>>>>> master
     if (not moving and not arrived and
         this->collision(
             set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper)))

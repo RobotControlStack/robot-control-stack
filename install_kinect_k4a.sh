@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This installation script follows the instruction from
+# This installation script follows the instruction from (only works under debian based systems)
 # https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/src/python/k4a/docs/building.md
 # Dependencies for this script: git, wget, python3
 
@@ -24,7 +24,7 @@ git clone https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git
 # download binaries
 wget https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.4/libk4a1.4_1.4.1_amd64.deb
 
-# unzip binaries
+# unzip binaries, this only works under debian based systems
 dpkg -x libk4a1.4_1.4.1_amd64.deb extracted
 
 
