@@ -100,4 +100,6 @@ The config file for the FR3 desk cli should be in yaml format:
 # Franka Desk credentials
 username: "..."
 password: "..."
+# path to URDF model
+urdf_model_path: "models/urdf/fr3.urdf"
 ```

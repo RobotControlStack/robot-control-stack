@@ -2,17 +2,11 @@ from typing import Annotated, Dict, List, Optional
 
 import rcsss
 import typer
-import yaml
+from rcsss.config import read_config_yaml
 from rcsss.desk import Desk
 from rcsss.record import PoseList
 
 cli = typer.Typer()
-
-
-def read_config_yaml(path: str) -> tuple[str, str]:
-    with open(path, "r") as stream:
-        config_dict = yaml.safe_load(stream)
-    return str(config_dict["username"]), str(config_dict["password"])
 
 
 @cli.command()
@@ -22,8 +16,8 @@ def home(
     shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
 ):
     """Moves the FR3 to home position"""
-    username, password = read_config_yaml(path)
-    d = Desk(ip, username, password)
+    cfg = read_config_yaml(path)
+    d = Desk(ip, cfg.username, cfg.password)
     d.take_control(force=True)
     d.disable_guiding_mode()
     d.activate_fci()
@@ -49,8 +43,8 @@ def lock(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Locks the robot."""
-    username, password = read_config_yaml(path)
-    rcsss.desk.lock(ip, username, password)
+    cfg = read_config_yaml(path)
+    rcsss.desk.lock(ip, cfg.username, cfg.password)
 
 
 @cli.command()
@@ -59,8 +53,8 @@ def unlock(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
-    username, password = read_config_yaml(path)
-    rcsss.desk.unlock(ip, username, password)
+    cfg = read_config_yaml(path)
+    rcsss.desk.unlock(ip, cfg.username, cfg.password)
 
 
 @cli.command()
@@ -70,8 +64,8 @@ def gm(
     disable: Annotated[bool, typer.Option("-d", help="Disable guiding mode")] = False,
 ):
     """Enables or disables guiding mode."""
-    username, password = read_config_yaml(path)
-    rcsss.desk.guiding_mode(ip, username, password, disable)
+    cfg = read_config_yaml(path)
+    rcsss.desk.guiding_mode(ip, cfg.username, cfg.password, disable)
 
 
 @cli.command()
@@ -80,8 +74,8 @@ def shutdown(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Shuts the robot down"""
-    username, password = read_config_yaml(path)
-    rcsss.desk.shutdown(ip, username, password)
+    cfg = read_config_yaml(path)
+    rcsss.desk.shutdown(ip, cfg.username, cfg.password)
 
 
 @cli.command()
@@ -92,7 +86,7 @@ def record(
     spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
 ):
     """Shuts the robot down"""
-    username, password = read_config_yaml(path)
+    cfg = read_config_yaml(path)
 
     ip: Dict[str, str] = eval(ip_str)
 
@@ -100,15 +94,15 @@ def record(
 
     if lpaths is not None:
         for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=username, password=password)
-        p = PoseList.load(ip, lpaths)
+            rcsss.desk.unlock(r_ip, username=cfg.username, password=cfg.password)
+        p = PoseList.load(ip, lpaths, cfg.urdf_model_path)
         input("Press any key to replay")
         p.replay()
     else:
         for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=username, password=password)
-            rcsss.desk.guiding_mode(r_ip, username=username, password=password, disable=False)
-        p = PoseList(ip)
+            rcsss.desk.unlock(r_ip, username=cfg.username, password=cfg.password)
+            rcsss.desk.guiding_mode(r_ip, username=cfg.username, password=cfg.password, disable=False)
+        p = PoseList(ip, urdf_path=cfg.urdf_model_path)
         p.record()
         if spath is not None:
             p.save(spath)
