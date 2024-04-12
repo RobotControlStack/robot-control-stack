@@ -2,11 +2,21 @@ from typing import Annotated, Dict, List, Optional
 
 import rcsss
 import typer
-from rcsss.config import read_config_yaml
+from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.desk import Desk
 from rcsss.record import PoseList
 
 cli = typer.Typer()
+
+
+@cli.command()
+def sample_config(
+    path: Annotated[
+        str, typer.Option("-p", help="Path to where the default config file should be saved")
+    ] = "config.yaml",
+):
+    """Creates a sample yaml config file"""
+    create_sample_config_yaml(path)
 
 
 @cli.command()
@@ -58,7 +68,7 @@ def unlock(
 
 
 @cli.command()
-def gm(
+def guiding_mode(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
     disable: Annotated[bool, typer.Option("-d", help="Disable guiding mode")] = False,
