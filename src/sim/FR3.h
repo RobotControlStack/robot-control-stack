@@ -6,6 +6,7 @@
 #include <mujoco/mujoco.h>
 
 #include <Eigen/Eigen>
+#include <list>
 #include <thread>
 
 #include "rl/mdl/JacobianInverseKinematics.h"
@@ -28,8 +29,13 @@ struct FR3Config : common::RConfig {
   double speed_factor;
   bool render;
   bool realtime;
-  FR3Config(double speed_factor, bool render, bool realtime)
-      : speed_factor(speed_factor), render(render), realtime(realtime){};
+  bool trajectory_trace;
+  FR3Config(double speed_factor, bool render, bool realtime,
+            bool trajectory_trace)
+      : speed_factor(speed_factor),
+        render(render),
+        realtime(realtime),
+        trajectory_trace(trajectory_trace){};
 };
 
 struct FR3State : common::RState {};
@@ -46,6 +52,13 @@ class FR3 : public common::Robot {
   common::Vector7d get_joint_position() override;
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
+  std::list<mjvGeom>::iterator add_sphere(const common::Pose &pose, double size,
+                                          const float *rgba);
+  std::list<mjvGeom>::iterator add_line(const common::Pose &from,
+                                        const common::Pose &to, double size,
+                                        const float *rgba);
+  void remove_marker(std::list<mjvGeom>::iterator &it);
+  void clear_markers();
 
  private:
   FR3Config cfg;
@@ -67,6 +80,7 @@ class FR3 : public common::Robot {
   } cgeom_ids;
   std::jthread render_thread;
   bool exit_requested;
+  std::list<mjvGeom> markers;
   void wait_for_convergence(rcs::common::Vector7d target_angles);
   bool collision(std::set<size_t> const &geom_ids);
   void render_loop();

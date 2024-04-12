@@ -68,7 +68,7 @@ namespace sim {
 using std::endl;
 
 FR3::FR3(const std::string& mjmdl, const std::string& rlmdl)
-    : models(), cfg(0, true, false), exit_requested(false) {
+    : models(), cfg(0, true, false, false), exit_requested(false) {
   /* Load models */
   char err[1024];
   this->models.mj.mdl = std::shared_ptr<mjModel>(
@@ -116,11 +116,11 @@ std::unique_ptr<common::RState> FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  int hand_body_id = mj_name2id(this->models.mj.mdl.get(), mjOBJ_BODY, "hand");
-  if (hand_body_id == -1) throw std::runtime_error("No body named \"hand\"");
+  int tcp_id = mj_name2id(this->models.mj.mdl.get(), mjOBJ_SITE, "tcp");
+  if (tcp_id == -1) throw std::runtime_error("No site named \"tcp\"");
   return common::Pose(
-      Eigen::Vector4d(this->models.mj.data->xquat + 4 * hand_body_id),
-      Eigen::Vector3d(this->models.mj.data->xpos + 3 * hand_body_id));
+      Eigen::Matrix3d(this->models.mj.data->site_xmat + 9 * tcp_id),
+      Eigen::Vector3d(this->models.mj.data->site_xpos + 3 * tcp_id));
 }
 
 void FR3::set_joint_position(common::Vector7d const& q) {
@@ -156,16 +156,41 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
       this->models.mj.data->qpos, this->models.mj.data->qpos);
   // TODO: move to config
   double tolerance = .5 * (std::numbers::pi / 180);
+
+  common::Pose pose_from = this->get_cartesian_position();
+  common::Pose pose_to = this->get_cartesian_position();
+  float marker_col[4] = {0, 1, 0, 1};
+  int marker_count = 0;
+
   while ((not arrived) or moving) {
     mj_step(this->models.mj.mdl.get(), this->models.mj.data.get());
+
+    if (this->cfg.trajectory_trace) {
+      if (marker_count == 0) {
+        pose_from = pose_to;
+        pose_to = this->get_cartesian_position();
+        this->add_line(pose_from, pose_to, 0.003, marker_col);
+      }
+      marker_count = ++marker_count % 10;
+    }
+
+    // TODO: Replace by actual clock synchronization
+    if (this->cfg.realtime)
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
     moving = not angles.first.isApprox(angles.second, tolerance);
     arrived = angles.second.isApprox(target_angles, tolerance);
     angles.first = angles.second;
-    if (this->collision(this->cgeom_ids.arm)) return this->reset();
+    if (this->collision(this->cgeom_ids.arm)) {
+      std::cerr << "Collision detected" << std::endl;
+      return this->reset();
+    }
     if (not moving and not arrived and
         this->collision(
-            set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper)))
+            set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper))) {
+      std::cerr << "Collision detected" << std::endl;
       return this->reset();
+    }
   }
 }
 
@@ -177,6 +202,31 @@ bool FR3::collision(std::set<size_t> const& geom_ids) {
   }
   return false;
 }
+
+std::list<mjvGeom>::iterator FR3::add_sphere(const common::Pose& pose,
+                                             double size, const float* rgba) {
+  mjvGeom newgeom;
+  mjtNum* pos = pose.translation().data();
+  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos, NULL, rgba);
+  return this->markers.insert(this->markers.end(), newgeom);
+}
+
+std::list<mjvGeom>::iterator FR3::add_line(const common::Pose& pose_from,
+                                           const common::Pose& pose_to,
+                                           double size, const float* rgba) {
+  mjvGeom newgeom;
+  mjtNum* from = pose_from.translation().data();
+  mjtNum* to = pose_to.translation().data();
+  mjv_initGeom(&newgeom, mjGEOM_CAPSULE, &size, NULL, NULL, rgba);
+  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from, to);
+  return this->markers.insert(this->markers.end(), newgeom);
+}
+
+void FR3::remove_marker(std::list<mjvGeom>::iterator& it) {
+  this->markers.erase(it);
+}
+
+void FR3::clear_markers() { this->markers.clear(); }
 
 void FR3::render_loop() {
   constexpr int kMaxGeom = 20000;
@@ -209,6 +259,20 @@ void FR3::render_loop() {
         ui_adapter.GetFramebufferSize();
     mjv_updateScene(this->models.mj.mdl.get(), this->models.mj.data.get(), &opt,
                     NULL, &cam, mjCAT_ALL, &scn);
+
+    // Add markers
+    for (mjvGeom marker : markers) {
+      if (scn.ngeom >= scn.maxgeom) {
+        mj_warning(this->models.mj.data.get(), mjWARN_VGEOMFULL, scn.maxgeom);
+        break;
+      } else {
+        mjvGeom* thisgeom = scn.geoms + scn.ngeom;
+        *thisgeom = marker;
+        thisgeom->segid = scn.ngeom;
+        scn.ngeom++;
+      }
+    }
+
     mjr_render(uistate.rect[0], &scn, &ui_adapter.mjr_context());
     ui_adapter.SwapBuffers();
     ui_adapter.PollEvents();
