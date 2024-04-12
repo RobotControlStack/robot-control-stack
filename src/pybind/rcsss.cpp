@@ -300,6 +300,7 @@ PYBIND11_MODULE(_core, m) {
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
+      .def(py::init<>())
       .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
@@ -310,5 +311,6 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init([](const std::string mjmdl, const std::string rlmdl, std::optional<bool> render) {
             return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
-           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"));
+           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"))
+      .def("reset", &rcs::sim::FR3::reset);
 }
