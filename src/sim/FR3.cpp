@@ -157,8 +157,8 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
   // TODO: move to config
   double tolerance = .5 * (std::numbers::pi / 180);
 
-  common::Pose pose_from = this->get_cartesian_position();
-  common::Pose pose_to = this->get_cartesian_position();
+  std::pair<common::Pose, common::Pose> marker(this->get_cartesian_position(),
+                                               this->get_cartesian_position());
   float marker_col[4] = {0, 1, 0, 1};
   int marker_count = 0;
 
@@ -167,9 +167,9 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
 
     if (this->cfg.trajectory_trace) {
       if (marker_count == 0) {
-        pose_from = pose_to;
-        pose_to = this->get_cartesian_position();
-        this->add_line(pose_from, pose_to, 0.003, marker_col);
+        marker.first = marker.second;
+        marker.second = this->get_cartesian_position();
+        this->add_line(marker.first, marker.second, 0.003, marker_col);
       }
       marker_count = ++marker_count % 10;
     }
@@ -261,16 +261,15 @@ void FR3::render_loop() {
                     NULL, &cam, mjCAT_ALL, &scn);
 
     // Add markers
-    for (mjvGeom marker : markers) {
+    for (mjvGeom marker : this->markers) {
       if (scn.ngeom >= scn.maxgeom) {
         mj_warning(this->models.mj.data.get(), mjWARN_VGEOMFULL, scn.maxgeom);
         break;
-      } else {
-        mjvGeom* thisgeom = scn.geoms + scn.ngeom;
-        *thisgeom = marker;
-        thisgeom->segid = scn.ngeom;
-        scn.ngeom++;
       }
+      mjvGeom* thisgeom = scn.geoms + scn.ngeom;
+      *thisgeom = marker;
+      thisgeom->segid = scn.ngeom;
+      scn.ngeom++;
     }
 
     mjr_render(uistate.rect[0], &scn, &ui_adapter.mjr_context());
