@@ -17,8 +17,6 @@ namespace sim {
 const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
                                0, M_PI_2, M_PI_4)
                                   .finished());
-<<<<<<< HEAD
-
 struct FR3Config : common::RConfig {
   size_t ik_duration = 300; // milliseconds
 };
@@ -31,28 +29,6 @@ struct FR3State : common::RState {
 class FR3 : public common::Robot {
  public:
   FR3(const std::string &mjmdl, const std::string &rlmdl, std::optional<bool> render);
-=======
-const double DEFAULT_SPEED_FACTOR = 0.2;
-struct FR3Load {
-  double load_mass;
-  std::optional<Eigen::Vector3d> f_x_cload;
-  std::optional<Eigen::Matrix3d> load_inertia;
-};
-
-struct FR3Config : common::RConfig {
-  double speed_factor;
-  bool render;
-  bool realtime;
-  FR3Config(double speed_factor, bool render, bool realtime)
-      : speed_factor(speed_factor), render(render), realtime(realtime){};
-};
-
-struct FR3State : common::RState {};
-
-class FR3 : public common::Robot {
- public:
-  FR3(const std::string &mjmdl, const std::string &rlmdl);
->>>>>>> master
   ~FR3() override;
   bool set_parameters(const common::RConfig &cfg) override;
   std::unique_ptr<common::RConfig> get_parameters() override;
@@ -65,10 +41,7 @@ class FR3 : public common::Robot {
 
  private:
   FR3Config cfg;
-<<<<<<< HEAD
   FR3State state;
-=======
->>>>>>> master
   struct {
     struct {
       std::shared_ptr<mjModel> mdl;
@@ -90,11 +63,7 @@ class FR3 : public common::Robot {
   void wait_for_convergence(rcs::common::Vector7d target_angles);
   bool collision(std::set<size_t> const &geom_ids);
   void render_loop();
-<<<<<<< HEAD
   void reset(); // TODO: Expose to python API
-=======
-  void reset();
->>>>>>> master
 };
 }  // namespace sim
 }  // namespace rcs

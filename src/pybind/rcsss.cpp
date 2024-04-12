@@ -299,21 +299,16 @@ PYBIND11_MODULE(_core, m) {
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
-  py::class_<rcs::sim::FR3State>(sim, "FR3State");
-  py::class_<rcs::sim::FR3Config, std::shared_ptr<rcs::sim::FR3Config>>(
-      sim, "FR3Config");
+  py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
+      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration);
+  py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
+      .def(py::init<>())
+      .def_readonly("collision", &rcs::sim::FR3State::collision)
+      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
       .def(py::init([](const std::string mjmdl, const std::string rlmdl, std::optional<bool> render) {
             return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
            py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"));
-
-  py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration);
-
-  py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
-      .def(py::init<>())
-      .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
 }
