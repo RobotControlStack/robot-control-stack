@@ -17,7 +17,7 @@ def home(
 ):
     """Moves the FR3 to home position"""
     cfg = read_config_yaml(path)
-    d = Desk(ip, cfg.username, cfg.password)
+    d = Desk(ip, cfg.hw.username, cfg.hw.password)
     d.take_control(force=True)
     d.disable_guiding_mode()
     d.activate_fci()
@@ -44,7 +44,7 @@ def lock(
 ):
     """Locks the robot."""
     cfg = read_config_yaml(path)
-    rcsss.desk.lock(ip, cfg.username, cfg.password)
+    rcsss.desk.lock(ip, cfg.hw.username, cfg.hw.password)
 
 
 @cli.command()
@@ -54,7 +54,7 @@ def unlock(
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
     cfg = read_config_yaml(path)
-    rcsss.desk.unlock(ip, cfg.username, cfg.password)
+    rcsss.desk.unlock(ip, cfg.hw.username, cfg.hw.password)
 
 
 @cli.command()
@@ -65,7 +65,7 @@ def gm(
 ):
     """Enables or disables guiding mode."""
     cfg = read_config_yaml(path)
-    rcsss.desk.guiding_mode(ip, cfg.username, cfg.password, disable)
+    rcsss.desk.guiding_mode(ip, cfg.hw.username, cfg.hw.password, disable)
 
 
 @cli.command()
@@ -75,7 +75,7 @@ def shutdown(
 ):
     """Shuts the robot down"""
     cfg = read_config_yaml(path)
-    rcsss.desk.shutdown(ip, cfg.username, cfg.password)
+    rcsss.desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
 
 
 @cli.command()
@@ -94,15 +94,15 @@ def record(
 
     if lpaths is not None:
         for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=cfg.username, password=cfg.password)
-        p = PoseList.load(ip, lpaths, cfg.urdf_model_path)
+            rcsss.desk.unlock(r_ip, username=cfg.hw.username, password=cfg.hw.password)
+        p = PoseList.load(ip, lpaths, cfg.hw.urdf_model_path)
         input("Press any key to replay")
         p.replay()
     else:
         for r_ip in ip.values():
-            rcsss.desk.unlock(r_ip, username=cfg.username, password=cfg.password)
-            rcsss.desk.guiding_mode(r_ip, username=cfg.username, password=cfg.password, disable=False)
-        p = PoseList(ip, urdf_path=cfg.urdf_model_path)
+            rcsss.desk.unlock(r_ip, username=cfg.hw.username, password=cfg.hw.password)
+            rcsss.desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, disable=False)
+        p = PoseList(ip, urdf_path=cfg.hw.urdf_model_path)
         p.record()
         if spath is not None:
             p.save(spath)
