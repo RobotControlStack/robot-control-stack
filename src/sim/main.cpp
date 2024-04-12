@@ -130,6 +130,7 @@ void test_fr3() {
   for (size_t i = 0; i < 100; ++i) {
     std::cout << "Setting cartesian position... " << std::endl;
     rcs::common::Pose target = random_pose_in_iso_cube();
+    robot.add_sphere(target, marker_size, marker_col);
     robot.set_cartesian_position(target);
     std::cout << "Done!" << std::endl;
     std::cout << "Moving home... ";
