@@ -67,7 +67,8 @@ namespace rcs {
 namespace sim {
 using std::endl;
 
-FR3::FR3(const std::string& mjmdl, const std::string& rlmdl, std::optional<bool> render)
+FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
+         std::optional<bool> render)
     : models(), exit_requested(false) {
   /* Load models */
   char err[1024];
@@ -89,7 +90,8 @@ FR3::FR3(const std::string& mjmdl, const std::string& rlmdl, std::optional<bool>
   init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
                 *this->models.mj.mdl);
   init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
-  this->models.rl.ik->setDuration(std::chrono::milliseconds(this->cfg.ik_duration));
+  this->models.rl.ik->setDuration(
+      std::chrono::milliseconds(this->cfg.ik_duration));
   /* Initialize sim */
   this->reset();
   if (render.value_or(true))
@@ -100,7 +102,8 @@ FR3::~FR3() { this->exit_requested = true; }
 
 bool FR3::set_parameters(common::RConfig const& cfg) {
   this->cfg = dynamic_cast<FR3Config const&>(cfg);
-  this->models.rl.ik->setDuration(std::chrono::milliseconds(this->cfg.ik_duration));
+  this->models.rl.ik->setDuration(
+      std::chrono::milliseconds(this->cfg.ik_duration));
   return true;
 }
 

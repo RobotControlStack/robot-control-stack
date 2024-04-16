@@ -119,18 +119,17 @@ void test_convergence() {
 void test_fr3() {
   const std::string mjcf = MODEL_DIR "/mjcf/scene.xml";
   const std::string urdf = MODEL_DIR "/urdf/fr3_from_panda.urdf";
-<<<<<<< HEAD
   rcs::sim::FR3 robot(mjcf, urdf, {});
-=======
-  rcs::sim::FR3 robot(mjcf, urdf);
 
-  rcs::sim::FR3Config cfg(0, true, true, true);
+  rcs::sim::FR3Config cfg{};
+  cfg.ik_duration = 300;
+  cfg.realtime = true;
+  cfg.trajectory_trace = true;
   robot.set_parameters(cfg);
 
   double marker_size = 0.015;
   float marker_col[4] = {1, 0, 0, 1};
 
->>>>>>> master
   for (size_t i = 0; i < 100; ++i) {
     std::cout << "Setting cartesian position... " << std::endl;
     rcs::common::Pose target = random_pose_in_iso_cube();

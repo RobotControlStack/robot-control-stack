@@ -4,8 +4,6 @@ sim module
 """
 from __future__ import annotations
 
-import typing
-
 import rcsss._core.common
 
 __all__ = ["FR3", "FR3Config", "FR3State"]
