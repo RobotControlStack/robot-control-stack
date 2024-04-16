@@ -42,6 +42,7 @@ class FR3 : public common::Robot {
   common::Vector7d get_joint_position() override;
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
+  void reset();
   std::list<mjvGeom>::iterator add_sphere(const common::Pose &pose, double size,
                                           const float *rgba);
   std::list<mjvGeom>::iterator add_line(const common::Pose &from,
@@ -75,7 +76,6 @@ class FR3 : public common::Robot {
   void wait_for_convergence(rcs::common::Vector7d target_angles);
   bool collision(std::set<size_t> const &geom_ids);
   void render_loop();
-  void reset();  // TODO: Expose to python API
 };
 }  // namespace sim
 }  // namespace rcs
