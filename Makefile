@@ -26,6 +26,7 @@ stubgen:
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
 	isort python/rcsss/_core/*.pyi
 	black python/rcsss/_core/*.pyi
+	ruff check --fix python/rcsss/_core/*.pyi
 
 # Python
 pycheckformat:
