@@ -10,9 +10,12 @@ __all__ = ["FR3", "FR3Config", "FR3State"]
 
 class FR3(rcsss._core.common.Robot):
     def __init__(self, mjmdl: str, rlmdl: str, render: bool | None) -> None: ...
+    def clear_markers(self) -> None: ...
 
 class FR3Config(rcsss._core.common.RConfig):
     ik_duration: int
+    realtime: bool
+    trajectory_trace: bool
 
 class FR3State(rcsss._core.common.RState):
     def __init__(self) -> None: ...

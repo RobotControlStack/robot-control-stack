@@ -300,7 +300,9 @@ PYBIND11_MODULE(_core, m) {
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration);
+      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
+      .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
+      .def_readwrite("trajectory_trace", &rcs::sim::FR3Config::trajectory_trace);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
@@ -311,5 +313,6 @@ PYBIND11_MODULE(_core, m) {
                        std::optional<bool> render) {
              return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
-           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"));
+           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"))
+      .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }
