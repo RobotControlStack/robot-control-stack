@@ -121,7 +121,7 @@ void test_fr3() {
   const std::string urdf = MODEL_DIR "/urdf/fr3_from_panda.urdf";
   rcs::sim::FR3 robot(mjcf, urdf, {});
 
-  rcs::sim::FR3Config cfg{ };
+  rcs::sim::FR3Config cfg{};
   cfg.ik_duration = 300;
   cfg.realtime = true;
   cfg.trajectory_trace = true;
