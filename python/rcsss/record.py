@@ -184,15 +184,16 @@ class PoseList:
         ip: Dict[str, str],
         speed_factor: float = 0.2,
         poses: Optional[List[Pose]] = None,
+        urdf_path: Optional[str] = None,
     ):
-        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip) for key, ip in ip.items()}
+        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in ip.items()}
         self.g: Dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
         self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
         self.m: Dict[str, Tuple[str, np.ndarray]] = {}
 
     @classmethod
-    def load(cls, ip: Dict[str, str], filenames: List[str]):
+    def load(cls, ip: Dict[str, str], filenames: List[str], urdf_path: Optional[str] = None):
         poses = []
         for filename in filenames:
 
@@ -211,7 +212,7 @@ class PoseList:
             with open(filename, "r") as f:
                 poses += [get_class(line).from_str(line) for line in f.readlines()]
 
-        return cls(poses=poses, ip=ip)
+        return cls(poses=poses, ip=ip, urdf_path=urdf_path)
 
     def save(self, filename):
         with open(filename, "w") as f:
