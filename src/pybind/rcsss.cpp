@@ -123,6 +123,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
+      .def("as_vector", &rcs::common::RPY::as_vector)
+      .def("is_close", &rcs::common::RPY::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::RPY::str)
       .def(py::self + py::self)
       .def(py::pickle(
@@ -150,6 +153,9 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
+      .def("inverse", &rcs::common::Pose::inverse)
+      .def("is_close", &rcs::common::Pose::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::Pose::str)
       .def(py::self * py::self)
       .def(py::pickle(

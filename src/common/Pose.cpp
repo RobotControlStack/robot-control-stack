@@ -121,5 +121,14 @@ Pose Pose::operator*(const Pose &pose_b) const {
   return Pose(rot, trans);
 }
 
+Pose Pose::inverse() const {
+  return Pose(this->m_rotation.inverse(), -this->m_translation);
+}
+
+bool Pose::is_close(const Pose &other, double eps) const {
+  return this->translation().isApprox(other.translation(), eps) &&
+         this->quaternion().isApprox(other.quaternion(), eps);
+}
+
 }  // namespace common
 }  // namespace rcs
