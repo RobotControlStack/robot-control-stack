@@ -10,3 +10,4 @@ __pycache__
 .mypy_cache
 dist
 .venv
+config.yaml

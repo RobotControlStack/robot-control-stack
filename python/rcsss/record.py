@@ -20,8 +20,8 @@ class Pose(ABC):
     def __str__(self) -> str:
         pass
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_str(cls, line: str) -> "Pose":
         pass
 
@@ -177,8 +177,7 @@ class ChnageSpeedFactor(Pose):
 
 
 class PoseList:
-    # should record and replay a list of poses
-    MODEL_PATH = "models/urdf/fr3.urdf"
+    """Records and replays a list of poses on multiple robots."""
 
     def __init__(
         self,
@@ -186,7 +185,7 @@ class PoseList:
         speed_factor: float = 0.2,
         poses: Optional[List[Pose]] = None,
     ):
-        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip, self.MODEL_PATH) for key, ip in ip.items()}
+        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip) for key, ip in ip.items()}
         self.g: Dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
         self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
