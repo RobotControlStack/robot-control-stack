@@ -124,7 +124,15 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("__str__", &rcs::common::RPY::str)
-      .def(py::self + py::self);
+      .def(py::self + py::self)
+      .def(py::pickle(
+          [](const rcs::common::RPY &p) {  // dump
+            return py::make_tuple(p.roll, p.pitch, p.yaw);
+          },
+          [](py::tuple t) {  // load
+            return rcs::common::RPY(t[0].cast<double>(), t[1].cast<double>(),
+                                    t[2].cast<double>());
+          }));
 
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
@@ -143,7 +151,14 @@ PYBIND11_MODULE(_core, m) {
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("__str__", &rcs::common::Pose::str)
-      .def(py::self * py::self);
+      .def(py::self * py::self)
+      .def(py::pickle(
+          [](const rcs::common::Pose &p) {  // dump
+            return p.affine_array();
+          },
+          [](std::array<double, 16> t) {  // load
+            return rcs::common::Pose(t);
+          }));
 
   py::class_<rcs::common::RConfig>(common, "RConfig");
   py::class_<rcs::common::RState>(common, "RState");
