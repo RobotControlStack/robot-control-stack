@@ -302,7 +302,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
-      .def_readwrite("trajectory_trace", &rcs::sim::FR3Config::trajectory_trace);
+      .def_readwrite("trajectory_trace",
+                     &rcs::sim::FR3Config::trajectory_trace);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
