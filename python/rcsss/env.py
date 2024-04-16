@@ -73,6 +73,6 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Base(robot)
     obs = env.reset()
-    for i in range(100):
+    for _ in range(100):
         act = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(act)
