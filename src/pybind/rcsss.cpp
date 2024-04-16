@@ -307,8 +307,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
-      .def(py::init([](const std::string mjmdl, const std::string rlmdl, std::optional<bool> render) {
-            return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
+      .def(py::init([](const std::string mjmdl, const std::string rlmdl,
+                       std::optional<bool> render) {
+             return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
            py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"));
 }
