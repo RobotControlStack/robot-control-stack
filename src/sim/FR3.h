@@ -7,8 +7,10 @@
 
 #include <Eigen/Eigen>
 #include <list>
+#include <memory>
 #include <thread>
 
+#include "mujoco/mjdata.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Kinematic.h"
 #include "rl/mdl/Model.h"

@@ -115,6 +115,7 @@ std::unique_ptr<common::RConfig> FR3::get_parameters() {
 
 std::unique_ptr<common::RState> FR3::get_state() {
   std::unique_ptr<FR3State> ret = std::make_unique<FR3State>();
+  *ret = this->state;
   return ret;
 }
 
