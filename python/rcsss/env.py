@@ -5,18 +5,18 @@ from typing import Any, Optional, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import sim
+from rcsss import common, sim
 
 RPY = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
-xyz = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
-pose = gym.spaces.Dict({"rpy": RPY, "xyz": xyz})
-angles = gym.spaces.Box(
+XYZ = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
+POSE = gym.spaces.Dict({"rpy": RPY, "xyz": XYZ})
+ANGLES = gym.spaces.Box(
     low=np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]),
     high=np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895]),
     dtype=np.float32,
     shape=(7,),
 )
-collision = ik_success = gym.spaces.Discrete(2)
+COLLISION = IK_SUCCESS = gym.spaces.Discrete(2)
 
 
 # TODO: Typing for the action space?
@@ -26,15 +26,15 @@ collision = ik_success = gym.spaces.Discrete(2)
 class FR3Base(gym.Env):
     """Simulated Franka Research 3."""
 
-    def __init__(self, mjcf: str, urdf: str, render: bool = True):
+    def __init__(self, robot: common.Robot):
         """Parameters: path to MJCF and path to urdf."""
-        self.robot = sim.FR3(mjcf, urdf, render)
-        self.action_space = angles
+        self.robot = robot
+        self.action_space = ANGLES
         self.observation_space = gym.spaces.Dict(
             {
-                "pose": pose,
-                "angles": angles,
-                "collision": collision,
+                "pose": POSE,
+                "angles": ANGLES,
+                "collision": COLLISION,
             }
         )
 
@@ -60,15 +60,19 @@ class FR3Base(gym.Env):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
-        self.robot.reset()
+        self.robot.move_home()
         return self._get_obs()
 
 
 if __name__ == "__main__":
-    env = FR3Base("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=False)
+    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
+    cfg = sim.FR3Config()
+    cfg.ik_duration = 300
+    cfg.realtime = True
+    cfg.trajectory_trace = True
+    robot.set_parameters(cfg)
+    env = FR3Base(robot)
     obs = env.reset()
-    # print(f"Initial obs: {obs}")
-    act = env.action_space.sample()
-    # print(f"Initial action: {act}")
-    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-    # print(f"New obs: {obs}")
+    for i in range(100):
+        act = env.action_space.sample()
+        obs, reward, terminated, truncated, info = env.step(act)
