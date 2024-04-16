@@ -3,6 +3,7 @@ from typing import Annotated, Dict, List, Optional
 import rcsss
 import typer
 import yaml
+from rcsss.desk import Desk
 from rcsss.record import PoseList
 
 cli = typer.Typer()
@@ -17,9 +18,16 @@ def read_config_yaml(path: str) -> tuple[str, str]:
 @cli.command()
 def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
     shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
 ):
     """Moves the FR3 to home position"""
+    username, password = read_config_yaml(path)
+    d = Desk(ip, username, password)
+    d.take_control(force=True)
+    d.disable_guiding_mode()
+    d.activate_fci()
+
     f = rcsss.hw.FR3(ip)
     config = rcsss.hw.FR3Config()
     config.speed_factor = 0.7
@@ -32,6 +40,7 @@ def home(
     else:
         g.release()
     f.move_home()
+    d.release_control()
 
 
 @cli.command()
@@ -45,14 +54,24 @@ def lock(
 
 
 @cli.command()
-def prepare(
+def unlock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
-    guiding_mode: Annotated[bool, typer.Option("-g", help="Should the robot be put into guiding mode")] = False,
 ):
-    """Prepares the robot by unlocking the joints and optionally putting the robot into guiding mode."""
+    """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
     username, password = read_config_yaml(path)
-    rcsss.desk.prepare(ip, username, password, guiding_mode)
+    rcsss.desk.unlock(ip, username, password)
+
+
+@cli.command()
+def gm(
+    ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    disable: Annotated[bool, typer.Option("-d", help="Disable guiding mode")] = False,
+):
+    """Enables or disables guiding mode."""
+    username, password = read_config_yaml(path)
+    rcsss.desk.guiding_mode(ip, username, password, disable)
 
 
 @cli.command()
@@ -77,16 +96,18 @@ def record(
 
     ip: Dict[str, str] = eval(ip_str)
 
-    username, password = read_config_yaml("")
+    # TODO: do not use desk functions but create an own desk instance
+
     if lpaths is not None:
         for r_ip in ip.values():
-            rcsss.desk.prepare(r_ip, guiding_mode=False, username=username, password=password)
+            rcsss.desk.unlock(r_ip, username=username, password=password)
         p = PoseList.load(ip, lpaths)
         input("Press any key to replay")
         p.replay()
     else:
         for r_ip in ip.values():
-            rcsss.desk.prepare(r_ip, guiding_mode=True, username=username, password=password)
+            rcsss.desk.unlock(r_ip, username=username, password=password)
+            rcsss.desk.guiding_mode(r_ip, username=username, password=password, disable=False)
         p = PoseList(ip)
         p.record()
         if spath is not None:
