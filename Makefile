@@ -24,6 +24,7 @@ stubgen:
 	pybind11-stubgen -o python --numpy-array-use-type-var rcsss
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
+	ruff check --fix python/rcsss/_core/*.pyi
 	isort python/rcsss/_core/*.pyi
 	black python/rcsss/_core/*.pyi
 

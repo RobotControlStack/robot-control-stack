@@ -119,9 +119,12 @@ void test_convergence() {
 void test_fr3() {
   const std::string mjcf = MODEL_DIR "/mjcf/scene.xml";
   const std::string urdf = MODEL_DIR "/urdf/fr3_from_panda.urdf";
-  rcs::sim::FR3 robot(mjcf, urdf);
+  rcs::sim::FR3 robot(mjcf, urdf, {});
 
-  rcs::sim::FR3Config cfg(0, true, true, true);
+  rcs::sim::FR3Config cfg{};
+  cfg.ik_duration = 300;
+  cfg.realtime = true;
+  cfg.trajectory_trace = true;
   robot.set_parameters(cfg);
 
   double marker_size = 0.015;

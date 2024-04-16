@@ -6,16 +6,17 @@ from __future__ import annotations
 
 import rcsss._core.common
 
-__all__ = ["FR3", "FR3Config", "FR3Load", "FR3State"]
+__all__ = ["FR3", "FR3Config", "FR3State"]
 
 class FR3(rcsss._core.common.Robot):
-    def __init__(self, mjmdl: str, rlmdl: str) -> None: ...
+    def __init__(self, mjmdl: str, rlmdl: str, render: bool | None) -> None: ...
 
-class FR3Config:
-    pass
+class FR3Config(rcsss._core.common.RConfig):
+    ik_duration: int
 
-class FR3Load:
-    pass
-
-class FR3State:
-    pass
+class FR3State(rcsss._core.common.RState):
+    def __init__(self) -> None: ...
+    @property
+    def collision(self) -> bool: ...
+    @property
+    def ik_success(self) -> bool: ...
