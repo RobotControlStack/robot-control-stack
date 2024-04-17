@@ -9,9 +9,6 @@
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
 #include <memory>
-#include "mujoco/errors.h"
-#include "mujoco/structs.h"
-#include "mujoco/functions.h"
 
 // TODO: define exceptions
 
@@ -301,6 +298,7 @@ PYBIND11_MODULE(_core, m) {
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
+  py::module_::import("mujoco._structs");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
@@ -309,7 +307,9 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
+      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
+      .def_readonly("data", &rcs::sim::FR3State::data);
+
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
       .def(py::init([](const std::string mjmdl, const std::string rlmdl,
