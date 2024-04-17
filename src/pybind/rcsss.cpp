@@ -300,6 +300,7 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::module_::import("mujoco._structs");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
+      .def(py::init<>())
       .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
@@ -317,5 +318,6 @@ PYBIND11_MODULE(_core, m) {
              return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
            py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"))
+      .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }
