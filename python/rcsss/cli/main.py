@@ -1,5 +1,5 @@
 from contextlib import ExitStack
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated
 
 import rcsss
 import typer
@@ -82,13 +82,13 @@ def shutdown(
 def record(
     ip_str: Annotated[str, typer.Argument(help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")],
     path: Annotated[str, typer.Argument(help="Path to the config file")],
-    lpaths: Annotated[Optional[List[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
-    spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
+    lpaths: Annotated[list[str] | None, typer.Option("--lpaths", help="Paths to load n recordings")] = None,
+    spath: Annotated[str | None, typer.Option("--spath", help="Paths to load n recordings")] = None,
 ):
     """Tool to record poses with multiple FR3 robots."""
     cfg = read_config_yaml(path)
 
-    ip: Dict[str, str] = eval(ip_str)
+    ip: dict[str, str] = eval(ip_str)
 
     if lpaths is not None:
         with ExitStack() as stack:
