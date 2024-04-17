@@ -8,8 +8,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
-
 #include <memory>
+#include "mujoco/errors.h"
+#include "mujoco/structs.h"
+#include "mujoco/functions.h"
 
 // TODO: define exceptions
 
