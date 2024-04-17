@@ -5,7 +5,7 @@ import json as json_module
 import logging
 import ssl
 import threading
-from typing import Callable, Dict, Literal, Optional
+from typing import Callable, Literal
 from urllib import parse
 
 import rcsss
@@ -112,7 +112,7 @@ class Desk:
         self._logged_in = False
         self._token = Token()
         self._listening = False
-        self._listen_thread: Optional[threading.Thread] = None
+        self._listen_thread: threading.Thread | None = None
 
         # the following variables might be out of sync
         # TODO: is there a way to check for the robot's state?
@@ -258,7 +258,7 @@ class Desk:
                 additional_headers={"authorization": self._session.cookies.get("authorization")},
             ) as websocket:
                 while True:
-                    event: Dict = json_module.loads(websocket.recv(timeout))
+                    event: dict = json_module.loads(websocket.recv(timeout))
                     if event["circle"]:
                         break
         self._token = Token(str(response["id"]), self._username, response["token"])
@@ -338,10 +338,10 @@ class Desk:
         self,
         method: Literal["post", "get", "delete"],
         url: str,
-        json: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        files: Optional[Dict[str, str]] = None,
-        data: Optional[bytes] = None,
+        json: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        files: dict[str, str] | None = None,
+        data: bytes | None = None,
     ) -> requests.Response:
         fun = getattr(self._session, method)
         response: requests.Response = fun(
@@ -369,12 +369,12 @@ class Desk:
             self._listening = True
             while self._listening:
                 try:
-                    event: Dict = json_module.loads(websocket.recv(timeout))
+                    event: dict = json_module.loads(websocket.recv(timeout))
                     cb(event)
                 except TimeoutError:
                     pass
 
-    def listen(self, cb: Callable[[Dict], None]) -> None:
+    def listen(self, cb: Callable[[dict], None]) -> None:
         """
         Starts a thread listening to Pilot button events. All the Pilot buttons,
         except for the `Pilot Mode` button can be captured. Make sure Pilot Mode is

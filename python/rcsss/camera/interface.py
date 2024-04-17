@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel
@@ -10,22 +10,22 @@ class GenericCameraConfig(BaseModel): ...
 
 class CameraFrame(BaseModel):
     color: np.ndarray
-    ir: Optional[np.ndarray]
-    depth: Optional[np.ndarray]
-    temperature: Optional[float]
+    ir: np.ndarray | None
+    depth: np.ndarray | None
+    temperature: float | None
 
 
 class IMUFrame(BaseModel):
     acc_sample: np.ndarray[Literal[3], np.dtype[np.float32]]
-    acc_sample_usec: Optional[float]
+    acc_sample_usec: float | None
     gyro_sample: np.ndarray[Literal[3], np.dtype[np.float32]]
-    gyro_sample_usec: Optional[float]
-    temperature: Optional[float]
+    gyro_sample_usec: float | None
+    temperature: float | None
 
 
 class Frame(BaseModel):
     camera: CameraFrame
-    imu: Optional[IMUFrame]
+    imu: IMUFrame | None
 
 
 class Camera(ABC):

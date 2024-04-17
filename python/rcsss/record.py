@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from time import sleep
-from typing import Dict, List, Optional, Tuple, cast
+from typing import cast
 
 import numpy as np
 from rcsss import hw
@@ -13,7 +13,7 @@ _logger = logging.getLogger("record")
 
 class Pose(ABC):
     @abstractmethod
-    def replay(self, robot: Dict[str, hw.FR3], gripper: Dict[str, hw.FrankaHand]):
+    def replay(self, robot: dict[str, hw.FR3], gripper: dict[str, hw.FrankaHand]):
         pass
 
     @abstractmethod
@@ -27,14 +27,14 @@ class Pose(ABC):
 
 
 class JointPose(Pose):
-    def __init__(self, name: str, pose: Optional[np.ndarray] = None):
+    def __init__(self, name: str, pose: np.ndarray | None = None):
         self.pose = pose
         self.name = name
 
-    def record(self, robot: Dict[str, hw.FR3]):
+    def record(self, robot: dict[str, hw.FR3]):
         self.pose = robot[self.name].get_joint_position()
 
-    def replay(self, robot: Dict[str, hw.FR3], _: Dict[str, hw.FrankaHand]):
+    def replay(self, robot: dict[str, hw.FR3], _: dict[str, hw.FrankaHand]):
         if self.pose is not None:
             robot[self.name].set_joint_position(self.pose)
 
@@ -55,11 +55,11 @@ class GripperPose(Pose):
     FORCE = 5
     EPSILON = 0.1
 
-    def __init__(self, name: str, pose: Optional[float] = None):
+    def __init__(self, name: str, pose: float | None = None):
         self.pose = pose
         self.name = name
 
-    def record(self, shut: bool, gripper: Dict[str, hw.FrankaHand]):
+    def record(self, shut: bool, gripper: dict[str, hw.FrankaHand]):
         if shut:
             gripper[self.name].grasp()
             self.pose = 0.1  # gripper[self.name].getState()[1]
@@ -67,7 +67,7 @@ class GripperPose(Pose):
             gripper[self.name].release()
             self.pose = None
 
-    def replay(self, _: Dict[str, hw.FR3], gripper: Dict[str, hw.FrankaHand]):
+    def replay(self, _: dict[str, hw.FR3], gripper: dict[str, hw.FrankaHand]):
         if self.pose:
             config = hw.FHConfig()
             config.speed = self.SPEED
@@ -115,7 +115,7 @@ class WaitForDoubleTab(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, hw.FR3], _: Dict[str, hw.FrankaHand]):
+    def replay(self, robot: dict[str, hw.FR3], _: dict[str, hw.FrankaHand]):
         robot[self.name].double_tap_robot_to_continue()
 
     def __str__(self) -> str:
@@ -162,7 +162,7 @@ class ChnageSpeedFactor(Pose):
     def record(self):
         pass
 
-    def replay(self, robot: Dict[str, hw.FR3], _):
+    def replay(self, robot: dict[str, hw.FR3], _):
         config: hw.FR3Config = cast(hw.FR3Config, robot[self.name].get_parameters())
         config.speed_factor = self.speed
         robot[self.name].set_parameters(config)
@@ -181,24 +181,24 @@ class PoseList:
 
     def __init__(
         self,
-        ip: Dict[str, str],
+        ip: dict[str, str],
         speed_factor: float = 0.2,
-        poses: Optional[List[Pose]] = None,
-        urdf_path: Optional[str] = None,
+        poses: list[Pose] | None = None,
+        urdf_path: str | None = None,
     ):
-        self.r: Dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in ip.items()}
-        self.g: Dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
-        self.poses: List[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
+        self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in ip.items()}
+        self.g: dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
+        self.poses: list[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
-        self.m: Dict[str, Tuple[str, np.ndarray]] = {}
+        self.m: dict[str, tuple[str, np.ndarray]] = {}
 
     @classmethod
-    def load(cls, ip: Dict[str, str], filenames: List[str], urdf_path: Optional[str] = None):
+    def load(cls, ip: dict[str, str], filenames: list[str], urdf_path: str | None = None):
         poses = []
         for filename in filenames:
 
             def get_class(line: str) -> type[Pose]:
-                pose_dict: Dict[str, type[Pose]] = {
+                pose_dict: dict[str, type[Pose]] = {
                     "JointPose": JointPose,
                     "GripperPose": GripperPose,
                     "WaitForInput": WaitForInput,
