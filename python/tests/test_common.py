@@ -4,9 +4,9 @@ import numpy as np
 
 
 @pytest.mark.parametrize(
-    "initial_pose, destination_pose, progress, expected_pose_matrix",
+    ("initial_pose", "destination_pose", "progress", "expected_pose_matrix"),
     [
-        [
+        (
             np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]),
             np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]),
             1.0,
@@ -18,7 +18,7 @@ import numpy as np
                     [0.0, 0.0, 0.0, 1.0],
                 ]
             ),
-        ]
+        )
     ],
 )
 def test_interpolate(initial_pose, destination_pose, progress, expected_pose_matrix):
