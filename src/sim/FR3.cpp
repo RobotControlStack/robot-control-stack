@@ -81,6 +81,7 @@ FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
    * what should we do about it? */
   this->models.mj.data =
       std::shared_ptr<mjData>(mj_makeData(this->models.mj.mdl.get()));
+  //this->state.data = this->models.mj.data;
   this->models.rl.kin =
       std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->models.rl.mdl);
   this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(

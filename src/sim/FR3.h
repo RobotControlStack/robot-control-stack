@@ -28,7 +28,7 @@ struct FR3Config : common::RConfig {
 struct FR3State : common::RState {
   bool ik_success = true;
   bool collision = false;
-  std::shared_ptr<mjData> data;
+  //std::shared_ptr<mjData> data;
 };
 
 class FR3 : public common::Robot {

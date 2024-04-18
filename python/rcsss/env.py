@@ -40,6 +40,7 @@ class FR3Base(gym.Env):
 
     def _get_obs(self):
         state = cast(sim.FR3State, self.robot.get_state())
+        print(state)
         pose = self.robot.get_cartesian_position()
         rpy = pose.rotation_rpy()
         xyz = pose.translation()
