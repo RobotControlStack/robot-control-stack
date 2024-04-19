@@ -1,6 +1,7 @@
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
+#include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
 #include <pybind11/eigen.h>
@@ -332,4 +333,23 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state", &rcs::sim::FR3::get_state)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
+
+  py::register_exception<franka::Exception>(m, "FrankaException",
+                                            PyExc_RuntimeError);
+  py::register_exception<franka::ModelException>(m, "FrankaModelException",
+                                                 PyExc_RuntimeError);
+  py::register_exception<franka::NetworkException>(m, "FrankaNetworkException",
+                                                   PyExc_RuntimeError);
+  py::register_exception<franka::ProtocolException>(
+      m, "FrankaProtocolException", PyExc_RuntimeError);
+  py::register_exception<franka::IncompatibleVersionException>(
+      m, "FrankaIncompatibleVersionException", PyExc_RuntimeError);
+  py::register_exception<franka::ControlException>(m, "FrankaControlException",
+                                                   PyExc_RuntimeError);
+  py::register_exception<franka::CommandException>(m, "FrankaCommandException",
+                                                   PyExc_RuntimeError);
+  py::register_exception<franka::RealtimeException>(
+      m, "FrankaRealtimeException", PyExc_RuntimeError);
+  py::register_exception<franka::InvalidOperationException>(
+      m, "FrankaInvalidOperationException", PyExc_RuntimeError);
 }
