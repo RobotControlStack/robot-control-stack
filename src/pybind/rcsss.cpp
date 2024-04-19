@@ -287,16 +287,10 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
       hw, "FR3")
-      // No idea why the line below does not compile
-      //  .def(py::init<const std::string &, const std::optional<std::string>
-      //  &>(),
-      //       py::arg("ip"), py::arg("filename") = std::nullopt)
-      .def(py::init([](const std::string &ip,
-                       const std::optional<std::string> &filename) {
-             return std::shared_ptr<rcs::hw::FR3>(
-                 new rcs::hw::FR3(ip, filename));
-           }),
+      .def(py::init<const std::string &, const std::optional<std::string> &>(),
            py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def("get_parameters", &rcs::hw::FR3::get_parameters)
+      .def("get_state", &rcs::hw::FR3::get_state)
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
@@ -312,12 +306,9 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
-      // No idea why the line below does not compile
-      //   .def(py::init<const std::string&>(), py::arg("ip"))
-      .def(py::init([](const std::string &ip) {
-        return std::shared_ptr<rcs::hw::FrankaHand>(
-            new rcs::hw::FrankaHand(ip));
-      }))
+      .def(py::init<const std::string &>(), py::arg("ip"))
+      .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
+      .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("homing", &rcs::hw::FrankaHand::homing);
 
   // SIM MODULE
@@ -334,11 +325,11 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
-      .def(py::init([](const std::string mjmdl, const std::string rlmdl,
-                       std::optional<bool> render) {
-             return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
-           }),
-           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"))
+      .def(py::init<const std::string &, const std::string &,
+                    std::optional<bool>>(),
+           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render") = std::nullopt)
+      .def("get_parameters", &rcs::sim::FR3::get_parameters)
+      .def("get_state", &rcs::sim::FR3::get_state)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }
