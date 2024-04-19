@@ -18,6 +18,88 @@
 
 namespace py = pybind11;
 
+/**
+ * @brief Robot trampoline class for python bindings,
+ * needed for pybind11 to override virtual functions,
+ * see
+ * https://pybind11.readthedocs.io/en/stable/advanced/classes.html
+ */
+class PyRobot : public rcs::common::Robot {
+ public:
+  using rcs::common::Robot::Robot;  // Inherit constructors
+
+  bool set_parameters(const rcs::common::RConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Robot, set_parameters, cfg);
+  }
+
+  rcs::common::RConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RConfig *, rcs::common::Robot,
+                           get_parameters, );
+  }
+
+  rcs::common::RState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RState *, rcs::common::Robot,
+                           get_state, );
+  }
+
+  rcs::common::Pose get_cartesian_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
+                           get_cartesian_position, );
+  }
+
+  void set_joint_position(const rcs::common::Vector7d &q) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
+  }
+
+  rcs::common::Vector7d get_joint_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
+                           get_joint_position, );
+  }
+
+  void move_home() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
+  }
+
+  void set_cartesian_position(const rcs::common::Pose &pose) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
+                           pose);
+  }
+};
+
+/**
+ * @brief Gripper trampoline class for python bindings
+ */
+class PyGripper : public rcs::common::Gripper {
+ public:
+  using rcs::common::Gripper::Gripper;  // Inherit constructors
+
+  bool set_parameters(const rcs::common::GConfig &cfg) override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, set_parameters, cfg);
+  }
+
+  rcs::common::GConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GConfig *, rcs::common::Gripper,
+                           get_parameters, );
+  }
+
+  rcs::common::GState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GState *, rcs::common::Gripper,
+                           get_state, );
+  }
+
+  bool grasp() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, grasp, );
+  }
+
+  void release() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, release, );
+  }
+
+  void shut() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, shut, );
+  }
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
         Robot Control Stack Python Bindings
@@ -94,8 +176,8 @@ PYBIND11_MODULE(_core, m) {
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
-  py::class_<rcs::common::Robot, std::shared_ptr<rcs::common::Robot>>(common,
-                                                                      "Robot")
+  py::class_<rcs::common::Robot, PyRobot, std::shared_ptr<rcs::common::Robot>>(
+      common, "Robot")
       .def("set_parameters", &rcs::common::Robot::set_parameters,
            py::arg("cfg"))
       .def("get_parameters", &rcs::common::Robot::get_parameters)
@@ -109,8 +191,8 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
 
-  py::class_<rcs::common::Gripper, std::shared_ptr<rcs::common::Gripper>>(
-      common, "Gripper")
+  py::class_<rcs::common::Gripper, PyGripper,
+             std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("set_parameters", &rcs::common::Gripper::set_parameters,
            py::arg("cfg"))
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
