@@ -31,22 +31,20 @@ bool FrankaHand::set_parameters(const common::GConfig &cfg) {
   return true;
 }
 
-std::unique_ptr<common::GConfig> FrankaHand::get_parameters() {
+FHConfig *FrankaHand::get_parameters() {
   // copy config to heap
   FHConfig *cfg = new FHConfig();
   *cfg = this->cfg;
-  auto rcfg = dynamic_cast<common::GConfig *>(cfg);
-  return std::unique_ptr<common::GConfig>(rcfg);
+  return cfg;
 }
 
-std::unique_ptr<common::GState> FrankaHand::get_state() {
+FHState *FrankaHand::get_state() {
   franka::GripperState gripper_state = gripper.readOnce();
   FHState *state = new FHState();
   state->width = gripper_state.width;
   state->is_grasped = gripper_state.is_grasped;
   state->temperature = gripper_state.temperature;
-  common::GState *gstate = static_cast<common::GState *>(state);
-  return std::unique_ptr<common::GState>(gstate);
+  return state;
 }
 
 bool FrankaHand::homing() {

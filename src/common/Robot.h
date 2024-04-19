@@ -33,29 +33,29 @@ class Robot {
 
   // set_parameters could also be used for signaling e.g. error recovery and the
   // like
-  virtual bool set_parameters(const RConfig &cfg) = 0;
-  virtual std::unique_ptr<RConfig> get_parameters() = 0;
+  virtual bool set_parameters(const RConfig& cfg) = 0;
+  virtual RConfig* get_parameters() = 0;
 
-  virtual std::unique_ptr<RState> get_state() = 0;
+  virtual RState* get_state() = 0;
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual void set_joint_position(const Vector7d &q) = 0;
+  virtual void set_joint_position(const Vector7d& q) = 0;
 
   virtual Vector7d get_joint_position() = 0;
 
   virtual void move_home() = 0;
 
-  virtual void set_cartesian_position(const Pose &pose) = 0;
+  virtual void set_cartesian_position(const Pose& pose) = 0;
 };
 
 class Gripper {
  public:
   virtual ~Gripper(){};
 
-  virtual bool set_parameters(const GConfig &cfg) = 0;
-  virtual std::unique_ptr<GConfig> get_parameters() = 0;
-  virtual std::unique_ptr<GState> get_state() = 0;
+  virtual bool set_parameters(const GConfig& cfg) = 0;
+  virtual GConfig* get_parameters() = 0;
+  virtual GState* get_state() = 0;
 
   // close gripper with force, return true if the object is grasped successfully
   virtual bool grasp() = 0;
