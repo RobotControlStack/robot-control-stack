@@ -107,15 +107,16 @@ bool FR3::set_parameters(common::RConfig const& cfg) {
   return true;
 }
 
-std::unique_ptr<common::RConfig> FR3::get_parameters() {
-  std::unique_ptr<common::RConfig> ret = std::make_unique<common::RConfig>();
-  *ret = this->cfg;
-  return ret;
+FR3Config* FR3::get_parameters() {
+  FR3Config* cfg = new FR3Config();
+  *cfg = this->cfg;
+  return cfg;
 }
 
-std::unique_ptr<common::RState> FR3::get_state() {
-  std::unique_ptr<FR3State> ret = std::make_unique<FR3State>();
-  return ret;
+FR3State* FR3::get_state() {
+  FR3State* state = new FR3State();
+  *state = this->state;
+  return state;
 }
 
 common::Pose FR3::get_cartesian_position() {

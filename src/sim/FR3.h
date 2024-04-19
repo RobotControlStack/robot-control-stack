@@ -35,8 +35,8 @@ class FR3 : public common::Robot {
       std::optional<bool> render);
   ~FR3() override;
   bool set_parameters(const common::RConfig &cfg) override;
-  std::unique_ptr<common::RConfig> get_parameters() override;
-  std::unique_ptr<common::RState> get_state() override;
+  FR3Config *get_parameters() override;
+  FR3State *get_state() override;
   common::Pose get_cartesian_position() override;
   void set_joint_position(const common::Vector7d &q) override;
   common::Vector7d get_joint_position() override;

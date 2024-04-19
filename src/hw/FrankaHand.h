@@ -44,9 +44,9 @@ class FrankaHand : public common::Gripper {
 
   bool set_parameters(const common::GConfig &cfg) override;
 
-  std::unique_ptr<common::GConfig> get_parameters() override;
+  FHConfig *get_parameters() override;
 
-  std::unique_ptr<common::GState> get_state() override;
+  FHState *get_state() override;
 
   // TODO: method that puts the gripper to certain position
   // the move method should do this but it certainly does not work
