@@ -9,6 +9,8 @@ import typing
 import numpy
 import rcsss._core.common
 
+from . import exceptions
+
 __all__ = [
     "FHConfig",
     "FHState",
@@ -18,6 +20,7 @@ __all__ = [
     "FR3State",
     "FrankaHand",
     "IKController",
+    "exceptions",
     "internal",
     "robotics_library",
 ]
