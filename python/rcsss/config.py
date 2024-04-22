@@ -29,4 +29,5 @@ def create_sample_config_yaml(path: str):
 
 
 def read_config_yaml(path: str) -> Config:
-    return parse_yaml_raw_as(Config, path)
+    with open(path, "r") as f:
+        return parse_yaml_raw_as(Config, f)
