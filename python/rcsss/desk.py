@@ -5,6 +5,7 @@ import json as json_module
 import logging
 import ssl
 import threading
+import time
 from typing import Callable, Literal
 from urllib import parse
 
@@ -209,6 +210,8 @@ class Desk:
             "/desk/api/system/fci",
             headers={"X-Control-Token": self._token.token},
         )
+        # sleep needed to make sure fci has really been activated on the frankas side
+        time.sleep(0.5)
         self.fci_enabled = True
 
     def deactivate_fci(self) -> None:
@@ -235,18 +238,27 @@ class Desk:
         For legacy versions of the Desk, this function does nothing.
         """
         active = self._get_active_token()
+
+        # we already have control
         if active.id != "" and self._token.id == active.id:
             _logger.info("Retaken control.")
             return True
+
+        # someone else has control and we dont want to force
         if active.id != "" and not force:
             _logger.warning("Cannot take control. User %s is in control.", active.owned_by)
             return False
+
         response = self._request(
             "post",
             f'/admin/api/control-token/request{"?force" if force else ""}',
             json={"requestedBy": self._username},
         ).json()
-        if force:
+
+        if active.id == "":
+            _logger.info("No active token.")
+        else:
+            # someone else has control and want to force
             timeout = self._request("get", "/admin/api/safety").json()["tokenForceTimeout"]
             _logger.warning(
                 "You have %d seconds to confirm control by pressing circle button on robot.",
@@ -273,7 +285,12 @@ class Desk:
         """
         _logger.info("Releasing control.")
         try:
-            self._request("delete", "/admin/api/control-token", json={"token": self._token.token})
+            self._request(
+                "delete",
+                "/admin/api/control-token",
+                headers={"X-Control-Token": self._token.token},
+                json={"token": self._token.token},
+            )
         except ConnectionError as err:
             if "ControlTokenUnknown" in str(err):
                 _logger.warning("Control release failed. Not in control.")
@@ -352,7 +369,13 @@ class Desk:
             data=data,
         )
         if response.status_code != 200:
-            _logger.error("Request failed with status code %d and response %s", response.status_code, response.text)
+            _logger.error(
+                "Request %s %s failed with status code %d and response %s",
+                method,
+                url,
+                response.status_code,
+                response.text,
+            )
             raise ConnectionError(response.text)
         return response
 
