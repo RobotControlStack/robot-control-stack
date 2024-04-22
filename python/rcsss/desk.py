@@ -276,7 +276,7 @@ class Desk:
             with connect(
                 f"wss://{self._hostname}/desk/api/navigation/events",
                 server_hostname="robot.franka.de",
-                additional_headers={"authorization": self._session.cookies.get("authorization")}, # type: ignore[arg-type]
+                additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
             ) as websocket:
                 while True:
                     event: dict = json_module.loads(websocket.recv(timeout))
@@ -396,7 +396,7 @@ class Desk:
             f"wss://{self._hostname}/desk/api/navigation/events",
             # server_hostname='robot.franka.de',
             ssl_context=ctx,
-            additional_headers={"authorization": self._session.cookies.get("authorization")}, # type: ignore[arg-type]
+            additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
         ) as websocket:
             self._listening = True
             while self._listening:
