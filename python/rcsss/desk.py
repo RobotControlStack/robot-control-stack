@@ -120,6 +120,15 @@ class Desk:
         self.guiding_mode_enabled = False
         self.fci_enabled = False
         self.locked = True
+        self._button_states = {
+            "circle": False,
+            "cross": False,
+            "check": False,
+            "left": False,
+            "right": False,
+            "down": False,
+            "up": False,
+        }
         self.login()
 
     def __enter__(self) -> "Desk":
@@ -267,7 +276,7 @@ class Desk:
             with connect(
                 f"wss://{self._hostname}/desk/api/navigation/events",
                 server_hostname="robot.franka.de",
-                additional_headers={"authorization": self._session.cookies.get("authorization")},
+                additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
             ) as websocket:
                 while True:
                     event: dict = json_module.loads(websocket.recv(timeout))
@@ -379,7 +388,7 @@ class Desk:
             raise ConnectionError(response.text)
         return response
 
-    def _listen(self, cb, timeout):
+    def _listen(self, callback: Callable[[str, list[str]], None], timeout: float):
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -387,17 +396,26 @@ class Desk:
             f"wss://{self._hostname}/desk/api/navigation/events",
             # server_hostname='robot.franka.de',
             ssl_context=ctx,
-            additional_headers={"authorization": self._session.cookies.get("authorization")},
+            additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
         ) as websocket:
             self._listening = True
             while self._listening:
                 try:
-                    event: dict = json_module.loads(websocket.recv(timeout))
-                    cb(event)
+                    event: dict[str, bool] = json_module.loads(websocket.recv(timeout))
+                    # detect button click event
+                    pressed_buttons = []
+                    for key, value in event.items():
+                        if not value and value != self._button_states[key]:
+                            # button click event detected
+                            pressed_buttons.append(key)
+                        self._button_states[key] = value
+                    if len(pressed_buttons) > 0:
+                        _logger.info("Buttons %s pressed", str(pressed_buttons))
+                        callback(self._hostname, pressed_buttons)
                 except TimeoutError:
                     pass
 
-    def listen(self, cb: Callable[[dict], None]) -> None:
+    def listen(self, callback: Callable[[str, list[str]], None]) -> None:
         """
         Starts a thread listening to Pilot button events. All the Pilot buttons,
         except for the `Pilot Mode` button can be captured. Make sure Pilot Mode is
@@ -413,7 +431,7 @@ class Desk:
             The possible buttons are: `circle`, `cross`, `check`, `left`, `right`, `down`,
             and `up`.
         """
-        self._listen_thread = threading.Thread(target=self._listen, args=(cb, 1.0))
+        self._listen_thread = threading.Thread(target=self._listen, args=(callback, 1.0))
         self._listen_thread.start()
 
     def stop_listen(self) -> None:
@@ -460,6 +478,7 @@ class GuidingMode:
         self.desk.__enter__()
         if self.unlock:
             self.desk.unlock()
+        self.desk.activate_fci()
         self.desk.enable_guiding_mode()
         return self.desk
 
