@@ -3,19 +3,23 @@
 #include <common/Robot.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
+#include <pybind11/cast.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
+
 #include <memory>
-#include "mujoco/structs.h"
-#include "mujoco/raw.h"
+
+//#include "mujoco/raw.h"
+//#include "mujoco/structs.h"
 
 // TODO: define exceptions
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
+PYBIND11_MAKE_OPAQUE(mjData*);
 
 namespace py = pybind11;
 
@@ -306,17 +310,23 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
+  //py::object mjData =
+  //    (py::object)py::module_::import("_structs").attr("mjData");
+  //py::object mj_wrapper =
+  //    (py::object)py::module_::import("_structs").attr("mjData");
+
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
+      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
+      .def_property_readonly("data", [](const rcs::sim::FR3State &s) {
+          return (void*) s.data.get();
+          });
       //.def_property_readonly("data", [](const rcs::sim::FR3State &s) {
-      //    return s.data.get();
-      //    });
-      //.def_property_readonly("data", [](const rcs::sim::FR3State &s) {
-      //    return mujoco::python::MjDataWrapper::FromRawPointer(s.data.get());
-      //    });
-      //.def_readonly("data", &rcs::sim::FR3State::data);
+      //  return mujoco::python::MjWrapper<mujoco::raw::MjData>::FromRawPointer(
+      //      s.data.get());
+      //});
+  //.def_readonly("data", &rcs::sim::FR3State::data);
 
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "FR3")
@@ -324,7 +334,7 @@ PYBIND11_MODULE(_core, m) {
                        std::optional<bool> render) {
              return std::make_shared<rcs::sim::FR3>(mjmdl, rlmdl, render);
            }),
-           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render"))
+           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render") = true)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }
