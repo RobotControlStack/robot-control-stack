@@ -84,31 +84,43 @@ def record(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
     lpaths: Annotated[Optional[list[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
     spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
+    buttons: Annotated[bool, typer.Option("-b", help="Use the robots buttons instead of the keyboard")] = False,
 ):
     """Tool to record poses with multiple FR3 robots."""
     cfg = read_config_yaml(path)
 
-    ip: dict[str, str] = eval(ip_str)
+    name2ip: dict[str, str] = eval(ip_str)
 
-    if lpaths is not None:
+    if lpaths is not None and len(lpaths) > 0:
         with ExitStack() as stack:
-            for r_ip in ip.values():
+            for r_ip in name2ip.values():
                 stack.enter_context(
                     rcsss.desk.Desk.fci(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
                 )
 
-            p = PoseList.load(ip, lpaths, cfg.hw.urdf_model_path)
+            p = PoseList.load(name2ip, lpaths, cfg.hw.urdf_model_path)
             input("Press any key to replay")
             p.replay()
     else:
         with ExitStack() as stack:
-            for r_ip in ip.values():
-                stack.enter_context(
-                    rcsss.desk.Desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
-                )
+            gms = [
+                rcsss.desk.Desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                for r_ip in name2ip.values()
+            ]
+            for gm in gms:
+                stack.enter_context(gm)
+            p = PoseList(name2ip, urdf_path=cfg.hw.urdf_model_path)
+            if not buttons:
+                p.record()
+            else:
+                p.start_button_recording()
+                for gm in gms:
+                    gm.desk.listen(p.button_callback)
+                while p._button_recording:
+                    pass
+                for gm in gms:
+                    gm.desk.stop_listen()
 
-            p = PoseList(ip, urdf_path=cfg.hw.urdf_model_path)
-            p.record()
             if spath is not None:
                 p.save(spath)
 

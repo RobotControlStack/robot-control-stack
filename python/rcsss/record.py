@@ -53,7 +53,7 @@ class JointPose(Pose):
 class GripperPose(Pose):
     SPEED = 0.1
     FORCE = 5
-    EPSILON = 0.1
+    EPSILON = 0.2
 
     def __init__(self, name: str, pose: float | None = None):
         self.pose = pose
@@ -61,8 +61,16 @@ class GripperPose(Pose):
 
     def record(self, shut: bool, gripper: dict[str, hw.FrankaHand]):
         if shut:
+            config = hw.FHConfig()
+            config.speed = self.SPEED
+            config.force = self.FORCE
+            config.grasping_width = 0
+            config.epsilon_inner = self.EPSILON
+            config.epsilon_outer = self.EPSILON
+            gripper[self.name].set_parameters(config)
             gripper[self.name].grasp()
-            self.pose = 0.1  # gripper[self.name].getState()[1]
+            self.pose = 0  # gripper[self.name].getState()[1]
+
         else:
             gripper[self.name].release()
             self.pose = None
@@ -181,19 +189,25 @@ class PoseList:
 
     def __init__(
         self,
-        ip: dict[str, str],
+        name2ip: dict[str, str],
         speed_factor: float = 0.2,
         poses: list[Pose] | None = None,
         urdf_path: str | None = None,
     ):
-        self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in ip.items()}
-        self.g: dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in ip.items()}
+        self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in name2ip.items()}
+        self.g: dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in name2ip.items()}
+        self.r_ip: dict[str, hw.FR3] = {ip: self.r[key] for key, ip in name2ip.items()}
+        self.g_ip: dict[str, hw.FrankaHand] = {ip: self.g[key] for key, ip in name2ip.items()}
+        self.ip2name: dict[str, str] = {ip: name for name, ip in name2ip.items()}
+        self.name2ip: dict[str, str] = name2ip
+        self._button_recording = False
+
         self.poses: list[Pose] = [ChnageSpeedFactor(speed_factor, key) for key in self.r] if poses is None else poses
 
         self.m: dict[str, tuple[str, np.ndarray]] = {}
 
     @classmethod
-    def load(cls, ip: dict[str, str], filenames: list[str], urdf_path: str | None = None):
+    def load(cls, name2ip: dict[str, str], filenames: list[str], urdf_path: str | None = None):
         poses = []
         for filename in filenames:
 
@@ -212,11 +226,33 @@ class PoseList:
             with open(filename, "r") as f:
                 poses += [get_class(line).from_str(line) for line in f.readlines()]
 
-        return cls(poses=poses, ip=ip, urdf_path=urdf_path)
+        return cls(poses=poses, name2ip=name2ip, urdf_path=urdf_path)
 
     def save(self, filename):
         with open(filename, "w") as f:
             f.write("\n".join([str(pose) for pose in self.poses]))
+
+    def start_button_recording(self):
+        self._button_recording = True
+
+    def button_callback(self, r_ip: str, buttons: list[str]):
+        if "check" in buttons:
+            if not check_pose(self.r_ip[r_ip].get_joint_position()):
+                _logger.warning("REJECTED due to joint constraints")
+                return
+            j = JointPose(name=self.ip2name[r_ip])
+            j.record(self.r)
+            self.poses.append(j)
+        elif "up" in buttons:
+            g = GripperPose(name=self.ip2name[r_ip])
+            g.record(True, self.g)
+            self.poses.append(g)
+        elif "down" in buttons:
+            g = GripperPose(name=self.ip2name[r_ip])
+            g.record(False, self.g)
+            self.poses.append(g)
+        elif "cross" in buttons:
+            self._button_recording = False
 
     def record(self):
         while True:
