@@ -15,6 +15,7 @@
 
 #include "common/Robot.h"
 #include "glfw_adapter.h"
+#include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
@@ -67,21 +68,45 @@ namespace rcs {
 namespace sim {
 using std::endl;
 
+FR3::FR3(mjModel* mjmdl, mjData* mjdata,
+         std::shared_ptr<rl::mdl::Model> rlmdl, std::optional<bool> render)
+    : models{.mj = {.mdl = mjmdl, .data = mjdata},
+             .rl = {.mdl = rlmdl,
+                    .kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
+                    }},
+      exit_requested(false) {
+        std::cout << "FR3 constructor: creating ik" << std::endl;
+  this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
+      this->models.rl.kin.get());
+  std::cout << "Initializing geoms" << std::endl;
+  /* Initialize collision geom id map */
+  init_geom_ids(this->cgeom_ids.arm, cgeom_names.arm, *this->models.mj.mdl);
+  init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
+                *this->models.mj.mdl);
+  init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
+  std::cout << "Configuring IK" << std::endl;
+  this->models.rl.ik->setDuration(
+      std::chrono::milliseconds(this->cfg.ik_duration));
+  std::cout << "Initializing sim" << std::endl;
+  /* Initialize sim */
+  this->reset();
+  if (render.value_or(true))
+    this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
+  std::cout << "FR3 constructor finished" << std::endl;
+}
+
 FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
          std::optional<bool> render)
     : models(), exit_requested(false) {
   /* Load models */
   char err[1024];
-  this->models.mj.mdl = std::shared_ptr<mjModel>(
-      mj_loadXML(mjmdl.c_str(), NULL, err, sizeof(err)));
-  if (!this->models.mj.mdl.get()) throw std::runtime_error(err);
+  this->models.mj.mdl = mj_loadXML(mjmdl.c_str(), NULL, err, sizeof(err));
+  if (!this->models.mj.mdl) throw std::runtime_error(err);
   /* Throws in case of a failure */
   this->models.rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
   /* The next line can call exit(EXIT_FAILURE). What happens in such a case and
    * what should we do about it? */
-  this->models.mj.data =
-      std::shared_ptr<mjData>(mj_makeData(this->models.mj.mdl.get()));
-  //this->state.data = this->models.mj.data;
+  this->models.mj.data = mj_makeData(this->models.mj.mdl);
   this->models.rl.kin =
       std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->models.rl.mdl);
   this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
@@ -121,7 +146,7 @@ std::unique_ptr<common::RState> FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  int tcp_id = mj_name2id(this->models.mj.mdl.get(), mjOBJ_SITE, "tcp");
+  int tcp_id = mj_name2id(this->models.mj.mdl, mjOBJ_SITE, "tcp");
   if (tcp_id == -1) throw std::runtime_error("No site named \"tcp\"");
   return common::Pose(
       Eigen::Matrix3d(this->models.mj.data->site_xmat + 9 * tcp_id),
@@ -168,7 +193,7 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
   int marker_count = 0;
 
   while ((not arrived) or moving) {
-    mj_step(this->models.mj.mdl.get(), this->models.mj.data.get());
+    mj_step(this->models.mj.mdl, this->models.mj.data);
 
     if (this->cfg.trajectory_trace) {
       if (marker_count == 0) {
@@ -244,10 +269,10 @@ void FR3::render_loop() {
 
   mjv_defaultOption(&opt);
   mjv_defaultScene(&scn);
-  mjv_makeScene(this->models.mj.mdl.get(), &scn, kMaxGeom);
-  mjv_defaultFreeCamera(this->models.mj.mdl.get(), &cam);
+  mjv_makeScene(this->models.mj.mdl, &scn, kMaxGeom);
+  mjv_defaultFreeCamera(this->models.mj.mdl, &cam);
 
-  ui_adapter.RefreshMjrContext(this->models.mj.mdl.get(), 1);
+  ui_adapter.RefreshMjrContext(this->models.mj.mdl, 1);
   mjuiState uistate = ui_adapter.state();
   std::memset(&uistate, 0, sizeof(mjuiState));
   uistate.nrect = 1;
@@ -261,13 +286,13 @@ void FR3::render_loop() {
   while (!(ui_adapter.ShouldCloseWindow() or this->exit_requested)) {
     std::tie(uistate.rect[0].width, uistate.rect[0].height) =
         ui_adapter.GetFramebufferSize();
-    mjv_updateScene(this->models.mj.mdl.get(), this->models.mj.data.get(), &opt,
+    mjv_updateScene(this->models.mj.mdl, this->models.mj.data, &opt,
                     NULL, &cam, mjCAT_ALL, &scn);
 
     // Add markers
     for (mjvGeom marker : this->markers) {
       if (scn.ngeom >= scn.maxgeom) {
-        mj_warning(this->models.mj.data.get(), mjWARN_VGEOMFULL, scn.maxgeom);
+        mj_warning(this->models.mj.data, mjWARN_VGEOMFULL, scn.maxgeom);
         break;
       }
       mjvGeom* thisgeom = scn.geoms + scn.ngeom;
@@ -282,9 +307,9 @@ void FR3::render_loop() {
   }
 }
 void FR3::reset() {
-  mj_resetDataKeyframe(this->models.mj.mdl.get(), this->models.mj.data.get(),
+  mj_resetDataKeyframe(this->models.mj.mdl, this->models.mj.data,
                        SIM_KF_HOME);
-  mj_step(this->models.mj.mdl.get(), this->models.mj.data.get());
+  mj_step(this->models.mj.mdl, this->models.mj.data);
 }
 }  // namespace sim
 }  // namespace rcs

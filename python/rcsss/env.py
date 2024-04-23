@@ -6,12 +6,15 @@ from typing import Any, Optional, cast
 import gymnasium as gym
 import numpy as np
 from rcsss import common, sim
+import mujoco
 
 RPY = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
-XYZ = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
+XYZ = gym.spaces.Box(low=np.array(
+    [-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
 POSE = gym.spaces.Dict({"rpy": RPY, "xyz": XYZ})
 ANGLES = gym.spaces.Box(
-    low=np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]),
+    low=np.array([-2.3093, -1.5133, -2.4937, -
+                 2.7478, -2.4800, 0.8521, -2.6895]),
     high=np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895]),
     dtype=np.float32,
     shape=(7,),
@@ -22,7 +25,6 @@ COLLISION = IK_SUCCESS = gym.spaces.Discrete(2)
 # TODO: Typing for the action space?
 # cf. https://github.com/Farama-Foundation/Gymnasium/issues/845
 # and https://gymnasium.farama.org/_modules/gymnasium/core/
-# Disable the missing docstring warning, base class already has a docstring
 class FR3Base(gym.Env):
     """Simulated Franka Research 3."""
 
@@ -40,12 +42,12 @@ class FR3Base(gym.Env):
 
     def _get_obs(self):
         state = cast(sim.FR3State, self.robot.get_state())
-        print(state)
         pose = self.robot.get_cartesian_position()
         rpy = pose.rotation_rpy()
         xyz = pose.translation()
         return OrderedDict(
-            pose=OrderedDict(rpy=np.array([rpy.roll, rpy.pitch, rpy.yaw]), xyz=np.array(xyz)),
+            pose=OrderedDict(rpy=np.array(
+                [rpy.roll, rpy.pitch, rpy.yaw]), xyz=np.array(xyz)),
             angles=self.robot.get_joint_position(),
             collision=state.collision,
         )
@@ -66,7 +68,7 @@ class FR3Base(gym.Env):
 
 
 if __name__ == "__main__":
-    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
+    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf")
     cfg = sim.FR3Config()
     cfg.ik_duration = 300
     cfg.realtime = True

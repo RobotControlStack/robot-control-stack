@@ -14,6 +14,11 @@ dependencies = ["websockets>=11.0",
     "pydantic~=2.6",
     "gymnasium",
     "pydantic_yaml~=1.3",
+    "absl-py",
+    "etils[epath]",
+    "glfw",
+    "numpy",
+    "pyopengl",
 ]
 readme = "README.md"
 authors = [
@@ -41,9 +46,9 @@ classifiers = [
 [tool.scikit-build]
 logging.level = "INFO"
 build-dir = "build"
-wheel.packages = ["python/rcsss"]
+wheel.packages = ["python/rcsss", "python/mujoco"]
 cmake.targets = ["_core", "_callbacks", "_constants", "_enums", "_errors", "_functions", "_render", "_rollout", "_simulate", "_structs"]
-cmake.args = ["-DCMAKE_C_COMPILER=clang", "-DCMAKE_CXX_COMPILER=clang++", "-DCMUJOCO_HARDEN:BOOL=ON"]
+#cmake.args = ["-DCMAKE_C_COMPILER=clang", "-DCMAKE_CXX_COMPILER=clang++", "-DCMUJOCO_HARDEN:BOOL=ON"]
 install.components = ["python_package"]
 
 [tool.ruff]
