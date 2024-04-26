@@ -1,14 +1,14 @@
 """Gym API."""
 
 from enum import Enum
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypeAlias, TypedDict, cast
 
 import gymnasium as gym
 import numpy as np
 from rcsss import common
 
-Vec7Type = np.ndarray[Literal[7], np.dtype[np.float64]]
-Vec3Type = np.ndarray[Literal[3], np.dtype[np.float64]]
+Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
+Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
 
 RPY_SPACE = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
 XYZ_SPACE = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
@@ -86,7 +86,7 @@ class ControlMode(Enum):
     CARTESIAN = 2
 
 
-CartOrAngleControl = Vec7Type | PoseDictType
+CartOrAngleControl: TypeAlias = Vec7Type | PoseDictType
 
 
 class FR3Env(gym.Env[ArmObs, CartOrAngleControl]):
