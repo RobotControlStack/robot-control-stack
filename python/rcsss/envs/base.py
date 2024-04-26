@@ -1,18 +1,12 @@
 """Gym API."""
 
-import logging
 from enum import Enum
 from typing import Any, Literal, TypedDict, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import common, hw, sim
-from rcsss.camera.kinect import KinectCamera, KinectConfig
+from rcsss import common
 
-_logger = logging.getLogger(__name__)
-
-# TODO: potential problem: on the cpp side everything is double
-# TODO: potential problem: mypy and numpy types from pybindstubgen
 Vec7Type = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type = np.ndarray[Literal[3], np.dtype[np.float64]]
 
@@ -92,14 +86,6 @@ class ControlMode(Enum):
     CARTESIAN = 2
 
 
-# def posedict_to_pose(posedict: PoseDictType) -> Pose:
-#     return Pose(posedict["rpy"], posedict["xyz"])
-
-
-# def pose_to_posedict(pose: Pose) -> PoseDictType:
-#     return {"rpy": pose.rpy, "xyz": pose.xyz}
-
-
 CartOrAngleControl = Vec7Type | PoseDictType
 
 
@@ -151,106 +137,3 @@ class FR3Env(gym.Env[ArmObs, CartOrAngleControl]):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         return self._get_obs(), {}
-
-
-class FR3HW(gym.Wrapper):
-    def __init__(self, env: FR3Env):
-        self.env: FR3Env
-        super().__init__(env)
-        assert isinstance(self.env.robot, hw.FR3), "Robot must be a hw.FR3 instance."
-        self.hw_robot = cast(hw.FR3, self.env.robot)
-
-    def step(self, action: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
-        try:
-            return self.env.step(action)
-        except hw.exceptions.FrankaControlException as e:
-            _logger.error("FrankaControlException: %s", e)
-            self.hw_robot.automatic_error_recovery()
-            return self.env._get_obs(), 0, False, True, {}
-
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ArmObs, dict[str, Any]]:
-        self.hw_robot.move_home()
-        return self.env.reset(seed, options)
-
-
-class FR3Sim(gym.Wrapper):
-    def __init__(self, env: FR3Env):
-        self.env: FR3Env
-        super().__init__(env)
-        assert isinstance(self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim_robot = cast(sim.FR3, self.env.robot)
-
-    def step(self, action: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
-        obs, _, _, _, info = self.env.step(action)
-        state = self.sim_robot.get_state()
-        info["collision"] = state.collision
-        info["ik_success"] = state.ik_success
-        # truncate episode if collision
-        return obs, 0, False, state.collision or not state.ik_success, info
-
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ArmObs, dict[str, Any]]:
-        # TODO: reset sim
-        return self.env.reset(seed, options)
-
-
-KINECT_OBS_SPACE = gym.spaces.Dict(
-    {
-        "kinect_frame": FRAME_SPACE,
-    }
-)
-KINECT_OBS_SPACE.spaces.update(ARM_OBS_SPACE)
-
-
-class KinectObsType(ArmObs):
-    kinect_frame: FrameDictType
-
-
-class KinectWrapper(gym.Wrapper[KinectObsType, CartOrAngleControl, ArmObs, CartOrAngleControl]):
-    def __init__(self, env: FR3HW):
-        self.env: FR3HW
-        self.observation_space: gym.spaces.Space
-        super().__init__(env)
-        config = KinectConfig()
-        self.camera = KinectCamera(config)
-        self.observation_space = KINECT_OBS_SPACE
-
-    def step(self, action: CartOrAngleControl) -> tuple[KinectObsType, float, bool, bool, dict]:
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        frame = self.camera.get_current_frame()
-        kinect_frame = FrameDictType(
-            camera=CameraDictType(
-                color=frame.camera.color,
-                ir=frame.camera.ir,
-                depth=frame.camera.depth,
-            ),
-            imu=(
-                ImuDictType(
-                    acc_sample=frame.imu.acc_sample,
-                    gyro_sample=frame.imu.gyro_sample,
-                )
-                if frame.imu is not None
-                else None
-            ),
-        )
-        kinect_obs = KinectObsType(kinect_frame=kinect_frame, angles=obs["angles"], pose=obs["pose"])
-        info["camera_temperature"] = frame.camera.temperature
-        if frame.imu is not None:
-            info["imu_acc_sample_usec"] = frame.imu.acc_sample_usec
-            info["imu_gyro_sample_usec"] = frame.imu.gyro_sample_usec
-            info["imu_temperature"] = frame.imu.temperature
-        return kinect_obs, reward, terminated, truncated, info
-
-
-if __name__ == "__main__":
-    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
-    cfg = sim.FR3Config()
-    cfg.ik_duration = 300
-    cfg.realtime = True
-    cfg.trajectory_trace = True
-    robot.set_parameters(cfg)
-    env = FR3Env(robot, ControlMode.ANGLES)
-    env_sim = FR3Sim(env)
-    obs, info = env_sim.reset()
-    for _ in range(100):
-        act = env_sim.action_space.sample()
-        obs, reward, terminated, truncated, info = env_sim.step(act)
