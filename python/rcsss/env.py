@@ -1,21 +1,20 @@
 """Gym API."""
 
-from enum import Enum
 import logging
+from enum import Enum
 from typing import Any, Literal, TypedDict, cast
 
 import gymnasium as gym
 import numpy as np
 from rcsss import common, hw, sim
 from rcsss.camera.kinect import KinectCamera, KinectConfig
-from rcsss.record import Pose
 
 _logger = logging.getLogger(__name__)
 
 # TODO: potential problem: on the cpp side everything is double
 # TODO: potential problem: mypy and numpy types from pybindstubgen
-Vec7Type = np.ndarray[Literal[7], np.dtype[np.float32]]
-Vec3Type = np.ndarray[Literal[3], np.dtype[np.float32]]
+Vec7Type = np.ndarray[Literal[7], np.dtype[np.float64]]
+Vec3Type = np.ndarray[Literal[3], np.dtype[np.float64]]
 
 RPY_SPACE = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
 XYZ_SPACE = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
@@ -74,8 +73,8 @@ FRAME_SPACE = gym.spaces.Dict(
 
 class CameraDictType(TypedDict):
     color: np.ndarray
-    ir: np.ndarray
-    depth: np.ndarray
+    ir: np.ndarray | None
+    depth: np.ndarray | None
 
 
 class ImuDictType(TypedDict):
@@ -85,7 +84,7 @@ class ImuDictType(TypedDict):
 
 class FrameDictType(TypedDict):
     camera: CameraDictType
-    imu: ImuDictType
+    imu: ImuDictType | None
 
 
 class ControlMode(Enum):
@@ -130,29 +129,28 @@ class FR3Env(gym.Env[ArmObs, CartOrAngleControl]):
     def angle_step(self, act: Vec7Type) -> None:
         self.robot.set_joint_position(act)
 
-    def cartesian_step(self, act: Pose) -> None:
+    def cartesian_step(self, act: common.Pose) -> None:
         self.robot.set_cartesian_position(act)
 
-    def step(self, act: CartOrAngleControl) -> tuple[CartOrAngleControl, float, bool, bool, dict]:
-        if self.control_mode == ControlMode.ANGLES and isinstance(act, Vec3Type):
+    def step(self, act: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
+        if self.control_mode == ControlMode.ANGLES and isinstance(act, np.ndarray):
             self.angle_step(act)
-        elif self.control_mode == ControlMode.CARTESIAN and isinstance(act, PoseDictType):
-            self.cartesian_step(Pose(act["rpy"], act["xyz"]))
+        elif self.control_mode == ControlMode.CARTESIAN and isinstance(act, dict):
+            act = cast(PoseDictType, act)
+            self.cartesian_step(common.Pose(act["rpy"], act["xyz"]))
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
         return self._get_obs(), 0, False, False, {}
 
-    def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
-    ) -> tuple[CartOrAngleControl, dict[str, Any]]:
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ArmObs, dict[str, Any]]:
         if seed is not None:
             msg = "seeding not implemented yet"
             raise NotImplementedError(msg)
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
-        return self._get_obs()
+        return self._get_obs(), {}
 
 
 class FR3HW(gym.Wrapper):
@@ -207,10 +205,10 @@ class KinectObsType(ArmObs):
     kinect_frame: FrameDictType
 
 
-class KinectWrapper(gym.Wrapper[KinectObsType, CartOrAngleControl]):
+class KinectWrapper(gym.Wrapper[KinectObsType, CartOrAngleControl, ArmObs, CartOrAngleControl]):
     def __init__(self, env: FR3HW):
         self.env: FR3HW
-        self.observation_space: gym.spaces.Dict
+        self.observation_space: gym.spaces.Space
         super().__init__(env)
         config = KinectConfig()
         self.camera = KinectCamera(config)
@@ -221,20 +219,25 @@ class KinectWrapper(gym.Wrapper[KinectObsType, CartOrAngleControl]):
         frame = self.camera.get_current_frame()
         kinect_frame = FrameDictType(
             camera=CameraDictType(
-                color=frame.color,
-                ir=frame.ir,
-                depth=frame.depth,
+                color=frame.camera.color,
+                ir=frame.camera.ir,
+                depth=frame.camera.depth,
             ),
-            imu=ImuDictType(
-                acc_sample=frame.acc_sample,
-                gyro_sample=frame.gyro_sample,
+            imu=(
+                ImuDictType(
+                    acc_sample=frame.imu.acc_sample,
+                    gyro_sample=frame.imu.gyro_sample,
+                )
+                if frame.imu is not None
+                else None
             ),
         )
-        kinect_obs = KinectObsType(kinect_frame=kinect_frame, **obs)
+        kinect_obs = KinectObsType(kinect_frame=kinect_frame, angles=obs["angles"], pose=obs["pose"])
         info["camera_temperature"] = frame.camera.temperature
-        info["imu_acc_sample_usec"] = frame.imu.acc_sample_usec
-        info["imu_gyro_sample_usec"] = frame.imu.gyro_sample_usec
-        info["imu_temperature"] = frame.imu.temperature
+        if frame.imu is not None:
+            info["imu_acc_sample_usec"] = frame.imu.acc_sample_usec
+            info["imu_gyro_sample_usec"] = frame.imu.gyro_sample_usec
+            info["imu_temperature"] = frame.imu.temperature
         return kinect_obs, reward, terminated, truncated, info
 
 
@@ -247,7 +250,7 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.ANGLES)
     env_sim = FR3Sim(env)
-    obs = env_sim.reset()
+    obs, info = env_sim.reset()
     for _ in range(100):
         act = env_sim.action_space.sample()
         obs, reward, terminated, truncated, info = env_sim.step(act)

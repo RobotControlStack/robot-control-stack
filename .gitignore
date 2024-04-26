@@ -11,3 +11,4 @@ __pycache__
 dist
 .venv
 config.yaml
+MUJOCO_LOG.TXT
