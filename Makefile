@@ -24,6 +24,8 @@ stubgen:
 	pybind11-stubgen -o python --numpy-array-use-type-var rcsss
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
+	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
+
 	ruff check --fix python/rcsss/_core
 	isort python/rcsss/_core
 	black python/rcsss/_core

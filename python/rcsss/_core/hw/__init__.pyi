@@ -64,7 +64,7 @@ class FR3Config(rcsss._core.common.RConfig):
     def __init__(self) -> None: ...
 
 class FR3Load:
-    f_x_cload: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[1]], numpy.dtype[numpy.float64]] | None
+    f_x_cload: numpy.ndarray[typing.Literal[3], numpy.dtype[numpy.float64]] | None
     load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
     def __init__(self) -> None: ...
