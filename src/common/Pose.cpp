@@ -55,6 +55,14 @@ Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
       Eigen::AngleAxisd(rotation.yaw, Eigen::Vector3d::UnitZ());
 }
 
+Pose::Pose(const Eigen::Vector3d &rotation,
+           const Eigen::Vector3d &translation) {
+  this->m_translation = translation;
+  this->m_rotation = Eigen::AngleAxisd(rotation.x(), Eigen::Vector3d::UnitX()) *
+                     Eigen::AngleAxisd(rotation.y(), Eigen::Vector3d::UnitY()) *
+                     Eigen::AngleAxisd(rotation.z(), Eigen::Vector3d::UnitZ());
+}
+
 // GETTERS
 
 Eigen::Vector3d Pose::translation() const { return this->m_translation; }

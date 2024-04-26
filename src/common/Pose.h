@@ -111,10 +111,20 @@ class Pose {
    * vector.
    * For python bindings.
    *
-   * @param rpy
+   * @param rotation
    * @param translation
    */
   Pose(const RPY &rotation, const Eigen::Vector3d &translation);
+
+  /**
+   * @brief Construct a new Pose object from a 3D RPY and a 3D translation
+   * vector.
+   * For python bindings.
+   *
+   * @param rotation
+   * @param translation
+   */
+  Pose(const Eigen::Vector3d &rotation, const Eigen::Vector3d &translation);
 
   // GETTERS
 
