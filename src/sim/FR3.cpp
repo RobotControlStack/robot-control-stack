@@ -137,10 +137,10 @@ FR3Config* FR3::get_parameters() {
   return cfg;
 }
 
-std::unique_ptr<common::RState> FR3::get_state() {
-  std::unique_ptr<FR3State> ret = std::make_unique<FR3State>();
-  *ret = this->state;
-  return ret;
+FR3State* FR3::get_state() {
+  FR3State* state = new FR3State();
+  *state = this->state;
+  return state;
 }
 
 common::Pose FR3::get_cartesian_position() {

@@ -1,4 +1,7 @@
 # ATTENTION: auto generated from C++ code, use `make stubgen` to update!
+# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
+# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
+# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
 """
 hardware module
 """
