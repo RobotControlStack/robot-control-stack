@@ -22,7 +22,6 @@ COLLISION = IK_SUCCESS = gym.spaces.Discrete(2)
 # TODO: Typing for the action space?
 # cf. https://github.com/Farama-Foundation/Gymnasium/issues/845
 # and https://gymnasium.farama.org/_modules/gymnasium/core/
-# Disable the missing docstring warning, base class already has a docstring
 class FR3Base(gym.Env):
     """Simulated Franka Research 3."""
 
@@ -65,7 +64,7 @@ class FR3Base(gym.Env):
 
 
 if __name__ == "__main__":
-    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
+    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf")
     cfg = sim.FR3Config()
     cfg.ik_duration = 300
     cfg.realtime = True

@@ -38,6 +38,7 @@ set(RL_BUILD_DEMOS OFF)
 set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
 set(RL_BUILD_EXTRAS OFF)
+set(MUJOCO_VERSION 3.1.1)
 set(MUJOCO_BUILD_EXAMPLES OFF)
 set(MUJOCO_BUILD_SIMULATE OFF)
 set(MUJOCO_BUILD_TESTS OFF)
@@ -63,7 +64,7 @@ FetchContent_Declare(pybind11
 FetchContent_Declare(
     mujoco
     GIT_REPOSITORY https://github.com/google-deepmind/mujoco.git
-    GIT_TAG 3.1.1
+    GIT_TAG ${MUJOCO_VERSION}
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
