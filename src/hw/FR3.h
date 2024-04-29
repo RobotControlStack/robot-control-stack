@@ -55,9 +55,9 @@ class FR3 : public common::Robot {
 
   bool set_parameters(const common::RConfig &cfg) override;
 
-  std::unique_ptr<common::RConfig> get_parameters() override;
+  FR3Config *get_parameters() override;
 
-  std::unique_ptr<common::RState> get_state() override;
+  FR3State *get_state() override;
 
   void set_default_robot_behavior();
 

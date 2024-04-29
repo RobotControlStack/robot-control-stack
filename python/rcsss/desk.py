@@ -5,7 +5,8 @@ import json as json_module
 import logging
 import ssl
 import threading
-from typing import Callable, Dict, Literal, Optional
+import time
+from typing import Callable, Literal
 from urllib import parse
 
 import rcsss
@@ -112,13 +113,22 @@ class Desk:
         self._logged_in = False
         self._token = Token()
         self._listening = False
-        self._listen_thread: Optional[threading.Thread] = None
+        self._listen_thread: threading.Thread | None = None
 
         # the following variables might be out of sync
         # TODO: is there a way to check for the robot's state?
         self.guiding_mode_enabled = False
         self.fci_enabled = False
         self.locked = True
+        self._button_states = {
+            "circle": False,
+            "cross": False,
+            "check": False,
+            "left": False,
+            "right": False,
+            "down": False,
+            "up": False,
+        }
         self.login()
 
     def __enter__(self) -> "Desk":
@@ -209,6 +219,8 @@ class Desk:
             "/desk/api/system/fci",
             headers={"X-Control-Token": self._token.token},
         )
+        # sleep needed to make sure fci has really been activated on the frankas side
+        time.sleep(0.5)
         self.fci_enabled = True
 
     def deactivate_fci(self) -> None:
@@ -235,18 +247,27 @@ class Desk:
         For legacy versions of the Desk, this function does nothing.
         """
         active = self._get_active_token()
+
+        # we already have control
         if active.id != "" and self._token.id == active.id:
             _logger.info("Retaken control.")
             return True
+
+        # someone else has control and we dont want to force
         if active.id != "" and not force:
             _logger.warning("Cannot take control. User %s is in control.", active.owned_by)
             return False
+
         response = self._request(
             "post",
             f'/admin/api/control-token/request{"?force" if force else ""}',
             json={"requestedBy": self._username},
         ).json()
-        if force:
+
+        if active.id == "":
+            _logger.info("No active token.")
+        else:
+            # someone else has control and want to force
             timeout = self._request("get", "/admin/api/safety").json()["tokenForceTimeout"]
             _logger.warning(
                 "You have %d seconds to confirm control by pressing circle button on robot.",
@@ -255,10 +276,10 @@ class Desk:
             with connect(
                 f"wss://{self._hostname}/desk/api/navigation/events",
                 server_hostname="robot.franka.de",
-                additional_headers={"authorization": self._session.cookies.get("authorization")},
+                additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
             ) as websocket:
                 while True:
-                    event: Dict = json_module.loads(websocket.recv(timeout))
+                    event: dict = json_module.loads(websocket.recv(timeout))
                     if event["circle"]:
                         break
         self._token = Token(str(response["id"]), self._username, response["token"])
@@ -273,7 +294,12 @@ class Desk:
         """
         _logger.info("Releasing control.")
         try:
-            self._request("delete", "/admin/api/control-token", json={"token": self._token.token})
+            self._request(
+                "delete",
+                "/admin/api/control-token",
+                headers={"X-Control-Token": self._token.token},
+                json={"token": self._token.token},
+            )
         except ConnectionError as err:
             if "ControlTokenUnknown" in str(err):
                 _logger.warning("Control release failed. Not in control.")
@@ -338,10 +364,10 @@ class Desk:
         self,
         method: Literal["post", "get", "delete"],
         url: str,
-        json: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        files: Optional[Dict[str, str]] = None,
-        data: Optional[bytes] = None,
+        json: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        files: dict[str, str] | None = None,
+        data: bytes | None = None,
     ) -> requests.Response:
         fun = getattr(self._session, method)
         response: requests.Response = fun(
@@ -352,11 +378,17 @@ class Desk:
             data=data,
         )
         if response.status_code != 200:
-            _logger.error("Request failed with status code %d and response %s", response.status_code, response.text)
+            _logger.error(
+                "Request %s %s failed with status code %d and response %s",
+                method,
+                url,
+                response.status_code,
+                response.text,
+            )
             raise ConnectionError(response.text)
         return response
 
-    def _listen(self, cb, timeout):
+    def _listen(self, callback: Callable[[str, list[str]], None], timeout: float):
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -364,17 +396,26 @@ class Desk:
             f"wss://{self._hostname}/desk/api/navigation/events",
             # server_hostname='robot.franka.de',
             ssl_context=ctx,
-            additional_headers={"authorization": self._session.cookies.get("authorization")},
+            additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
         ) as websocket:
             self._listening = True
             while self._listening:
                 try:
-                    event: Dict = json_module.loads(websocket.recv(timeout))
-                    cb(event)
+                    event: dict[str, bool] = json_module.loads(websocket.recv(timeout))
+                    # detect button click event
+                    pressed_buttons = []
+                    for key, value in event.items():
+                        if not value and value != self._button_states[key]:
+                            # button click event detected
+                            pressed_buttons.append(key)
+                        self._button_states[key] = value
+                    if len(pressed_buttons) > 0:
+                        _logger.info("Buttons %s pressed", str(pressed_buttons))
+                        callback(self._hostname, pressed_buttons)
                 except TimeoutError:
                     pass
 
-    def listen(self, cb: Callable[[Dict], None]) -> None:
+    def listen(self, callback: Callable[[str, list[str]], None]) -> None:
         """
         Starts a thread listening to Pilot button events. All the Pilot buttons,
         except for the `Pilot Mode` button can be captured. Make sure Pilot Mode is
@@ -390,7 +431,7 @@ class Desk:
             The possible buttons are: `circle`, `cross`, `check`, `left`, `right`, `down`,
             and `up`.
         """
-        self._listen_thread = threading.Thread(target=self._listen, args=(cb, 1.0))
+        self._listen_thread = threading.Thread(target=self._listen, args=(callback, 1.0))
         self._listen_thread.start()
 
     def stop_listen(self) -> None:
@@ -437,6 +478,7 @@ class GuidingMode:
         self.desk.__enter__()
         if self.unlock:
             self.desk.unlock()
+        self.desk.activate_fci()
         self.desk.enable_guiding_mode()
         return self.desk
 

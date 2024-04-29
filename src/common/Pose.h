@@ -31,6 +31,15 @@ struct RPY {
                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
     return rotation;
   }
+  Eigen::Vector3d as_vector() const {
+    Eigen::Vector3d rotation(
+        (Eigen::Vector3d() << roll, pitch, yaw).finished());
+    return rotation;
+  }
+
+  bool is_close(const RPY &other, double eps = 1e-8) const {
+    return this->as_vector().isApprox(other.as_vector(), eps);
+  }
 };
 
 /**
@@ -194,6 +203,24 @@ class Pose {
    * @return  the result of the multiplication
    */
   Pose operator*(const Pose &pose_b) const;
+
+  /**
+   * @brief Returns the inverse of the Pose
+   * For python bindings.
+   *
+   * @return Inverse Pose
+   */
+  Pose inverse() const;
+
+  /**
+   * @brief Checks if two Poses are equal within a certain epsilon
+   *
+   * @param other Pose to compare
+   * @param eps epsilon
+   *
+   * @return true if the Poses are equal
+   */
+  bool is_close(const Pose &other, double eps = 1e-8) const;
 };
 }  // namespace common
 }  // namespace rcs

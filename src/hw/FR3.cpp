@@ -75,19 +75,17 @@ bool FR3::set_parameters(const common::RConfig &cfg) {
   return true;
 }
 
-std::unique_ptr<common::RConfig> FR3::get_parameters() {
+FR3Config *FR3::get_parameters() {
   // copy config to heap
   FR3Config *cfg = new FR3Config();
   *cfg = this->cfg;
-  auto rcfg = dynamic_cast<common::RConfig *>(cfg);
-  return std::unique_ptr<common::RConfig>(rcfg);
+  return cfg;
 }
 
-std::unique_ptr<common::RState> FR3::get_state() {
+FR3State *FR3::get_state() {
   // dummy state until we define a prober state
   FR3State *state = new FR3State();
-  common::RState *rstate = static_cast<common::RState *>(state);
-  return std::unique_ptr<common::RState>(rstate);
+  return state;
 }
 
 void FR3::set_default_robot_behavior() {

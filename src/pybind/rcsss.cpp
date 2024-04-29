@@ -1,6 +1,7 @@
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
+#include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
 #include <pybind11/cast.h>
@@ -28,79 +29,82 @@ namespace py = pybind11;
  * @brief Robot trampoline class for python bindings,
  * needed for pybind11 to override virtual functions,
  * see
- * https://pybind11.readthedocs.io/en/stable/advanced/classes.html#virtual-and-inheritance
+ * https://pybind11.readthedocs.io/en/stable/advanced/classes.html
  */
-template <class RobotBase = rcs::common::Robot>
-class PyRobot : public RobotBase {
+class PyRobot : public rcs::common::Robot {
  public:
-  using RobotBase::RobotBase;  // Inherit constructors
+  using rcs::common::Robot::Robot;  // Inherit constructors
 
   bool set_parameters(const rcs::common::RConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(bool, RobotBase, set_parameters, cfg);
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Robot, set_parameters, cfg);
   }
 
-  std::unique_ptr<rcs::common::RConfig> get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RConfig>, RobotBase,
+  rcs::common::RConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RConfig *, rcs::common::Robot,
                            get_parameters, );
   }
 
-  std::unique_ptr<rcs::common::RState> get_state() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::RState>, RobotBase,
+  rcs::common::RState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RState *, rcs::common::Robot,
                            get_state, );
   }
 
   rcs::common::Pose get_cartesian_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, RobotBase,
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
                            get_cartesian_position, );
   }
 
   void set_joint_position(const rcs::common::Vector7d &q) override {
-    PYBIND11_OVERRIDE_PURE(void, RobotBase, set_joint_position, q);
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
   }
 
   rcs::common::Vector7d get_joint_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, RobotBase,
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
                            get_joint_position, );
   }
 
   void move_home() override {
-    PYBIND11_OVERRIDE_PURE(void, RobotBase, move_home, );
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
 
   void set_cartesian_position(const rcs::common::Pose &pose) override {
-    PYBIND11_OVERRIDE_PURE(void, RobotBase, set_cartesian_position, pose);
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
+                           pose);
   }
 };
 
 /**
  * @brief Gripper trampoline class for python bindings
  */
-template <class GripperBase = rcs::common::Gripper>
-class PyGripper : public GripperBase {
+class PyGripper : public rcs::common::Gripper {
  public:
-  using GripperBase::GripperBase;  // Inherit constructors
+  using rcs::common::Gripper::Gripper;  // Inherit constructors
 
   bool set_parameters(const rcs::common::GConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(bool, GripperBase, set_parameters, cfg);
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, set_parameters, cfg);
   }
 
-  std::unique_ptr<rcs::common::GConfig> get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GConfig>, GripperBase,
+  rcs::common::GConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GConfig *, rcs::common::Gripper,
                            get_parameters, );
   }
 
-  std::unique_ptr<rcs::common::GState> get_state() override {
-    PYBIND11_OVERRIDE_PURE(std::unique_ptr<rcs::common::GState>, GripperBase,
+  rcs::common::GState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GState *, rcs::common::Gripper,
                            get_state, );
   }
 
-  bool grasp() override { PYBIND11_OVERRIDE_PURE(bool, GripperBase, grasp, ); }
-
-  void release() override {
-    PYBIND11_OVERRIDE_PURE(void, GripperBase, release, );
+  bool grasp() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, grasp, );
   }
 
-  void shut() override { PYBIND11_OVERRIDE_PURE(void, GripperBase, shut, ); }
+  void release() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, release, );
+  }
+
+  void shut() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, shut, );
+  }
 };
 
 PYBIND11_MODULE(_core, m) {
@@ -129,8 +133,19 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
+      .def("as_vector", &rcs::common::RPY::as_vector)
+      .def("is_close", &rcs::common::RPY::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::RPY::str)
-      .def(py::self + py::self);
+      .def(py::self + py::self)
+      .def(py::pickle(
+          [](const rcs::common::RPY &p) {  // dump
+            return py::make_tuple(p.roll, p.pitch, p.yaw);
+          },
+          [](py::tuple t) {  // load
+            return rcs::common::RPY(t[0].cast<double>(), t[1].cast<double>(),
+                                    t[2].cast<double>());
+          }));
 
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
@@ -148,8 +163,18 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
+      .def("inverse", &rcs::common::Pose::inverse)
+      .def("is_close", &rcs::common::Pose::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::Pose::str)
-      .def(py::self * py::self);
+      .def(py::self * py::self)
+      .def(py::pickle(
+          [](const rcs::common::Pose &p) {  // dump
+            return p.affine_array();
+          },
+          [](std::array<double, 16> t) {  // load
+            return rcs::common::Pose(t);
+          }));
 
   py::class_<rcs::common::RConfig>(common, "RConfig");
   py::class_<rcs::common::RState>(common, "RState");
@@ -158,8 +183,8 @@ PYBIND11_MODULE(_core, m) {
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
-  py::class_<rcs::common::Robot, PyRobot<>,
-             std::shared_ptr<rcs::common::Robot>>(common, "Robot")
+  py::class_<rcs::common::Robot, PyRobot, std::shared_ptr<rcs::common::Robot>>(
+      common, "Robot")
       .def("set_parameters", &rcs::common::Robot::set_parameters,
            py::arg("cfg"))
       .def("get_parameters", &rcs::common::Robot::get_parameters)
@@ -173,7 +198,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
 
-  py::class_<rcs::common::Gripper, PyGripper<>,
+  py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("set_parameters", &rcs::common::Gripper::set_parameters,
            py::arg("cfg"))
@@ -267,18 +292,12 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
-  py::class_<rcs::hw::FR3, rcs::common::Robot, PyRobot<rcs::hw::FR3>,
-             std::shared_ptr<rcs::hw::FR3>>(hw, "FR3")
-      // No idea why the line below does not compile
-      //  .def(py::init<const std::string &, const std::optional<std::string>
-      //  &>(),
-      //       py::arg("ip"), py::arg("filename") = std::nullopt)
-      .def(py::init([](const std::string &ip,
-                       const std::optional<std::string> &filename) {
-             return std::shared_ptr<rcs::hw::FR3>(
-                 new rcs::hw::FR3(ip, filename));
-           }),
+  py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
+      hw, "FR3")
+      .def(py::init<const std::string &, const std::optional<std::string> &>(),
            py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def("get_parameters", &rcs::hw::FR3::get_parameters)
+      .def("get_state", &rcs::hw::FR3::get_state)
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
@@ -293,15 +312,32 @@ PYBIND11_MODULE(_core, m) {
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
-             PyGripper<rcs::hw::FrankaHand>,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
-      // No idea why the line below does not compile
-      //   .def(py::init<const std::string&>(), py::arg("ip"))
-      .def(py::init([](const std::string &ip) {
-        return std::shared_ptr<rcs::hw::FrankaHand>(
-            new rcs::hw::FrankaHand(ip));
-      }))
+      .def(py::init<const std::string &>(), py::arg("ip"))
+      .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
+      .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("homing", &rcs::hw::FrankaHand::homing);
+
+  auto hw_except =
+      hw.def_submodule("exceptions", "exceptions from the hardware module");
+  py::register_exception<franka::Exception>(hw_except, "FrankaException",
+                                            PyExc_RuntimeError);
+  py::register_exception<franka::ModelException>(
+      hw_except, "FrankaModelException", PyExc_RuntimeError);
+  py::register_exception<franka::NetworkException>(
+      hw_except, "FrankaNetworkException", PyExc_RuntimeError);
+  py::register_exception<franka::ProtocolException>(
+      hw_except, "FrankaProtocolException", PyExc_RuntimeError);
+  py::register_exception<franka::IncompatibleVersionException>(
+      hw_except, "FrankaIncompatibleVersionException", PyExc_RuntimeError);
+  py::register_exception<franka::ControlException>(
+      hw_except, "FrankaControlException", PyExc_RuntimeError);
+  py::register_exception<franka::CommandException>(
+      hw_except, "FrankaCommandException", PyExc_RuntimeError);
+  py::register_exception<franka::RealtimeException>(
+      hw_except, "FrankaRealtimeException", PyExc_RuntimeError);
+  py::register_exception<franka::InvalidOperationException>(
+      hw_except, "FrankaInvalidOperationException", PyExc_RuntimeError);
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
@@ -327,6 +363,8 @@ PYBIND11_MODULE(_core, m) {
            }),
            py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
            py::arg("render") = true)
+      .def("get_parameters", &rcs::sim::FR3::get_parameters)
+      .def("get_state", &rcs::sim::FR3::get_state)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }
