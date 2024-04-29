@@ -10,9 +10,9 @@
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
 
-#include "rl/mdl/UrdfFactory.h"
-
 #include <memory>
+
+#include "rl/mdl/UrdfFactory.h"
 
 //#include "mujoco/raw.h"
 //#include "mujoco/structs.h"
@@ -319,12 +319,14 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::sim::FR3, rcs::common::Robot, PyRobot<rcs::sim::FR3>,
              std::shared_ptr<rcs::sim::FR3>>(sim, "_FR3")
-      .def(py::init([](long mjmdl, long mjdata,
-                       const std::string rlmdl, std::optional<bool> render) {
-             return std::make_shared<rcs::sim::FR3>( (mjModel *)mjmdl, (mjData *)mjdata,
+      .def(py::init([](long mjmdl, long mjdata, const std::string rlmdl,
+                       std::optional<bool> render) {
+             return std::make_shared<rcs::sim::FR3>(
+                 (mjModel *)mjmdl, (mjData *)mjdata,
                  rl::mdl::UrdfFactory().create(rlmdl), render);
            }),
-           py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"), py::arg("render") = true)
+           py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
+           py::arg("render") = true)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);
 }

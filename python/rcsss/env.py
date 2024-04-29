@@ -4,17 +4,15 @@ from collections import OrderedDict
 from typing import Any, Optional, cast
 
 import gymnasium as gym
+import mujoco
 import numpy as np
 from rcsss import common, sim
-import mujoco
 
 RPY = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
-XYZ = gym.spaces.Box(low=np.array(
-    [-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
+XYZ = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
 POSE = gym.spaces.Dict({"rpy": RPY, "xyz": XYZ})
 ANGLES = gym.spaces.Box(
-    low=np.array([-2.3093, -1.5133, -2.4937, -
-                 2.7478, -2.4800, 0.8521, -2.6895]),
+    low=np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]),
     high=np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895]),
     dtype=np.float32,
     shape=(7,),
@@ -46,8 +44,7 @@ class FR3Base(gym.Env):
         rpy = pose.rotation_rpy()
         xyz = pose.translation()
         return OrderedDict(
-            pose=OrderedDict(rpy=np.array(
-                [rpy.roll, rpy.pitch, rpy.yaw]), xyz=np.array(xyz)),
+            pose=OrderedDict(rpy=np.array([rpy.roll, rpy.pitch, rpy.yaw]), xyz=np.array(xyz)),
             angles=self.robot.get_joint_position(),
             collision=state.collision,
         )

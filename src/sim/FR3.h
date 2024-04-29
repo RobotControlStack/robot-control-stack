@@ -32,8 +32,8 @@ struct FR3State : common::RState {
 
 class FR3 : public common::Robot {
  public:
-  FR3(mjModel* m, mjData* d,
-      std::shared_ptr<rl::mdl::Model> mdl, std::optional<bool> render);
+  FR3(mjModel *m, mjData *d, std::shared_ptr<rl::mdl::Model> mdl,
+      std::optional<bool> render);
   FR3(const std::string &mjmdl, const std::string &rlmdl,
       std::optional<bool> render);
   ~FR3() override;
@@ -59,8 +59,8 @@ class FR3 : public common::Robot {
   FR3State state;
   struct {
     struct {
-      mjModel* mdl;
-      mjData* data;
+      mjModel *mdl;
+      mjData *data;
     } mj;
     struct {
       std::shared_ptr<rl::mdl::Model> mdl;

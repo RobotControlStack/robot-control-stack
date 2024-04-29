@@ -68,31 +68,29 @@ namespace rcs {
 namespace sim {
 using std::endl;
 
-FR3::FR3(mjModel* mjmdl, mjData* mjdata,
-         std::shared_ptr<rl::mdl::Model> rlmdl, std::optional<bool> render)
+FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
+         std::optional<bool> render)
     : models{.mj = {.mdl = mjmdl, .data = mjdata},
-             .rl = {.mdl = rlmdl,
-                    .kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
-                    }},
+             .rl =
+                 {
+                     .mdl = rlmdl,
+                     .kin =
+                         std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
+                 }},
       exit_requested(false) {
-        std::cout << "FR3 constructor: creating ik" << std::endl;
   this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
       this->models.rl.kin.get());
-  std::cout << "Initializing geoms" << std::endl;
   /* Initialize collision geom id map */
   init_geom_ids(this->cgeom_ids.arm, cgeom_names.arm, *this->models.mj.mdl);
   init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
                 *this->models.mj.mdl);
   init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
-  std::cout << "Configuring IK" << std::endl;
   this->models.rl.ik->setDuration(
       std::chrono::milliseconds(this->cfg.ik_duration));
-  std::cout << "Initializing sim" << std::endl;
   /* Initialize sim */
   this->reset();
   if (render.value_or(true))
     this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
-  std::cout << "FR3 constructor finished" << std::endl;
 }
 
 FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
@@ -286,8 +284,8 @@ void FR3::render_loop() {
   while (!(ui_adapter.ShouldCloseWindow() or this->exit_requested)) {
     std::tie(uistate.rect[0].width, uistate.rect[0].height) =
         ui_adapter.GetFramebufferSize();
-    mjv_updateScene(this->models.mj.mdl, this->models.mj.data, &opt,
-                    NULL, &cam, mjCAT_ALL, &scn);
+    mjv_updateScene(this->models.mj.mdl, this->models.mj.data, &opt, NULL, &cam,
+                    mjCAT_ALL, &scn);
 
     // Add markers
     for (mjvGeom marker : this->markers) {
@@ -307,8 +305,7 @@ void FR3::render_loop() {
   }
 }
 void FR3::reset() {
-  mj_resetDataKeyframe(this->models.mj.mdl, this->models.mj.data,
-                       SIM_KF_HOME);
+  mj_resetDataKeyframe(this->models.mj.mdl, this->models.mj.data, SIM_KF_HOME);
   mj_step(this->models.mj.mdl, this->models.mj.data);
 }
 }  // namespace sim
