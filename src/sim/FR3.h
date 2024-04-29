@@ -33,9 +33,7 @@ struct FR3State : common::RState {
 class FR3 : public common::Robot {
  public:
   FR3(mjModel *m, mjData *d, std::shared_ptr<rl::mdl::Model> mdl,
-      std::optional<bool> render);
-  FR3(const std::string &mjmdl, const std::string &rlmdl,
-      std::optional<bool> render = std::nullopt);
+      std::optional<bool> render = true);
   ~FR3() override;
   bool set_parameters(const common::RConfig &cfg) override;
   FR3Config *get_parameters() override;

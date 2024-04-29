@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <iterator>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -66,7 +64,6 @@ std::set<T> set_union(const std::set<T>& a, const std::set<T>& b) {
 
 namespace rcs {
 namespace sim {
-using std::endl;
 
 FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
          std::optional<bool> render)
@@ -78,35 +75,6 @@ FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
                          std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
                  }},
       exit_requested(false) {
-  this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
-      this->models.rl.kin.get());
-  /* Initialize collision geom id map */
-  init_geom_ids(this->cgeom_ids.arm, cgeom_names.arm, *this->models.mj.mdl);
-  init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
-                *this->models.mj.mdl);
-  init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
-  this->models.rl.ik->setDuration(
-      std::chrono::milliseconds(this->cfg.ik_duration));
-  /* Initialize sim */
-  this->reset();
-  if (render.value_or(true))
-    this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
-}
-
-FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
-         std::optional<bool> render)
-    : models(), exit_requested(false) {
-  /* Load models */
-  char err[1024];
-  this->models.mj.mdl = mj_loadXML(mjmdl.c_str(), NULL, err, sizeof(err));
-  if (!this->models.mj.mdl) throw std::runtime_error(err);
-  /* Throws in case of a failure */
-  this->models.rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
-  /* The next line can call exit(EXIT_FAILURE). What happens in such a case and
-   * what should we do about it? */
-  this->models.mj.data = mj_makeData(this->models.mj.mdl);
-  this->models.rl.kin =
-      std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->models.rl.mdl);
   this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
       this->models.rl.kin.get());
   /* Initialize collision geom id map */

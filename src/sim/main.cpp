@@ -6,10 +6,9 @@
 #include <string>
 
 #include "common/Pose.h"
+#include "mujoco/mjdata.h"
 #include "mujoco/mujoco.h"
 #include "plugin.h"
-#include "rl/math/Matrix.h"
-#include "rl/math/Rotation.h"
 #include "rl/math/Transform.h"
 #include "rl/math/Vector.h"
 #include "rl/mdl/Dynamic.h"
@@ -119,8 +118,9 @@ void test_convergence() {
 void test_fr3() {
   const std::string mjcf = MODEL_DIR "/mjcf/scene.xml";
   const std::string urdf = MODEL_DIR "/urdf/fr3_from_panda.urdf";
-  rcs::sim::FR3 robot(mjcf, urdf, {});
-
+  mjModel* m = mj_loadXML(mjcf.c_str(), NULL, NULL, 0);
+  mjData* d = mj_makeData(m);
+  rcs::sim::FR3 robot(m, d, rl::mdl::UrdfFactory().create(urdf));
   rcs::sim::FR3Config cfg{};
   cfg.ik_duration = 300;
   cfg.realtime = true;
