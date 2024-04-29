@@ -1,6 +1,6 @@
 import mujoco as mj
-from rcsss._core.sim import FR3Config, FR3State
 from rcsss._core.sim import FR3 as _FR3
+from rcsss._core.sim import FR3Config, FR3State
 
 __all__ = ["FR3", "FR3Config", "FR3State"]
 
