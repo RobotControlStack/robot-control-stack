@@ -50,22 +50,26 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
     GIT_TAG 0.10.0
     GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
 )
 FetchContent_Declare(rl
     GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
     GIT_TAG master
     GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
 )
 FetchContent_Declare(pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
     GIT_TAG master
     GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
 )
 FetchContent_Declare(
     mujoco
     GIT_REPOSITORY https://github.com/google-deepmind/mujoco.git
     GIT_TAG ${MUJOCO_VERSION}
     GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
 
