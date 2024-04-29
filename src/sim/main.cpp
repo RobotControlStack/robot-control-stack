@@ -51,7 +51,7 @@ bool test_ik() {
   factory.load(MODEL_DIR "/urdf/fr3_from_panda.urdf", &model);
   std::unique_ptr<rl::mdl::JacobianInverseKinematics> ik;
   ik = std::make_unique<rl::mdl::JacobianInverseKinematics>(
-      static_cast<rl::mdl::Kinematic *>(&model));
+      static_cast<rl::mdl::Kinematic*>(&model));
   rl::math::Transform t;
   t.translation() << 0.2, 0.2, 0.2;
   ik->addGoal(t, 0);
