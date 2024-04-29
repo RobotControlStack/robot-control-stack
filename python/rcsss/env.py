@@ -4,7 +4,6 @@ from collections import OrderedDict
 from typing import Any, Optional, cast
 
 import gymnasium as gym
-import mujoco
 import numpy as np
 from rcsss import common, sim
 
