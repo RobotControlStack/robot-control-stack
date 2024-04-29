@@ -37,6 +37,9 @@ jobs:
 
   pythonpackage:
     runs-on: ubuntu-latest
+    env:
+      CC: clang-15
+      CXX: clang++-15
     steps:
       - uses: actions/checkout@v4
       - name: Install CPP dependencies

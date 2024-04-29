@@ -49,7 +49,7 @@ logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["python/rcsss", "python/mujoco"]
 cmake.targets = ["_core", "_callbacks", "_constants", "_enums", "_errors", "_functions", "_render", "_rollout", "_simulate", "_structs"]
-cmake.args = ["-DCMAKE_C_COMPILER=clang", "-DCMAKE_CXX_COMPILER=clang++", "-DCMUJOCO_HARDEN:BOOL=ON"]
+cmake.args = ["-DCMAKE_C_COMPILER=clang-15", "-DCMAKE_CXX_COMPILER=clang++-15", "-DCMUJOCO_HARDEN:BOOL=ON"]
 install.components = ["python_package"]
 sdist.include = ["python/mujoco"]
 
