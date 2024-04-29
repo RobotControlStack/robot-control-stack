@@ -163,6 +163,7 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
 
   std::pair<common::Pose, common::Pose> marker(this->get_cartesian_position(),
                                                this->get_cartesian_position());
+
   float marker_col[4] = {0, 1, 0, 1};
   int marker_count = 0;
 
@@ -209,8 +210,8 @@ bool FR3::collision(std::set<size_t> const& geom_ids) {
 std::list<mjvGeom>::iterator FR3::add_sphere(const common::Pose& pose,
                                              double size, const float* rgba) {
   mjvGeom newgeom;
-  mjtNum* pos = pose.translation().data();
-  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos, NULL, rgba);
+  Eigen::Vector3d pos = pose.translation();
+  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos.data(), NULL, rgba);
   return this->markers.insert(this->markers.end(), newgeom);
 }
 
@@ -218,10 +219,10 @@ std::list<mjvGeom>::iterator FR3::add_line(const common::Pose& pose_from,
                                            const common::Pose& pose_to,
                                            double size, const float* rgba) {
   mjvGeom newgeom;
-  mjtNum* from = pose_from.translation().data();
-  mjtNum* to = pose_to.translation().data();
+  Eigen::Vector3d from = pose_from.translation();
+  Eigen::Vector3d to = pose_to.translation();
   mjv_initGeom(&newgeom, mjGEOM_CAPSULE, &size, NULL, NULL, rgba);
-  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from, to);
+  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from.data(), to.data());
   return this->markers.insert(this->markers.end(), newgeom);
 }
 
