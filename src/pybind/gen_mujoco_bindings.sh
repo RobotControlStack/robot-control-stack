@@ -21,6 +21,8 @@ fi
 
 if [ ${skip_make_sdist} = false ]
 then
+    # remove potential tar archives from different versions, which breaks the make_sdist.sh script
+    rm -f "${mujoco_src_dir}"/python/dist/mujoco-*.tar.gz 
     python3 -m venv /tmp/mujoco
     bash -c 'source /tmp/mujoco/bin/activate && cd '"${1}"'/python && ./make_sdist.sh'
     tar -xf "${mujoco_src_dir}"/python/dist/mujoco-${mujoco_version}.tar.gz mujoco-${mujoco_version}
