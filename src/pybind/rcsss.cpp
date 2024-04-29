@@ -15,9 +15,6 @@
 
 #include "rl/mdl/UrdfFactory.h"
 
-//#include "mujoco/raw.h"
-//#include "mujoco/structs.h"
-
 // TODO: define exceptions
 
 #define STRINGIFY(x) #x
@@ -347,12 +344,10 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
-
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
-
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init([](long mjmdl, long mjdata, const std::string rlmdl,
