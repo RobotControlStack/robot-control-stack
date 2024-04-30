@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <iterator>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -15,6 +13,7 @@
 
 #include "common/Robot.h"
 #include "glfw_adapter.h"
+#include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
@@ -65,24 +64,17 @@ std::set<T> set_union(const std::set<T>& a, const std::set<T>& b) {
 
 namespace rcs {
 namespace sim {
-using std::endl;
 
-FR3::FR3(const std::string& mjmdl, const std::string& rlmdl,
+FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
          std::optional<bool> render)
-    : models(), exit_requested(false) {
-  /* Load models */
-  char err[1024];
-  this->models.mj.mdl = std::shared_ptr<mjModel>(
-      mj_loadXML(mjmdl.c_str(), NULL, err, sizeof(err)));
-  if (!this->models.mj.mdl.get()) throw std::runtime_error(err);
-  /* Throws in case of a failure */
-  this->models.rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
-  /* The next line can call exit(EXIT_FAILURE). What happens in such a case and
-   * what should we do about it? */
-  this->models.mj.data =
-      std::shared_ptr<mjData>(mj_makeData(this->models.mj.mdl.get()));
-  this->models.rl.kin =
-      std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->models.rl.mdl);
+    : models{.mj = {.mdl = mjmdl, .data = mjdata},
+             .rl =
+                 {
+                     .mdl = rlmdl,
+                     .kin =
+                         std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
+                 }},
+      exit_requested(false) {
   this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
       this->models.rl.kin.get());
   /* Initialize collision geom id map */
@@ -120,7 +112,7 @@ FR3State* FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  int tcp_id = mj_name2id(this->models.mj.mdl.get(), mjOBJ_SITE, "tcp");
+  int tcp_id = mj_name2id(this->models.mj.mdl, mjOBJ_SITE, "tcp");
   if (tcp_id == -1) throw std::runtime_error("No site named \"tcp\"");
   return common::Pose(
       Eigen::Matrix3d(this->models.mj.data->site_xmat + 9 * tcp_id),
@@ -163,11 +155,12 @@ void FR3::wait_for_convergence(common::Vector7d target_angles) {
 
   std::pair<common::Pose, common::Pose> marker(this->get_cartesian_position(),
                                                this->get_cartesian_position());
+
   float marker_col[4] = {0, 1, 0, 1};
   int marker_count = 0;
 
   while ((not arrived) or moving) {
-    mj_step(this->models.mj.mdl.get(), this->models.mj.data.get());
+    mj_step(this->models.mj.mdl, this->models.mj.data);
 
     if (this->cfg.trajectory_trace) {
       if (marker_count == 0) {
@@ -209,8 +202,8 @@ bool FR3::collision(std::set<size_t> const& geom_ids) {
 std::list<mjvGeom>::iterator FR3::add_sphere(const common::Pose& pose,
                                              double size, const float* rgba) {
   mjvGeom newgeom;
-  mjtNum* pos = pose.translation().data();
-  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos, NULL, rgba);
+  Eigen::Vector3d pos = pose.translation();
+  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos.data(), NULL, rgba);
   return this->markers.insert(this->markers.end(), newgeom);
 }
 
@@ -218,10 +211,10 @@ std::list<mjvGeom>::iterator FR3::add_line(const common::Pose& pose_from,
                                            const common::Pose& pose_to,
                                            double size, const float* rgba) {
   mjvGeom newgeom;
-  mjtNum* from = pose_from.translation().data();
-  mjtNum* to = pose_to.translation().data();
+  Eigen::Vector3d from = pose_from.translation();
+  Eigen::Vector3d to = pose_to.translation();
   mjv_initGeom(&newgeom, mjGEOM_CAPSULE, &size, NULL, NULL, rgba);
-  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from, to);
+  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from.data(), to.data());
   return this->markers.insert(this->markers.end(), newgeom);
 }
 
@@ -243,10 +236,10 @@ void FR3::render_loop() {
 
   mjv_defaultOption(&opt);
   mjv_defaultScene(&scn);
-  mjv_makeScene(this->models.mj.mdl.get(), &scn, kMaxGeom);
-  mjv_defaultFreeCamera(this->models.mj.mdl.get(), &cam);
+  mjv_makeScene(this->models.mj.mdl, &scn, kMaxGeom);
+  mjv_defaultFreeCamera(this->models.mj.mdl, &cam);
 
-  ui_adapter.RefreshMjrContext(this->models.mj.mdl.get(), 1);
+  ui_adapter.RefreshMjrContext(this->models.mj.mdl, 1);
   mjuiState uistate = ui_adapter.state();
   std::memset(&uistate, 0, sizeof(mjuiState));
   uistate.nrect = 1;
@@ -260,13 +253,13 @@ void FR3::render_loop() {
   while (!(ui_adapter.ShouldCloseWindow() or this->exit_requested)) {
     std::tie(uistate.rect[0].width, uistate.rect[0].height) =
         ui_adapter.GetFramebufferSize();
-    mjv_updateScene(this->models.mj.mdl.get(), this->models.mj.data.get(), &opt,
-                    NULL, &cam, mjCAT_ALL, &scn);
+    mjv_updateScene(this->models.mj.mdl, this->models.mj.data, &opt, NULL, &cam,
+                    mjCAT_ALL, &scn);
 
     // Add markers
     for (mjvGeom marker : this->markers) {
       if (scn.ngeom >= scn.maxgeom) {
-        mj_warning(this->models.mj.data.get(), mjWARN_VGEOMFULL, scn.maxgeom);
+        mj_warning(this->models.mj.data, mjWARN_VGEOMFULL, scn.maxgeom);
         break;
       }
       mjvGeom* thisgeom = scn.geoms + scn.ngeom;
@@ -281,9 +274,8 @@ void FR3::render_loop() {
   }
 }
 void FR3::reset() {
-  mj_resetDataKeyframe(this->models.mj.mdl.get(), this->models.mj.data.get(),
-                       SIM_KF_HOME);
-  mj_step(this->models.mj.mdl.get(), this->models.mj.data.get());
+  mj_resetDataKeyframe(this->models.mj.mdl, this->models.mj.data, SIM_KF_HOME);
+  mj_step(this->models.mj.mdl, this->models.mj.data);
 }
 }  // namespace sim
 }  // namespace rcs

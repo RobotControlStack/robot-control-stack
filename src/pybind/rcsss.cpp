@@ -4,6 +4,7 @@
 #include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
+#include <pybind11/cast.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -11,6 +12,8 @@
 #include <sim/FR3.h>
 
 #include <memory>
+
+#include "rl/mdl/UrdfFactory.h"
 
 // TODO: define exceptions
 
@@ -349,9 +352,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
-      .def(py::init<const std::string &, const std::string &,
-                    std::optional<bool>>(),
-           py::arg("mjmdl"), py::arg("rlmdl"), py::arg("render") = std::nullopt)
+      .def(py::init([](long mjmdl, long mjdata, const std::string rlmdl,
+                       std::optional<bool> render) {
+             return std::make_shared<rcs::sim::FR3>(
+                 (mjModel *)mjmdl, (mjData *)mjdata,
+                 rl::mdl::UrdfFactory().create(rlmdl), render);
+           }),
+           py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
+           py::arg("render") = true)
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("get_state", &rcs::sim::FR3::get_state)
       .def("reset", &rcs::sim::FR3::reset)

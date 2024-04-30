@@ -7,6 +7,7 @@
 
 #include <Eigen/Eigen>
 #include <list>
+#include <memory>
 #include <thread>
 
 #include "rl/mdl/JacobianInverseKinematics.h"
@@ -31,8 +32,8 @@ struct FR3State : common::RState {
 
 class FR3 : public common::Robot {
  public:
-  FR3(const std::string &mjmdl, const std::string &rlmdl,
-      std::optional<bool> render = std::nullopt);
+  FR3(mjModel *m, mjData *d, std::shared_ptr<rl::mdl::Model> mdl,
+      std::optional<bool> render = true);
   ~FR3() override;
   bool set_parameters(const common::RConfig &cfg) override;
   FR3Config *get_parameters() override;
@@ -56,8 +57,8 @@ class FR3 : public common::Robot {
   FR3State state;
   struct {
     struct {
-      std::shared_ptr<mjModel> mdl;
-      std::shared_ptr<mjData> data;
+      mjModel *mdl;
+      mjData *data;
     } mj;
     struct {
       std::shared_ptr<rl::mdl::Model> mdl;

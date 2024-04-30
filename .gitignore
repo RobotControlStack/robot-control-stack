@@ -12,3 +12,5 @@ dist
 .venv
 config.yaml
 MUJOCO_LOG.TXT
+src/pybind/mujoco
+python/mujoco
