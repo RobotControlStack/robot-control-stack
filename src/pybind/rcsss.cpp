@@ -153,6 +153,8 @@ PYBIND11_MODULE(_core, m) {
            py::arg("quaternion"), py::arg("translation"))
       .def(py::init<const rcs::common::RPY &, const Eigen::Vector3d &>(),
            py::arg("rpy"), py::arg("translation"))
+      .def(py::init<const Eigen::Vector3d &, const Eigen::Vector3d &>(),
+           py::arg("rpy_vector"), py::arg("translation"))
       .def("translation", &rcs::common::Pose::translation)
       .def("rotation_m", &rcs::common::Pose::rotation_m)
       .def("rotation_q", &rcs::common::Pose::rotation_q)

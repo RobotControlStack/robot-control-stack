@@ -1,5 +1,3 @@
-import typing
-
 import k4a
 import numpy as np
 from rcsss.camera.interface import (
@@ -32,12 +30,12 @@ class KinectCamera(Camera):
             raise OSError(msg)
 
     @property
-    def config(self) -> GenericCameraConfig:
+    def config(self) -> KinectConfig:
         return self._cfg
 
     @config.setter
-    def config(self, cfg: GenericCameraConfig) -> None:
-        self._cfg = typing.cast(KinectConfig, cfg)
+    def config(self, cfg: KinectConfig) -> None:
+        self._cfg = cfg
 
     def get_current_frame(self) -> Frame:
         capture = self._device.get_capture(self._cfg.timeout_ms)
