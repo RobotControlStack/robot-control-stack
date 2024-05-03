@@ -67,3 +67,5 @@ jobs:
           name: rcsss
           path: dist/*.whl
           retention-days: 30
+      - name: Ensure all unittests are passing
+        run: make unittest
