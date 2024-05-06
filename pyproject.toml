@@ -1,7 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11"]
+requires = ["scikit-build-core>=0.3.3", "pybind11", "pip"]
 build-backend = "scikit_build_core.build"
-
 
 [project]
 name = "rcsss"
@@ -19,6 +18,7 @@ dependencies = ["websockets>=11.0",
     "glfw",
     "numpy",
     "pyopengl",
+    "mujoco==3.1.4"
 ]
 readme = "README.md"
 authors = [
@@ -47,10 +47,12 @@ classifiers = [
 cmake.verbose=true
 logging.level = "INFO"
 build-dir = "build"
-wheel.packages = ["python/rcsss", "python/mujoco"]
-cmake.targets = ["_core", "_callbacks", "_constants", "_enums", "_errors", "_functions", "_render", "_rollout", "_simulate", "_structs"]
+wheel.packages = ["python/rcsss"]
+cmake.targets = ["_core"]
 install.components = ["python_package"]
-sdist.include = ["python/mujoco"]
+
+[tool.scikit-build.cmake.define]
+MUJOCO_VERSION = "3.1.4"
 
 [tool.ruff]
 line-length = 120
