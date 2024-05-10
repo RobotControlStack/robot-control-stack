@@ -11,7 +11,7 @@ class TestPose:
     @pytest.fixture
     def identity_pose(self):
         """This fixture can be reused wherever a no transformation pose is needed"""
-        pose = common.Pose(rpy=common.RPY(roll=0.0, pitch=0.0, yaw=0.0), translation=np.zeros(3))
+        pose = common.Pose()
         return pose
 
     @pytest.mark.skip("This method has an issue: investigate TestCase1- the test is skipped to notify of this typo")
