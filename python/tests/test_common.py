@@ -1,3 +1,5 @@
+import math
+
 import pytest
 from rcsss import common
 import numpy as np
@@ -14,14 +16,13 @@ class TestPose:
         pose = common.Pose()
         return pose
 
-    @pytest.mark.skip("This method has an issue: investigate TestCase1- the test is skipped to notify of this typo")
     def test_rotation_q(self, identity_pose):
         """
         Here the Pose class initiated using the rpy object and the translation vector.
         TestCase1: The quaternion corresponding to the identity pose should be expected_quaternion1
         """
         out_q = identity_pose.rotation_q()
-        expected_quaternion1 = np.array([1, 0, 0, 0])
+        expected_quaternion1 = np.array([0, 0, 0, 1])
         assert np.array_equal(out_q, expected_quaternion1)
 
     @pytest.mark.parametrize(
@@ -53,7 +54,8 @@ class TestPose:
         assert np.array_equal(result.rotation_m(), expected_pose_rotation_m)
         assert np.array_equal(result.translation(), expected_pose_translation)
 
-    @pytest.mark.skip("This method has an issue: investigate TestCase1- the test is skipped to notify of this typo")
+    @pytest.mark.skip("This method has an issue(issues/52): investigate TestCase1- the test is skipped to notify "
+                      "of this typo")
     @pytest.mark.parametrize(
         ("pose1_array", "pose2_array", "eps", "expected_bool"),
         [
@@ -117,12 +119,11 @@ class TestPose:
         out_pose = pose1.inverse()
         assert np.array_equal(out_pose.pose_matrix(), expected_pose_array)
 
-    @pytest.mark.skip("Investigate TesCase1, test fails- the test is skipped to notify of this issue")
     @pytest.mark.parametrize(
         ("quaternion", "translation_vector", "expected_pose_matrix"),
         [
             (
-                np.array([1.0, 0, 0, 0]),
+                np.array([0, 0, 0, 1.0]),
                 np.array([1.0, 1.0, 1.0]),
                 np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 1.0], [0, 0, 1.0, 1.0], [0, 0, 0, 1.0]])
             ),
@@ -138,7 +139,6 @@ class TestPose:
         print(f"{out_pose_matrix = }")
         assert np.array_equal(out_pose_matrix, expected_pose_matrix)
 
-    @pytest.mark.skip("Notice that the method returns RPY(-0, 0, -0)- the test is skipped to notify of this issue")
     @pytest.mark.parametrize(
         ("pose_m", "expected_rpy"),
         [
@@ -157,7 +157,7 @@ class TestPose:
         for ang in ['roll', 'pitch', 'yaw']:
             out_angle = getattr(rpy, ang)
             exp_angle = getattr(expected_rpy, ang)
-            assert out_angle == exp_angle
+            assert math.isclose(out_angle, exp_angle, abs_tol=1e-8)
 
     @pytest.mark.parametrize(
         ("pose_m", "expected_translation_m"),
