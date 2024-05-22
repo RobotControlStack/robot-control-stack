@@ -12,9 +12,8 @@ class TestPose:
 
     @pytest.fixture
     def identity_pose(self):
-        """This fixture can be reused wherever a no transformation pose is needed"""
-        pose = common.Pose()
-        return pose
+        """This fixture can be reused wherever if no transformation pose is needed"""
+        return common.Pose()
 
     def test_rotation_q(self, identity_pose):
         """
@@ -54,14 +53,30 @@ class TestPose:
         assert np.array_equal(result.rotation_m(), expected_pose_rotation_m)
         assert np.array_equal(result.translation(), expected_pose_translation)
 
-    @pytest.mark.skip("This method has an issue(issues/52): investigate TestCase1- the test is skipped to notify "
-                      "of this typo")
     @pytest.mark.parametrize(
         ("pose1_array", "pose2_array", "eps", "expected_bool"),
         [
             (
                 np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
-                np.array([[1.0, 0, 0, 1.3], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
+                np.array([[1.0, 0, 0, 1.1], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
+                0.1,
+                False
+            ),
+            (
+                np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
+                np.array([[1.0, 0, 0, 1.09], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
+                0.1,
+                True
+            ),
+            (
+                np.array([[1.0, 1e-8, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
+                np.array([[1.0, 0, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
+                0.1,
+                True
+            ),
+            (
+                np.array([[1.0, 1, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
+                np.array([[1.0, 0, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
                 0.1,
                 False
             ),
