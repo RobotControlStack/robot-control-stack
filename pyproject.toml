@@ -111,3 +111,10 @@ profile = "black"
 ignore_missing_imports = true
 check_untyped_defs = true
 pretty = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-vv"
+testpaths = [
+    "python/tests",
+]

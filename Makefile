@@ -47,4 +47,7 @@ ruff:
 mypy:
 	mypy ${PYSRC} --install-types --non-interactive
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy
+pytest:
+	pytest -vv
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest
