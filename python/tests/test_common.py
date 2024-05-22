@@ -75,7 +75,7 @@ class TestPose:
         """
         pose1 = common.Pose(pose1_array)
         pose2 = common.Pose(pose2_array)
-        out_bool = pose1.is_close(pose2, eps=eps)
+        out_bool = pose1.is_close(pose2, eps_t=eps)
         print(f"{out_bool = }")
         assert out_bool == expected_bool
 

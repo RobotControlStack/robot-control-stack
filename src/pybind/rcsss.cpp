@@ -164,7 +164,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
       .def("is_close", &rcs::common::Pose::is_close, py::arg("other"),
-           py::arg("eps") = 1e-8)
+           py::arg("eps_r") = 1e-8, py::arg("eps_t") = 1e-8)
       .def("__str__", &rcs::common::Pose::str)
       .def(py::self * py::self)
       .def(py::pickle(
