@@ -18,7 +18,6 @@ dependencies = ["websockets>=11.0",
     "glfw",
     "numpy",
     "pyopengl",
-    "mujoco==3.1.4"
 ]
 readme = "README.md"
 authors = [
@@ -50,9 +49,6 @@ build-dir = "build"
 wheel.packages = ["python/rcsss"]
 cmake.targets = ["_core"]
 install.components = ["python_package"]
-
-[tool.scikit-build.cmake.define]
-MUJOCO_VERSION = "3.1.4"
 
 [tool.ruff]
 line-length = 120
