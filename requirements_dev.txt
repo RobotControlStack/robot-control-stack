@@ -5,3 +5,4 @@ mypy==1.4.1
 types-requests~=2.31
 pybind11-stubgen==2.5
 build
+pytest==8.1.1

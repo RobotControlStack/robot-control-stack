@@ -230,7 +230,8 @@ class Pose {
    *
    * @return true if the Poses are equal
    */
-  bool is_close(const Pose &other, double eps = 1e-8) const;
+  bool is_close(const Pose &other, double eps_r = 1e-8,
+                double eps_t = 1e-8) const;
 };
 }  // namespace common
 }  // namespace rcs
