@@ -18,6 +18,7 @@ dependencies = ["websockets>=11.0",
     "glfw",
     "numpy",
     "pyopengl",
+    "mujoco==3.1.5"
 ]
 readme = "README.md"
 authors = [
