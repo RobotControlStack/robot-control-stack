@@ -18,13 +18,12 @@ jobs:
         #   version: 1.0
       - name: Check clang format
         run: make cppcheckformat
-      - name: Set up Python 3.10
+      - name: Cmake configure with clang
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
         # clang version bind, workaround for https://github.com/actions/runner-images/discussions/9446
-      - name: Cmake configure with clang
         run: |
           python -m venv .venv
           source .venv/bin/activate
@@ -40,12 +39,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: sudo apt-get install --yes build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
-      - name: Set up Python 3.10
+      - name: GCC build
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
-      - name: GCC build
         run: |
           python -m venv .venv
           source .venv/bin/activate
