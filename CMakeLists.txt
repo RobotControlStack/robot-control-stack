@@ -23,10 +23,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if (NOT DEFINED SKBUILD)
-    message(FATAL_ERROR "RCS must be built using `pip install .` inside a virtual environment")
-endif()
-
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
