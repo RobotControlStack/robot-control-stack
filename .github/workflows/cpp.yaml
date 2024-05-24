@@ -19,8 +19,15 @@ jobs:
       - name: Check clang format
         run: make cppcheckformat
       - name: Cmake configure with clang
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
         # clang version bind, workaround for https://github.com/actions/runner-images/discussions/9446
-        run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -B build -G Ninja -S .
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -B build -G Ninja -S .
       - name: Clang build
         run: cmake --build build
       - name: Clang Tidy
@@ -33,4 +40,11 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get install --yes build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev ninja-build clang-15 clang-tidy-15 clang-format
       - name: GCC build
-        run: make gcccompile
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          make gcccompile
