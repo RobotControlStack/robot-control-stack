@@ -23,13 +23,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if (DEFINED SKBUILD)
-    # Set library runpath so the python bindings shared object finds the other
-    # bundled shared objects
-    set(CMAKE_INSTALL_RPATH ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-    set(BUILD_SHARED_LIBS OFF)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-endif()
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # turn off libfranka tests
 set(BUILD_TESTS OFF)
@@ -38,11 +33,6 @@ set(RL_BUILD_DEMOS OFF)
 set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
 set(RL_BUILD_EXTRAS OFF)
-set(MUJOCO_VERSION 3.1.4)
-set(MUJOCO_BUILD_EXAMPLES OFF)
-set(MUJOCO_BUILD_SIMULATE OFF)
-set(MUJOCO_BUILD_TESTS OFF)
-set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -64,14 +54,8 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-FetchContent_Declare(
-    mujoco
-    GIT_REPOSITORY https://github.com/google-deepmind/mujoco.git
-    GIT_TAG ${MUJOCO_VERSION}
-    GIT_PROGRESS TRUE
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable(libfranka rl pybind11 mujoco)
+
+FetchContent_MakeAvailable(libfranka rl pybind11)
 
 find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
