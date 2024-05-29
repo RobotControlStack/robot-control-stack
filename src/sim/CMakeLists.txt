@@ -1,6 +1,13 @@
 set(SIM_MODEL_DIR ${CMAKE_SOURCE_DIR}/models)
 configure_file(plugin.h.in ${CMAKE_CURRENT_SOURCE_DIR}/plugin.h) # path to mujoco plugins
 
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+set(MUJOCO_DIR ${Python_SITELIB}/mujoco)
+
+if (NOT (DEFINED MUJOCO_VERSION))
+    message(FATAL_ERROR "please define MUJOCO_VERSION (eg. cmake -DMUJOCO_VERSION=3.1.5)")
+endif()
+
 set(MUJOCO_LIBRARY_PATH ${MUJOCO_DIR}/libmujoco.so.${MUJOCO_VERSION})
 set(MUJOCO_INCLUDE_DIRS ${MUJOCO_DIR}/include)
 

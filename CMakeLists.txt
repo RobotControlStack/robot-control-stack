@@ -59,8 +59,5 @@ FetchContent_MakeAvailable(libfranka rl pybind11)
 
 find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
-set(MUJOCO_VERSION 3.1.5)
-set(MUJOCO_DIR ${Python_SITELIB}/mujoco)
 
 add_subdirectory(src)
