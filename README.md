@@ -4,10 +4,14 @@
 ### Dependencies
 To install the dependencies use the following command for debian based systems:
 ```shell
-sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev clang libboost-all-dev liblzma-dev ninja-build clang-format clang clang-tidy python3-venv
+sudo apt install build-essential cmake git libeigen3-dev libpoco-dev libxml2-dev libxslt1-dev libcoin-dev libglfw3-dev libboost-dev
 ```
 For arch based systems:
 `libpoco` is `poco` and `libeigen` is `eigen` in pacman.
+Optional development dependencies:
+```shell
+sudo apt install ninja-build clang-format clang-tidy clang
+```
 
 In order to use the `wrlview` program from the `rl` library, you have to install QT. On debian-based system use:
 ```shell
@@ -15,12 +19,11 @@ sudo apt-get install qt5-qmake qtbase5-dev libsoqt520-dev
 ```
 
 ### Compile
+With GCC:
 ```shell
 make gcccompile
 ```
-If you build with GCC >= 12 you will get a false positive array-bounds error.
-Cf. [here](https://github.com/google-deepmind/mujoco/issues/1489) for solutions.
-Otherwise, just use clang instead.
+With Clang:
 ```shell
 make clangcompile
 ```
@@ -37,14 +40,14 @@ make cpplint
 
 ## Python Package
 The python package is called `rcsss` (sss because of the sound of a snake).
-The following part shows to install the python package which include bindings for the C++ code.
+The following part shows how to install the python package which includes bindings for the C++ code.
 
 ```shell
 # create new virtual env and activate it
 virtualenv --python=python3.11 venv
 source venv/bin/activate
 ```
-Export CC and CXX env vars, to use clang (cf. above why you might want to):
+Export CC and CXX env vars to use clang:
 ```shell
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
