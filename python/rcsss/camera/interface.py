@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Literal
+from datetime import datetime
+from typing import Literal, TypeVar
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -11,38 +12,48 @@ class BaseDataClass(BaseModel):
     )
 
 
-class GenericCameraConfig(BaseDataClass): ...
+class BaseCameraConfig(BaseDataClass): ...
 
+DType = TypeVar('DType') 
+class DataFrame(BaseDataClass):
+    data: DType
+    timestamp: float | None
 
 class CameraFrame(BaseDataClass):
-    color: np.ndarray
-    ir: np.ndarray | None
-    depth: np.ndarray | None
+    color: DataFrame[np.ndarray]
+    ir: DataFrame[np.ndarray] | None
+    depth: DataFrame[np.ndarray] | None
     temperature: float | None
 
 
 class IMUFrame(BaseDataClass):
-    acc_sample: np.ndarray[Literal[3], np.dtype[np.float32]]
-    acc_sample_usec: float | None
-    gyro_sample: np.ndarray[Literal[3], np.dtype[np.float32]]
-    gyro_sample_usec: float | None
+    accel: DataFrame[np.ndarray[Literal[3], np.dtype[np.float32]]]
+    gyro: DataFrame[np.ndarray[Literal[3], np.dtype[np.float32]]]
     temperature: float | None
 
 
 class Frame(BaseDataClass):
     camera: CameraFrame
     imu: IMUFrame | None
+    avg_timestamp: float | None
 
 
-class Camera(ABC):
+class BaseCameraSet(ABC):
 
     @property
     @abstractmethod
-    def config(self) -> GenericCameraConfig: ...
-
-    # @config.setter
-    # @abstractmethod
-    # def config(self, cfg: GenericCameraConfig) -> None: ...
+    def config(self) -> BaseCameraConfig:
+        """Should return the configuration object of the cameras.
+        """
+        
 
     @abstractmethod
-    def get_current_frame(self) -> Frame: ...
+    def get_frame_latest(self, camera_name: str) -> Frame:
+        """Should return the latest frame from the camera with the given name.
+        """
+
+    @abstractmethod
+    def get_frame_timestamp(self, camera_name: str, ts: datetime) -> Frame:
+        """Should return the frame from the camera with the given name and closest to the given timestamp.
+        """
+
