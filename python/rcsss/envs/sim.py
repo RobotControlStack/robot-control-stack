@@ -26,7 +26,7 @@ class FR3Sim(gym.Wrapper):
 
 
 if __name__ == "__main__":
-    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
+    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3.urdf", render=True)
     cfg = sim.FR3Config()
     cfg.ik_duration = 300
     cfg.realtime = True
