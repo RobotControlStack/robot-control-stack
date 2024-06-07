@@ -31,9 +31,12 @@ class Robot {
  public:
   virtual ~Robot(){};
 
-  // set_parameters could also be used for signaling e.g. error recovery and the
+  // Also add an implementation specific set_parameters function that takes
+  // a deduced config type
+  // This functino can also be used for signaling e.g. error recovery and the
   // like
-  virtual bool set_parameters(const RConfig& cfg) = 0;
+  // bool set_parameters(const RConfig& cfg);
+
   virtual RConfig* get_parameters() = 0;
 
   virtual RState* get_state() = 0;
@@ -53,7 +56,10 @@ class Gripper {
  public:
   virtual ~Gripper(){};
 
-  virtual bool set_parameters(const GConfig& cfg) = 0;
+  // Also add an implementation specific set_parameters function that takes
+  // a deduced config type
+  // bool set_parameters(const GConfig& cfg);
+
   virtual GConfig* get_parameters() = 0;
   virtual GState* get_state() = 0;
 

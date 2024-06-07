@@ -92,8 +92,8 @@ FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
 
 FR3::~FR3() { this->exit_requested = true; }
 
-bool FR3::set_parameters(common::RConfig const& cfg) {
-  this->cfg = dynamic_cast<FR3Config const&>(cfg);
+bool FR3::set_parameters(const FR3Config& cfg) {
+  this->cfg = cfg;
   this->models.rl.ik->setDuration(
       std::chrono::milliseconds(this->cfg.ik_duration));
   return true;
