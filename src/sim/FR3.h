@@ -13,6 +13,7 @@
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/Kinematic.h"
 #include "rl/mdl/Model.h"
+#include "sim/sim.h"
 
 namespace rcs {
 namespace sim {
@@ -32,8 +33,7 @@ struct FR3State : common::RState {
 
 class FR3 : public common::Robot {
  public:
-  FR3(mjModel *m, mjData *d, std::shared_ptr<rl::mdl::Model> mdl,
-      std::optional<bool> render = true);
+  FR3(Sim sim, std::string &id, std::shared_ptr<rl::mdl::Model> rlmdl);
   ~FR3() override;
   bool set_parameters(const FR3Config &cfg);
   FR3Config *get_parameters() override;
@@ -55,17 +55,12 @@ class FR3 : public common::Robot {
  private:
   FR3Config cfg;
   FR3State state;
+  Sim sim;
   struct {
-    struct {
-      mjModel *mdl;
-      mjData *data;
-    } mj;
-    struct {
-      std::shared_ptr<rl::mdl::Model> mdl;
-      std::shared_ptr<rl::mdl::Kinematic> kin;
-      std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
-    } rl;
-  } models;
+    std::shared_ptr<rl::mdl::Model> mdl;
+    std::shared_ptr<rl::mdl::Kinematic> kin;
+    std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
+  } rl;
   struct {
     std::set<size_t> arm;
     std::set<size_t> hand;
