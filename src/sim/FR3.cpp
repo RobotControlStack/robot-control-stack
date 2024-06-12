@@ -24,9 +24,10 @@ enum { SIM_KF_HOME = 0 };
 double const POSE_REPEATABILITY = 0.0001;  // in meters
 
 struct {
-  std::vector<std::string> arm = {"link0_c", "link1_c",  "link2_c",  "link3_c",
-                                  "link4_c", "link5_c0", "link5_c1", "link5_c2",
-                                  "link6_c", "link7_c"};
+  std::vector<std::string> arm = {"fr3_link0_collision", "fr3_link1_collision",
+                                  "fr3_link2_collision", "fr3_link3_collision",
+                                  "fr3_link4_collision", "fr3_link5_collision",
+                                  "fr3_link6_collision", "fr3_link7_collision"};
   std::vector<std::string> hand = {"hand_c"};
   std::vector<std::string> gripper = {
       "finger_0_left",
