@@ -17,16 +17,17 @@ const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
                                   .finished());
 
 struct FR3Config : common::RConfig {
-  size_t ik_duration = 300;  // milliseconds
+  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
+  double tolerance = .5 * (std::numbers::pi / 180);
+  double seconds_between_callbacks = 0.2;
+  size_t ik_duration_in_milliseconds = 300;  // milliseconds
   bool realtime = false;
   bool trajectory_trace = false;
-  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
 };
 
 struct FR3State : common::RState {
   common::Vector7d previous_angles;
   common::Vector7d target_angles;
-  common:: Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
   bool is_moving = false;
@@ -58,17 +59,15 @@ class FR3 : public common::Robot {
     std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
   } rl;
   struct {
-    struct {
-      std::set<size_t> arm;
-      std::set<size_t> hand;
-      std::set<size_t> gripper;
-    } cgeom;
+    std::set<size_t> cgeom;
     int attachment_site;
     std::array<int, 7> joints;
     std::array<int, 7> ctrl;
   } ids;
-  void wait_for_convergence(rcs::common::Vector7d target_angles);
-  bool collision(std::set<size_t> const &geom_ids);
+  void is_moving_callback();
+  void is_arrived_callback();
+  void collision_callback();
+  bool convergence_callback();
   void init_ids();
 };
 }  // namespace sim
