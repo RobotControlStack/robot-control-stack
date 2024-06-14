@@ -148,7 +148,19 @@ common::Pose FR3::get_cartesian_position() {
   return attachment_site * this->cfg.tcp_offset;
 }
 
-void set_joint_position(const common::Vector7d& q) {}
+void FR3::set_joint_position(const common::Vector7d& q) {
+  for (int i = 0; i < std::size(model_names.joints); ++i) {
+    this->sim.d->ctrl[this->sim.m->jnt_qposadr[this->ids.joints[i]]] = q[i];
+  }
+}
+
+common::Vector7d FR3::get_joint_position() {
+  common::Vector7d q;
+  for (int i = 0; i < std::size(model_names.joints); ++i) {
+    q[i] = this->sim.d->ctrl[this->sim.m->jnt_qposadr[this->ids.joints[i]]];
+  }
+  return q;
+}
 
 }  // namespace sim
 }  // namespace rcs
