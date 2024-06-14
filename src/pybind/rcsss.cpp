@@ -327,7 +327,7 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
+      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
