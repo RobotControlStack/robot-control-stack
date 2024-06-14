@@ -18,7 +18,7 @@ struct Callback {
   mjtNum last_call_timestamp;
 };
 
-struct ConditionCallback {
+struct ConvergenceCallback {
   std::function<bool(void)> cb;
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
@@ -29,11 +29,9 @@ class Sim {
   Config cfg;
   size_t step_count;
   std::vector<Callback> callbacks;
-  std::vector<ConditionCallback> any_callbacks;
-  std::vector<ConditionCallback> all_callbacks;
+  std::vector<ConvergenceCallback> convergence_callbacks;
   void invoke_callbacks();
-  bool invoke_any_callbacks();
-  bool invoke_all_callbacks();
+  bool invoke_convergence_callbacks();
 
  public:
   mjModel* m;
@@ -51,10 +49,8 @@ class Sim {
    * https://mujoco.readthedocs.io/en/stable/programming/simulation.html#simulation-loop
    */
   void register_cb(std::function<void(void)> cb, mjtNum seconds_between_calls);
-  void register_any_cb(std::function<bool(void)> cb,
-                       mjtNum seconds_between_calls);
-  void register_all_cb(std::function<bool(void)> cb,
-                       mjtNum seconds_between_calls);
+  void register_convergence_cb(std::function<bool(void)> cb,
+                               mjtNum seconds_between_calls);
 };
 }  // namespace sim
 }  // namespace rcs

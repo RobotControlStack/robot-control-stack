@@ -32,46 +32,27 @@ void Sim::invoke_callbacks() {
   }
 }
 
-bool Sim::invoke_any_callbacks() {
-  bool any = false;
-  bool callback_called = false;
-  for (int i = 0; i < std::size(this->any_callbacks); ++i) {
-    ConditionCallback cb = this->any_callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      if (cb.cb()) {
-        any = true;
-      }
-    }
-  }
-  return callback_called and any;
-}
-
-bool Sim::invoke_all_callbacks() {
-  bool all = true;
-  bool callback_called = false;
-  for (int i = 0; i < std::size(this->all_callbacks); ++i) {
-    ConditionCallback cb = this->all_callbacks[i];
+bool Sim::invoke_convergence_callbacks() {
+  bool converged = true;
+  for (int i = 0; i < std::size(this->convergence_callbacks); ++i) {
+    ConvergenceCallback cb = this->convergence_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
     if (dt > cb.seconds_between_calls) {
       if (not cb.cb()) {
-        all = false;
+        converged = false;
       }
-      callback_called = true;
     }
   }
-  return callback_called and all;
+  return converged;
 }
 
 void Sim::step_until_convergence() {
-  bool any = false;
-  bool all = false;
   bool converged = false;
   while (not converged) {
-    this->step(1);
-    any = this->invoke_any_callbacks();
-    all = this->invoke_all_callbacks();
-    converged = any or all;
+    mj_step1(this->m, this->d);
+    this->invoke_callbacks();
+    mj_step2(this->m, this->d);
+    this->invoke_convergence_callbacks();
   };
 }
 
@@ -91,16 +72,10 @@ void Sim::register_cb(std::function<void(void)> cb,
   this->callbacks.push_back(Callback{cb, seconds_between_calls, 0.0});
 }
 
-void Sim::register_any_cb(std::function<bool(void)> cb,
-                          mjtNum seconds_between_calls) {
-  this->any_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0});
-}
-
-void Sim::register_all_cb(std::function<bool(void)> cb,
-                          mjtNum seconds_between_calls) {
-  this->all_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0});
+void Sim::register_convergence_cb(std::function<bool(void)> cb,
+                                  mjtNum seconds_between_calls) {
+  this->convergence_callbacks.push_back(
+      ConvergenceCallback{cb, seconds_between_calls, 0.0});
 }
 }  // namespace sim
 }  // namespace rcs
