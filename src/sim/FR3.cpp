@@ -161,5 +161,18 @@ common::Vector7d FR3::get_joint_position() {
   return q;
 }
 
+void FR3::set_cartesian_position(const common::Pose& pose) {
+  this->rl.kin->setPosition(this->get_joint_position());
+  this->rl.kin->forwardPosition();
+  auto new_pose = pose * this->cfg.tcp_offset.inverse();
+  this->rl.ik->addGoal(new_pose.affine_matrix(), 0);
+  if (this->rl.ik->solve()) {
+    this->state.ik_success = false;
+    this->rl.kin->forwardPosition();
+    this->set_joint_position(this->rl.kin->getPosition());
+  } else {
+    this->state.ik_success = false;
+  }
+}
 }  // namespace sim
 }  // namespace rcs
