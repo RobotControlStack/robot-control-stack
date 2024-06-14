@@ -13,19 +13,23 @@ from rcsss.camera.interface import (
 # from rcsss import sim
 
 
-class RealSenseConfig(GenericCameraConfig):
-    pass
+class SimCameraConfig(GenericCameraConfig):
+    frame_width: int = 1280
+    frame_height: int = 720
 
 
-class SimCam(Camera):
+class SimCamera(Camera):
 
-    def __init__(self, model: mj.MjModel, state: mj.MjData, cfg: GenericCameraConfig, cam_name: str) -> None:
+    def __init__(self, model: mj.MjModel, state: mj.MjData, cfg: SimCameraConfig, cam_name: str) -> None:
         self.model = model
         self.state = state
         self._cfg = cfg
         self.cam_name = cam_name
+        self._setup_cam(self.cam_name)
+
 
     def _setup_cam(self, cam_name):
+        self.cam = mj.MjvCamera()
         self.cam_id = self.model.camera(cam_name).id
         if self.cam_id == -1:
             self.cam.type = mj.mjtCamera.mjCAMERA_FREE
@@ -36,17 +40,16 @@ class SimCam(Camera):
 
     def _make_gl_context(self):
         glfw.init()
-        self.width, self.height = glfw.get_video_mode(glfw.get_primary_monitor()).size
         glfw.window_hint(glfw.VISIBLE, 0)
         self.title = "rcsss_camera"
-        self.window = glfw.create_window(self.width, self.height, self.title, None, None)
+        h, w = self._cfg.frame_width, self._cfg.frame_height
+        self.window = glfw.create_window(h, w, self.title, None, None)
         glfw.make_context_current(self.window)
         glfw.swap_interval(1)
 
     def _setup_mjcontext(self):
         # create options, camera, scene, context
         self.vopt = mj.MjvOption()
-        self.cam = mj.MjvCamera()
         self.scn = mj.MjvScene(self.model, maxgeom=10000)
         self.pert = mj.MjvPerturb()
         self.ctx = mj.MjrContext(self.model, mj.mjtFontScale.mjFONTSCALE_150.value)
@@ -55,15 +58,14 @@ class SimCam(Camera):
         # mj.mjr_setBuffer(mj.mjtFramebuffer.mjFB_OFFSCREEN, self.ctx)
 
     @property
-    def config(self) -> GenericCameraConfig:
+    def config(self) -> SimCameraConfig:
         return self._cfg
 
     def get_current_frame(self) -> Frame:
         # We must make GLContext before MjrContext
         self._make_gl_context()
-
         self._setup_mjcontext()
-        self._setup_cam(self.cam_name)
+
         # update scene
         mj.mjv_updateScene(
             self.model,
@@ -109,7 +111,7 @@ if __name__ == "__main__":
     state_ = mj.MjData(model_)
     # only needed for this standalone testing
     mj.mj_step(model_, state_)
-    cam = SimCam(model_, state_, cfg=RealSenseConfig(), cam_name="eye-in-hand")
+    cam = SimCamera(model_, state_, cfg=SimCameraConfig(), cam_name="eye-in-hand")
     frame = cam.get_current_frame()
 
     # the below code is just for visualising the captured frames
