@@ -1,7 +1,6 @@
 from asyncio import sleep
 from dataclasses import dataclass
 import numpy as np
-from pyrealsense2.pyrealsense2 import device
 from rcsss.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, BaseCameraConfig, IMUFrame
 import pyrealsense2 as rs
 
@@ -83,8 +82,8 @@ class RealSenseCameraSet(BaseCameraSet):
         self.enable_devices(self._cfg.devices_to_enable, self._cfg.enable_ir_emitter)
 
         # Allow some frames for the auto-exposure controller to stablise
-        for _ in range(self._cfg.dispose_frames_for_stablisation):
-            self.poll_frames()
+        # for _ in range(self._cfg.dispose_frames_for_stablisation):
+        #     self.poll_frames()
 
     def update_available_devices(self):
         self._available_devices = self.enumerate_connected_devices(self._context)
@@ -174,7 +173,7 @@ class RealSenseCameraSet(BaseCameraSet):
         """
         connect_device: dict[str, RealSenseDeviceInfo] = {}
 
-        d: device
+        d: rs.device
         for d in context.devices:
             if d.get_info(rs.camera_info.name).lower() != "platform camera":
                 serial = d.get_info(rs.camera_info.serial_number)
@@ -184,31 +183,31 @@ class RealSenseCameraSet(BaseCameraSet):
                 connect_device[serial] = device_info
         return connect_device
 
-    def poll_frames(self) -> dict:
-        """
-        Poll for frames from the enabled Intel RealSense devices. This will return at least one frame from each device.
-        If temporal post processing is enabled, the depth stream is averaged over a certain amount of frames
+    # def poll_frames(self) -> dict:
+    #     """
+    #     Poll for frames from the enabled Intel RealSense devices. This will return at least one frame from each device.
+    #     If temporal post processing is enabled, the depth stream is averaged over a certain amount of frames
 
-        Parameters:
-        -----------
-        """
-        frames = {}
-        while len(frames) < len(self._enabled_devices.items()):
-            for serial, device in self._enabled_devices.items():
-                streams = device.pipeline_profile.get_streams()
-                frameset = device.pipeline.poll_for_frames()  # frameset will be a pyrealsense2.composite_frame object
-                if frameset.size() == len(streams):
-                    dev_info = (serial, device.product_line)
-                    frames[dev_info] = {}
-                    for stream in streams:
-                        if rs.stream.infrared == stream.stream_type():
-                            frame = frameset.get_infrared_frame(stream.stream_index())
-                            key_ = (stream.stream_type(), stream.stream_index())
-                        else:
-                            frame = frameset.first_or_default(stream.stream_type())
-                            key_ = stream.stream_type()
-                        frames[dev_info][key_] = frame
-        return frames
+    #     Parameters:
+    #     -----------
+    #     """
+    #     frames = {}
+    #     while len(frames) < len(self._enabled_devices.items()):
+    #         for serial, device in self._enabled_devices.items():
+    #             streams = device.pipeline_profile.get_streams()
+    #             frameset = device.pipeline.poll_for_frames()  # frameset will be a pyrealsense2.composite_frame object
+    #             if frameset.size() == len(streams):
+    #                 dev_info = (serial, device.product_line)
+    #                 frames[dev_info] = {}
+    #                 for stream in streams:
+    #                     if rs.stream.infrared == stream.stream_type():
+    #                         frame = frameset.get_infrared_frame(stream.stream_index())
+    #                         key_ = (stream.stream_type(), stream.stream_index())
+    #                     else:
+    #                         frame = frameset.first_or_default(stream.stream_type())
+    #                         key_ = stream.stream_type()
+    #                     frames[dev_info][key_] = frame
+    #     return frames
 
     def get_frame_latest(self, camera_name: str) -> Frame:
         # TODO(juelg): polling should be performed in a recorder thread
@@ -368,3 +367,9 @@ class RealSenseCameraSet(BaseCameraSet):
             device = device.pipeline_profile.get_device()
             advanced_mode = rs.rs400_advanced_mode(device)
             advanced_mode.load_json(json_text)
+
+# TODO: test the realsense camera
+# - program that reads out the serial number
+
+if __name__ == "__main__":
+    pass

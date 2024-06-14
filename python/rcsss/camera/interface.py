@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, TypeVar
+from typing import Generic, Literal, TypeVar
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -14,22 +15,24 @@ class BaseDataClass(BaseModel):
 
 class BaseCameraConfig(BaseDataClass): ...
 
-DType = TypeVar('DType') 
-class DataFrame(BaseDataClass):
-    data: DType
-    timestamp: float | None
+# DType = TypeVar('DType') 
+# Generic[DType], 
+@dataclass
+class DataFrame():
+    data: np.ndarray
+    timestamp: float | None = None
 
 class CameraFrame(BaseDataClass):
-    color: DataFrame[np.ndarray]
-    ir: DataFrame[np.ndarray] | None
-    depth: DataFrame[np.ndarray] | None
-    temperature: float | None
+    color: DataFrame | None = None
+    ir: DataFrame | None = None
+    depth: DataFrame | None = None
+    temperature: float | None = None
 
 
 class IMUFrame(BaseDataClass):
-    accel: DataFrame[np.ndarray[Literal[3], np.dtype[np.float32]]]
-    gyro: DataFrame[np.ndarray[Literal[3], np.dtype[np.float32]]]
-    temperature: float | None
+    accel: DataFrame | None = None
+    gyro: DataFrame | None = None
+    temperature: float | None = None
 
 
 class Frame(BaseDataClass):
