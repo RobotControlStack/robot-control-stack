@@ -1,42 +1,57 @@
-#include <barrier>
-#include <memory>
-#include <string>
-#include <thread>
+#ifndef RCS_SIM_H
+#define RCS_SIM_H
+#include <functional>
 
-#include "common/Pose.h"
 #include "mujoco/mujoco.h"
-#include "plugin.h"
-#include "rl/math/Transform.h"
-#include "rl/mdl/JacobianInverseKinematics.h"
-#include "rl/mdl/Model.h"
-#define SIM_MAX_THREADS 128
 
-// Keyframes & their IDs.
-enum { SIM_KF_HOME = 0 };
+namespace rcs {
+namespace sim {
 
-class Simulation {
+struct Config {
+  bool async;
+  bool realtime;
+};
+
+struct Callback {
+  std::function<void(void)> cb;
+  mjtNum seconds_between_calls;  // in seconds
+  mjtNum last_call_timestamp;
+};
+
+struct ConvergenceCallback {
+  std::function<bool(void)> cb;
+  mjtNum seconds_between_calls;  // in seconds
+  mjtNum last_call_timestamp;    // in seconds
+};
+
+class Sim {
  private:
-  std::shared_ptr<mjModel> fr3_mjmdl;
-  std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls;
-  std::vector<std::shared_ptr<mjData>> mujoco_data;
-  std::vector<std::shared_ptr<rcs::common::Pose>> targets;
-  std::jthread render_thread;
-  std::vector<std::jthread> physics_threads;
-  std::barrier<std::function<void(void)>> sync_point;
-  std::pair<std::counting_semaphore<SIM_MAX_THREADS>, std::binary_semaphore>
-      semaphores;
-  bool exit_requested;
-  void syncfn() noexcept;
-  void render_loop();
-  void physics_loop(std::shared_ptr<mjData> data,
-                    std::shared_ptr<rcs::common::Pose> target_pose,
-                    std::shared_ptr<rl::mdl::Model> rlmdl);
+  Config cfg;
+  size_t step_count;
+  std::vector<Callback> callbacks;
+  std::vector<ConvergenceCallback> convergence_callbacks;
+  void invoke_callbacks();
+  bool invoke_convergence_callbacks();
 
  public:
-  Simulation(std::shared_ptr<mjModel> fr3_mjmdl,
-             std::vector<std::shared_ptr<rl::mdl::Model>> fr3_rlmdls,
-             bool render, size_t n_threads);
-  rl::math::Matrix reset();
-  rl::math::Matrix step(std::vector<rcs::common::Pose> act);
-  void close();
+  mjModel* m;
+  mjData* d;
+  Sim(mjModel* m, mjData* d);
+  bool set_config(const Config& cfg);
+  Config get_config();
+  void step_until_convergence();
+  void step(size_t k);
+  /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the
+   * the requested interval. We invoke a callback if the elapsed simulation time
+   * since the last call of the callback is greater than the requested time.
+   * The exact interval at which they are called depends on the models timestep
+   * option (cf.
+   * https://mujoco.readthedocs.io/en/stable/programming/simulation.html#simulation-loop
+   */
+  void register_cb(std::function<void(void)> cb, mjtNum seconds_between_calls);
+  void register_convergence_cb(std::function<bool(void)> cb,
+                               mjtNum seconds_between_calls);
 };
+}  // namespace sim
+}  // namespace rcs
+#endif
