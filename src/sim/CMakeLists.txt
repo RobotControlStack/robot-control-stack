@@ -31,4 +31,4 @@ target_sources(sim PRIVATE FR3.cpp)
 target_link_libraries(sim PUBLIC common mujoco mdl)
 
 add_executable(test_sim test.cpp sim.cpp)
-target_link_libraries(test_sim PRIVATE sim mujoco common mdl)
+target_link_libraries(test_sim PRIVATE sim mujoco common mdl glfw)
