@@ -3,7 +3,6 @@
 #include <assert.h>
 
 #include <functional>
-#include <stop_token>
 
 namespace rcs {
 namespace sim {
@@ -11,7 +10,6 @@ namespace sim {
 Sim::Sim(mjModel* m, mjData* d) : m(m), d(d){};
 
 bool Sim::set_config(const Config& cfg) {
-  if (not cfg.async and cfg.realtime) return false;
   if (cfg.async) {
     /* Not implemented :) */
     return false;
@@ -34,6 +32,7 @@ void Sim::invoke_callbacks() {
 
 bool Sim::invoke_convergence_callbacks() {
   bool converged = true;
+  bool callback_called = false;
   for (int i = 0; i < std::size(this->convergence_callbacks); ++i) {
     ConvergenceCallback cb = this->convergence_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
@@ -41,18 +40,17 @@ bool Sim::invoke_convergence_callbacks() {
       if (not cb.cb()) {
         converged = false;
       }
+      callback_called = true;
     }
   }
-  return converged;
+  return converged and callback_called;
 }
 
 void Sim::step_until_convergence() {
   bool converged = false;
   while (not converged) {
-    mj_step1(this->m, this->d);
-    this->invoke_callbacks();
-    mj_step2(this->m, this->d);
-    this->invoke_convergence_callbacks();
+    this->step(1);
+    converged = this->invoke_convergence_callbacks();
   };
 }
 
@@ -61,6 +59,9 @@ void Sim::step(size_t k) {
     mj_step1(this->m, this->d);
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
+    if (this->cfg.realtime) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
 }
 
