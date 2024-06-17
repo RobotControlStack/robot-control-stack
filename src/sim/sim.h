@@ -8,8 +8,8 @@ namespace rcs {
 namespace sim {
 
 struct Config {
-  bool async;
-  bool realtime;
+  bool async = false;
+  bool realtime = false;
 };
 
 struct Callback {
