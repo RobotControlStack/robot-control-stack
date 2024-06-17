@@ -4,7 +4,6 @@
 
 #include <chrono>
 #include <functional>
-#include <thread>
 
 namespace rcs {
 namespace sim {
@@ -34,6 +33,7 @@ void Sim::invoke_callbacks() {
 
 bool Sim::invoke_convergence_callbacks() {
   bool converged = true;
+  bool callback_called = false;
   for (int i = 0; i < std::size(this->convergence_callbacks); ++i) {
     ConvergenceCallback cb = this->convergence_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
@@ -41,18 +41,17 @@ bool Sim::invoke_convergence_callbacks() {
       if (not cb.cb()) {
         converged = false;
       }
+      callback_called = true;
     }
   }
-  return converged;
+  return converged and callback_called;
 }
 
 void Sim::step_until_convergence() {
   bool converged = false;
   while (not converged) {
-    mj_step1(this->m, this->d);
-    this->invoke_callbacks();
-    mj_step2(this->m, this->d);
-    this->invoke_convergence_callbacks();
+    this->step(1);
+    converged = this->invoke_convergence_callbacks();
   };
 }
 
