@@ -1,22 +1,17 @@
-from asyncio import sleep
 from dataclasses import dataclass
 import numpy as np
 from rcsss.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, BaseCameraConfig, IMUFrame
 import pyrealsense2 as rs
 
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 class RealSenseConfig(BaseCameraConfig):
     resolution_width: int = 1280  # pixels
     resolution_height: int = 720  # pixels
-    frame_rate: int = 15  # fps
-    dispose_frames_for_stablisation: int = 30  # frames
+    # frame_rate: int = 15  # fps
+    # warm_up_disposal_frames: int = 30  # frames
     devices_to_enable: dict[str, str] = {}  # dict with readable name and serial number
     enable_ir_emitter: bool = False
+    enable_ir: bool = False
     laser_power: int = 330
     enable_imu: bool = False
 
@@ -33,9 +28,12 @@ class RealSenseDevicePipeline:
     pipeline_profile: rs.pipeline_profile
     camera: RealSenseDeviceInfo
 
+# TODO: frame queue
 
 class RealSenseCameraSet(BaseCameraSet):
+    TIMESTAMP_FACTOR = 1e-3
     def __init__(self, cfg: RealSenseConfig) -> None:
+        super().__init__()
         self._cfg = cfg
         self.D400_config = rs.config()
 
@@ -53,7 +51,7 @@ class RealSenseCameraSet(BaseCameraSet):
             rs.format.bgr8,
             self._cfg.frame_rate,
         )
-        if self._cfg.enable_ir_emitter:
+        if self._cfg.enable_ir:
             self.D400_config.enable_stream(
                 rs.stream.infrared,
                 1,
@@ -63,6 +61,8 @@ class RealSenseCameraSet(BaseCameraSet):
                 self._cfg.frame_rate,
             )
         if self._cfg.enable_imu:
+            # TODO: The accel stream for D435i supports either 63 or 250 fps rates
+            # TODO: try to only enable the gyro stream and see if that works
             self.D400_config.enable_stream(
                 rs.stream.accel,
                 rs.format.motion_xyz32f,
@@ -81,9 +81,13 @@ class RealSenseCameraSet(BaseCameraSet):
 
         self.enable_devices(self._cfg.devices_to_enable, self._cfg.enable_ir_emitter)
 
-        # Allow some frames for the auto-exposure controller to stablise
-        # for _ in range(self._cfg.dispose_frames_for_stablisation):
+        # Allow some frames for the auto-exposure controller to stabilize
+        # for _ in range(self._cfg.warm_up_disposal_frames):
         #     self.poll_frames()
+
+    @property
+    def camera_names(self) -> list[str]:
+        return list(self._cfg.devices_to_enable.keys())
 
     def update_available_devices(self):
         self._available_devices = self.enumerate_connected_devices(self._context)
@@ -143,6 +147,8 @@ class RealSenseCameraSet(BaseCameraSet):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             sensor.set_option(rs.option.laser_power, self._cfg.laser_power)
         self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(pipeline, pipeline_profile, device_info)
+        self._logger.debug(f"Enabled device {device_info.serial} ({device_info.product_line})")
+        print(f"Enabled device {device_info.serial} ({device_info.product_line})")
 
     @property
     def config(self) -> RealSenseConfig:
@@ -152,8 +158,6 @@ class RealSenseCameraSet(BaseCameraSet):
     def config(self, cfg: RealSenseConfig) -> None:
         self._cfg = cfg
 
-    def get_frame_timestamp(self, camera_name: str, ts: str) -> Frame:
-        pass
 
     @staticmethod
     def enumerate_connected_devices(context: rs.context) -> dict[str, RealSenseDeviceInfo]:
@@ -179,7 +183,6 @@ class RealSenseCameraSet(BaseCameraSet):
                 serial = d.get_info(rs.camera_info.serial_number)
                 product_line = d.get_info(rs.camera_info.product_line)
                 device_info = RealSenseDeviceInfo(serial=serial, product_line=product_line)
-                # device_info = (serial, product_line)  # (serial_number, product_line)
                 connect_device[serial] = device_info
         return connect_device
 
@@ -209,13 +212,14 @@ class RealSenseCameraSet(BaseCameraSet):
     #                     frames[dev_info][key_] = frame
     #     return frames
 
-    def get_frame_latest(self, camera_name: str) -> Frame:
+    def _poll_frame(self, camera_name: str) -> Frame:
         # TODO(juelg): polling should be performed in a recorder thread
         # (anyway needed to record trajectory data to disk)
         # and this method should just access the latest frame from the recorder
         # Perhaps there even has to be a separate recorder thread for each camera
 
         # TODO(juelg): what is a "pose" (in frame) and how can we use it
+        # TODO(juelg): decide whether to use the poll method and to wait if devices get ready
 
         assert camera_name in self._cfg.devices_to_enable, f"Camera {camera_name} not found in the enabled devices"
         serial = self._cfg.devices_to_enable[camera_name]
@@ -233,29 +237,33 @@ class RealSenseCameraSet(BaseCameraSet):
         def to_numpy(frame: rs.frame) -> np.ndarray:
             return np.asanyarray(frame.get_data())
 
+        def to_ts(frame: rs.frame) -> float:
+            # convert to seconds
+            return frame.get_timestamp() * RealSenseCameraSet.TIMESTAMP_FACTOR
+
         timestamps = []
         for stream in streams:
             if rs.stream.infrared == stream.stream_type():
                 frame = frameset.get_infrared_frame(stream.stream_index())
-                ir = DataFrame(to_numpy(frame), frame.get_timestamp())
+                ir = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
             elif rs.stream.color == stream.stream_type():
                 frame = frameset.get_color_frame()
-                color = DataFrame(to_numpy(frame), frame.get_timestamp())
+                color = DataFrame(data=to_numpy(frame)[:,:,::-1], timestamp=to_ts(frame))
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
-                depth = DataFrame(to_numpy(frame), frame.get_timestamp())
+                depth = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
             elif rs.stream.accel == stream.stream_type():
                 frame = frameset.first(stream.stream_index())
                 md = frame.as_motion_frame().get_motion_data()
-                accel = DataFrame(np.array([md.x, md.y, md.z]), frame.get_timestamp())
+                accel = DataFrame(data=np.array([md.x, md.y, md.z]), timestamp=to_ts(frame))
             elif rs.stream.gyro == stream.stream_type():
                 frame = frameset.first(stream.stream_index())
                 md = frame.as_motion_frame().get_motion_data()
-                gyro = DataFrame(np.array([md.x, md.y, md.z]), frame.get_timestamp())
+                gyro = DataFrame(data=np.array([md.x, md.y, md.z]), timestamp=to_ts(frame))
             else:
-                logger.warning(f"Unknown stream type {stream.stream_type()}")
+                self._logger.warning(f"Unknown stream type {stream.stream_type()}")
                 continue
-            timestamps.append(frame.get_timestamp())
+            timestamps.append(to_ts(frame))
 
         assert color is not None, "Color frame not found"
 
@@ -368,8 +376,3 @@ class RealSenseCameraSet(BaseCameraSet):
             advanced_mode = rs.rs400_advanced_mode(device)
             advanced_mode.load_json(json_text)
 
-# TODO: test the realsense camera
-# - program that reads out the serial number
-
-if __name__ == "__main__":
-    pass

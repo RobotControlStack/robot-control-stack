@@ -72,6 +72,23 @@ def test(
         if frame.imu is not None:
             print("IMU data: ", frame.imu.accel, frame.imu.gyro)
 
+@realsense_app.command()
+def test_record(
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    # testdir: Annotated[Path, typer.Argument(help="Path to the folder where the test images should be saved")],
+    # cam_name: Annotated[str, typer.Argument(help="Name of the camera that should be tested")],
+    n_frames: Annotated[int, typer.Argument(help="Name of the camera that should be tested")] = 30,
+):
+    """Tests all configured and connected realsense by saving the current picture."""
+    cfg = read_config_yaml(path)
+    assert cfg.hw.camera_type == "realsense" and cfg.hw.camera_config.realsense_config is not None
+    cs = RealSenseCameraSet(cfg.hw.camera_config.realsense_config)
+    cs.start(warm_up=True)
+    sleep(n_frames/cfg.hw.camera_config.realsense_config.frame_rate)
+    cs.stop()
+
+
+
 # FR3 CLI
 fr3_app = typer.Typer()
 main_app.add_typer(
