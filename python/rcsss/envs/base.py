@@ -11,7 +11,7 @@ Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
 
 RPY_SPACE = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
-XYZ_SPACE = gym.spaces.Box(low=np.array([-855, -855, 0]), high=np.array([855, 855, 1188]), shape=(3,))
+XYZ_SPACE = gym.spaces.Box(low=np.array([-0.855, -0.855, 0]), high=np.array([0.855, 0.855, 0.1188]), shape=(3,))
 
 POSE_SPACE = gym.spaces.Dict({"rpy": RPY_SPACE, "xyz": XYZ_SPACE})
 
