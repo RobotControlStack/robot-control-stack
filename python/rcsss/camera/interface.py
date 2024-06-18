@@ -15,29 +15,36 @@ class BaseDataClass(BaseModel):
 
 class BaseCameraConfig(BaseDataClass): ...
 
-# DType = TypeVar('DType') 
-# Generic[DType], 
-@dataclass
+@dataclass(kw_only=True)
 class DataFrame():
-    data: np.ndarray
+    data: Any
+    # timestamp in posix time
     timestamp: float | None = None
 
-class CameraFrame(BaseDataClass):
+@dataclass(kw_only=True)
+class CameraFrame():
     color: DataFrame | None = None
     ir: DataFrame | None = None
     depth: DataFrame | None = None
     temperature: float | None = None
 
 
-class IMUFrame(BaseDataClass):
+@dataclass(kw_only=True)
+class IMUFrame():
     accel: DataFrame | None = None
     gyro: DataFrame | None = None
     temperature: float | None = None
 
 
-class Frame(BaseDataClass):
+@dataclass(kw_only=True)
+class Frame():
     camera: CameraFrame
     imu: IMUFrame | None
+    avg_timestamp: float | None
+
+@dataclass(kw_only=True)
+class FrameSet():
+    frames: dict[str, Frame]
     avg_timestamp: float | None
 
 
