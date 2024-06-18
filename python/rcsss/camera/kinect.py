@@ -39,7 +39,8 @@ class KinectCamera(BaseCameraSet):
     def config(self, cfg: KinectConfig) -> None:
         self._cfg = cfg
 
-    def get_frame_latest(self, camera_name: str = "") -> Frame:
+    def _poll_frame(self, camera_name: str = "") -> Frame:
+        assert camera_name == "kinect", "Kinect code only supports one camera."
         capture = self._device.get_capture(self._cfg.timeout_ms)
         if capture is None:
             msg = "Timeout error while waiting for camera sample."
@@ -62,6 +63,7 @@ class KinectCamera(BaseCameraSet):
             )
         return Frame(camera=DataFrame(camera_frame), imu=DataFrame(imu_frame))
 
-    def get_frame_timestamp(self, camera_name: str, ts: str) -> Frame:
-        # Not implemented
-        return self.get_frame_latest(camera_name)
+    @property
+    def camera_names(self) -> list[str]:
+        return ["kinect"]
+
