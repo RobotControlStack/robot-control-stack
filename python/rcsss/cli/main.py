@@ -1,21 +1,19 @@
+from time import sleep
 from contextlib import ExitStack
+from pathlib import Path
 from typing import Annotated, Optional
 
 import rcsss
 import typer
+from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.record import PoseList
+import pyrealsense2 as rs
+from PIL import Image
 
+
+# MAIN CLI
 main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
-
-fr3_app = typer.Typer()
-main_app.add_typer(
-    fr3_app,
-    name="fr3",
-    help="Commands to control a Franka Research 3. This includes tools that you would usually do with Franka's Desk interface.",
-)
-
-
 @main_app.command()
 def sample_config(
     path: Annotated[
@@ -25,6 +23,62 @@ def sample_config(
     """Creates a sample yaml config file"""
     create_sample_config_yaml(path)
 
+
+# REALSENSE CLI
+realsense_app = typer.Typer()
+main_app.add_typer(
+    realsense_app,
+    name="realsense",
+    help="Commands to access the intel realsense camera. This includes tools such as reading out the serial numbers of connected devices.",
+)
+@realsense_app.command()
+def serials():
+    """Reads out the serial numbers of the connected realsense devices."""
+    context = rs.context()
+    devices = RealSenseCameraSet.enumerate_connected_devices(context)
+    if len(devices) == 0:
+        print("No realsense devices connected.")
+        return
+    print("Connected devices:")
+    for device in devices.values():
+        print(f"  {device.product_line}: {device.serial}")
+
+
+@realsense_app.command()
+def test(
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    # testdir: Annotated[Path, typer.Argument(help="Path to the folder where the test images should be saved")],
+    # cam_name: Annotated[str, typer.Argument(help="Name of the camera that should be tested")],
+):
+    """Tests all configured and connected realsense by saving the current picture."""
+    cfg = read_config_yaml(path)
+    assert cfg.hw.camera_type == "realsense" and cfg.hw.camera_config.realsense_config is not None
+    cs = RealSenseCameraSet(cfg.hw.camera_config.realsense_config)
+    cs.warm_up()
+    testdir = Path(cfg.hw.camera_config.realsense_config.record_path)
+    frame_set = cs.poll_frame_set()
+    for device_str in cfg.hw.camera_config.realsense_config.devices_to_enable:
+        assert device_str in frame_set.frames
+        frame = frame_set.frames[device_str]
+        if frame.camera.depth is not None:
+            im = Image.fromarray(frame.camera.color.data, mode="RGB")
+            im.save(testdir / f"test_img_{device_str}.png")
+        if frame.camera.depth is not None:
+            im = Image.fromarray(frame.camera.depth.data)
+            im.save(testdir / f"test_depth_{device_str}.png")
+        if frame.camera.ir is not None:
+            im = Image.fromarray(frame.camera.ir.data)
+            im.save(testdir / f"test_ir_{device_str}.png")
+        if frame.imu is not None:
+            print("IMU data: ", frame.imu.accel, frame.imu.gyro)
+
+# FR3 CLI
+fr3_app = typer.Typer()
+main_app.add_typer(
+    fr3_app,
+    name="fr3",
+    help="Commands to control a Franka Research 3. This includes tools that you would usually do with Franka's Desk interface.",
+)
 
 @fr3_app.command()
 def home(
