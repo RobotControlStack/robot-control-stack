@@ -42,31 +42,6 @@ class ArmObs(TypedDict):
     angles: Vec7Type
 
 
-# TODO: move some of this info to "info"
-# COLOR_FRAME_SPACE = gym.spaces.Dict(
-#     {
-
-#         "camera": COLOR_SPACE
-#     }
-# )
-
-
-# class CameraDictType(TypedDict):
-#     color: np.ndarray | None
-#     ir: np.ndarray | None
-#     depth: np.ndarray | None
-
-
-# class ImuDictType(TypedDict):
-#     acc_sample: np.ndarray
-#     gyro_sample: np.ndarray
-
-
-# class FrameDictType(TypedDict):
-#     camera: CameraDictType
-#     imu: ImuDictType | None
-
-
 class ControlMode(Enum):
     ANGLES = 1
     CARTESIAN = 2
@@ -152,21 +127,26 @@ class CameraSetWrapper(gym.Wrapper[CameraObsType, CartOrAngleControl, ArmObs, Ca
         camera_obs_space.spaces.update(ARM_OBS_SPACE)
         return camera_obs_space
 
-    def step(self, action: CartOrAngleControl) -> tuple[CameraObsType, float, bool, bool, dict]:
-        obs, reward, terminated, truncated, info = self.env.step(action)
+    def _get_obs(self, obs: ArmObs, info: dict) -> tuple[CameraObsType, dict]:
         frameset = self.camera_set.get_latest_frames()
         assert frameset is not None, "No frame available."
         color_frame_dict: dict[str, np.ndarray] = {
             camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
         }
-        camera_obs = CameraObsType(frames=color_frame_dict, **obs)
+        camera_obs = CameraObsType(frames=color_frame_dict, pose=obs["pose"], angles=obs["angles"])
 
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
+        return camera_obs, info
+
+    def step(self, action: CartOrAngleControl) -> tuple[CameraObsType, float, bool, bool, dict]:
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        camera_obs, info = self._get_obs(obs, info)
         return camera_obs, reward, terminated, truncated, info
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[CameraObsType, dict[str, Any]]:
         self.camera_set.clear_buffer()
-        return self.env.reset(seed, options)
+        obs, info = self.env.reset(seed, options)
+        return self._get_obs(obs, info)
