@@ -19,6 +19,7 @@ dependencies = ["websockets>=11.0",
     "numpy",
     "pyopengl",
     "pyrealsense2~=2.55.1",
+    "pillow==10.3.0",
 # NOTE: when changing the mujoco version, also change it below in
 # tool.scikit-build.cmake.define and in the Makefile
     "mujoco==3.1.5"

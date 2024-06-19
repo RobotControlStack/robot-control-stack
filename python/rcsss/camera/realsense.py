@@ -28,10 +28,13 @@ class RealSenseDevicePipeline:
     pipeline_profile: rs.pipeline_profile
     camera: RealSenseDeviceInfo
 
+
 # TODO: frame queue
+
 
 class RealSenseCameraSet(BaseCameraSet):
     TIMESTAMP_FACTOR = 1e-3
+
     def __init__(self, cfg: RealSenseConfig) -> None:
         super().__init__()
         self._cfg = cfg
@@ -61,17 +64,19 @@ class RealSenseCameraSet(BaseCameraSet):
                 self._cfg.frame_rate,
             )
         if self._cfg.enable_imu:
-            # TODO: The accel stream for D435i supports either 63 or 250 fps rates
-            # TODO: try to only enable the gyro stream and see if that works
+            # TODO(juelg): does not work work at the moment: "Couldnt resolve requests"
+            # https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/
+            # Accelerometer available FPS: {63, 250}Hz
             self.D400_config.enable_stream(
                 rs.stream.accel,
                 rs.format.motion_xyz32f,
-                self._cfg.frame_rate,
+                250,
             )
+            # Gyroscope available FPS: {200,400}Hz
             self.D400_config.enable_stream(
                 rs.stream.gyro,
                 rs.format.motion_xyz32f,
-                self._cfg.frame_rate,
+                200,
             )
 
         self._context = rs.context()
@@ -158,7 +163,6 @@ class RealSenseCameraSet(BaseCameraSet):
     def config(self, cfg: RealSenseConfig) -> None:
         self._cfg = cfg
 
-
     @staticmethod
     def enumerate_connected_devices(context: rs.context) -> dict[str, RealSenseDeviceInfo]:
         """
@@ -227,6 +231,7 @@ class RealSenseCameraSet(BaseCameraSet):
 
         streams = device.pipeline_profile.get_streams()
         frameset = device.pipeline.wait_for_frames()
+        # frameset = device.pipeline.poll_for_frames()
 
         color: DataFrame | None = None
         ir: DataFrame | None = None
@@ -235,7 +240,7 @@ class RealSenseCameraSet(BaseCameraSet):
         gyro: DataFrame | None = None
 
         def to_numpy(frame: rs.frame) -> np.ndarray:
-            return np.asanyarray(frame.get_data())
+            return np.asanyarray(frame.get_data()).copy()
 
         def to_ts(frame: rs.frame) -> float:
             # convert to seconds
@@ -248,7 +253,7 @@ class RealSenseCameraSet(BaseCameraSet):
                 ir = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
             elif rs.stream.color == stream.stream_type():
                 frame = frameset.get_color_frame()
-                color = DataFrame(data=to_numpy(frame)[:,:,::-1], timestamp=to_ts(frame))
+                color = DataFrame(data=to_numpy(frame)[:, :, ::-1], timestamp=to_ts(frame))
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
                 depth = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
@@ -375,4 +380,3 @@ class RealSenseCameraSet(BaseCameraSet):
             device = device.pipeline_profile.get_device()
             advanced_mode = rs.rs400_advanced_mode(device)
             advanced_mode.load_json(json_text)
-

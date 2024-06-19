@@ -14,6 +14,8 @@ from PIL import Image
 
 # MAIN CLI
 main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
+
+
 @main_app.command()
 def sample_config(
     path: Annotated[
@@ -31,6 +33,8 @@ main_app.add_typer(
     name="realsense",
     help="Commands to access the intel realsense camera. This includes tools such as reading out the serial numbers of connected devices.",
 )
+
+
 @realsense_app.command()
 def serials():
     """Reads out the serial numbers of the connected realsense devices."""
@@ -47,8 +51,6 @@ def serials():
 @realsense_app.command()
 def test(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
-    # testdir: Annotated[Path, typer.Argument(help="Path to the folder where the test images should be saved")],
-    # cam_name: Annotated[str, typer.Argument(help="Name of the camera that should be tested")],
 ):
     """Tests all configured and connected realsense by saving the current picture."""
     cfg = read_config_yaml(path)
@@ -72,21 +74,20 @@ def test(
         if frame.imu is not None:
             print("IMU data: ", frame.imu.accel, frame.imu.gyro)
 
+
 @realsense_app.command()
 def test_record(
     path: Annotated[str, typer.Argument(help="Path to the config file")],
-    # testdir: Annotated[Path, typer.Argument(help="Path to the folder where the test images should be saved")],
-    # cam_name: Annotated[str, typer.Argument(help="Name of the camera that should be tested")],
-    n_frames: Annotated[int, typer.Argument(help="Name of the camera that should be tested")] = 30,
+    n_frames: Annotated[int, typer.Argument(help="Name of the camera that should be tested")] = 100,
 ):
     """Tests all configured and connected realsense by saving the current picture."""
     cfg = read_config_yaml(path)
     assert cfg.hw.camera_type == "realsense" and cfg.hw.camera_config.realsense_config is not None
     cs = RealSenseCameraSet(cfg.hw.camera_config.realsense_config)
     cs.start(warm_up=True)
-    sleep(n_frames/cfg.hw.camera_config.realsense_config.frame_rate)
+    while cs.buffer_size < n_frames:
+        sleep(1 / cfg.hw.camera_config.realsense_config.frame_rate)
     cs.stop()
-
 
 
 # FR3 CLI
@@ -96,6 +97,7 @@ main_app.add_typer(
     name="fr3",
     help="Commands to control a Franka Research 3. This includes tools that you would usually do with Franka's Desk interface.",
 )
+
 
 @fr3_app.command()
 def home(
