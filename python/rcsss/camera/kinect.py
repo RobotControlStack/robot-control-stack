@@ -1,21 +1,22 @@
 import k4a
 import numpy as np
 from rcsss.camera.interface import (
-    Camera,
+    BaseCameraConfig,
+    BaseCameraSet,
     CameraFrame,
+    DataFrame,
     Frame,
-    GenericCameraConfig,
     IMUFrame,
 )
 
 
-class KinectConfig(GenericCameraConfig):
+class KinectConfig(BaseCameraConfig):
     device_config: k4a.DeviceConfiguration = k4a.DEVICE_CONFIG_BGRA32_2160P_WFOV_2X2BINNED_FPS15
     include_imu: bool = False
     timeout_ms: int = 2000
 
 
-class KinectCamera(Camera):
+class KinectCamera(BaseCameraSet):
     def __init__(self, cfg: KinectConfig) -> None:
         self._cfg = cfg
         self._device = k4a.Device.open()
@@ -37,7 +38,8 @@ class KinectCamera(Camera):
     def config(self, cfg: KinectConfig) -> None:
         self._cfg = cfg
 
-    def get_current_frame(self) -> Frame:
+    def _poll_frame(self, camera_name: str = "") -> Frame:
+        assert camera_name == "kinect", "Kinect code only supports one camera."
         capture = self._device.get_capture(self._cfg.timeout_ms)
         if capture is None:
             msg = "Timeout error while waiting for camera sample."
@@ -54,10 +56,12 @@ class KinectCamera(Camera):
             imu_sample_np = np.array((imu_sample.acc_sample.x, imu_sample.acc_sample.y, imu_sample.acc_sample.z))
             gyro_sample_np = np.array((imu_sample.gyro_sample.x, imu_sample.gyro_sample.y, imu_sample.gyro_sample.z))
             imu_frame = IMUFrame(
-                acc_sample=imu_sample_np,
-                acc_sample_usec=imu_sample.acc_sample_usec,
-                gyro_sample=gyro_sample_np,
-                gyro_sample_usec=imu_sample.gyro_sample_usec,
+                accel=DataFrame(data=imu_sample_np, timestamp=float(imu_sample.acc_sample_usec)),
+                gyro=DataFrame(data=gyro_sample_np, timestamp=float(imu_sample.gyro_sample_usec)),
                 temperature=imu_sample.temperature,
             )
-        return Frame(camera=camera_frame, imu=imu_frame)
+        return Frame(camera=camera_frame, imu=imu_frame, avg_timestamp=None)
+
+    @property
+    def camera_names(self) -> list[str]:
+        return ["kinect"]

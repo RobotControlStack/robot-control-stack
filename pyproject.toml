@@ -18,13 +18,19 @@ dependencies = ["websockets>=11.0",
     "glfw",
     "numpy",
     "pyopengl",
-# NOTE: when changing the version, also change it below in
+    "pyrealsense2~=2.55.1",
+    "pillow==10.3.0",
+# NOTE: when changing the mujoco version, also change it below in
 # tool.scikit-build.cmake.define and in the Makefile
     "mujoco==3.1.5"
 ]
 readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Pierre Krack", email = "pierre.krack@utn.de" },
 ]
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
@@ -52,7 +58,7 @@ build-dir = "build"
 wheel.packages = ["python/rcsss"]
 install.components = ["python_package"]
 cmake.targets = ["_core"]
-# NOTE: when changing the version, also change it above in
+# NOTE: when changing the mujoco version, also change it above in
 # project.dependencies, and in the Makefile
 cmake.define = { MUJOCO_VERSION = "3.1.5" }
 
@@ -88,6 +94,7 @@ ignore = [
   "PLR2004",  # Magic comparison
   "E741",    # ambiguous variable name
   "ICN001",  #  `numpy` should be imported as `np`
+  "PGH003",  # Use specfic rule code when ignoring types issues
 ]
 
 [tool.pylint.format]
@@ -115,6 +122,7 @@ profile = "black"
 ignore_missing_imports = true
 check_untyped_defs = true
 pretty = true
+# mypy_path = "python/pyrealsense2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -61,26 +61,28 @@ class KinectWrapper(gym.Wrapper[KinectObsType, CartOrAngleControl, ArmObs, CartO
 
     def step(self, action: CartOrAngleControl) -> tuple[KinectObsType, float, bool, bool, dict]:
         obs, reward, terminated, truncated, info = self.env.step(action)
-        frame = self.camera.get_current_frame()
+        frameset = self.camera.get_latest_frames()
+        assert frameset is not None, "No frame available."
+        frame = frameset.frames["kinect"]
         kinect_frame = FrameDictType(
             camera=CameraDictType(
-                color=frame.camera.color,
-                ir=frame.camera.ir,
-                depth=frame.camera.depth,
+                color=frame.camera.color.data if frame.camera.color is not None else None,
+                ir=frame.camera.ir.data if frame.camera.ir is not None else None,
+                depth=frame.camera.depth.data if frame.camera.depth is not None else None,
             ),
             imu=(
                 ImuDictType(
-                    acc_sample=frame.imu.acc_sample,
-                    gyro_sample=frame.imu.gyro_sample,
+                    acc_sample=frame.imu.accel.data,
+                    gyro_sample=frame.imu.gyro.data,
                 )
-                if frame.imu is not None
+                if frame.imu is not None and frame.imu.accel is not None and frame.imu.gyro is not None
                 else None
             ),
         )
         kinect_obs = KinectObsType(kinect_frame=kinect_frame, angles=obs["angles"], pose=obs["pose"])
         info["camera_temperature"] = frame.camera.temperature
-        if frame.imu is not None:
-            info["imu_acc_sample_usec"] = frame.imu.acc_sample_usec
-            info["imu_gyro_sample_usec"] = frame.imu.gyro_sample_usec
+        if frame.imu is not None and frame.imu.accel is not None and frame.imu.gyro is not None:
+            info["imu_acc_sample_usec"] = frame.imu.accel.data
+            info["imu_gyro_sample_usec"] = frame.imu.gyro.data
             info["imu_temperature"] = frame.imu.temperature
         return kinect_obs, reward, terminated, truncated, info
