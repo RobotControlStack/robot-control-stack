@@ -13,10 +13,6 @@ from rcsss.camera.interface import (
 
 
 class RealSenseConfig(BaseCameraConfig):
-    resolution_width: int = 1280  # pixels
-    resolution_height: int = 720  # pixels
-    # frame_rate: int = 15  # fps
-    # warm_up_disposal_frames: int = 30  # frames
     devices_to_enable: dict[str, str]  # dict with readable name and serial number
     enable_ir_emitter: bool = False
     enable_ir: bool = False
@@ -37,9 +33,7 @@ class RealSenseDevicePipeline:
     camera: RealSenseDeviceInfo
 
 
-# TODO: frame queue
-
-
+# TODO(juelg): look at frame queue
 class RealSenseCameraSet(BaseCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
@@ -91,12 +85,7 @@ class RealSenseCameraSet(BaseCameraSet):
         self._available_devices: dict[str, RealSenseDeviceInfo] = {}
         self.update_available_devices()
         self._enabled_devices: dict[str, RealSenseDevicePipeline] = {}  # serial numbers of te enabled devices
-
         self.enable_devices(self._cfg.devices_to_enable, self._cfg.enable_ir_emitter)
-
-        # Allow some frames for the auto-exposure controller to stabilize
-        # for _ in range(self._cfg.warm_up_disposal_frames):
-        #     self.poll_frames()
 
     @property
     def camera_names(self) -> list[str]:
@@ -254,7 +243,6 @@ class RealSenseCameraSet(BaseCameraSet):
             timestamps.append(to_ts(frame))
 
         assert color is not None, "Color frame not found"
-
         cf = CameraFrame(color=color, ir=ir, depth=depth)
         imu = IMUFrame(accel=accel, gyro=gyro)
         return Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)

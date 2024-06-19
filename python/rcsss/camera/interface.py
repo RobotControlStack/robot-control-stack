@@ -16,6 +16,9 @@ class BaseCameraConfig(BaseModel):
     frame_rate: int = 15  # fps
     warm_up_disposal_frames: int = 30  # frames
     record_path: str = "camera_frames"
+    max_frames: int = 1000
+    resolution_width: int = 1280  # pixels
+    resolution_height: int = 720  # pixels
 
 
 @dataclass(kw_only=True)
@@ -27,7 +30,7 @@ class DataFrame:
 
 @dataclass(kw_only=True)
 class CameraFrame:
-    color: DataFrame | None = None
+    color: DataFrame
     ir: DataFrame | None = None
     depth: DataFrame | None = None
     temperature: float | None = None
@@ -43,7 +46,7 @@ class IMUFrame:
 @dataclass(kw_only=True)
 class Frame:
     camera: CameraFrame
-    imu: IMUFrame | None
+    imu: IMUFrame | None = None
     avg_timestamp: float | None = None
 
 
@@ -119,6 +122,8 @@ class BaseCameraSet(ABC):
         timestamps: list[float] = [frame.avg_timestamp for frame in frames.values() if frame.avg_timestamp is not None]
         return FrameSet(frames=frames, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
 
+    # TODO(juelg): we probably want to record through the gym env
+    # we also probably want to prune the buffer at some point
     def _save_frames(self):
         """Saves all frames from the buffer in python pickle format and clears the buffer."""
         with (
@@ -127,6 +132,11 @@ class BaseCameraSet(ABC):
         ):
             pickle.dump(self._buffer, f)
             self._logger.debug("Saved %i frames.", len(self._buffer))
+            self._buffer = []
+
+    def clear_buffer(self):
+        """Deletes all frames from the buffer."""
+        with self._buffer_lock:
             self._buffer = []
 
     @property
