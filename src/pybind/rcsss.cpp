@@ -32,10 +32,6 @@ class PyRobot : public rcs::common::Robot {
  public:
   using rcs::common::Robot::Robot;  // Inherit constructors
 
-  bool set_parameters(const rcs::common::RConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Robot, set_parameters, cfg);
-  }
-
   rcs::common::RConfig *get_parameters() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::RConfig *, rcs::common::Robot,
                            get_parameters, );
@@ -76,10 +72,6 @@ class PyRobot : public rcs::common::Robot {
 class PyGripper : public rcs::common::Gripper {
  public:
   using rcs::common::Gripper::Gripper;  // Inherit constructors
-
-  bool set_parameters(const rcs::common::GConfig &cfg) override {
-    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, set_parameters, cfg);
-  }
 
   rcs::common::GConfig *get_parameters() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::GConfig *, rcs::common::Gripper,
@@ -184,8 +176,6 @@ PYBIND11_MODULE(_core, m) {
   // instances of this class
   py::class_<rcs::common::Robot, PyRobot, std::shared_ptr<rcs::common::Robot>>(
       common, "Robot")
-      .def("set_parameters", &rcs::common::Robot::set_parameters,
-           py::arg("cfg"))
       .def("get_parameters", &rcs::common::Robot::get_parameters)
       .def("get_state", &rcs::common::Robot::get_state)
       .def("get_cartesian_position",
@@ -199,8 +189,6 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
-      .def("set_parameters", &rcs::common::Gripper::set_parameters,
-           py::arg("cfg"))
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
       .def("get_state", &rcs::common::Gripper::get_state)
       .def("grasp", &rcs::common::Gripper::grasp)
@@ -218,9 +206,6 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<
                std::vector<std::shared_ptr<rcs::common::RobotWithGripper>>>(),
            py::arg("robots_with_gripper"))
-      .def("set_parameters_r",
-           &rcs::common::NRobotsWithGripper::set_parameters_r, py::arg("idxs"),
-           py::arg("cfgs"))
       .def("get_parameters_r",
            &rcs::common::NRobotsWithGripper::get_parameters_r, py::arg("idxs"))
       .def("get_state_r", &rcs::common::NRobotsWithGripper::get_state_r,
@@ -239,9 +224,6 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::NRobotsWithGripper::set_cartesian_position,
            py::arg("idxs"), py::arg("pose"))
-      .def("set_parameters_g",
-           &rcs::common::NRobotsWithGripper::set_parameters_g, py::arg("idxs"),
-           py::arg("cfgs"))
       .def("get_parameters_g",
            &rcs::common::NRobotsWithGripper::get_parameters_g, py::arg("idxs"))
       .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
@@ -295,6 +277,7 @@ PYBIND11_MODULE(_core, m) {
       hw, "FR3")
       .def(py::init<const std::string &, const std::optional<std::string> &>(),
            py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def("set_parameters", &rcs::hw::FR3::set_parameters, py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FR3::get_parameters)
       .def("get_state", &rcs::hw::FR3::get_state)
       .def("set_default_robot_behavior",
@@ -315,6 +298,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const std::string &>(), py::arg("ip"))
       .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
+      .def("set_parameters", &rcs::hw::FrankaHand::set_parameters,
+           py::arg("cfg"))
       .def("homing", &rcs::hw::FrankaHand::homing);
 
   auto hw_except =
@@ -361,6 +346,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
            py::arg("render") = true)
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
+      .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("get_state", &rcs::sim::FR3::get_state)
       .def("reset", &rcs::sim::FR3::reset)
       .def("clear_markers", &rcs::sim::FR3::clear_markers);

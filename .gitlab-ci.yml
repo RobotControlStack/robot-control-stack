@@ -38,19 +38,7 @@ python_lint:
 python_build:
   stage: python
   script:
-    - python3 -m build --wheel --outdir dist/
-    - pip3 install --break-system-packages dist/*.whl
-  artifacts:
-    untracked: false
-    when: on_success
-    access: all
-    expire_in: "30 days"
-    paths:
-      - "dist/*.whl"
-
-python_stubgencheck:
-  stage: python_post_install
-  script:
+    - pip3 install --break-system-packages .
     - make stubgen && git diff --exit-code
 
 python_unittest:

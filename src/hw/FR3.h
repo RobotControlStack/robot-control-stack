@@ -53,7 +53,7 @@ class FR3 : public common::Robot {
       const std::optional<FR3Config> &cfg = std::nullopt);
   ~FR3() override;
 
-  bool set_parameters(const common::RConfig &cfg) override;
+  bool set_parameters(const FR3Config &cfg);
 
   FR3Config *get_parameters() override;
 

@@ -67,9 +67,6 @@ class NRobotsWithGripper {
   }
 
   // ROBOT FUNCTIONS
-  void set_parameters_r(const std::vector<size_t> &idxs,
-                        const std::vector<RConfig> &cfgs);
-
   std::vector<std::unique_ptr<RConfig>> get_parameters_r(
       const std::vector<size_t> &idxs);
 
@@ -89,9 +86,6 @@ class NRobotsWithGripper {
                               const std::vector<Pose> &pose);
 
   // GRIPPER FUNCTIONS
-  void set_parameters_g(const std::vector<size_t> idxs,
-                        const std::vector<GConfig> cfgs);
-
   std::vector<std::optional<std::unique_ptr<GConfig>>> get_parameters_g(
       const std::vector<size_t> &idxs);
 
