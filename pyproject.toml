@@ -94,6 +94,7 @@ ignore = [
   "PLR2004",  # Magic comparison
   "E741",    # ambiguous variable name
   "ICN001",  #  `numpy` should be imported as `np`
+  "PGH003",  # Use specfic rule code when ignoring types issues
 ]
 
 [tool.pylint.format]
@@ -121,6 +122,7 @@ profile = "black"
 ignore_missing_imports = true
 check_untyped_defs = true
 pretty = true
+# mypy_path = "python/pyrealsense2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

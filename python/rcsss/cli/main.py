@@ -1,16 +1,18 @@
-from time import sleep
+import logging
 from contextlib import ExitStack
 from pathlib import Path
+from time import sleep
 from typing import Annotated, Optional
 
+import pyrealsense2 as rs
 import rcsss
 import typer
+from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.record import PoseList
-import pyrealsense2 as rs
-from PIL import Image
 
+logger = logging.getLogger(__name__)
 
 # MAIN CLI
 main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
@@ -41,11 +43,11 @@ def serials():
     context = rs.context()
     devices = RealSenseCameraSet.enumerate_connected_devices(context)
     if len(devices) == 0:
-        print("No realsense devices connected.")
+        logger.warning("No realsense devices connected.")
         return
-    print("Connected devices:")
+    logger.info("Connected devices:")
     for device in devices.values():
-        print(f"  {device.product_line}: {device.serial}")
+        logger.info("  %s: %s", device.product_line, device.serial)
 
 
 @realsense_app.command()
@@ -54,7 +56,9 @@ def test(
 ):
     """Tests all configured and connected realsense by saving the current picture."""
     cfg = read_config_yaml(path)
-    assert cfg.hw.camera_type == "realsense" and cfg.hw.camera_config.realsense_config is not None
+    assert cfg.hw.camera_type == "realsense", "Only realsense cameras are supported for this test."
+    assert cfg.hw.camera_config is not None, "Camera config is not set."
+    assert cfg.hw.camera_config.realsense_config is not None, "Realsense config is not set."
     cs = RealSenseCameraSet(cfg.hw.camera_config.realsense_config)
     cs.warm_up()
     testdir = Path(cfg.hw.camera_config.realsense_config.record_path)
@@ -62,7 +66,7 @@ def test(
     for device_str in cfg.hw.camera_config.realsense_config.devices_to_enable:
         assert device_str in frame_set.frames
         frame = frame_set.frames[device_str]
-        if frame.camera.depth is not None:
+        if frame.camera.color is not None:
             im = Image.fromarray(frame.camera.color.data, mode="RGB")
             im.save(testdir / f"test_img_{device_str}.png")
         if frame.camera.depth is not None:
@@ -72,7 +76,7 @@ def test(
             im = Image.fromarray(frame.camera.ir.data)
             im.save(testdir / f"test_ir_{device_str}.png")
         if frame.imu is not None:
-            print("IMU data: ", frame.imu.accel, frame.imu.gyro)
+            logger.info("IMU data: %s %s", frame.imu.accel, frame.imu.gyro)
 
 
 @realsense_app.command()
@@ -82,10 +86,12 @@ def test_record(
 ):
     """Tests all configured and connected realsense by saving the current picture."""
     cfg = read_config_yaml(path)
-    assert cfg.hw.camera_type == "realsense" and cfg.hw.camera_config.realsense_config is not None
+    assert cfg.hw.camera_type == "realsense", "Only realsense cameras are supported for this test."
+    assert cfg.hw.camera_config is not None, "Camera config is not set."
+    assert cfg.hw.camera_config.realsense_config is not None, "Realsense config is not set."
     cs = RealSenseCameraSet(cfg.hw.camera_config.realsense_config)
     cs.start(warm_up=True)
-    while cs.buffer_size < n_frames:
+    while cs.buffer_size() < n_frames:
         sleep(1 / cfg.hw.camera_config.realsense_config.frame_rate)
     cs.stop()
 

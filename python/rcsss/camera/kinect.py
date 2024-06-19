@@ -1,4 +1,3 @@
-from datetime import datetime
 import k4a
 import numpy as np
 from rcsss.camera.interface import (
@@ -57,13 +56,12 @@ class KinectCamera(BaseCameraSet):
             imu_sample_np = np.array((imu_sample.acc_sample.x, imu_sample.acc_sample.y, imu_sample.acc_sample.z))
             gyro_sample_np = np.array((imu_sample.gyro_sample.x, imu_sample.gyro_sample.y, imu_sample.gyro_sample.z))
             imu_frame = IMUFrame(
-                accel=DataFrame(imu_sample_np, imu_sample.acc_sample_usec),
-                gyro=DataFrame(gyro_sample_np, imu_sample.gyro_sample_usec),
+                accel=DataFrame(data=imu_sample_np, timestamp=float(imu_sample.acc_sample_usec)),
+                gyro=DataFrame(data=gyro_sample_np, timestamp=float(imu_sample.gyro_sample_usec)),
                 temperature=imu_sample.temperature,
             )
-        return Frame(camera=DataFrame(camera_frame), imu=DataFrame(imu_frame))
+        return Frame(camera=camera_frame, imu=imu_frame, avg_timestamp=None)
 
     @property
     def camera_names(self) -> list[str]:
         return ["kinect"]
-

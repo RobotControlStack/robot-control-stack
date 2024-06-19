@@ -1,7 +1,15 @@
 from dataclasses import dataclass
+
 import numpy as np
-from rcsss.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, BaseCameraConfig, IMUFrame
 import pyrealsense2 as rs
+from rcsss.camera.interface import (
+    BaseCameraConfig,
+    BaseCameraSet,
+    CameraFrame,
+    DataFrame,
+    Frame,
+    IMUFrame,
+)
 
 
 class RealSenseConfig(BaseCameraConfig):
@@ -9,7 +17,7 @@ class RealSenseConfig(BaseCameraConfig):
     resolution_height: int = 720  # pixels
     # frame_rate: int = 15  # fps
     # warm_up_disposal_frames: int = 30  # frames
-    devices_to_enable: dict[str, str] = {}  # dict with readable name and serial number
+    devices_to_enable: dict[str, str]  # dict with readable name and serial number
     enable_ir_emitter: bool = False
     enable_ir: bool = False
     laser_power: int = 330
@@ -102,9 +110,9 @@ class RealSenseCameraSet(BaseCameraSet):
         Enable all the Intel RealSense Devices which are connected to the PC
 
         """
-        print(str(len(self._available_devices)) + " devices have been found")
+        self._logger.debug("%i devices have been found", len(self._available_devices))
 
-        for device_info in self._available_devices:
+        for device_info in self._available_devices.values():
             self.enable_device(device_info, enable_ir_emitter)
 
     def enable_devices(self, devices_to_enable: dict[str, str], enable_ir_emitter: bool = False):
@@ -144,7 +152,8 @@ class RealSenseCameraSet(BaseCameraSet):
             self.D400_config.enable_device(device_info.serial)
             pipeline_profile = pipeline.start(self.D400_config)
         else:
-            raise RuntimeError(f"unknown product line {device_info.product_line}")
+            msg = "unknown product line {device_info.product_line}"
+            raise RuntimeError(msg)
 
         # Set the acquisition parameters
         sensor = pipeline_profile.get_device().first_depth_sensor()
@@ -152,8 +161,7 @@ class RealSenseCameraSet(BaseCameraSet):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             sensor.set_option(rs.option.laser_power, self._cfg.laser_power)
         self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(pipeline, pipeline_profile, device_info)
-        self._logger.debug(f"Enabled device {device_info.serial} ({device_info.product_line})")
-        print(f"Enabled device {device_info.serial} ({device_info.product_line})")
+        self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
 
     @property
     def config(self) -> RealSenseConfig:
@@ -189,32 +197,6 @@ class RealSenseCameraSet(BaseCameraSet):
                 device_info = RealSenseDeviceInfo(serial=serial, product_line=product_line)
                 connect_device[serial] = device_info
         return connect_device
-
-    # def poll_frames(self) -> dict:
-    #     """
-    #     Poll for frames from the enabled Intel RealSense devices. This will return at least one frame from each device.
-    #     If temporal post processing is enabled, the depth stream is averaged over a certain amount of frames
-
-    #     Parameters:
-    #     -----------
-    #     """
-    #     frames = {}
-    #     while len(frames) < len(self._enabled_devices.items()):
-    #         for serial, device in self._enabled_devices.items():
-    #             streams = device.pipeline_profile.get_streams()
-    #             frameset = device.pipeline.poll_for_frames()  # frameset will be a pyrealsense2.composite_frame object
-    #             if frameset.size() == len(streams):
-    #                 dev_info = (serial, device.product_line)
-    #                 frames[dev_info] = {}
-    #                 for stream in streams:
-    #                     if rs.stream.infrared == stream.stream_type():
-    #                         frame = frameset.get_infrared_frame(stream.stream_index())
-    #                         key_ = (stream.stream_type(), stream.stream_index())
-    #                     else:
-    #                         frame = frameset.first_or_default(stream.stream_type())
-    #                         key_ = stream.stream_type()
-    #                     frames[dev_info][key_] = frame
-    #     return frames
 
     def _poll_frame(self, camera_name: str) -> Frame:
         # TODO(juelg): polling should be performed in a recorder thread
@@ -266,7 +248,8 @@ class RealSenseCameraSet(BaseCameraSet):
                 md = frame.as_motion_frame().get_motion_data()
                 gyro = DataFrame(data=np.array([md.x, md.y, md.z]), timestamp=to_ts(frame))
             else:
-                self._logger.warning(f"Unknown stream type {stream.stream_type()}")
+                msg = f"Unknown stream type {stream.stream_type()}"
+                self._logger.warning(msg)
                 continue
             timestamps.append(to_ts(frame))
 
@@ -274,7 +257,7 @@ class RealSenseCameraSet(BaseCameraSet):
 
         cf = CameraFrame(color=color, ir=ir, depth=depth)
         imu = IMUFrame(accel=accel, gyro=gyro)
-        return Frame(camera=cf, imu=imu, avg_timestamp=np.mean(timestamps))
+        return Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
 
     def get_depth_shape(self):
         """
@@ -294,7 +277,9 @@ class RealSenseCameraSet(BaseCameraSet):
                     height = stream.as_video_stream_profile().height()
         return width, height
 
-    def get_device_intrinsics(self, frames):
+    def get_device_intrinsics(
+        self, frames: dict[str, dict[rs.stream, rs.frame]]
+    ) -> dict[str, dict[rs.stream, rs.intrinsics]]:
         """
         Get the intrinsics of the imager using its frame delivered by the realsense device
 
@@ -311,12 +296,11 @@ class RealSenseCameraSet(BaseCameraSet):
         values: [key]
                 Intrinsics of the corresponding device
         """
-        device_intrinsics = {}
-        for dev_info, frameset in frames.items():
-            serial = dev_info[0]
-            device_intrinsics[serial] = {}
+        device_intrinsics: dict[str, dict[rs.stream, rs.intrinsics]] = {}
+        for device_name, frameset in frames.items():
+            device_intrinsics[device_name] = {}
             for key, value in frameset.items():
-                device_intrinsics[serial][key] = value.get_profile().as_video_stream_profile().get_intrinsics()
+                device_intrinsics[device_name][key] = value.get_profile().as_video_stream_profile().get_intrinsics()
         return device_intrinsics
 
     def get_depth_to_color_extrinsics(self, frames):
@@ -373,10 +357,10 @@ class RealSenseCameraSet(BaseCameraSet):
         with open(path_to_settings_file, "r") as file:
             json_text = file.read().strip()
 
-        for device_serial, device in self._enabled_devices.items():
+        for device in self._enabled_devices.values():
             if device.camera.product_line != "D400":
                 continue
             # Get the active profile and load the json file which contains settings readable by the realsense
-            device = device.pipeline_profile.get_device()
-            advanced_mode = rs.rs400_advanced_mode(device)
+            dev = device.pipeline_profile.get_device()
+            advanced_mode = rs.rs400_advanced_mode(dev)
             advanced_mode.load_json(json_text)
