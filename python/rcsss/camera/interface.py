@@ -1,15 +1,15 @@
+import logging
+import pickle
+import threading
 from abc import ABC, abstractmethod
-from time import sleep
 from dataclasses import dataclass
 from datetime import datetime
-import logging
 from pathlib import Path
-import pickle
+from time import sleep
 from typing import Any
 
 import numpy as np
 from pydantic import BaseModel
-import threading
 
 
 class BaseCameraConfig(BaseModel):
@@ -44,7 +44,7 @@ class IMUFrame:
 class Frame:
     camera: CameraFrame
     imu: IMUFrame | None
-    avg_timestamp: float | None
+    avg_timestamp: float | None = None
 
 
 @dataclass(kw_only=True)
@@ -53,7 +53,7 @@ class FrameSet:
     avg_timestamp: float | None
 
 
-class BaseCameraSet:
+class BaseCameraSet(ABC):
     """This base class should have the ability to poll in a separate thread for all cameras and store them in a buffer."""
 
     def __init__(self):
@@ -76,13 +76,15 @@ class BaseCameraSet:
         # iterate through the buffer and find the closest timestamp
         with self._buffer_lock:
             for frame_set in reversed(self._buffer):
-                if frame_set["avg_timestamp"] <= ts.timestamp():
+                assert frame_set.avg_timestamp is not None
+                if frame_set.avg_timestamp <= ts.timestamp():
                     return frame_set
             return None
 
     def stop(self):
         """Stops the polling of the cameras."""
         self.running = False
+        assert self._thread is not None
         self._thread.join()
         self._save_frames()
 
@@ -109,19 +111,22 @@ class BaseCameraSet:
 
     def poll_frame_set(self) -> FrameSet:
         """Gather frames over all available cameras."""
-        frames = {}
+        frames: dict[str, Frame] = {}
         for camera_name in self.camera_names:
             frame = self._poll_frame(camera_name)
             frames[camera_name] = frame
-        return FrameSet(frames=frames, avg_timestamp=np.mean([frame.avg_timestamp for frame in frames.values()]))
+        # filter none
+        timestamps: list[float] = [frame.avg_timestamp for frame in frames.values() if frame.avg_timestamp is not None]
+        return FrameSet(frames=frames, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
 
     def _save_frames(self):
         """Saves all frames from the buffer in python pickle format and clears the buffer."""
-        with self._buffer_lock:
-            pickle.dump(
-                self._buffer, open(Path(self.config.record_path) / f"frames_{int(datetime.now().timestamp())}.pk", "wb")
-            )
-            self._logger.debug(f"Saved {len(self._buffer)} frames.")
+        with (
+            self._buffer_lock,
+            open(Path(self.config.record_path) / f"frames_{int(datetime.now().timestamp())}.pk", "wb") as f,
+        ):
+            pickle.dump(self._buffer, f)
+            self._logger.debug("Saved %i frames.", len(self._buffer))
             self._buffer = []
 
     @property

@@ -66,7 +66,7 @@ FRAME_SPACE = gym.spaces.Dict(
 
 
 class CameraDictType(TypedDict):
-    color: np.ndarray
+    color: np.ndarray | None
     ir: np.ndarray | None
     depth: np.ndarray | None
 
