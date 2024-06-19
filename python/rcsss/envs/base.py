@@ -6,6 +6,7 @@ from typing import Any, Literal, TypeAlias, TypedDict, cast
 import gymnasium as gym
 import numpy as np
 from rcsss import common
+from rcsss.camera.interface import BaseCameraSet
 
 Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
@@ -41,44 +42,29 @@ class ArmObs(TypedDict):
     angles: Vec7Type
 
 
-# frame
-COLOR_SPACE = IR_SPACE = DEPTH_SPACE = gym.spaces.Box(low=0, high=255, dtype=np.uint8)
-ACC_SPACE = GYRO_SPACE = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32)
-
 # TODO: move some of this info to "info"
-FRAME_SPACE = gym.spaces.Dict(
-    {
-        "camera": gym.spaces.Dict(
-            {
-                "color": COLOR_SPACE,
-                "ir": IR_SPACE,
-                "depth": DEPTH_SPACE,
-            }
-        ),
-        "imu": gym.spaces.Dict(
-            {
-                "acc_sample": ACC_SPACE,
-                "gyro_sample": GYRO_SPACE,
-            }
-        ),
-    }
-)
+# COLOR_FRAME_SPACE = gym.spaces.Dict(
+#     {
+
+#         "camera": COLOR_SPACE
+#     }
+# )
 
 
-class CameraDictType(TypedDict):
-    color: np.ndarray | None
-    ir: np.ndarray | None
-    depth: np.ndarray | None
+# class CameraDictType(TypedDict):
+#     color: np.ndarray | None
+#     ir: np.ndarray | None
+#     depth: np.ndarray | None
 
 
-class ImuDictType(TypedDict):
-    acc_sample: np.ndarray
-    gyro_sample: np.ndarray
+# class ImuDictType(TypedDict):
+#     acc_sample: np.ndarray
+#     gyro_sample: np.ndarray
 
 
-class FrameDictType(TypedDict):
-    camera: CameraDictType
-    imu: ImuDictType | None
+# class FrameDictType(TypedDict):
+#     camera: CameraDictType
+#     imu: ImuDictType | None
 
 
 class ControlMode(Enum):
@@ -137,3 +123,50 @@ class FR3Env(gym.Env[ArmObs, CartOrAngleControl]):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         return self._get_obs(), {}
+
+
+class CameraObsType(ArmObs):
+    frames: dict[str, np.ndarray]
+
+
+class CameraSetWrapper(gym.Wrapper[CameraObsType, CartOrAngleControl, ArmObs, CartOrAngleControl]):
+    def __init__(self, env: FR3Env, camera_set: BaseCameraSet):
+        self.env: FR3Env
+        self.observation_space: gym.spaces.Space
+        super().__init__(env)
+        self.camera_set = camera_set
+        self.observation_space = self._create_cam_obs_space()
+
+    def _create_cam_obs_space(self) -> gym.spaces.Space:
+        color_space = gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.camera_set.config.resolution_height, self.camera_set.config.resolution_width, 3),
+            dtype=np.uint8,
+        )
+        camera_obs_space = gym.spaces.Dict(
+            {
+                "frames": {camera_name: color_space for camera_name in self.camera_set.camera_names},
+            }
+        )
+        camera_obs_space.spaces.update(ARM_OBS_SPACE)
+        return camera_obs_space
+
+    def step(self, action: CartOrAngleControl) -> tuple[CameraObsType, float, bool, bool, dict]:
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        frameset = self.camera_set.get_latest_frames()
+        assert frameset is not None, "No frame available."
+        color_frame_dict: dict[str, np.ndarray] = {
+            camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
+        }
+        camera_obs = CameraObsType(frames=color_frame_dict, **obs)
+
+        if frameset.avg_timestamp is not None:
+            info["frame_timestamp"] = frameset.avg_timestamp
+        return camera_obs, reward, terminated, truncated, info
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[CameraObsType, dict[str, Any]]:
+        self.camera_set.clear_buffer()
+        return self.env.reset(seed, options)
