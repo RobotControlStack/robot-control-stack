@@ -9,6 +9,20 @@
 namespace rcs {
 namespace sim {
 
+void process_condition_callbacks(std::vector<ConditionCallback>& cbs,
+                                 mjtNum time) {
+  for (int i = 0; i < std::size(cbs); ++i) {
+    mjtNum dt = time - cbs[i].last_call_timestamp;
+    if (dt > cbs[i].seconds_between_calls) {
+      cbs[i].last_return_value = cbs[i].cb();
+    }
+  }
+}
+
+bool get_last_return_value(ConditionCallback cb) {
+  return cb.last_return_value;
+}
+
 Sim::Sim(mjModel* m, mjData* d) : m(m), d(d){};
 
 bool Sim::set_config(const Config& cfg) {
@@ -32,46 +46,34 @@ void Sim::invoke_callbacks() {
   }
 }
 
-bool Sim::invoke_any_callbacks() {
-  bool any = false;
-  bool callback_called = false;
-  for (int i = 0; i < std::size(this->any_callbacks); ++i) {
-    ConditionCallback cb = this->any_callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      if (cb.cb()) {
-        any = true;
-      }
-    }
+bool Sim::invoke_condition_callbacks() {
+  process_condition_callbacks(this->any_callbacks, this->d->time);
+  process_condition_callbacks(this->all_callbacks, this->d->time);
+  if (std::any_of(this->any_callbacks.begin(), this->any_callbacks.end(),
+                  get_last_return_value)) {
+    return true;
   }
-  return callback_called and any;
-}
-
-bool Sim::invoke_all_callbacks() {
-  bool all = true;
-  bool callback_called = false;
-  for (int i = 0; i < std::size(this->all_callbacks); ++i) {
-    ConditionCallback cb = this->all_callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      if (not cb.cb()) {
-        all = false;
-      }
-      callback_called = true;
-    }
+  if (std::all_of(this->all_callbacks.begin(), this->all_callbacks.end(),
+                  get_last_return_value)) {
+    return true;
   }
-  return callback_called and all;
+  return false;
 }
 
 void Sim::step_until_convergence() {
-  bool any = false;
-  bool all = false;
+  /* Reset the condition callbacks */
+  for (size_t i = 0; i < std::size(this->any_callbacks); ++i) {
+    this->any_callbacks[i].last_return_value = false;
+  }
+  for (size_t i = 0; i < std::size(this->all_callbacks); ++i) {
+    this->all_callbacks[i].last_return_value = false;
+  }
+  /* Step until all all_callbacks returned true or any any_callback returned
+   * true */
   bool converged = false;
   while (not converged) {
     this->step(1);
-    any = this->invoke_any_callbacks();
-    all = this->invoke_all_callbacks();
-    converged = any or all;
+    converged = invoke_condition_callbacks();
   };
 }
 
@@ -94,13 +96,13 @@ void Sim::register_cb(std::function<void(void)> cb,
 void Sim::register_any_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
   this->any_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0});
+      ConditionCallback{cb, seconds_between_calls, 0.0, false});
 }
 
 void Sim::register_all_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
   this->all_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0});
+      ConditionCallback{cb, seconds_between_calls, 0.0, false});
 }
 }  // namespace sim
 }  // namespace rcs
