@@ -10,8 +10,7 @@ class FR3Sim(gym.Wrapper):
     def __init__(self, env: FR3Env, simulation: sim.Sim):
         self.env: FR3Env
         super().__init__(env)
-        assert isinstance(
-            self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        assert isinstance(self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
         self.sim_robot = cast(sim.FR3, self.env.robot)
         self.sim = simulation
 
@@ -31,8 +30,7 @@ class FR3Sim(gym.Wrapper):
 
 if __name__ == "__main__":
     simulation = sim.Sim("models/mjcf/fr3_modular/scene.xml")
-    robot = rcsss.sim.FR3(
-        simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
+    robot = rcsss.sim.FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
     cfg = sim.FR3Config()
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False

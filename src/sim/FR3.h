@@ -19,7 +19,7 @@ const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
 struct FR3Config : common::RConfig {
   rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
   double joint_rotational_tolerance = .5 * (std::numbers::pi / 180.0);
-  double seconds_between_callbacks = 0.1; // 10 Hz
+  double seconds_between_callbacks = 0.1;    // 10 Hz
   size_t ik_duration_in_milliseconds = 300;  // milliseconds
   bool realtime = false;
   bool trajectory_trace = false;
@@ -28,7 +28,7 @@ struct FR3Config : common::RConfig {
 struct FR3State : common::RState {
   common::Vector7d previous_angles;
   common::Vector7d target_angles;
-  common:: Pose inverse_tcp_offset;
+  common::Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
   bool is_moving = false;
@@ -37,8 +37,10 @@ struct FR3State : common::RState {
 
 class FR3 : public common::Robot {
  public:
-  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id, std::shared_ptr<rl::mdl::Model> rlmdl);
-  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id, const std::string &rlmdl);
+  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
+      std::shared_ptr<rl::mdl::Model> rlmdl);
+  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
+      const std::string &rlmdl);
   ~FR3() override;
   bool set_parameters(const FR3Config &cfg);
   FR3Config *get_parameters() override;
