@@ -55,8 +55,11 @@ FR3::FR3(std::shared_ptr<Sim> sim, std::string& id,
                          this->cfg.seconds_between_callbacks);
   this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
                          this->cfg.seconds_between_callbacks);
-  this->sim->register_convergence_cb(
+  this->sim->register_all_cb(
       std::bind(&FR3::convergence_callback, this),
+      this->cfg.seconds_between_callbacks);
+  this->sim->register_any_cb(
+      std::bind(&FR3::collision_callback, this),
       this->cfg.seconds_between_callbacks);
   this->reset();
 }
@@ -185,14 +188,16 @@ void FR3::is_arrived_callback() {
       this->state.target_angles.isApprox(current_angles, this->cfg.joint_rotational_tolerance);
 }
 
-void FR3::collision_callback() {
+bool FR3::collision_callback() {
   this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->ids.cgeom.contains(this->sim->d->contact[i].geom[0]) ||
-        this->ids.cgeom.contains(this->sim->d->contact[i].geom[0])) {
+        this->ids.cgeom.contains(this->sim->d->contact[i].geom[1])) {
       this->state.collision = true;
+      break;
     }
   }
+  return this->state.collision;
 }
 
 bool FR3::convergence_callback() {
