@@ -1,8 +1,8 @@
 import k4a
 import numpy as np
+from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.interface import (
     BaseCameraConfig,
-    BaseCameraSet,
     CameraFrame,
     DataFrame,
     Frame,
@@ -15,7 +15,7 @@ class KinectConfig(BaseCameraConfig):
     timeout_ms: int = 2000
 
 
-class KinectCamera(BaseCameraSet):
+class KinectCamera(BaseHardwareCameraSet):
     def __init__(self, cfg: KinectConfig) -> None:
         self._cfg = cfg
         self._device = k4a.Device.open()
