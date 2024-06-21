@@ -196,9 +196,9 @@ int test_sim() {
        *   0.00233189
        *    0.0188265
        * That seems to be the problem... So the PID controllers?
-       * Verification: bypass the PID controllers by setting the angles directly.
-       * Yep, when setting the angles directly we can get the 1mm precision
-       * and the rtol can be set to .01 degrees.
+       * Verification: bypass the PID controllers by setting the angles
+       * directly. Yep, when setting the angles directly we can get the 1mm
+       * precision and the rtol can be set to .01 degrees.
        *
        * Note: mujoco actually does not implement a PID controller.
        */
