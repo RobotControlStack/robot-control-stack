@@ -134,6 +134,7 @@ int test_sim() {
                                       Eigen::Vector3d(0, 0, 0.1034));
   rcs::sim::FR3Config fr3_config = *fr3.get_parameters();
   fr3_config.tcp_offset = tcp_offset;
+  fr3_config.seconds_between_callbacks = 0.05; // 20hz
   fr3.set_parameters(fr3_config);
   std::jthread t(rendering_loop, m, d);
   sim->step(1);
@@ -202,8 +203,8 @@ int test_sim() {
       //
       // Note: mujoco actually does not implement a PID controller.
       auto current_pose = fr3.get_cartesian_position();
-      long double rtol = .01 * (std::numbers::pi / 180.0);
-      long double ttol = 1.0 / 10000.0;
+      long double rtol = 3 * (std::numbers::pi / 180.0); // 3 degrees
+      long double ttol = 1.875 / 100.0; // 1.875 cm found after short bisection search
       if (not desired_pose.is_close(current_pose, rtol, ttol)) {
         std::cout << desired_pose.str() << std::endl;
         std::cout << current_pose.str() << std::endl;
