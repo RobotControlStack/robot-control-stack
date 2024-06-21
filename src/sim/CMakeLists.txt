@@ -1,4 +1,5 @@
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(glfw3 REQUIRED)
 set(MUJOCO_DIR ${Python_SITELIB}/mujoco)
 set(MODEL_DIR ${CMAKE_SOURCE_DIR}/models)
 configure_file(config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
@@ -25,7 +26,7 @@ add_library(sim)
 target_sources(sim
   PRIVATE sim.cpp FR3.cpp
 )
-target_link_libraries(sim PUBLIC mujoco)
+target_link_libraries(sim PUBLIC mujoco glfw)
 
 target_sources(sim PRIVATE FR3.cpp)
 target_link_libraries(sim PUBLIC common mujoco mdl)

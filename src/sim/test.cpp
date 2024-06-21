@@ -134,7 +134,7 @@ int test_sim() {
                                       Eigen::Vector3d(0, 0, 0.1034));
   rcs::sim::FR3Config fr3_config = *fr3.get_parameters();
   fr3_config.tcp_offset = tcp_offset;
-  fr3_config.seconds_between_callbacks = 0.05; // 20hz
+  fr3_config.seconds_between_callbacks = 0.05;  // 20hz
   fr3.set_parameters(fr3_config);
   std::jthread t(rendering_loop, m, d);
   sim->step(1);
@@ -150,61 +150,62 @@ int test_sim() {
             "FR3 should not be moving at the end of a step");
       }
       if (not state->is_arrived) {
-        throw std::runtime_error(
-            "FR3 should be arrived at the end of a step");
+        throw std::runtime_error("FR3 should be arrived at the end of a step");
       }
-      // According to fact sheet, pose repeatability within iso cube is 0.1
-      // millimeters, i.e. 0.0001 meters.
-      // We don't quite get there (IK / floating point accuracy?)
-      // I Just tested the IK, here is a sample computed / desired position
-      // IK solution
-      //    -0.507646     0.861566   4.7215e-11     0.500292
-      //     0.861566     0.507646 -3.47652e-11   -0.0312635
-      //  -5.3921e-11  2.30303e-11           -1     0.461741
-      // Desired position
-      //    -0.507646     0.861566  1.22465e-16     0.500292
-      //     0.861566     0.507646            0   -0.0312635
-      // -6.21687e-17  1.05511e-16           -1     0.461741
-      // So the problem seems to come from the mujoco part. Could be either
-      // the PID controllers, or the calculated position of the end effector.
-      // Maybe also when we take the inverse of the tcp offset?
-      // Nope:
-      // TCP offset:
-      //     1      0      0      0
-      //     0      1      0      0
-      //     0      0      1 0.1034
-      //     0      0      0      1
-      // roll: -0        pitch: 0        yaw: -0
-      // Inverse tcp offset:
-      //      1       0       0       0
-      //      0       1       0       0
-      //      0       0       1 -0.1034
-      //      0       0       0       1
-      // Next test: compare the actual angles with the computed angles
-      //
-      // Actual angles: -0.394268
-      // -0.617676
-      //  0.480793
-      //   -2.4452
-      //  0.282081
-      //   1.86158
-      //   2.34344
-      // Difference:  -0.00112583
-      //  -0.00125228
-      // -0.000798704
-      //    0.0063457
-      //   0.00154612
-      //   0.00233189
-      //    0.0188265
-      // That seems to be the problem... So the PID controllers?
-      // Verification: bypass the PID controllers by setting the angles directly.
-      // Yep, when setting the angles directly we can get the 1mm precision
-      // and the rtol can be set to .01 degrees.
-      //
-      // Note: mujoco actually does not implement a PID controller.
+      /* According to fact sheet, pose repeatability within iso cube is 0.1
+       * millimeters, i.e. 0.0001 meters.
+       * We don't quite get there (IK / floating point accuracy?)
+       * I Just tested the IK, here is a sample computed / desired position
+       * IK solution
+       *    -0.507646     0.861566   4.7215e-11     0.500292
+       *     0.861566     0.507646 -3.47652e-11   -0.0312635
+       *  -5.3921e-11  2.30303e-11           -1     0.461741
+       * Desired position
+       *    -0.507646     0.861566  1.22465e-16     0.500292
+       *     0.861566     0.507646            0   -0.0312635
+       * -6.21687e-17  1.05511e-16           -1     0.461741
+       * So the problem seems to come from the mujoco part. Could be either
+       * the PID controllers, or the calculated position of the end effector.
+       * Maybe also when we take the inverse of the tcp offset?
+       * Nope:
+       * TCP offset:
+       *     1      0      0      0
+       *     0      1      0      0
+       *     0      0      1 0.1034
+       *     0      0      0      1
+       * roll: -0        pitch: 0        yaw: -0
+       * Inverse tcp offset:
+       *      1       0       0       0
+       *      0       1       0       0
+       *      0       0       1 -0.1034
+       *      0       0       0       1
+       * Next test: compare the actual angles with the computed angles
+       *
+       * Actual angles: -0.394268
+       * -0.617676
+       *  0.480793
+       *   -2.4452
+       *  0.282081
+       *   1.86158
+       *   2.34344
+       * Difference:  -0.00112583
+       *  -0.00125228
+       * -0.000798704
+       *    0.0063457
+       *   0.00154612
+       *   0.00233189
+       *    0.0188265
+       * That seems to be the problem... So the PID controllers?
+       * Verification: bypass the PID controllers by setting the angles directly.
+       * Yep, when setting the angles directly we can get the 1mm precision
+       * and the rtol can be set to .01 degrees.
+       *
+       * Note: mujoco actually does not implement a PID controller.
+       */
       auto current_pose = fr3.get_cartesian_position();
-      long double rtol = 3 * (std::numbers::pi / 180.0); // 3 degrees
-      long double ttol = 1.875 / 100.0; // 1.875 cm found after short bisection search
+      long double rtol = 3 * (std::numbers::pi / 180.0);  // 3 degrees
+      long double ttol =
+          1.875 / 100.0;  // 1.875 cm found after short bisection search
       if (not desired_pose.is_close(current_pose, rtol, ttol)) {
         std::cout << desired_pose.str() << std::endl;
         std::cout << current_pose.str() << std::endl;
