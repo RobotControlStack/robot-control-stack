@@ -25,9 +25,9 @@ typedef Eigen::Matrix<uint8_t, -1, -1, 3> ColorFrame;
 
 struct FrameSet {
   // TODO: think about who manges the memory for the frames
-  // probably simcam but where is it safed?
+  // probably simcam but where is it saved?
   std::map<std::string, ColorFrame> color_frames;
-  float timestamp;
+  mjtNum timestamp;
 };
 
 class SimCameraSet {
