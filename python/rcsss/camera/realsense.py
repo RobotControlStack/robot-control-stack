@@ -13,7 +13,8 @@ from rcsss.camera.interface import (
 
 
 class RealSenseConfig(BaseCameraConfig):
-    devices_to_enable: dict[str, str] = {}  # dict with readable name and serial number
+    # dict with readable name and serial number
+    devices_to_enable: dict[str, str] = {} # noqa: RUF012
     enable_ir_emitter: bool = False
     enable_ir: bool = False
     laser_power: int = 330

@@ -375,7 +375,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
       .def(py::init<>())
       .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
-      .def_readonly("timestamp", &rcs::sim::FrameSet::color_frames);
+      .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
   py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimCameraConfig &>(),

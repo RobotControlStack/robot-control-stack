@@ -121,7 +121,7 @@ class CameraSetWrapper(gym.Wrapper[CameraObsType, CartOrAngleControl, ArmObs, Ca
         )
         camera_obs_space = gym.spaces.Dict(
             {
-                "frames": {camera_name: color_space for camera_name in self.camera_set.camera_names},
+                "frames": gym.spaces.Dict({camera_name: color_space for camera_name in self.camera_set.camera_names}),
             }
         )
         camera_obs_space.spaces.update(ARM_OBS_SPACE)

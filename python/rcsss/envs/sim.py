@@ -3,7 +3,8 @@ from typing import Any, cast
 import gymnasium as gym
 import rcsss
 from rcsss import sim
-from rcsss.envs.base import ArmObs, CartOrAngleControl, ControlMode, FR3Env
+from rcsss.camera.sim import SimCameraConfig, SimCameraSet
+from rcsss.envs.base import ArmObs, CameraSetWrapper, CartOrAngleControl, ControlMode, FR3Env
 
 
 class FR3Sim(gym.Wrapper):
@@ -37,8 +38,12 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.CARTESIAN)
     env_sim = FR3Sim(env, simulation)
+    cam_cfg = SimCameraConfig(camera2id={"birdeye-camera": "birdeye-camera"})
+    camera_set = SimCameraSet(simulation, cam_cfg)
+    env_cam = CameraSetWrapper(env, camera_set)
+    # TODO: test env_cam
     obs, info = env_sim.reset()
     for _ in range(100):
         act = env_sim.action_space.sample()
         obs, reward, terminated, truncated, info = env_sim.step(act)
-        print(act, obs, info)
+        print(act, obs, info) # noqa: T201
