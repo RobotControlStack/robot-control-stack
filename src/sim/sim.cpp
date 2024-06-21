@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <functional>
+#include <thread>
 
 namespace rcs {
 namespace sim {

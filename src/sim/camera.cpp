@@ -55,6 +55,8 @@ FrameSet SimCameraSet::get_timestamp_frameset(float ts) {
 
 ColorFrame SimCameraSet::poll_frame(std::string camera_id) {
   // TODO: use this->sim to get the camera frame
+  // make sure the resulting ColorFrame memory (including its eigen matrix) is owned by this class
+  return ColorFrame();
 }
 
 void SimCameraSet::frame_callback() {
@@ -62,8 +64,8 @@ void SimCameraSet::frame_callback() {
   for (auto const& [camera_id, _] : this->cfg.camera2id) {
     ColorFrame frame = poll_frame(camera_id);
     fs.color_frames[camera_id] = frame;
-    // fs.timestamp = this->sim->get_time();
   }
+  fs.timestamp = this->sim->d->time;
   std::lock_guard<std::mutex> lock(buffer_lock);
   buffer.push_back(fs);
 }
