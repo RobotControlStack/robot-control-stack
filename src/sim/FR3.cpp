@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -43,7 +44,19 @@ namespace sim {
 FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
          std::shared_ptr<rl::mdl::Model> rlmdl)
     : sim{sim}, id{id}, rl{.mdl = rlmdl}, cfg{}, state{} {
-  this->rl.kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl);
+  construct();
+}
+FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
+         const std::string& rlmdl)
+    : sim{sim}, id{id}, cfg{}, state{} {
+  this->rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
+  construct();
+}
+
+FR3::~FR3() {}
+
+void FR3::construct() {
+  this->rl.kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl.mdl);
   this->rl.ik =
       std::make_shared<rl::mdl::JacobianInverseKinematics>(this->rl.kin.get());
   this->rl.ik->setDuration(
@@ -61,13 +74,6 @@ FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
                              this->cfg.seconds_between_callbacks);
   this->reset();
 }
-FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
-         const std::string& rlmdl)
-    : sim{sim}, id{id}, cfg{}, state{} {
-  FR3(sim, id, rl::mdl::UrdfFactory().create(rlmdl));
-}
-
-FR3::~FR3() {}
 
 void FR3::move_home() { this->set_joint_position(q_home); }
 

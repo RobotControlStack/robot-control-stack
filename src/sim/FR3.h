@@ -72,6 +72,7 @@ class FR3 : public common::Robot {
   bool collision_callback();
   bool convergence_callback();
   void init_ids();
+  void construct();
 };
 }  // namespace sim
 }  // namespace rcs
