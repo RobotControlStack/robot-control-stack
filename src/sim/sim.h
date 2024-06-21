@@ -22,6 +22,7 @@ struct ConditionCallback {
   std::function<bool(void)> cb;
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
+  bool last_return_value;
 };
 
 class Sim {
@@ -32,8 +33,7 @@ class Sim {
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
   void invoke_callbacks();
-  bool invoke_any_callbacks();
-  bool invoke_all_callbacks();
+  bool invoke_condition_callbacks();
 
  public:
   mjModel* m;

@@ -55,12 +55,10 @@ FR3::FR3(std::shared_ptr<Sim> sim, std::string& id,
                          this->cfg.seconds_between_callbacks);
   this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
                          this->cfg.seconds_between_callbacks);
-  this->sim->register_all_cb(
-      std::bind(&FR3::convergence_callback, this),
-      this->cfg.seconds_between_callbacks);
-  this->sim->register_any_cb(
-      std::bind(&FR3::collision_callback, this),
-      this->cfg.seconds_between_callbacks);
+  this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
+                             this->cfg.seconds_between_callbacks);
+  this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
+                             this->cfg.seconds_between_callbacks);
   this->reset();
 }
 
@@ -145,7 +143,7 @@ common::Pose FR3::get_cartesian_position() {
 void FR3::set_joint_position(const common::Vector7d& q) {
   this->state.target_angles = q;
   this->state.previous_angles = this->get_joint_position();
-  this->state.is_moving=true;
+  this->state.is_moving = true;
   this->state.is_arrived = false;
   for (size_t i = 0; i < std::size(this->ids.actuators); ++i) {
     this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
@@ -184,8 +182,8 @@ void FR3::is_moving_callback() {
 
 void FR3::is_arrived_callback() {
   common::Vector7d current_angles = this->get_joint_position();
-  this->state.is_arrived =
-      this->state.target_angles.isApprox(current_angles, this->cfg.joint_rotational_tolerance);
+  this->state.is_arrived = this->state.target_angles.isApprox(
+      current_angles, this->cfg.joint_rotational_tolerance);
 }
 
 bool FR3::collision_callback() {
