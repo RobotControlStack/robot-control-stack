@@ -32,7 +32,7 @@ struct FrameSet {
 
 class SimCameraSet {
  public:
-  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim, SimCameraConfig &cfg);
+  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim, const SimCameraConfig &cfg);
   ~SimCameraSet();
 
   int buffer_size();
@@ -40,7 +40,7 @@ class SimCameraSet {
 
   FrameSet get_latest_frameset();
   FrameSet get_timestamp_frameset(float ts);
-  /** TODO: method that returns all frames within a timestamp range*/
+  /** TODO: method that returns all frames within a timestamp range */
 
  private:
   const SimCameraConfig cfg;
