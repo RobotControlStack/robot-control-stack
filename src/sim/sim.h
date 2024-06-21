@@ -2,6 +2,7 @@
 #define RCS_SIM_H
 #include <functional>
 
+#include "GLFW/glfw3.h"
 #include "mujoco/mujoco.h"
 
 namespace rcs {
@@ -24,11 +25,9 @@ struct ConditionCallback {
   mjtNum last_call_timestamp;    // in seconds
   bool last_return_value;
 };
-
 class Sim {
  private:
   Config cfg;
-  size_t step_count;
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;

@@ -37,7 +37,8 @@ struct FR3State : common::RState {
 
 class FR3 : public common::Robot {
  public:
-  FR3(std::shared_ptr<rcs::sim::Sim> sim, std::string &id, std::shared_ptr<rl::mdl::Model> rlmdl);
+  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id, std::shared_ptr<rl::mdl::Model> rlmdl);
+  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id, const std::string &rlmdl);
   ~FR3() override;
   bool set_parameters(const FR3Config &cfg);
   FR3Config *get_parameters() override;

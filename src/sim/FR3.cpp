@@ -40,7 +40,7 @@ struct {
 namespace rcs {
 namespace sim {
 
-FR3::FR3(std::shared_ptr<Sim> sim, std::string& id,
+FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
          std::shared_ptr<rl::mdl::Model> rlmdl)
     : sim{sim}, id{id}, rl{.mdl = rlmdl}, cfg{}, state{} {
   this->rl.kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl);
@@ -60,6 +60,11 @@ FR3::FR3(std::shared_ptr<Sim> sim, std::string& id,
   this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->reset();
+}
+FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
+         const std::string& rlmdl)
+    : sim{sim}, id{id}, cfg{}, state{} {
+  FR3(sim, id, rl::mdl::UrdfFactory().create(rlmdl));
 }
 
 FR3::~FR3() {}
