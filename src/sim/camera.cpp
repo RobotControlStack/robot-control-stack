@@ -22,7 +22,7 @@
 namespace rcs {
 namespace sim {
 
-SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraConfig& cfg)
+SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, const SimCameraConfig& cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{} {
   this->sim->register_cb(std::bind(&SimCameraSet::frame_callback, this),
                          1.0 / this->cfg.frame_rate);

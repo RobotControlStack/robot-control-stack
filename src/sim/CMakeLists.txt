@@ -23,7 +23,7 @@ set_target_properties(
 
 add_library(sim)
 target_sources(sim
-  PRIVATE sim.cpp FR3.cpp
+  PRIVATE sim.cpp FR3.cpp camera.cpp
 )
 target_link_libraries(sim PUBLIC mujoco)
 

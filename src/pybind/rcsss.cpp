@@ -10,6 +10,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
+#include <sim/camera.h>
 
 #include <memory>
 
@@ -327,7 +328,8 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration_in_milliseconds)
+      .def_readwrite("ik_duration",
+                     &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
@@ -335,4 +337,25 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readonly("collision", &rcs::sim::FR3State::collision)
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
+  py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
+      .def(py::init<>())
+      .def_readwrite("camera2id", &rcs::sim::SimCameraConfig::camera2id)
+      .def_readwrite("frame_rate", &rcs::sim::SimCameraConfig::frame_rate)
+      .def_readwrite("resolution_width",
+                     &rcs::sim::SimCameraConfig::resolution_width)
+      .def_readwrite("resolution_height",
+                     &rcs::sim::SimCameraConfig::resolution_height);
+  py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
+      .def(py::init<>())
+      .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
+      .def_readonly("timestamp", &rcs::sim::FrameSet::color_frames);
+  py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    const rcs::sim::SimCameraConfig &>(),
+           py::arg("sim"), py::arg("cfg"))
+      .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
+      .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
+      .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
+      .def("get_timestamp_frameset",
+           &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
 }
