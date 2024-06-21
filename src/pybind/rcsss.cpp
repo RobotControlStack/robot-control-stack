@@ -327,14 +327,20 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def(py::init<>())
+      .def_readwrite("tcp_offset", &rcs::sim::FR3Config::tcp_offset)
+      .def_readwrite("joint_rotational_tolerance", &rcs::sim::FR3Config::joint_rotational_tolerance)
+      .def_readwrite("seconds_between_callbacks", &rcs::sim::FR3Config::seconds_between_callbacks)
       .def_readwrite("ik_duration_in_milliseconds",
                      &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
-      .def_readwrite("tcp_offset", &rcs::sim::FR3Config::tcp_offset);
+      .def_readwrite("trajectory_trace", &rcs::sim::FR3Config::trajectory_trace);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
-      .def_readonly("collision", &rcs::sim::FR3State::collision)
+      .def_readonly("previous_angles", &rcs::sim::FR3State::previous_angles)
+      .def_readonly("target_angles", &rcs::sim::FR3State::target_angles)
+      .def_readonly("inverse_tcp_offset", &rcs::sim::FR3State::inverse_tcp_offset)
       .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
+      .def_readonly("collision", &rcs::sim::FR3State::collision)
       .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
       .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")

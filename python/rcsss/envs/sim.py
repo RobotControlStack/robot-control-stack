@@ -1,19 +1,23 @@
 from typing import Any, cast
 
 import gymnasium as gym
+import rcsss
 from rcsss import sim
 from rcsss.envs.base import ArmObs, CartOrAngleControl, ControlMode, FR3Env
 
 
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env: FR3Env):
+    def __init__(self, env: FR3Env, simulation: sim.Sim):
         self.env: FR3Env
         super().__init__(env)
-        assert isinstance(self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        assert isinstance(
+            self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
         self.sim_robot = cast(sim.FR3, self.env.robot)
+        self.sim = simulation
 
     def step(self, action: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
         obs, _, _, _, info = self.env.step(action)
+        self.sim.step_until_convergence()
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
@@ -26,15 +30,17 @@ class FR3Sim(gym.Wrapper):
 
 
 if __name__ == "__main__":
-    robot = sim.FR3("models/mjcf/scene.xml", "models/urdf/fr3_from_panda.urdf", render=True)
+    simulation = sim.Sim("models/mjcf/fr3_modular/scene.xml")
+    robot = rcsss.sim.FR3(
+        simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
     cfg = sim.FR3Config()
-    cfg.ik_duration = 300
-    cfg.realtime = True
-    cfg.trajectory_trace = True
+    cfg.ik_duration_in_milliseconds = 300
+    cfg.realtime = False
     robot.set_parameters(cfg)
-    env = FR3Env(robot, ControlMode.ANGLES)
-    env_sim = FR3Sim(env)
+    env = FR3Env(robot, ControlMode.CARTESIAN)
+    env_sim = FR3Sim(env, simulation)
     obs, info = env_sim.reset()
     for _ in range(100):
         act = env_sim.action_space.sample()
         obs, reward, terminated, truncated, info = env_sim.step(act)
+        print(act, obs, info)
