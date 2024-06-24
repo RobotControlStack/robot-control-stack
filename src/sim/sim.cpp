@@ -24,29 +24,7 @@ bool get_last_return_value(ConditionCallback cb) {
   return cb.last_return_value;
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d) {
-  /* glfwInit returns true immediately if glfw is already initialized. I.e. it
-   * is fine to call it several times. */
-  glfwInit();
-  /* Invisible window for now, i.e. only camera support no GUI */
-  glfwWindowHint(GLFW_VISIBLE, 0);
-  /* GLFW windows are by default double buffered. That means that you have two
-   * rendering buffers; a front buffer and a back buffer. The front buffer is
-   * the one being displayed and the back buffer the one you render to.
-   *
-   * When the entire frame has been rendered, it is time to swap the back and
-   * the front buffers in order to display what has been rendered and begin
-   * rendering a new frame. This is done with glfwSwapBuffers.
-   * Source: https://www.glfw.org/docs/3.3/window_guide.html#buffer_swap
-   * This is how it is done in the record.cc example from mujoco. I suppose you
-   * don't need this double buffer for offscreen rendering.*/
-  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
-  GLFWwindow* offscreen_context =
-      glfwCreateWindow(800, 800, "Invisible window", NULL, NULL);
-  if (!offscreen_context) {
-    throw std::runtime_error("Could not create GLFW window");
-  }
-};
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d){};
 
 bool Sim::set_config(const Config& cfg) {
   if (cfg.async) {
