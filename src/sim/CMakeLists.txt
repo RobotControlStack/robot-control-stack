@@ -24,12 +24,9 @@ set_target_properties(
 
 add_library(sim)
 target_sources(sim
-  PRIVATE sim.cpp FR3.cpp
+  PRIVATE sim.cpp FR3.cpp renderer.cpp
 )
-target_link_libraries(sim PUBLIC mujoco glfw)
-
-target_sources(sim PRIVATE FR3.cpp)
-target_link_libraries(sim PUBLIC common mujoco mdl)
+target_link_libraries(sim PUBLIC glfw common mujoco mdl)
 
 add_executable(test_sim test.cpp sim.cpp)
 target_link_libraries(test_sim PRIVATE sim mujoco common mdl glfw)
