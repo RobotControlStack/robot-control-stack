@@ -35,7 +35,7 @@ class FR3 : public common::Robot {
   FR3(mjModel *m, mjData *d, std::shared_ptr<rl::mdl::Model> mdl,
       std::optional<bool> render = true);
   ~FR3() override;
-  bool set_parameters(const common::RConfig &cfg) override;
+  bool set_parameters(const FR3Config &cfg);
   FR3Config *get_parameters() override;
   FR3State *get_state() override;
   common::Pose get_cartesian_position() override;

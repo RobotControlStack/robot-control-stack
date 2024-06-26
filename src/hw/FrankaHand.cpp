@@ -20,14 +20,12 @@ FrankaHand::FrankaHand(const std::string &ip,
 
 FrankaHand::~FrankaHand() {}
 
-bool FrankaHand::set_parameters(const common::GConfig &cfg) {
-  auto fhcfg = dynamic_cast<const FHConfig &>(cfg);
-
+bool FrankaHand::set_parameters(const FHConfig &cfg) {
   franka::GripperState gripper_state = gripper.readOnce();
-  if (gripper_state.max_width < fhcfg.grasping_width) {
+  if (gripper_state.max_width < cfg.grasping_width) {
     return false;
   }
-  this->cfg = fhcfg;
+  this->cfg = cfg;
   return true;
 }
 

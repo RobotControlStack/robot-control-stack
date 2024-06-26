@@ -10,15 +10,6 @@ NRobotsWithGripper::NRobotsWithGripper(
 NRobotsWithGripper::~NRobotsWithGripper() {}
 
 // ROBOT FUNCTIONS
-void NRobotsWithGripper::set_parameters_r(const std::vector<size_t> &idxs,
-                                          const std::vector<RConfig> &cfgs) {
-  assert(idxs.size() == cfgs.size());
-  std::function<void(size_t)> f = [this, &idxs, &cfgs](size_t i) {
-    this->robots_with_gripper[idxs[i]]->robot->set_parameters(cfgs[i]);
-  };
-  NRobotsWithGripper::execute_parallel(f, idxs.size());
-}
-
 std::vector<std::unique_ptr<RConfig>> NRobotsWithGripper::get_parameters_r(
     const std::vector<size_t> &idxs) {
   std::function<std::unique_ptr<RConfig>(size_t)> f = [this, &idxs](size_t i) {
@@ -80,18 +71,6 @@ void NRobotsWithGripper::set_cartesian_position(const std::vector<size_t> &idxs,
 }
 
 // GRIPPER FUNCTIONS
-void NRobotsWithGripper::set_parameters_g(const std::vector<size_t> idxs,
-                                          const std::vector<GConfig> cfgs) {
-  assert(idxs.size() == cfgs.size());
-  std::function<void(size_t)> f = [this, &idxs, &cfgs](size_t i) {
-    if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
-      this->robots_with_gripper[idxs[i]]->gripper.value()->set_parameters(
-          cfgs[i]);
-    }
-  };
-  NRobotsWithGripper::execute_parallel(f, idxs.size());
-}
-
 std::vector<std::optional<std::unique_ptr<GConfig>>>
 NRobotsWithGripper::get_parameters_g(const std::vector<size_t> &idxs) {
   std::function<std::optional<std::unique_ptr<GConfig>>(size_t)> f =

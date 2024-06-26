@@ -42,7 +42,7 @@ class FrankaHand : public common::Gripper {
              const std::optional<FHConfig> &cfg = std::nullopt);
   ~FrankaHand() override;
 
-  bool set_parameters(const common::GConfig &cfg) override;
+  bool set_parameters(const FHConfig &cfg);
 
   FHConfig *get_parameters() override;
 

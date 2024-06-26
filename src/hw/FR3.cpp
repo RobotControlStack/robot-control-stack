@@ -52,11 +52,9 @@ FR3::~FR3() {}
  * @param cfg The configuration for the robot, it should be a FR3Config type
  * otherwise the call will fail
  */
-bool FR3::set_parameters(const common::RConfig &cfg) {
-  auto fr3cfg = dynamic_cast<const FR3Config &>(cfg);
-
-  this->cfg = fr3cfg;
-  this->cfg.speed_factor = std::min(std::max(fr3cfg.speed_factor, 0.0), 1.0);
+bool FR3::set_parameters(const FR3Config &cfg) {
+  this->cfg = cfg;
+  this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
   if (this->cfg.load_parameters.has_value()) {
     auto load_value = &(this->cfg.load_parameters.value());

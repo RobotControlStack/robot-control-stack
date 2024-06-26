@@ -1,21 +1,47 @@
 stages:
-  - build_cpp
-  - lint_cpp
-  - build_py
-  - lint_py
+  - cpp
+  - python_pre_install
+  - python
+  - python_post_install
 
-build_cpp:
-  stage: build_cpp
+cpp_format:
+  stage: cpp
   script:
-    - clang-format --dry-run -Werror -i $(find src -name '*.cpp' -o -name '*.cc' -o -name '*.h')
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja -S .
-    - cmake --build build
-    - clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
+    - make cppcheckformat
 
-build_py:
-  stage: build_py
-  script: echo TODO
+gcc_compile:
+  stage: cpp
+  script:
+    - make gcccompile
 
-lint_py:
-  stage: lint_py
-  script: echo TODO
+clang_compile:
+  stage: cpp
+  script:
+    - make clangcompile
+    - make cpplint
+
+python_dependencies:
+  stage: python_pre_install
+  script:
+    - pip3 install --break-system-packages -r requirements_dev.txt
+
+python_format:
+  stage: python
+  script:
+    - make pycheckformat 
+
+python_lint:
+  stage: python
+  script:
+    - make pylint 
+
+python_build:
+  stage: python
+  script:
+    - pip3 install --break-system-packages .
+    - make stubgen && git diff --exit-code
+
+python_unittest:
+  stage: python_post_install
+  script:
+    - make pytest
