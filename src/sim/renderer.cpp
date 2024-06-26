@@ -1,16 +1,19 @@
-#include "renderer.h"
-
 #include <mujoco/mjrender.h>
 #include <mujoco/mujoco.h>
+#include <stdexcept>
 
-Renderer::Renderer(std::shared_ptr<rcs::sim::Sim> sim) : sim{sim} {
+#include "sim/sim.h"
+namespace rcs {
+namespace sim {
+
+Renderer::Renderer(mjModel* m) : m{m} {
   if (!glfwInit()) {
     throw std::runtime_error("Could not initialize GLFW");
   }
   mjv_defaultOption(&this->opt);
   mjv_defaultScene(&this->scene);
   size_t max_geoms = 2000;
-  mjv_makeScene(this->sim->m, &this->scene, max_geoms);
+  mjv_makeScene(this->m, &this->scene, max_geoms);
 }
 
 Renderer::~Renderer() {
@@ -22,16 +25,16 @@ Renderer::~Renderer() {
 size_t Renderer::register_context(size_t width, size_t height, bool offscreen) {
   // create invisible window, single-buffered
   if (offscreen) {
-  glfwWindowHint(GLFW_VISIBLE, 0);
+    glfwWindowHint(GLFW_VISIBLE, 0);
   } else {
     glfwWindowHint(GLFW_VISIBLE, 1);
   }
+  // In record.cc this is false, glfw says in practice you always want true.
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
-  GLFWwindow* window =
-      glfwCreateWindow(width, height, "Invisible window", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(width, height, "rcs", NULL, NULL);
   glfwMakeContextCurrent(window);
   mjrContext ctx;
-  mjr_makeContext(this->sim->m, &ctx, 200);
+  mjr_makeContext(this->m, &ctx, 200);
   if (offscreen) {
     mjr_setBuffer(mjFB_OFFSCREEN, &ctx);
   } else {
@@ -45,3 +48,5 @@ mjrContext& Renderer::get_context(size_t id) {
   glfwMakeContextCurrent(ctxs[id].first);
   return ctxs[id].second;
 }
+}  // namespace sim
+}  // namespace rcs

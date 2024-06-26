@@ -24,7 +24,7 @@ bool get_last_return_value(ConditionCallback cb) {
   return cb.last_return_value;
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d){};
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m){};
 
 bool Sim::set_config(const Config& cfg) {
   if (cfg.async) {
@@ -61,6 +61,17 @@ bool Sim::invoke_condition_callbacks() {
   return false;
 }
 
+void Sim::invoke_rendering_callbacks() {
+  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
+    RenderingCallback cb = this->rendering_callbacks[i];
+    mjtNum dt = this->d->time - cb.last_call_timestamp;
+    if (dt > cb.seconds_between_calls) {
+      mjrContext& ctx = this->renderer.get_context(cb.id);
+      cb.cb(ctx);
+    }
+  }
+}
+
 void Sim::step_until_convergence() {
   /* Reset the condition callbacks */
   for (size_t i = 0; i < std::size(this->any_callbacks); ++i) {
@@ -83,6 +94,7 @@ void Sim::step(size_t k) {
     mj_step1(this->m, this->d);
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
+    this->invoke_rendering_callbacks();
     if (this->cfg.realtime) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -104,6 +116,17 @@ void Sim::register_all_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
   this->all_callbacks.push_back(
       ConditionCallback{cb, seconds_between_calls, 0.0, false});
+}
+
+void Sim::register_rendering_callback(std::function<void(mjrContext&)> cb,
+                                      mjtNum seconds_between_calls,
+                                      size_t width, size_t height,
+                                      bool offscreen) {
+  this->rendering_callbacks.push_back(RenderingCallback{
+      .cb = cb,
+      .id = this->renderer.register_context(width, height, offscreen),
+      .seconds_between_calls = seconds_between_calls,
+      .last_call_timestamp = 0});
 }
 }  // namespace sim
 }  // namespace rcs

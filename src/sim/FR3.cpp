@@ -41,6 +41,7 @@ struct {
 namespace rcs {
 namespace sim {
 
+// TODO: use C++11 feature to call one constructor from another
 FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
          std::shared_ptr<rl::mdl::Model> rlmdl)
     : sim{sim}, id{id}, rl{.mdl = rlmdl}, cfg{}, state{} {
@@ -187,7 +188,7 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
 void FR3::is_moving_callback() {
   common::Vector7d current_angles = this->get_joint_position();
   this->state.is_moving =
-      not this->state.previous_angles.isApprox(current_angles, 0.0001);
+      not this->state.previous_angles.isApprox(current_angles, 0.0001); // TODO: careful with isapprox
   this->state.previous_angles = current_angles;
 }
 
