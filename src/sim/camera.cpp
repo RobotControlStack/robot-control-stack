@@ -24,8 +24,8 @@ namespace sim {
 
 SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, const SimCameraConfig& cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{} {
-  this->sim->register_cb(std::bind(&SimCameraSet::frame_callback, this),
-                         1.0 / this->cfg.frame_rate);
+  this->sim->register_rendering_callback(std::bind(&SimCameraSet::frame_callback, this),
+                         1.0 / this->cfg.frame_rate, this->cfg.resolution_width, this->cfg.resolution_height, false);
 }
 
 SimCameraSet::~SimCameraSet() {}
@@ -53,16 +53,17 @@ FrameSet SimCameraSet::get_timestamp_frameset(float ts) {
   return FrameSet();
 }
 
-ColorFrame SimCameraSet::poll_frame(std::string camera_id) {
+ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx) {
   // TODO: use this->sim to get the camera frame
   // make sure the resulting ColorFrame memory (including its eigen matrix) is owned by this class
+  // TODO: Before we render the camera we might need to call mjv_updateScene
   return ColorFrame();
 }
 
-void SimCameraSet::frame_callback() {
+void SimCameraSet::frame_callback(mjrContext& ctx) {
   FrameSet fs;
   for (auto const& [camera_id, _] : this->cfg.camera2id) {
-    ColorFrame frame = poll_frame(camera_id);
+    ColorFrame frame = poll_frame(camera_id, ctx);
     fs.color_frames[camera_id] = frame;
   }
   fs.timestamp = this->sim->d->time;
