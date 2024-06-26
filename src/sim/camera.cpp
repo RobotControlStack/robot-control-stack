@@ -1,5 +1,5 @@
 
-#include "camera.h"
+#include "sim/camera.h"
 
 #include <math.h>
 
@@ -16,16 +16,18 @@
 #include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
-#include "rl/mdl/JacobianInverseKinematics.h"
-#include "rl/mdl/UrdfFactory.h"
 
 namespace rcs {
 namespace sim {
 
 SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, const SimCameraConfig& cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{} {
-  this->sim->register_rendering_callback(std::bind(&SimCameraSet::frame_callback, this),
-                         1.0 / this->cfg.frame_rate, this->cfg.resolution_width, this->cfg.resolution_height, false);
+  this->sim->register_rendering_callback(
+      [this](mjrContext& ctx, mjvScene& scene) {
+        this->frame_callback(ctx, scene);
+      },
+      1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
+      this->cfg.resolution_height, false);
 }
 
 SimCameraSet::~SimCameraSet() {}
@@ -53,22 +55,24 @@ FrameSet SimCameraSet::get_timestamp_frameset(float ts) {
   return FrameSet();
 }
 
-ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx) {
-  // TODO: use this->sim to get the camera frame
-  // make sure the resulting ColorFrame memory (including its eigen matrix) is owned by this class
-  // TODO: Before we render the camera we might need to call mjv_updateScene
-  return ColorFrame();
-}
-
-void SimCameraSet::frame_callback(mjrContext& ctx) {
+void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
   FrameSet fs;
   for (auto const& [camera_id, _] : this->cfg.camera2id) {
-    ColorFrame frame = poll_frame(camera_id, ctx);
+    ColorFrame frame = poll_frame(camera_id, ctx, scene);
     fs.color_frames[camera_id] = frame;
   }
   fs.timestamp = this->sim->d->time;
   std::lock_guard<std::mutex> lock(buffer_lock);
   buffer.push_back(fs);
+}
+
+ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx,
+                                    mjvScene& scene) {
+  // TODO: use this->sim to get the camera frame
+  // make sure the resulting ColorFrame memory (including its eigen matrix) is
+  // owned by this class
+  // TODO: Before we render the camera we might need to call mjv_updateScene
+  return ColorFrame();
 }
 
 }  // namespace sim

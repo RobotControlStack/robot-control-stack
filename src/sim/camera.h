@@ -6,9 +6,6 @@
 
 #include <mutex>
 
-#include "rl/mdl/JacobianInverseKinematics.h"
-#include "rl/mdl/Kinematic.h"
-#include "rl/mdl/Model.h"
 #include "sim/sim.h"
 
 namespace rcs {
@@ -33,7 +30,7 @@ struct FrameSet {
 
 class SimCameraSet {
  public:
-  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim, const SimCameraConfig &cfg);
+  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim, const SimCameraConfig& cfg);
   ~SimCameraSet();
 
   int buffer_size();
@@ -43,15 +40,16 @@ class SimCameraSet {
   FrameSet get_timestamp_frameset(float ts);
   /** TODO: method that returns all frames within a timestamp range */
 
+  void frame_callback(mjrContext& ctx, mjvScene& scene);
+
  private:
   const SimCameraConfig cfg;
   std::shared_ptr<Sim> sim;
   std::vector<FrameSet> buffer;
   std::mutex buffer_lock;
 
-  void frame_callback();
-
-  ColorFrame poll_frame(std::string camera_id);
+  ColorFrame poll_frame(std::string camera_id, mjrContext& ctx,
+                        mjvScene& scene);
 };
 }  // namespace sim
 }  // namespace rcs

@@ -41,7 +41,7 @@ struct ConditionCallback {
 };
 
 struct RenderingCallback {
-  std::function<void(mjrContext&)> cb;
+  std::function<void(mjrContext&, mjvScene&)> cb;
   size_t id;                     // rendering context id in renderer class
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
@@ -80,9 +80,10 @@ class Sim {
                        mjtNum seconds_between_calls);
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
-  void register_rendering_callback(std::function<void(mjrContext&)> cb,
-                                   mjtNum seconds_between_calls, size_t width,
-                                   size_t height, bool offscreen);
+  void register_rendering_callback(
+      std::function<void(mjrContext&, mjvScene&)> cb,
+      mjtNum seconds_between_calls, size_t width, size_t height,
+      bool offscreen);
 };
 }  // namespace sim
 }  // namespace rcs
