@@ -6,12 +6,10 @@
 #include <string>
 
 #include "Pose.h"
+#include "utils.h"
 
 namespace rcs {
 namespace common {
-
-typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
-typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
 
 struct RConfig {
   virtual ~RConfig(){};

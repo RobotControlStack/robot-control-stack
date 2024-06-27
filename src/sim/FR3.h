@@ -1,6 +1,7 @@
 #ifndef RCS_FR3SIM_H
 #define RCS_FR3SIM_H
 #include <common/Pose.h>
+#include <common/utils.h>
 #include <common/Robot.h>
 #include <mujoco/mujoco.h>
 

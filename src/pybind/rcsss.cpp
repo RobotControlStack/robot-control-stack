@@ -1,6 +1,7 @@
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
+#include <common/utils.h>
 #include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
@@ -153,6 +154,7 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_q", &rcs::common::Pose::rotation_q)
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
+      .def("xyzrpy", &rcs::common::Pose::xyzrpy)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
