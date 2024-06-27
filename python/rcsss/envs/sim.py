@@ -4,7 +4,11 @@ import gymnasium as gym
 import rcsss
 from rcsss import sim
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet
-from rcsss.envs.base import ArmObs, CameraSetWrapper, CartOrAngleControl, ControlMode, FR3Env
+from rcsss.envs.base import (
+    CameraSetWrapper,
+    ControlMode,
+    FR3Env,
+)
 
 
 class FR3Sim(gym.Wrapper):
@@ -15,7 +19,7 @@ class FR3Sim(gym.Wrapper):
         self.sim_robot = cast(sim.FR3, self.env.robot)
         self.sim = simulation
 
-    def step(self, action: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
         obs, _, _, _, info = self.env.step(action)
         self.sim.step_until_convergence()
         state = self.sim_robot.get_state()
@@ -24,7 +28,7 @@ class FR3Sim(gym.Wrapper):
         # truncate episode if collision
         return obs, 0, False, state.collision or not state.ik_success, info
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ArmObs, dict[str, Any]]:
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
         # TODO: reset sim
         return self.env.reset(seed, options)
 
@@ -38,7 +42,7 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.CARTESIAN)
     env_sim = FR3Sim(env, simulation)
-    cam_cfg = SimCameraConfig(camera2id={"birdeye-camera": "birdeye-camera"})
+    cam_cfg = SimCameraConfig(camera2id={"birdeye": "birdeye-camera"})
     camera_set = SimCameraSet(simulation, cam_cfg)
     env_cam = CameraSetWrapper(env, camera_set)
     # TODO: test env_cam
@@ -46,4 +50,4 @@ if __name__ == "__main__":
     for _ in range(100):
         act = env_sim.action_space.sample()
         obs, reward, terminated, truncated, info = env_sim.step(act)
-        print(act, obs, info) # noqa: T201
+        print(act, obs, info)  # noqa: T201

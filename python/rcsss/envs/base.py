@@ -2,98 +2,142 @@
 
 import copy
 from enum import Enum
-from typing import Any, Literal, TypeAlias, TypedDict, cast
+from typing import Annotated, Any, TypeAlias, cast, get_type_hints
 
 import gymnasium as gym
 import numpy as np
 from rcsss import common
 from rcsss.camera.interface import BaseCameraSet
-
-Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
-Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
-
-RPY_SPACE = gym.spaces.Box(low=np.deg2rad(-180), high=np.deg2rad(180), shape=(3,))
-XYZ_SPACE = gym.spaces.Box(low=np.array([-0.855, -0.855, 0]), high=np.array([0.855, 0.855, 0.1188]), shape=(3,))
-
-POSE_SPACE = gym.spaces.Dict({"rpy": RPY_SPACE, "xyz": XYZ_SPACE})
+from rcsss.envs.space_utils import ObservationInfoWrapper, RCSpaceType, Vec6Type, Vec7Type, get_space, get_space_keys
 
 
-class PoseDictType(TypedDict):
-    rpy: Vec3Type
-    xyz: Vec3Type
+class PoseDictType(RCSpaceType):
+    pose: Annotated[
+        Vec6Type,
+        gym.spaces.Box(
+            low=np.array([-0.855, -0.855, 0, -np.deg2rad(180), -np.deg2rad(180), -np.deg2rad(180)]),
+            high=np.array([0.855, 0.855, 0.1188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
+            dtype=np.float32,
+        ),
+    ]
 
 
-ANGLES_SPACE = gym.spaces.Dict(
-    {
-        "angles": gym.spaces.Box(
+class LimitedPoseRelDictType(RCSpaceType):
+    pose: Annotated[
+        Vec6Type,
+        lambda max_cart_mov: gym.spaces.Box(
+            low=np.array(3 * [-max_cart_mov] + 3 * [-np.deg2rad(180)]),
+            high=np.array(3 * [max_cart_mov] + 3 * [np.deg2rad(180)]),
+            dtype=np.float32,
+        ),
+        "cart_limits",
+    ]
+
+
+class JointsDictType(RCSpaceType):
+    joints: Annotated[
+        Vec7Type,
+        gym.spaces.Box(
             low=np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]),
             high=np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895]),
             dtype=np.float32,
-            shape=(7,),
-        )
-    }
-)
+        ),
+    ]
 
 
-class ArmObs(TypedDict):
-    pose: PoseDictType
-    angles: Vec7Type
+class LimitedJointsRelDictType(RCSpaceType):
+    joints: Annotated[
+        Vec7Type,
+        lambda max_joint_mov: gym.spaces.Box(
+            low=np.array(7 * [-max_joint_mov]),
+            high=np.array(7 * [max_joint_mov]),
+            dtype=np.float32,
+        ),
+        "joint_limits",
+    ]
+
+
+class GripperDictType(RCSpaceType):
+    # 0 for closed, 1 for open (>=0.5 for open)
+    gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+
+
+class CameraDictType(RCSpaceType):
+    frames: dict[
+        Annotated[str, "camera_names"],
+        Annotated[
+            np.ndarray,
+            # needs to be filled with values downstream
+            lambda height, width: gym.spaces.Box(
+                low=0,
+                high=255,
+                shape=(height, width, 3),
+                dtype=np.uint8,
+            ),
+            "frame",
+        ],
+    ]
+
+
+# joining works with inhertiance but need to inherit from protocol again
+class ArmObsType(PoseDictType, JointsDictType): ...
+
+
+CartOrJointContType: TypeAlias = PoseDictType | JointsDictType
+LimitedCartOrJointContType: TypeAlias = LimitedPoseRelDictType | LimitedJointsRelDictType
 
 
 class ControlMode(Enum):
-    ANGLES = 1
+    JOINTS = 1
     CARTESIAN = 2
 
 
-CartOrAngleControl: TypeAlias = Vec7Type | PoseDictType
-
-
-class FR3Env(gym.Env[ArmObs, CartOrAngleControl]):
+class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
     """Joint Gym Environment for Franka Research 3."""
+
+    # TODO: move types as parameters to the class such that we have
+    # a hardware agnostic class
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
         self.robot = robot
         self.control_mode = control_mode
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
-        if control_mode == ControlMode.ANGLES:
-            self.action_space = ANGLES_SPACE
+        if control_mode == ControlMode.JOINTS:
+            self.action_space = get_space(JointsDictType)
+        elif control_mode == ControlMode.CARTESIAN:
+            self.action_space = get_space(PoseDictType)
         else:
-            self.action_space = POSE_SPACE
-        self.observation_space = gym.spaces.Dict(
-            {
-                "pose": POSE_SPACE,
-                "angles": ANGLES_SPACE["angles"],
-            }
+            msg = "Control mode not recognized!"
+            raise ValueError(msg)
+        self.observation_space = get_space(ArmObsType)
+
+    def _get_obs(self) -> ArmObsType:
+        return ArmObsType(
+            pose=self.robot.get_cartesian_position().xyzrpy(),
+            joints=self.robot.get_joint_position(),
         )
 
-    def _get_obs(self) -> ArmObs:
-        pose = self.robot.get_cartesian_position()
-        rpy = pose.rotation_rpy()
-        xyz = pose.translation()
-        return ArmObs(
-            pose=PoseDictType(rpy=np.array([rpy.roll, rpy.pitch, rpy.yaw]), xyz=np.array(xyz)),
-            angles=self.robot.get_joint_position(),
-        )
-
-    def angle_step(self, act: Vec7Type) -> None:
+    def joint_step(self, act: Vec7Type) -> None:
         self.robot.set_joint_position(act)
 
     def cartesian_step(self, act: common.Pose) -> None:
         self.robot.set_cartesian_position(act)
 
-    def step(self, act: CartOrAngleControl) -> tuple[ArmObs, float, bool, bool, dict]:
-        if self.control_mode == ControlMode.ANGLES and isinstance(act, np.ndarray):
-            self.angle_step(act)
+    def step(self, act: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
+        if self.control_mode == ControlMode.JOINTS and isinstance(act, np.ndarray):
+            self.joint_step(act)
         elif self.control_mode == ControlMode.CARTESIAN and isinstance(act, dict):
-            act = cast(PoseDictType, act)
+            act = np.cast(PoseDictType, act)
             self.cartesian_step(common.Pose(act["rpy"], act["xyz"]))
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
         return self._get_obs(), 0, False, False, {}
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ArmObs, dict[str, Any]]:
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[ArmObsType, dict[str, Any]]:
         if seed is not None:
             msg = "seeding not implemented yet"
             raise NotImplementedError(msg)
@@ -110,96 +154,85 @@ class RelativeActionSpace(gym.ActionWrapper):
     def __init__(self, env):
         self.env: FR3Env
         super().__init__(env)
-        self.action_space = self._create_action_space(self.action_space)
-
-    def _create_action_space(self, action_space: gym.spaces.Dict) -> gym.spaces.Space:
-        action_space = copy.deepcopy(action_space)
-        if self.env.control_mode == ControlMode.CARTESIAN:
-            xyz = gym.spaces.Box(
-                low=np.array(3 * [-self.MAX_CART_MOV]),
-                high=np.array(3 * [self.MAX_CART_MOV]),
-                shape=(3,),
+        self.action_space: gym.spaces.Dict
+        if self.env.control_mode == ControlMode.JOINTS:
+            self.action_space.spaces.update(
+                get_space(LimitedPoseRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
-            action_space.spaces.update({"rpy": RPY_SPACE, "xyz": xyz})
-        elif self.env.control_mode == ControlMode.ANGLES:
-            angle_space = gym.spaces.Box(
-                low=np.array(7 * [-self.MAX_JOINT_MOV]),
-                high=np.array(7 * [self.MAX_JOINT_MOV]),
-                dtype=np.float32,
-                shape=(7,),
+        elif self.env.control_mode == ControlMode.CARTESIAN:
+            self.action_space.spaces.update(
+                get_space(
+                    LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
+                ).spaces
             )
-            action_space.spaces.update({"joints": angle_space})
-        return action_space
+        else:
+            msg = "Control mode not recognized!"
+            raise ValueError(msg)
 
-    def action(self, action: CartOrAngleControl):
-        if self.env.control_mode == ControlMode.ANGLES and isinstance(action, np.ndarray):
-            act = cast(np.ndarray, act)
-            return np.clip(
-                self.env.robot.get_joint_position() + act, ANGLES_SPACE["angles"].low, ANGLES_SPACE["angles"].high
+    def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
+        if self.env.control_mode == ControlMode.JOINTS:
+            assert isinstance(action, LimitedJointsRelDictType), "JointsDictType expected."
+            joint_space: gym.spaces.Box = get_space(JointsDictType).spaces["joints"]
+            return JointsDictType(
+                joints=np.clip(
+                    self.env.robot.get_joint_position() + action["joints"], joint_space.low, joint_space.high
+                )
             )
 
-        elif self.env.control_mode == ControlMode.CARTESIAN and isinstance(action, dict):
-            act = cast(PoseDictType, act)
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(act["rpy"], act["xyz"])
+        elif self.env.control_mode == ControlMode.CARTESIAN:
+            assert isinstance(action, LimitedPoseRelDictType), "PoseDictType expected."
+            pose_space: gym.spaces.Box = get_space(PoseDictType).spaces["pose"]
+            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+                translation=action["pose"][:3], rpy_vector=action["pose"][3:]
+            )
             return PoseDictType(
-                rpy=unclipped_pose.rotation_rpy().as_vector(),
-                xyz=np.clip(unclipped_pose.translation, XYZ_SPACE.low, XYZ_SPACE.high),
+                pose=np.concatenate(
+                    np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    unclipped_pose.rotation_rpy().as_vector(),
+                )
             )
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
 
 
-class CameraSetWrapper(gym.ObservationWrapper):
-    FRAMES_KEY = "frames"
-
+class CameraSetWrapper(ObservationInfoWrapper):
     def __init__(self, env: FR3Env, camera_set: BaseCameraSet):
         self.env: FR3Env
         self.observation_space: gym.spaces.Dict
         super().__init__(env)
         self.camera_set = camera_set
-        self.observation_space = self._create_cam_obs_space(self.observation_space)
 
-    def _create_cam_obs_space(self, observation_space: gym.spaces.Dict) -> gym.spaces.Dict:
-        color_space = gym.spaces.Box(
-            low=0,
-            high=255,
-            shape=(self.camera_set.config.resolution_height, self.camera_set.config.resolution_width, 3),
-            dtype=np.uint8,
+        self.observation_space: gym.spaces.Dict
+        self.observation_space.spaces.update(
+            get_space(
+                CameraDictType,
+                child_dict_keys_to_unfold={"camera_names": camera_set.camera_names},
+                params={
+                    "frame": {
+                        "height": camera_set.config.resolution_height,
+                        "width": camera_set.config.resolution_height,
+                    }
+                },
+            ).spaces
         )
-        camera_obs_space = gym.spaces.Dict(
-            {
-                self.FRAMES_KEY: gym.spaces.Dict(
-                    {camera_name: color_space for camera_name in self.camera_set.camera_names}
-                ),
-            }
-        )
-        camera_obs_space.spaces.update(observation_space.spaces)
-        return camera_obs_space
+        self.camera_key = get_space_keys(CameraDictType)[0]
 
-    def _get_obs(self, obs: ArmObs, info: dict) -> tuple[dict, dict]:
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict, dict[str, Any]]:
+        self.camera_set.clear_buffer()
+        return super().reset(seed, options)
+
+    def observation(self, observation: dict, info: dict[str, Any]) -> dict[str, Any]:
         frameset = self.camera_set.get_latest_frames()
         assert frameset is not None, "No frame available."
         color_frame_dict: dict[str, np.ndarray] = {
             camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
         }
-        camera_obs = {}
-        camera_obs[self.FRAMES_KEY] = color_frame_dict
-        camera_obs.update(obs)
+        observation[self.camera_key] = color_frame_dict
 
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
-        return camera_obs, info
-
-    def step(self, action: CartOrAngleControl) -> tuple[dict, float, bool, bool, dict]:
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        camera_obs, info = self._get_obs(obs, info)
-        return camera_obs, reward, terminated, truncated, info
-
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict, dict[str, Any]]:
-        self.camera_set.clear_buffer()
-        obs, info = self.env.reset(seed, options)
-        return self._get_obs(obs, info)
+        return observation, info
 
 
 # TODO: sticky gripper, like in aloha
@@ -207,36 +240,25 @@ class GripperWrapper(gym.ObservationWrapper, gym.ActionWrapper):
     def __init__(self, env, gripper: common.Gripper):
         self.env: FR3Env
         super().__init__(env)
-        self.observation_space = self._create_gripper_space(self.observation_space)
-        self.action_space = self._create_gripper_space(self.action_space)
+        self.observation_space: gym.spaces.Dict
+        self.observation_space.spaces.update(get_space(GripperDictType).spaces)
+        self.action_space: gym.spaces.Dict
+        self.action_space.spaces.update(get_space(GripperDictType).spaces)
+        self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
         self._gripper_state = True
-
-    def _create_gripper_space(self, space: gym.spaces.Dict) -> gym.spaces.Dict:
-        gripper_space = gym.spaces.Dict(
-            {
-                # 0 for closed, 1 for open (>=0.5 for open)
-                "gripper": gym.spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(1,),
-                    dtype=np.float32,
-                )
-            }
-        )
-        gripper_space.spaces.update(space.spaces)
-        return gripper_space
 
     def reset(self, **kwargs):
         self._gripper.release()
         self._gripper_state = 1
         return super().reset(**kwargs)
 
-    def observation(self, observation):
-        observation["gripper"] = self._gripper_state
+    def observation(self, observation: dict[str, Any]) -> dict[str, Any]:
+        observation[self.gripper_key] = self._gripper_state
 
-    def action(self, action):
-        assert "gripper" in action, "Gripper action not found."
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        assert self.gripper_key in action, "Gripper action not found."
         self._gripper_state = round(action["gripper"])
         self._gripper.shut() if self._gripper_state == 0 else self._gripper.release()
-        return super().action(action)
+        del action[self.gripper_key]
+        return action
