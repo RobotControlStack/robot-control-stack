@@ -58,7 +58,7 @@ class Sim:
     def step_until_convergence(self) -> None: ...
 
 class SimCameraConfig:
-    camera2id: dict[str, str]
+    camera2mjcfname: dict[str, str]
     frame_rate: int
     resolution_height: int
     resolution_width: int

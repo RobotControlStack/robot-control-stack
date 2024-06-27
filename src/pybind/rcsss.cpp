@@ -368,7 +368,7 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::sim::FR3::reset);
   py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
       .def(py::init<>())
-      .def_readwrite("camera2id", &rcs::sim::SimCameraConfig::camera2id)
+      .def_readwrite("camera2mjcfname", &rcs::sim::SimCameraConfig::camera2mjcfname)
       .def_readwrite("frame_rate", &rcs::sim::SimCameraConfig::frame_rate)
       .def_readwrite("resolution_width",
                      &rcs::sim::SimCameraConfig::resolution_width)

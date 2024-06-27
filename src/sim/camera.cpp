@@ -57,7 +57,7 @@ FrameSet SimCameraSet::get_timestamp_frameset(float ts) {
 
 void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
   FrameSet fs;
-  for (auto const& [camera_id, _] : this->cfg.camera2id) {
+  for (auto const& [camera_id, _] : this->cfg.camera2mjcfname) {
     ColorFrame frame = poll_frame(camera_id, ctx, scene);
     fs.color_frames[camera_id] = frame;
   }

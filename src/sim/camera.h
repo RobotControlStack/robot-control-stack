@@ -12,7 +12,7 @@ namespace rcs {
 namespace sim {
 
 struct SimCameraConfig {
-  std::map<std::string, std::string> camera2id;
+  std::map<std::string, std::string> camera2mjcfname;
   int frame_rate;
   int resolution_width;
   int resolution_height;

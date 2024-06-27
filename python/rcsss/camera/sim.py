@@ -14,7 +14,7 @@ from rcsss.camera.interface import (
 
 
 class SimCameraConfig(BaseCameraConfig):
-    camera2id: dict[str, str] = {} # noqa: RUF012
+    camera2mjcfname: dict[str, str] = {}  # noqa: RUF012
 
 
 class SimCameraSet(_SimCameraSet):
@@ -26,7 +26,7 @@ class SimCameraSet(_SimCameraSet):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
         cpp_cfg = _SimCameraConfig()
-        cpp_cfg.camera2id = cfg.camera2id
+        cpp_cfg.camera2mjcfname = cfg.camera2mjcfname
         cpp_cfg.frame_rate = cfg.frame_rate
         cpp_cfg.resolution_width = cfg.resolution_width
         cpp_cfg.resolution_height = cfg.resolution_height
@@ -58,4 +58,4 @@ class SimCameraSet(_SimCameraSet):
     @property
     def camera_names(self) -> list[str]:
         """Returns a list of the activated human readable names of the cameras."""
-        return list(self._cfg.camera2id.keys())
+        return list(self._cfg.camera2mjcfname.keys())

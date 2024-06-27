@@ -42,7 +42,7 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.CARTESIAN)
     env_sim = FR3Sim(env, simulation)
-    cam_cfg = SimCameraConfig(camera2id={"birdeye": "birdeye-camera"})
+    cam_cfg = SimCameraConfig(camera2mjcfname={"birdeye": "birdeye-camera"})
     camera_set = SimCameraSet(simulation, cam_cfg)
     env_cam = CameraSetWrapper(env, camera_set)
     # TODO: test env_cam
