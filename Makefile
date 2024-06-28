@@ -1,5 +1,6 @@
 PYSRC = python/rcsss
 CPPSRC = src
+COMPILE_MODE = Release
 
 # CPP
 cppcheckformat:
@@ -14,11 +15,11 @@ cpplint:
 # NOTE: when changing the version, also change it in the pyproject.toml
 MUJOCO_VERSION=3.1.5
 gcccompile: 
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
 	cmake --build build
 
 clangcompile: 
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
 	cmake --build build
 
 # Auto generation of CPP binding stub files
