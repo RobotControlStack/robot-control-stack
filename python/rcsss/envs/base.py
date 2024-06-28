@@ -1,8 +1,7 @@
 """Gym API."""
 
-import copy
 from enum import Enum
-from typing import Annotated, Any, TypeAlias, cast, get_type_hints
+from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -111,6 +110,8 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
             msg = "Control mode not recognized!"
             raise ValueError(msg)
         self.observation_space = get_space(ArmObsType)
+        self.joints_key = get_space_keys(JointsDictType)[0]
+        self.pose_key = get_space_keys(PoseDictType)[0]
 
     def _get_obs(self) -> ArmObsType:
         return ArmObsType(
@@ -118,18 +119,13 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
             joints=self.robot.get_joint_position(),
         )
 
-    def joint_step(self, act: Vec7Type) -> None:
-        self.robot.set_joint_position(act)
-
-    def cartesian_step(self, act: common.Pose) -> None:
-        self.robot.set_cartesian_position(act)
-
-    def step(self, act: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
-        if self.control_mode == ControlMode.JOINTS and isinstance(act, np.ndarray):
-            self.joint_step(act)
-        elif self.control_mode == ControlMode.CARTESIAN and isinstance(act, dict):
-            act = np.cast(PoseDictType, act)
-            self.cartesian_step(common.Pose(act["rpy"], act["xyz"]))
+    def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
+        if self.control_mode == ControlMode.JOINTS and self.joints_key in action:
+            self.robot.set_joint_position(action[self.joints_key])
+        elif self.control_mode == ControlMode.CARTESIAN and self.pose_key in action:
+            self.robot.set_cartesian_position(
+                common.Pose(translation=action[self.pose_key][:3], rpy_vector=action[self.pose_key][3:])
+            )
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
@@ -168,22 +164,22 @@ class RelativeActionSpace(gym.ActionWrapper):
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
+        self.joints_key = get_space_keys(JointsDictType)[0]
+        self.pose_key = get_space_keys(PoseDictType)[0]
 
     def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
-        if self.env.control_mode == ControlMode.JOINTS:
-            assert isinstance(action, LimitedJointsRelDictType), "JointsDictType expected."
-            joint_space: gym.spaces.Box = get_space(JointsDictType).spaces["joints"]
+        if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
+            joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
             return JointsDictType(
                 joints=np.clip(
-                    self.env.robot.get_joint_position() + action["joints"], joint_space.low, joint_space.high
+                    self.env.robot.get_joint_position() + action[self.joints_key], joint_space.low, joint_space.high
                 )
             )
 
-        elif self.env.control_mode == ControlMode.CARTESIAN:
-            assert isinstance(action, LimitedPoseRelDictType), "PoseDictType expected."
-            pose_space: gym.spaces.Box = get_space(PoseDictType).spaces["pose"]
+        elif self.env.control_mode == ControlMode.CARTESIAN and self.pose_key in action:
+            pose_space: gym.spaces.Box = get_space(PoseDictType).spaces[self.pose_key]
             unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
-                translation=action["pose"][:3], rpy_vector=action["pose"][3:]
+                translation=action[self.pose_key][:3], rpy_vector=action[self.pose_key][3:]
             )
             return PoseDictType(
                 pose=np.concatenate(
