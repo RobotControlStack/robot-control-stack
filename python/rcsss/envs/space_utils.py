@@ -159,7 +159,7 @@ def get_space(
     Dict('frames': Dict('cam1': Dict('depth': Box(0, 255, (512, 512, 3), uint8), 'rgb': Box(0, 255, (128, 128, 3), uint8)), 'cam2': Dict('rgb': Box(0, 255, (512, 512, 3), uint8))), 'my_float': Box(0.0, 1.0, (1,), float32), 'my_int': Discrete(1))
 
     """
-    assert isinstance(tp, RCSpaceType), "Type must inherit from RCSpaceType."
+    assert tp.__class__.__name__ == "_TypedDictMeta", "Type must be a TypedDict type. Hint: inherit from RCSpaceType."
     def value(t, path=""):
         if get_origin(t) == dict:
             # recursive case: space has dict subspace which keys must be populated
@@ -203,7 +203,7 @@ def get_space(
     return gym.spaces.Dict({name: value(t) for name, t in get_type_hints(tp, include_extras=True).items()})
 
 def get_space_keys(tp: RCSpaceType) -> list[str]:
-    assert isinstance(tp, RCSpaceType), "Type must inherit from RCSpaceType."
+    assert tp.__class__.__name__ == "_TypedDictMeta", "Type must be a TypedDict type. Hint: inherit from RCSpaceType."
     return list(get_type_hints(tp).keys())
 
 

@@ -7,7 +7,7 @@ import numpy as np
 
 class TestPose:
     """
-    This script tests the methods of the Pose class and its multiple constructors.
+    This class tests the methods of the Pose class and its multiple constructors.
     """
 
     @pytest.fixture
