@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 
+import numpy as np
+
 from rcsss._core.sim import FrameSet as _FrameSet
 from rcsss._core.sim import SimCameraConfig as _SimCameraConfig
 from rcsss._core.sim import SimCameraSet as _SimCameraSet
@@ -46,7 +48,9 @@ class SimCameraSet(_SimCameraSet):
             return None
         frames: dict[str, Frame] = {}
         for frame_name, cpp_frame in cpp_frameset.color_frames.items():
-            cameraframe = CameraFrame(color=DataFrame(data=cpp_frame, timestamp=cpp_frameset.timestamp))
+            # copy, reshape and flip the frame
+            np_frame = np.copy(cpp_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[::-1]
+            cameraframe = CameraFrame(color=DataFrame(data=np_frame, timestamp=cpp_frameset.timestamp))
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
             frames[frame_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)

@@ -4,6 +4,7 @@
 #include <common/Robot.h>
 #include <mujoco/mujoco.h>
 
+#include <eigen3/Eigen/Eigen>
 #include <mutex>
 
 #include "sim/sim.h"
@@ -18,8 +19,8 @@ struct SimCameraConfig {
   int resolution_height;
 };
 
-// H*W x 3
-typedef Eigen::Matrix<char, -1, 3> ColorFrame;
+// (H,W,3)
+typedef Eigen::Matrix<unsigned char, Eigen::Dynamic, 1> ColorFrame;
 
 struct FrameSet {
   // TODO: think about who manges the memory for the frames
