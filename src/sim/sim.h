@@ -13,12 +13,12 @@ class Renderer {
   Renderer(mjModel* m);
   ~Renderer();
   size_t register_context(size_t width, size_t height, bool offscreen);
-  mjrContext& get_context(size_t id);
+  mjrContext* get_context(size_t id);
   mjvScene scene;
 
  private:
   mjModel* m;
-  std::vector<std::pair<GLFWwindow*, mjrContext>> ctxs;
+  std::vector<std::pair<GLFWwindow*, mjrContext*>> ctxs;
   mjvOption opt;
 };
 

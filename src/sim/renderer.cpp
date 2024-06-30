@@ -13,13 +13,16 @@ Renderer::Renderer(mjModel* m) : m{m} {
   mjv_defaultOption(&this->opt);
   mjv_defaultScene(&this->scene);
   size_t max_geoms = 2000;
+  mjv_defaultScene(&this->scene);
   mjv_makeScene(this->m, &this->scene, max_geoms);
 }
 
 Renderer::~Renderer() {
   for (size_t i = 0; i < std::size(this->ctxs); ++i) {
-    mjr_freeContext(&this->ctxs[i].second);
+    glfwDestroyWindow(this->ctxs[i].first);
+    mjr_freeContext(this->ctxs[i].second);
   }
+  mjv_freeScene(&this->scene);
 }
 
 size_t Renderer::register_context(size_t width, size_t height, bool offscreen) {
@@ -44,7 +47,7 @@ size_t Renderer::register_context(size_t width, size_t height, bool offscreen) {
   return std::size(this->ctxs) - 1;
 }
 
-mjrContext& Renderer::get_context(size_t id) {
+mjrContext* Renderer::get_context(size_t id) {
   glfwMakeContextCurrent(ctxs[id].first);
   return ctxs[id].second;
 }

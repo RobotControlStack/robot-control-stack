@@ -66,8 +66,8 @@ void Sim::invoke_rendering_callbacks() {
     RenderingCallback cb = this->rendering_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
     if (dt > cb.seconds_between_calls) {
-      mjrContext& ctx = this->renderer.get_context(cb.id);
-      cb.cb(ctx, this->renderer.scene);
+      mjrContext* ctx = this->renderer.get_context(cb.id);
+      cb.cb(*ctx, this->renderer.scene);
     }
   }
 }
