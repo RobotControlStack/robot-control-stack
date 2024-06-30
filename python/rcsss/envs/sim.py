@@ -29,8 +29,8 @@ class FR3Sim(gym.Wrapper):
         return obs, 0, False, state.collision or not state.ik_success, info
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
-        # TODO: reset sim
-        return self.env.reset(seed, options)
+        self.sim_robot.reset()
+        return self.env.reset(seed=seed, options=options)
 
 
 if __name__ == "__main__":
@@ -42,12 +42,11 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.CARTESIAN)
     env_sim = FR3Sim(env, simulation)
-    cam_cfg = SimCameraConfig(camera2mjcfname={"birdeye": "birdeye-camera"})
+    cam_cfg = SimCameraConfig(camera2mjcfname={"birdeye": "eye-in-hand_0"}, frame_rate=50)
     camera_set = SimCameraSet(simulation, cam_cfg)
-    env_cam = CameraSetWrapper(env, camera_set)
-    # TODO: test env_cam
-    obs, info = env_sim.reset()
+    env_cam = CameraSetWrapper(env_sim, camera_set)
+    obs, info = env_cam.reset()
     for _ in range(100):
-        act = env_sim.action_space.sample()
-        obs, reward, terminated, truncated, info = env_sim.step(act)
+        act = env_cam.action_space.sample()
+        obs, reward, terminated, truncated, info = env_cam.step(act)
         print(act, obs, info)  # noqa: T201

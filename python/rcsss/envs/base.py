@@ -216,16 +216,21 @@ class CameraSetWrapper(ObservationInfoWrapper):
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict, dict[str, Any]]:
         self.camera_set.clear_buffer()
-        return super().reset(seed, options)
+        return super().reset(seed=seed, options=options)
 
     def observation(self, observation: dict, info: dict[str, Any]) -> dict[str, Any]:
         frameset = self.camera_set.get_latest_frames()
+        if frameset is None:
+            observation[self.camera_key] = {}
+            info["camera_available"] = False
+            return observation, info
         assert frameset is not None, "No frame available."
         color_frame_dict: dict[str, np.ndarray] = {
             camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
         }
         observation[self.camera_key] = color_frame_dict
 
+        info["camera_available"] = True
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
         return observation, info

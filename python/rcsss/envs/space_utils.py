@@ -235,15 +235,16 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[WrapperObsType, dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`reset`, returning a modified observation using :meth:`self.observation`."""
-        obs, info = self.env.reset(seed=seed, options=options)
-        return self.observation(obs), info
+        observation, info = self.env.reset(seed=seed, options=options)
+        observation, info = self.observation(observation, info)
+        return observation, info
 
     def step(
         self, action: ActType
     ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`step` using :meth:`self.observation` on the returned observations."""
         observation, reward, terminated, truncated, info = self.env.step(action)
-        observation, info = self.observation(observation)
+        observation, info = self.observation(observation, info)
         return observation, reward, terminated, truncated, info
 
     def observation(self, observation: ObsType, info: dict[str, Any]) -> WrapperObsType:

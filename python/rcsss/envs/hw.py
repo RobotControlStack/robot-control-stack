@@ -25,4 +25,4 @@ class FR3HW(gym.Wrapper):
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
         self.hw_robot.move_home()
-        return self.env.reset(seed, options)
+        return self.env.reset(seed=seed, options=options)
