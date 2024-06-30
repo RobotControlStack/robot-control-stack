@@ -6,6 +6,7 @@
 
 #include <eigen3/Eigen/Eigen>
 #include <mutex>
+#include <optional>
 
 #include "sim/sim.h"
 
@@ -37,8 +38,8 @@ class SimCameraSet {
   int buffer_size();
   void clear_buffer();
 
-  FrameSet get_latest_frameset();
-  FrameSet get_timestamp_frameset(float ts);
+  std::optional<FrameSet> get_latest_frameset();
+  std::optional<FrameSet> get_timestamp_frameset(float ts);
   /** TODO: method that returns all frames within a timestamp range */
 
   void frame_callback(mjrContext& ctx, mjvScene& scene);

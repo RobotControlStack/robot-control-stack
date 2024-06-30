@@ -41,25 +41,28 @@ void SimCameraSet::clear_buffer() {
   buffer.clear();
 }
 
-FrameSet SimCameraSet::get_latest_frameset() {
+std::optional<FrameSet> SimCameraSet::get_latest_frameset() {
+  if (buffer.empty()) {
+    return std::nullopt;
+  }
   std::lock_guard<std::mutex> lock(buffer_lock);
   return buffer.back();
 }
-FrameSet SimCameraSet::get_timestamp_frameset(float ts) {
+std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
   std::lock_guard<std::mutex> lock(buffer_lock);
   for (auto it = buffer.rbegin(); it != buffer.rend(); ++it) {
     if (it->timestamp == ts) {
       return *it;
     }
   }
-  return FrameSet();
+  return std::nullopt;
 }
 
 void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
   FrameSet fs;
-  for (auto const& [camera_id, _] : this->cfg.camera2mjcfname) {
-    ColorFrame frame = poll_frame(camera_id, ctx, scene);
-    fs.color_frames[camera_id] = frame;
+  for (auto const& [cameraname, mjcfname] : this->cfg.camera2mjcfname) {
+    ColorFrame frame = poll_frame(mjcfname, ctx, scene);
+    fs.color_frames[cameraname] = frame;
   }
   fs.timestamp = this->sim->d->time;
   std::lock_guard<std::mutex> lock(buffer_lock);
