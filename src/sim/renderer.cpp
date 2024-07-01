@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "sim/sim.h"
+#include <iostream>
 namespace rcs {
 namespace sim {
 
@@ -13,14 +14,13 @@ Renderer::Renderer(mjModel* m) : m{m} {
   mjv_defaultOption(&this->opt);
   mjv_defaultScene(&this->scene);
   size_t max_geoms = 2000;
-  mjv_defaultScene(&this->scene);
   mjv_makeScene(this->m, &this->scene, max_geoms);
 }
 
 Renderer::~Renderer() {
   for (size_t i = 0; i < std::size(this->ctxs); ++i) {
-    glfwDestroyWindow(this->ctxs[i].first);
     mjr_freeContext(this->ctxs[i].second);
+    glfwDestroyWindow(this->ctxs[i].first);
   }
   mjv_freeScene(&this->scene);
 }

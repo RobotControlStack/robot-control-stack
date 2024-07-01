@@ -76,9 +76,6 @@ ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx,
   mjvCamera cam;
   mjvOption opt;
 
-  // run one computation to initialize all fields @TODO: verify if we need to
-  // step here or is handled by the caller mj_forward(model, data);
-
   // initialize visualization data structures
   mjv_defaultCamera(&cam);
   // TODO: default free camera as camera type
