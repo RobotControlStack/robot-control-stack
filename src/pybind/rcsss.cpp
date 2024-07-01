@@ -327,27 +327,40 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
+      .def_readwrite("tcp_offset", &rcs::sim::FR3Config::tcp_offset)
+      .def_readwrite("joint_rotational_tolerance",
+                     &rcs::sim::FR3Config::joint_rotational_tolerance)
+      .def_readwrite("seconds_between_callbacks",
+                     &rcs::sim::FR3Config::seconds_between_callbacks)
+      .def_readwrite("ik_duration_in_milliseconds",
+                     &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
+      .def_readonly("previous_angles", &rcs::sim::FR3State::previous_angles)
+      .def_readonly("target_angles", &rcs::sim::FR3State::target_angles)
+      .def_readonly("inverse_tcp_offset",
+                    &rcs::sim::FR3State::inverse_tcp_offset)
+      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
       .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
+      .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
+      .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
+  py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
+      .def(py::init([](long m, long d) {
+             return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
+           }),
+           py::arg("mjmdl"), py::arg("mjdata"))
+      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("step", &rcs::sim::Sim::step, py::arg("k"));
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
-      .def(py::init([](long mjmdl, long mjdata, const std::string rlmdl,
-                       std::optional<bool> render) {
-             return std::make_shared<rcs::sim::FR3>(
-                 (mjModel *)mjmdl, (mjData *)mjdata,
-                 rl::mdl::UrdfFactory().create(rlmdl), render);
-           }),
-           py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
-           py::arg("render") = true)
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+                    const std::string &>(),
+           py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("get_state", &rcs::sim::FR3::get_state)
-      .def("reset", &rcs::sim::FR3::reset)
-      .def("clear_markers", &rcs::sim::FR3::clear_markers);
+      .def("reset", &rcs::sim::FR3::reset);
 }
