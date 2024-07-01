@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <eigen3/Eigen/Eigen>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -27,7 +28,7 @@ SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, const SimCameraConfig& cfg)
         this->frame_callback(ctx, scene);
       },
       1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
-      this->cfg.resolution_height, false);
+      this->cfg.resolution_height, true);  // offscreen = true
 }
 
 SimCameraSet::~SimCameraSet() {}
@@ -71,11 +72,42 @@ void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
 
 ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx,
                                     mjvScene& scene) {
-  // TODO: use this->sim to get the camera frame
-  // make sure the resulting ColorFrame memory (including its eigen matrix) is
-  // owned by this class
-  // TODO: Before we render the camera we might need to call mjv_updateScene
-  return ColorFrame();
+  // TODO: manage the camera in attribute vector
+  mjvCamera cam;
+  mjvOption opt;
+
+  // run one computation to initialize all fields @TODO: verify if we need to
+  // step here or is handled by the caller mj_forward(model, data);
+
+  // initialize visualization data structures
+  mjv_defaultCamera(&cam);
+  // TODO: default free camera as camera type
+  // mjv_defaultFreeCamera(model, &cam);
+  mjv_defaultOption(&opt);
+
+  cam.type = mjCAMERA_FIXED;
+  cam.fixedcamid = mj_name2id(this->sim->m, mjOBJ_CAMERA, camera_id.c_str());
+
+  mjrRect viewport = mjr_maxViewport(&ctx);
+  int W = viewport.width;
+  int H = viewport.height;
+
+  // allocate rgb buffers
+  ColorFrame frame = ColorFrame::Zero(3 * W * H);
+
+  // update abstract scene
+  // TODO: we might be able to call this once for all cameras
+  // there is also a mjv_updateCamera function
+  mjv_updateScene(this->sim->m, this->sim->d, &opt, NULL, &cam, mjCAT_ALL,
+                  &scene);
+
+  // render scene in offscreen buffer
+  mjr_render(viewport, &scene, &ctx);
+
+  // read rgb and depth buffers
+  mjr_readPixels(frame.data(), NULL, viewport, &ctx);
+
+  return frame;
 }
 
 }  // namespace sim
