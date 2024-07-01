@@ -15,11 +15,11 @@ class Renderer {
   size_t register_context(size_t width, size_t height, bool offscreen);
   mjrContext* get_context(size_t id);
   mjvScene scene;
+  mjvOption opt;
 
  private:
   mjModel* m;
   std::vector<std::pair<GLFWwindow*, mjrContext*>> ctxs;
-  mjvOption opt;
 };
 
 struct Config {
@@ -41,7 +41,7 @@ struct ConditionCallback {
 };
 
 struct RenderingCallback {
-  std::function<void(mjrContext&, mjvScene&)> cb;
+  std::function<void(mjrContext&, mjvScene&, mjvOption&)> cb;
   size_t id;                     // rendering context id in renderer class
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
@@ -50,7 +50,6 @@ struct RenderingCallback {
 class Sim {
  private:
   Config cfg;
-  rcs::sim::Renderer renderer;
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
@@ -61,6 +60,7 @@ class Sim {
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)
+  rcs::sim::Renderer renderer;
   mjModel* m;
   mjData* d;
   Sim(mjModel* m, mjData* d);
@@ -81,7 +81,7 @@ class Sim {
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
   void register_rendering_callback(
-      std::function<void(mjrContext&, mjvScene&)> cb,
+      std::function<void(mjrContext&, mjvScene&, mjvOption&)> cb,
       mjtNum seconds_between_calls, size_t width, size_t height,
       bool offscreen);
 };

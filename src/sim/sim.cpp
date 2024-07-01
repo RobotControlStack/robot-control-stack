@@ -67,7 +67,7 @@ void Sim::invoke_rendering_callbacks() {
     mjtNum dt = this->d->time - cb.last_call_timestamp;
     if (dt > cb.seconds_between_calls) {
       mjrContext* ctx = this->renderer.get_context(cb.id);
-      cb.cb(*ctx, this->renderer.scene);
+      cb.cb(*ctx, this->renderer.scene, this->renderer.opt);
     }
   }
 }
@@ -119,7 +119,7 @@ void Sim::register_all_cb(std::function<bool(void)> cb,
 }
 
 void Sim::register_rendering_callback(
-    std::function<void(mjrContext&, mjvScene&)> cb,
+    std::function<void(mjrContext&, mjvScene&, mjvOption&)> cb,
     mjtNum seconds_between_calls, size_t width, size_t height, bool offscreen) {
   this->rendering_callbacks.push_back(RenderingCallback{
       .cb = cb,

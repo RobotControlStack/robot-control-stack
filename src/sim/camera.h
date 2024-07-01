@@ -42,7 +42,7 @@ class SimCameraSet {
   std::optional<FrameSet> get_timestamp_frameset(float ts);
   /** TODO: method that returns all frames within a timestamp range */
 
-  void frame_callback(mjrContext& ctx, mjvScene& scene);
+  void frame_callback(mjrContext& ctx, mjvScene& scene, mjvOption& opt);
 
  private:
   const SimCameraConfig cfg;
@@ -51,7 +51,7 @@ class SimCameraSet {
   std::mutex buffer_lock;
 
   ColorFrame poll_frame(std::string camera_id, mjrContext& ctx,
-                        mjvScene& scene);
+                        mjvScene& scene, mjvOption& opt);
 };
 }  // namespace sim
 }  // namespace rcs

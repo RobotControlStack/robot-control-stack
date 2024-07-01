@@ -24,8 +24,8 @@ namespace sim {
 SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, const SimCameraConfig& cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{} {
   this->sim->register_rendering_callback(
-      [this](mjrContext& ctx, mjvScene& scene) {
-        this->frame_callback(ctx, scene);
+      [this](mjrContext& ctx, mjvScene& scene, mjvOption& opt) {
+        this->frame_callback(ctx, scene, opt);
       },
       1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
       this->cfg.resolution_height, true);  // offscreen = true
@@ -59,10 +59,10 @@ std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
   return std::nullopt;
 }
 
-void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
+void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene, mjvOption& opt) {
   FrameSet fs;
   for (auto const& [cameraname, mjcfname] : this->cfg.camera2mjcfname) {
-    ColorFrame frame = poll_frame(mjcfname, ctx, scene);
+    ColorFrame frame = poll_frame(mjcfname, ctx, scene, opt);
     fs.color_frames[cameraname] = frame;
   }
   fs.timestamp = this->sim->d->time;
@@ -71,10 +71,9 @@ void SimCameraSet::frame_callback(mjrContext& ctx, mjvScene& scene) {
 }
 
 ColorFrame SimCameraSet::poll_frame(std::string camera_id, mjrContext& ctx,
-                                    mjvScene& scene) {
+                                    mjvScene& scene, mjvOption& opt) {
   // TODO: manage the camera in attribute vector
   mjvCamera cam;
-  mjvOption opt;
 
   // initialize visualization data structures
   mjv_defaultCamera(&cam);
