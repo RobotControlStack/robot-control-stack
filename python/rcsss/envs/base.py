@@ -7,11 +7,20 @@ import gymnasium as gym
 import numpy as np
 from rcsss import common
 from rcsss.camera.interface import BaseCameraSet
-from rcsss.envs.space_utils import ObservationInfoWrapper, RCSpaceType, Vec6Type, Vec7Type, get_space, get_space_keys
+from rcsss.envs.space_utils import (
+    ObservationInfoWrapper,
+    RCSpaceType,
+    Vec6Type,
+    Vec7Type,
+    get_space,
+    get_space_keys,
+)
 
 
-class PoseDictType(RCSpaceType):
-    pose: Annotated[
+class TRPYDictType(RCSpaceType):
+    """Pose format is in transpose[3],r,p,y"""
+
+    xyzrpy: Annotated[
         Vec6Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0, -np.deg2rad(180), -np.deg2rad(180), -np.deg2rad(180)]),
@@ -21,12 +30,35 @@ class PoseDictType(RCSpaceType):
     ]
 
 
-class LimitedPoseRelDictType(RCSpaceType):
-    pose: Annotated[
+class LimitedTRPYRelDictType(RCSpaceType):
+    xyzrpy: Annotated[
         Vec6Type,
         lambda max_cart_mov: gym.spaces.Box(
             low=np.array(3 * [-max_cart_mov] + 3 * [-np.deg2rad(180)]),
             high=np.array(3 * [max_cart_mov] + 3 * [np.deg2rad(180)]),
+            dtype=np.float32,
+        ),
+        "cart_limits",
+    ]
+
+
+class TQuartDictType(RCSpaceType):
+    tquart: Annotated[
+        Vec7Type,
+        gym.spaces.Box(
+            low=np.array([-0.855, -0.855, 0] + [-1] + [-np.inf] * 3),
+            high=np.array([0.855, 0.855, 0.1188] + [1] + [np.inf] * 3),
+            dtype=np.float32,
+        ),
+    ]
+
+
+class LimitedTQuartRelDictType(RCSpaceType):
+    tquart: Annotated[
+        Vec7Type,
+        lambda max_cart_mov: gym.spaces.Box(
+            low=np.array(3 * [-max_cart_mov] + [-1] + [-np.inf] * 3),
+            high=np.array(3 * [max_cart_mov] + [1] + [np.inf] * 3),
             dtype=np.float32,
         ),
         "cart_limits",
@@ -79,23 +111,21 @@ class CameraDictType(RCSpaceType):
 
 
 # joining works with inhertiance but need to inherit from protocol again
-class ArmObsType(PoseDictType, JointsDictType): ...
+class ArmObsType(TQuartDictType, JointsDictType): ...
 
 
-CartOrJointContType: TypeAlias = PoseDictType | JointsDictType
-LimitedCartOrJointContType: TypeAlias = LimitedPoseRelDictType | LimitedJointsRelDictType
+CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
+LimitedCartOrJointContType: TypeAlias = LimitedTQuartRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
 
 class ControlMode(Enum):
     JOINTS = 1
-    CARTESIAN = 2
+    CARTESIAN_TRPY = 2
+    CARTESIAN_TQuart = 3
 
 
 class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
     """Joint Gym Environment for Franka Research 3."""
-
-    # TODO: move types as parameters to the class such that we have
-    # a hardware agnostic class
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
         self.robot = robot
@@ -104,27 +134,36 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
         self.observation_space: gym.spaces.Dict
         if control_mode == ControlMode.JOINTS:
             self.action_space = get_space(JointsDictType)
-        elif control_mode == ControlMode.CARTESIAN:
-            self.action_space = get_space(PoseDictType)
+        elif control_mode == ControlMode.CARTESIAN_TRPY:
+            self.action_space = get_space(TRPYDictType)
+        elif control_mode == ControlMode.CARTESIAN_TQuart:
+            self.action_space = get_space(TQuartDictType)
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
         self.observation_space = get_space(ArmObsType)
         self.joints_key = get_space_keys(JointsDictType)[0]
-        self.pose_key = get_space_keys(PoseDictType)[0]
+        self.trpy_key = get_space_keys(TRPYDictType)[0]
+        self.tquart_key = get_space_keys(TQuartDictType)[0]
 
     def _get_obs(self) -> ArmObsType:
         return ArmObsType(
-            pose=self.robot.get_cartesian_position().xyzrpy(),
+            tquart=np.concat(
+                self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()
+            ),
             joints=self.robot.get_joint_position(),
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
         if self.control_mode == ControlMode.JOINTS and self.joints_key in action:
             self.robot.set_joint_position(action[self.joints_key])
-        elif self.control_mode == ControlMode.CARTESIAN and self.pose_key in action:
+        elif self.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.pose_key][:3], rpy_vector=action[self.pose_key][3:])
+                common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
+            )
+        elif self.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            self.robot.set_cartesian_position(
+                common.Pose(translation=action[self.tquart_key][:3], quaternion=action[self.tquart_key][3:])
             )
         else:
             msg = "Given type is not matching control mode!"
@@ -151,40 +190,66 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.env: FR3Env
         super().__init__(env)
         self.action_space: gym.spaces.Dict
-        if self.env.control_mode == ControlMode.JOINTS:
+        if self.env.control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
-                get_space(LimitedPoseRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
+                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
-        elif self.env.control_mode == ControlMode.CARTESIAN:
+        elif self.env.control_mode == ControlMode.JOINTS:
             self.action_space.spaces.update(
                 get_space(
                     LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
                 ).spaces
             )
+        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart:
+            self.action_space.spaces.update(
+                get_space(
+                    LimitedTQuartRelDictType, params={"cart_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
+                ).spaces
+            )
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
-        self.joints_key = get_space_keys(JointsDictType)[0]
-        self.pose_key = get_space_keys(PoseDictType)[0]
+        self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
+        self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
+        self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
 
     def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
         if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
             joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
+            limited_joint_space: gym.spaces.Box = get_space(LimitedJointsRelDictType).spaces[self.joints_key]
+            limited_joints = np.clip(action[self.joints_key], limited_joint_space.low, limited_joint_space.high)
             return JointsDictType(
-                joints=np.clip(
-                    self.env.robot.get_joint_position() + action[self.joints_key], joint_space.low, joint_space.high
-                )
+                joints=np.clip(self.env.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high)
             )
 
-        elif self.env.control_mode == ControlMode.CARTESIAN and self.pose_key in action:
-            pose_space: gym.spaces.Box = get_space(PoseDictType).spaces[self.pose_key]
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
-                translation=action[self.pose_key][:3], rpy_vector=action[self.pose_key][3:]
+        elif self.env.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
+            limited_pose_space: gym.spaces.Box = get_space(LimitedTRPYRelDictType).spaces[self.trpy_key]
+            clipped_translation = np.clip(
+                action[self.trpy_key][:3], limited_pose_space.low[:3], limited_pose_space.high[3:]
             )
-            return PoseDictType(
-                pose=np.concatenate(
+            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+                translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
+            )
+            return TRPYDictType(
+                xyzrpy=np.concatenate(
                     np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
                     unclipped_pose.rotation_rpy().as_vector(),
+                )
+            )
+        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
+            limited_pose_space: gym.spaces.Box = get_space(LimitedTRPYRelDictType).spaces[self.trpy_key]
+            clipped_translation = np.clip(
+                action[self.tquart_key][:3], limited_pose_space.low[:3], limited_pose_space.high[3:]
+            )
+            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+                translation=limited_pose_space, quaternion=action[self.tquart_key][3:]
+            )
+            return TQuartDictType(
+                tquart=np.concatenate(
+                    np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    unclipped_pose.rotation_q(),
                 )
             )
         else:
