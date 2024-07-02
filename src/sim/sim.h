@@ -1,6 +1,7 @@
 #ifndef RCS_SIM_H
 #define RCS_SIM_H
 #include <functional>
+#include <string>
 
 #include "GLFW/glfw3.h"
 #include "mujoco/mujoco.h"
@@ -12,14 +13,15 @@ class Renderer {
  public:
   Renderer(mjModel* m);
   ~Renderer();
-  size_t register_context(size_t width, size_t height, bool offscreen);
-  mjrContext* get_context(size_t id);
+  void register_context(const std::string& id, size_t width, size_t height,
+                        bool offscreen);
+  mjrContext* get_context(const std::string& id);
   mjvScene scene;
   mjvOption opt;
 
  private:
   mjModel* m;
-  std::vector<std::pair<GLFWwindow*, mjrContext*>> ctxs;
+  std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>> ctxs;
 };
 
 struct Config {
@@ -28,21 +30,23 @@ struct Config {
 };
 
 struct Callback {
-  std::function<void(void)> cb;
+  const std::function<void(void)> cb;
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;
 };
 
 struct ConditionCallback {
-  std::function<bool(void)> cb;
+  const std::function<bool(void)> cb;
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
   bool last_return_value;
 };
 
 struct RenderingCallback {
-  std::function<void(mjrContext&, mjvScene&, mjvOption&)> cb;
-  size_t id;                     // rendering context id in renderer class
+  const std::function<void(const std::string&, mjrContext&, mjvScene&,
+                           mjvOption&)>
+      cb;
+  const std::string id;          // rendering context id in renderer class
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
 };
@@ -81,9 +85,11 @@ class Sim {
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
   void register_rendering_callback(
-      std::function<void(mjrContext&, mjvScene&, mjvOption&)> cb,
-      mjtNum seconds_between_calls, size_t width, size_t height,
-      bool offscreen);
+      std::function<void(const std::string& id, mjrContext&, mjvScene&,
+                         mjvOption&)>
+          cb,
+      const std::string& id, mjtNum seconds_between_calls, size_t width,
+      size_t height, bool offscreen);
 };
 }  // namespace sim
 }  // namespace rcs

@@ -15,17 +15,18 @@ Renderer::Renderer(mjModel* m) : m{m} {
   mjv_defaultScene(&this->scene);
   size_t max_geoms = 2000;
   mjv_makeScene(this->m, &this->scene, max_geoms);
+  this->ctxs = std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>>();
 }
 
 Renderer::~Renderer() {
-  for (size_t i = 0; i < std::size(this->ctxs); ++i) {
-    mjr_freeContext(this->ctxs[i].second);
-    glfwDestroyWindow(this->ctxs[i].first);
+  for (auto const& [id, ctx] : this->ctxs) {
+    mjr_freeContext(ctx.second);
+    glfwDestroyWindow(ctx.first);
   }
   mjv_freeScene(&this->scene);
 }
 
-size_t Renderer::register_context(size_t width, size_t height, bool offscreen) {
+void Renderer::register_context(const std::string& id, size_t width, size_t height, bool offscreen) {
   // create invisible window, single-buffered
   if (offscreen) {
     glfwWindowHint(GLFW_VISIBLE, 0);
@@ -55,11 +56,10 @@ size_t Renderer::register_context(size_t width, size_t height, bool offscreen) {
   } else {
     mjr_setBuffer(mjFB_WINDOW, ctx);
   }
-  this->ctxs.push_back(std::pair(window, ctx));
-  return std::size(this->ctxs) - 1;
+  this->ctxs[id] = std::pair(window, ctx);
 }
 
-mjrContext* Renderer::get_context(size_t id) {
+mjrContext* Renderer::get_context(const std::string& id) {
   glfwMakeContextCurrent(ctxs[id].first);
   return ctxs[id].second;
 }
