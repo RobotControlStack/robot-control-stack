@@ -61,7 +61,7 @@ class SimCameraSet {
   std::vector<FrameSet> buffer;
   std::unordered_map<std::string, mjvCamera> cameras;
   std::mutex buffer_lock;
-  std::set<mjtNum> stored_timestamps;
+  mjtNum last_ts = 0;
 };
 }  // namespace sim
 }  // namespace rcs

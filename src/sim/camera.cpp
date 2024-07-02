@@ -22,7 +22,7 @@ namespace rcs {
 namespace sim {
 
 SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
-    : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{}, cameras{}, stored_timestamps{} {
+    : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{}, cameras{} {
   for (auto const& [id, cam] : cfg.cameras) {
     this->sim->register_rendering_callback(
         [this](const std::string& id, mjrContext& ctx, mjvScene& scene, mjvOption& opt) {
@@ -30,7 +30,7 @@ SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
         },
         id,
         1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
-        this->cfg.resolution_height, false); // onscreen false for now
+        this->cfg.resolution_height, !cam.on_screen_render);
 
     mjvCamera mjcam;
     mjv_defaultCamera(&mjcam);
@@ -99,21 +99,16 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
 
   auto ts = this->sim->d->time;
   std::lock_guard<std::mutex> lock(buffer_lock);
-  if(this->stored_timestamps.contains(ts)) {
-    /// von hinten
-    for(size_t i = 0; i < buffer.size(); i++) {
-      // TODO> floats, lock
-      if(buffer[i].timestamp == ts) {
-        buffer[i].color_frames[id] = frame;
-        return;
-      }
-    }
+  // The following code assumes that all render callbacks for a timestep
+  // happen directly after each other
+  if(this->last_ts == ts) {
+    buffer[buffer.size()-1].color_frames[id] = frame;
   }else{
     FrameSet fs;
     fs.timestamp = ts;
     fs.color_frames[id] = frame;
     buffer.push_back(fs);
-    this->stored_timestamps.insert(ts);
+    this->last_ts = ts;
   }
 }
 
