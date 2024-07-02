@@ -39,7 +39,7 @@ def create_sample_config_yaml(path: str):
     real_sense_cfg = RealSenseSetConfig(cameras=cameras)
     camera_cfg = CameraConfig(realsense_config=real_sense_cfg)
     hw = HWConfig(username="...", password="...", urdf_model_path="path/to/urdf", camera_config=camera_cfg)
-    sim = SimConfig()
+    sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras))
     cfg = Config(hw=hw, sim=sim)
     yml = to_yaml_str(cfg)
     with open(path, "w") as f:
