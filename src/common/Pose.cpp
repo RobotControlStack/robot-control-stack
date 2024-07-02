@@ -1,6 +1,5 @@
 #include "Pose.h"
 
-#include "utils.h"
 
 namespace rcs {
 namespace common {
@@ -110,6 +109,13 @@ Pose Pose::interpolate(const Pose &dest_pose, double progress) const {
   Pose result_pose(quat_result, pos_result);
   return result_pose;
 }
+
+  Vector6d Pose::xyzrpy() const{
+    Vector6d xyzrpy;
+    xyzrpy.head(3) = this->translation();
+    xyzrpy.tail(3) = this->rotation_rpy().as_vector();
+    return xyzrpy;
+  }
 
 std::string Pose::str() const {
   std::stringstream ss;

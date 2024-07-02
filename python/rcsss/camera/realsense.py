@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
+from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.interface import (
     BaseCameraConfig,
-    BaseCameraSet,
     CameraFrame,
     DataFrame,
     Frame,
@@ -13,7 +13,8 @@ from rcsss.camera.interface import (
 
 
 class RealSenseConfig(BaseCameraConfig):
-    devices_to_enable: dict[str, str]  # dict with readable name and serial number
+    # dict with readable name and serial number
+    devices_to_enable: dict[str, str] = {}  # noqa: RUF012
     enable_ir_emitter: bool = False
     enable_ir: bool = False
     laser_power: int = 330
@@ -34,7 +35,7 @@ class RealSenseDevicePipeline:
 
 
 # TODO(juelg): look at frame queue
-class RealSenseCameraSet(BaseCameraSet):
+class RealSenseCameraSet(BaseHardwareCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
     def __init__(self, cfg: RealSenseConfig) -> None:

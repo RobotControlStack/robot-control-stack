@@ -1,6 +1,7 @@
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
+#include <common/utils.h>
 #include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
@@ -10,6 +11,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
+#include <sim/camera.h>
 
 #include <memory>
 
@@ -152,6 +154,7 @@ PYBIND11_MODULE(_core, m) {
       .def("rotation_q", &rcs::common::Pose::rotation_q)
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
+      .def("xyzrpy", &rcs::common::Pose::xyzrpy)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
@@ -327,27 +330,61 @@ PYBIND11_MODULE(_core, m) {
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("ik_duration", &rcs::sim::FR3Config::ik_duration)
+      .def_readwrite("tcp_offset", &rcs::sim::FR3Config::tcp_offset)
+      .def_readwrite("joint_rotational_tolerance",
+                     &rcs::sim::FR3Config::joint_rotational_tolerance)
+      .def_readwrite("seconds_between_callbacks",
+                     &rcs::sim::FR3Config::seconds_between_callbacks)
+      .def_readwrite("ik_duration_in_milliseconds",
+                     &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
   py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
       .def(py::init<>())
+      .def_readonly("previous_angles", &rcs::sim::FR3State::previous_angles)
+      .def_readonly("target_angles", &rcs::sim::FR3State::target_angles)
+      .def_readonly("inverse_tcp_offset",
+                    &rcs::sim::FR3State::inverse_tcp_offset)
+      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
       .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success);
+      .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
+      .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
+  py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
+      .def(py::init([](long m, long d) {
+             return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
+           }),
+           py::arg("mjmdl"), py::arg("mjdata"))
+      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("step", &rcs::sim::Sim::step, py::arg("k"));
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
-      .def(py::init([](long mjmdl, long mjdata, const std::string rlmdl,
-                       std::optional<bool> render) {
-             return std::make_shared<rcs::sim::FR3>(
-                 (mjModel *)mjmdl, (mjData *)mjdata,
-                 rl::mdl::UrdfFactory().create(rlmdl), render);
-           }),
-           py::arg("mjmdl"), py::arg("mjdata"), py::arg("rlmdl"),
-           py::arg("render") = true)
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+                    const std::string &>(),
+           py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("get_state", &rcs::sim::FR3::get_state)
-      .def("reset", &rcs::sim::FR3::reset)
-      .def("clear_markers", &rcs::sim::FR3::clear_markers);
+      .def("reset", &rcs::sim::FR3::reset);
+  py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
+      .def(py::init<>())
+      .def_readwrite("camera2mjcfname", &rcs::sim::SimCameraConfig::camera2mjcfname)
+      .def_readwrite("frame_rate", &rcs::sim::SimCameraConfig::frame_rate)
+      .def_readwrite("resolution_width",
+                     &rcs::sim::SimCameraConfig::resolution_width)
+      .def_readwrite("resolution_height",
+                     &rcs::sim::SimCameraConfig::resolution_height);
+  py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
+      .def(py::init<>())
+      .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
+      .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
+  py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    const rcs::sim::SimCameraConfig &>(),
+           py::arg("sim"), py::arg("cfg"))
+      .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
+      .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
+      .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
+      .def("get_timestamp_frameset",
+           &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
 }

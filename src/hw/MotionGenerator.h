@@ -2,6 +2,7 @@
 #define RCS_MOTION_GENERATOR_H
 
 #include <common/Robot.h>
+#include <common/utils.h>
 #include <franka/control_types.h>
 #include <franka/duration.h>
 #include <franka/exception.h>

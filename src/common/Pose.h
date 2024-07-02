@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/Eigen>
 #include <eigen3/Eigen/Geometry>
 #include <memory>
+#include "utils.h"
 
 namespace rcs {
 namespace common {
@@ -196,6 +197,13 @@ class Pose {
    * @return interpolated Pose
    */
   Pose interpolate(const Pose &dest_pose, double progress) const;
+
+
+  /**
+   * @brief Returns the XYZRPY representation of the Pose
+   * For python bindings.
+   */
+  Vector6d xyzrpy() const;
 
   /**
    * @brief Converts a Pose to a String

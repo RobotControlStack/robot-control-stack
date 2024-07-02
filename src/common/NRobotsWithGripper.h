@@ -9,6 +9,7 @@
 
 #include "Pose.h"
 #include "Robot.h"
+#include "utils.h"
 
 namespace rcs {
 namespace common {

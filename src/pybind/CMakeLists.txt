@@ -4,5 +4,6 @@ target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(_core PROPERTIES
     INSTALL_RPATH "$ORIGIN;${MUJOCO_DIR}"
+    INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 install(TARGETS _core franka DESTINATION rcsss COMPONENT python_package)
