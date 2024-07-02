@@ -6,13 +6,18 @@ from pydantic import BaseModel
 
 
 class BaseCameraConfig(BaseModel):
-    frame_rate: int = 15  # fps
+    identifier: str
+
+
+class BaseCameraSetConfig(BaseModel):
+    cameras: dict[str, BaseCameraConfig] = {}  # noqa: RUF012
     resolution_width: int = 1280  # pixels
     resolution_height: int = 720  # pixels
-    # TODO: move these configs to hw cfg class
-    warm_up_disposal_frames: int = 30  # frames
-    record_path: str = "camera_frames"
-    # max_frames: int = 1000
+    frame_rate: int = 15  # Hz
+
+    @property
+    def name_to_identifier(self):
+        return {key: camera.identifier for key, camera in self.cameras.items()}
 
 
 @dataclass(kw_only=True)
@@ -72,3 +77,7 @@ class BaseCameraSet(Protocol):
     @property
     def camera_names(self) -> list[str]:
         """Returns a list of the activated human readable names of the cameras."""
+
+    @property
+    def name_to_identifier(self) -> dict[str, str]:
+        """Dict mapping from human readable name to identifier."""

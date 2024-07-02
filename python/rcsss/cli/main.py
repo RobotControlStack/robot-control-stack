@@ -63,7 +63,7 @@ def test(
     cs.warm_up()
     testdir = Path(cfg.hw.camera_config.realsense_config.record_path)
     frame_set = cs.poll_frame_set()
-    for device_str in cfg.hw.camera_config.realsense_config.devices_to_enable:
+    for device_str in cfg.hw.camera_config.realsense_config.name_to_identifier:
         assert device_str in frame_set.frames
         frame = frame_set.frames[device_str]
         if frame.camera.color is not None:
