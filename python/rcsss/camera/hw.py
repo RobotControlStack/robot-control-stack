@@ -7,7 +7,13 @@ from pathlib import Path
 from time import sleep
 
 import numpy as np
-from rcsss.camera.interface import BaseCameraConfig, Frame, FrameSet
+from rcsss.camera.interface import BaseCameraSetConfig, Frame, FrameSet
+
+
+class HWCameraSetConfig(BaseCameraSetConfig):
+    warm_up_disposal_frames: int = 30  # frames
+    record_path: str = "camera_frames"
+    # max_frames: int = 1000
 
 
 class BaseHardwareCameraSet(ABC):
@@ -15,12 +21,13 @@ class BaseHardwareCameraSet(ABC):
     Implements BaseCameraSet
     """
 
-    def __init__(self):
+    def __init__(self, cfg: HWCameraSetConfig):
         self._buffer: list[FrameSet] = []
         self._buffer_lock = threading.Lock()
         self.running = False
         self._thread: threading.Thread | None = None
         self._logger = logging.getLogger(__name__)
+        self._cfg = cfg
 
     def buffer_size(self) -> int:
         return len(self._buffer)
@@ -96,9 +103,9 @@ class BaseHardwareCameraSet(ABC):
             self._buffer = []
 
     @property
-    @abstractmethod
-    def config(self) -> BaseCameraConfig:
+    def config(self) -> HWCameraSetConfig:
         """Should return the configuration object of the cameras."""
+        return self._cfg
 
     @abstractmethod
     def _poll_frame(self, camera_name: str) -> Frame:
@@ -108,6 +115,11 @@ class BaseHardwareCameraSet(ABC):
         """
 
     @property
-    @abstractmethod
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
+        return [camera.identifier for camera in self._cfg.cameras.values()]
+
+    @property
+    def name_to_identifier(self) -> dict[str, str]:
+        # return {key: camera.identifier for key, camera in self._cfg.cameras.items()}
+        return self._cfg.name_to_identifier

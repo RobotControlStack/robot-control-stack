@@ -1,13 +1,16 @@
 import logging
 from datetime import datetime
+from typing import cast
 
 import numpy as np
-
+from rcsss._core.sim import CameraType
 from rcsss._core.sim import FrameSet as _FrameSet
 from rcsss._core.sim import SimCameraConfig as _SimCameraConfig
 from rcsss._core.sim import SimCameraSet as _SimCameraSet
+from rcsss._core.sim import SimCameraSetConfig as _SimCameraSetConfig
 from rcsss.camera.interface import (
     BaseCameraConfig,
+    BaseCameraSetConfig,
     CameraFrame,
     DataFrame,
     Frame,
@@ -16,7 +19,12 @@ from rcsss.camera.interface import (
 
 
 class SimCameraConfig(BaseCameraConfig):
-    camera2mjcfname: dict[str, str] = {}  # noqa: RUF012
+    type: int  # CameraType
+    on_screen_render: bool
+
+
+class SimCameraSetConfig(BaseCameraSetConfig):
+    cameras: dict[str, SimCameraConfig] = []
 
 
 class SimCameraSet(_SimCameraSet):
@@ -24,16 +32,35 @@ class SimCameraSet(_SimCameraSet):
     Implements BaseCameraSet
     """
 
-    def __init__(self, sim, cfg: SimCameraConfig):
+    def __init__(self, sim, cfg: SimCameraSetConfig):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
-        cpp_cfg = _SimCameraConfig()
-        cpp_cfg.camera2mjcfname = cfg.camera2mjcfname
-        cpp_cfg.frame_rate = cfg.frame_rate
-        cpp_cfg.resolution_width = cfg.resolution_width
-        cpp_cfg.resolution_height = cfg.resolution_height
+        cameras: dict[str, _SimCameraConfig] = {}
 
-        super().__init__(sim, cpp_cfg)
+        def get_type(t):
+            if t == CameraType.fixed:
+                return CameraType.fixed
+            elif t == CameraType.tracking:
+                return CameraType.tracking
+            elif t == CameraType.free:
+                return CameraType.free
+            else:
+                return CameraType.default_free
+
+        for name, camera_cfg in cfg.cameras.items():
+            cpp_camera_cfg = _SimCameraConfig()
+            cpp_camera_cfg.type = get_type(camera_cfg.type)
+            cpp_camera_cfg.on_screen_render = camera_cfg.on_screen_render
+            cpp_camera_cfg.identifier = camera_cfg.identifier
+            cameras[name] = cpp_camera_cfg
+
+        cpp_set_cfg = _SimCameraSetConfig()
+        cpp_set_cfg.cameras = cameras
+        cpp_set_cfg.resolution_width = cfg.resolution_width
+        cpp_set_cfg.resolution_height = cfg.resolution_height
+        cpp_set_cfg.frame_rate = cfg.frame_rate
+
+        super().__init__(sim, cpp_set_cfg)
 
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
@@ -61,5 +88,9 @@ class SimCameraSet(_SimCameraSet):
 
     @property
     def camera_names(self) -> list[str]:
-        """Returns a list of the activated human readable names of the cameras."""
-        return list(self._cfg.camera2mjcfname.keys())
+        """Should return a list of the activated human readable names of the cameras."""
+        return [camera.identifier for camera in self._cfg.cameras.values()]
+
+    @property
+    def name_to_identifier(self) -> dict[str, str]:
+        self._cfg.name_to_identifier
