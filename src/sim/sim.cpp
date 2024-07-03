@@ -16,6 +16,7 @@ void process_condition_callbacks(std::vector<ConditionCallback>& cbs,
     mjtNum dt = time - cbs[i].last_call_timestamp;
     if (dt > cbs[i].seconds_between_calls) {
       cbs[i].last_return_value = cbs[i].cb();
+      cbs[i].last_call_timestamp = time;
     }
   }
 }
@@ -39,10 +40,11 @@ Config Sim::get_config() { return this->cfg; }
 
 void Sim::invoke_callbacks() {
   for (int i = 0; i < std::size(this->callbacks); ++i) {
-    Callback cb = this->callbacks[i];
+    Callback& cb = this->callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
     if (dt > cb.seconds_between_calls) {
       cb.cb();
+      cb.last_call_timestamp = this->d->time;
     }
   }
 }
@@ -63,11 +65,12 @@ bool Sim::invoke_condition_callbacks() {
 
 void Sim::invoke_rendering_callbacks() {
   for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
-    RenderingCallback cb = this->rendering_callbacks[i];
+    RenderingCallback& cb = this->rendering_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
     if (dt > cb.seconds_between_calls) {
       mjrContext* ctx = this->renderer.get_context(cb.id);
       cb.cb(*ctx, this->renderer.scene);
+      cb.last_call_timestamp = this->d->time;
     }
   }
 }
