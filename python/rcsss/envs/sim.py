@@ -3,12 +3,9 @@ from typing import Any, cast
 import gymnasium as gym
 import rcsss
 from rcsss import sim
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet
-from rcsss.envs.base import (
-    CameraSetWrapper,
-    ControlMode,
-    FR3Env,
-)
+from rcsss._core.sim import CameraType
+from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcsss.envs.base import CameraSetWrapper, ControlMode, FR3Env
 
 
 class FR3Sim(gym.Wrapper):
@@ -28,7 +25,9 @@ class FR3Sim(gym.Wrapper):
         # truncate episode if collision
         return obs, 0, False, state.collision or not state.ik_success, info
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim_robot.reset()
         return self.env.reset(seed=seed, options=options)
 
@@ -42,7 +41,11 @@ if __name__ == "__main__":
     robot.set_parameters(cfg)
     env = FR3Env(robot, ControlMode.CARTESIAN)
     env_sim = FR3Sim(env, simulation)
-    cam_cfg = SimCameraConfig(camera2mjcfname={"birdeye": "eye-in-hand_0"}, frame_rate=50)
+    cameras = {
+        "birdeye": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=False),
+        "default_free": SimCameraConfig(identifier="", type=CameraType.default_free, on_screen_render=False),
+    }
+    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
     camera_set = SimCameraSet(simulation, cam_cfg)
     env_cam = CameraSetWrapper(env_sim, camera_set)
     obs, info = env_cam.reset()

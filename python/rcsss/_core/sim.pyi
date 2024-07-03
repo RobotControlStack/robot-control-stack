@@ -9,8 +9,57 @@ import typing
 import numpy
 import rcsss._core.common
 
-__all__ = ["FR3", "FR3Config", "FR3State", "FrameSet", "Sim", "SimCameraConfig", "SimCameraSet"]
+__all__ = [
+    "CameraType",
+    "FR3",
+    "FR3Config",
+    "FR3State",
+    "FrameSet",
+    "Sim",
+    "SimCameraConfig",
+    "SimCameraSet",
+    "SimCameraSetConfig",
+    "default_free",
+    "fixed",
+    "free",
+    "tracking",
+]
 M = typing.TypeVar("M", bound=int)
+
+class CameraType:
+    """
+    Members:
+
+      free
+
+      tracking
+
+      fixed
+
+      default_free
+    """
+
+    __members__: typing.ClassVar[
+        dict[str, CameraType]
+    ]  # value = {'free': <CameraType.free: 0>, 'tracking': <CameraType.tracking: 1>, 'fixed': <CameraType.fixed: 2>, 'default_free': <CameraType.default_free: 3>}
+    default_free: typing.ClassVar[CameraType]  # value = <CameraType.default_free: 3>
+    fixed: typing.ClassVar[CameraType]  # value = <CameraType.fixed: 2>
+    free: typing.ClassVar[CameraType]  # value = <CameraType.free: 0>
+    tracking: typing.ClassVar[CameraType]  # value = <CameraType.tracking: 1>
+    def __eq__(self, other: typing.Any) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: typing.Any) -> bool: ...
+    def __repr__(self) -> str: ...
+    def __setstate__(self, state: int) -> None: ...
+    def __str__(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def value(self) -> int: ...
 
 class FR3(rcsss._core.common.Robot):
     def __init__(self, sim: Sim, id: str, rlmdl: str) -> None: ...
@@ -48,7 +97,7 @@ class FR3State(rcsss._core.common.RState):
 class FrameSet:
     def __init__(self) -> None: ...
     @property
-    def color_frames(self) -> dict[str, numpy.ndarray[tuple[M, typing.Literal[1]], numpy.dtype[numpy.uint8]]]: ...
+    def color_frames(self) -> dict[str, numpy.ndarray[numpy.uint8[M, 1]]]: ...
     @property
     def timestamp(self) -> float: ...
 
@@ -58,15 +107,26 @@ class Sim:
     def step_until_convergence(self) -> None: ...
 
 class SimCameraConfig:
-    camera2mjcfname: dict[str, str]
+    identifier: str
+    on_screen_render: bool
+    type: CameraType
+    def __init__(self) -> None: ...
+
+class SimCameraSet:
+    def __init__(self, sim: Sim, cfg: SimCameraSetConfig) -> None: ...
+    def buffer_size(self) -> int: ...
+    def clear_buffer(self) -> None: ...
+    def get_latest_frameset(self) -> FrameSet | None: ...
+    def get_timestamp_frameset(self, ts: float) -> FrameSet | None: ...
+
+class SimCameraSetConfig:
+    cameras: dict[str, SimCameraConfig]
     frame_rate: int
     resolution_height: int
     resolution_width: int
     def __init__(self) -> None: ...
 
-class SimCameraSet:
-    def __init__(self, sim: Sim, cfg: SimCameraConfig) -> None: ...
-    def buffer_size(self) -> int: ...
-    def clear_buffer(self) -> None: ...
-    def get_latest_frameset(self) -> FrameSet: ...
-    def get_timestamp_frameset(self, ts: float) -> FrameSet: ...
+default_free: CameraType  # value = <CameraType.default_free: 3>
+fixed: CameraType  # value = <CameraType.fixed: 2>
+free: CameraType  # value = <CameraType.free: 0>
+tracking: CameraType  # value = <CameraType.tracking: 1>
