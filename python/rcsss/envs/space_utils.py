@@ -1,5 +1,16 @@
+from typing import (
+    Annotated,
+    Any,
+    Literal,
+    SupportsFloat,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
-from typing import Annotated, Any, Literal, SupportsFloat, TypeAlias, TypeVar, TypedDict, get_args, get_origin, get_type_hints
 import gymnasium as gym
 import numpy as np
 
@@ -7,7 +18,9 @@ Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
 Vec6Type: TypeAlias = np.ndarray[Literal[6], np.dtype[np.float64]]
 
+
 class RCSpaceType(TypedDict): ...
+
 
 def get_space(
     tp: RCSpaceType,
@@ -160,6 +173,7 @@ def get_space(
 
     """
     assert tp.__class__.__name__ == "_TypedDictMeta", "Type must be a TypedDict type. Hint: inherit from RCSpaceType."
+
     def value(t, path=""):
         if get_origin(t) == dict:
             # recursive case: space has dict subspace which keys must be populated
@@ -202,6 +216,7 @@ def get_space(
 
     return gym.spaces.Dict({name: value(t) for name, t in get_type_hints(tp, include_extras=True).items()})
 
+
 def get_space_keys(tp: RCSpaceType) -> list[str]:
     assert tp.__class__.__name__ == "_TypedDictMeta", "Type must be a TypedDict type. Hint: inherit from RCSpaceType."
     return list(get_type_hints(tp).keys())
@@ -212,9 +227,10 @@ WrapperActType = TypeVar("WrapperActType")
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 
+
 class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActType]):
     """Improved version of the ObservationWrapper from gymnasium. It also adds the info dict to the observation method.
-    
+
     Superclass of wrappers that can modify observations using :meth:`observation` for :meth:`reset` and :meth:`step`.
 
     If you would like to apply a function to only the observation before
@@ -239,9 +255,7 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
         observation, info = self.observation(observation, info)
         return observation, info
 
-    def step(
-        self, action: ActType
-    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: ActType) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`step` using :meth:`self.observation` on the returned observations."""
         observation, reward, terminated, truncated, info = self.env.step(action)
         observation, info = self.observation(observation, info)

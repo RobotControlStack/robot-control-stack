@@ -149,7 +149,7 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
     def _get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquart=np.concat(
-                self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()
+                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
             ),
             joints=self.robot.get_joint_position(),
         )
@@ -232,9 +232,9 @@ class RelativeActionSpace(gym.ActionWrapper):
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
             return TRPYDictType(
-                xyzrpy=np.concatenate(
-                    np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
-                    unclipped_pose.rotation_rpy().as_vector(),
+                xyzrpy=np.concat(
+                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    unclipped_pose.rotation_rpy().as_vector()],
                 )
             )
         elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
@@ -247,9 +247,9 @@ class RelativeActionSpace(gym.ActionWrapper):
                 translation=limited_pose_space, quaternion=action[self.tquart_key][3:]
             )
             return TQuartDictType(
-                tquart=np.concatenate(
-                    np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
-                    unclipped_pose.rotation_q(),
+                tquart=np.concat(
+                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    unclipped_pose.rotation_q()],
                 )
             )
         else:
