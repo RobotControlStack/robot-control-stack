@@ -39,11 +39,11 @@ if __name__ == "__main__":
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     robot.set_parameters(cfg)
-    env = FR3Env(robot, ControlMode.CARTESIAN)
+    env = FR3Env(robot, ControlMode.CARTESIAN_TRPY)
     env_sim = FR3Sim(env, simulation)
     cameras = {
-        "birdeye": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=CameraType.default_free, on_screen_render=False),
+        "birdeye": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=True),
+        "default_free": SimCameraConfig(identifier="", type=CameraType.default_free, on_screen_render=True),
     }
     cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
     camera_set = SimCameraSet(simulation, cam_cfg)
@@ -52,4 +52,6 @@ if __name__ == "__main__":
     for _ in range(100):
         act = env_cam.action_space.sample()
         obs, reward, terminated, truncated, info = env_cam.step(act)
-        print(act, obs, info)  # noqa: T201
+        if truncated or terminated:
+            env_cam.reset()
+        print(simulation.data.time)  # noqa: T201
