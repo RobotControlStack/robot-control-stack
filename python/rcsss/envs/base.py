@@ -24,7 +24,7 @@ class TRPYDictType(RCSpaceType):
         Vec6Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0, -np.deg2rad(180), -np.deg2rad(180), -np.deg2rad(180)]),
-            high=np.array([0.855, 0.855, 0.1188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
+            high=np.array([0.855, 0.855, 1.188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
             dtype=np.float32,
         ),
     ]
@@ -47,7 +47,7 @@ class TQuartDictType(RCSpaceType):
         Vec7Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0] + [-1] + [-np.inf] * 3),
-            high=np.array([0.855, 0.855, 0.1188] + [1] + [np.inf] * 3),
+            high=np.array([0.855, 0.855, 1.188] + [1] + [np.inf] * 3),
             dtype=np.float32,
         ),
     ]
@@ -146,7 +146,7 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquart_key = get_space_keys(TQuartDictType)[0]
 
-    def _get_obs(self) -> ArmObsType:
+    def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquart=np.concat(
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
@@ -168,7 +168,7 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
-        return self._get_obs(), 0, False, False, {}
+        return self.get_obs(), 0, False, False, {}
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -179,12 +179,12 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
-        return self._get_obs(), {}
+        return self.get_obs(), {}
 
 
 class RelativeActionSpace(gym.ActionWrapper):
-    MAX_CART_MOV = 0.1
-    MAX_JOINT_MOV = np.deg2rad(30)
+    MAX_CART_MOV = 0.01
+    MAX_JOINT_MOV = np.deg2rad(5)
 
     def __init__(self, env):
         self.env: FR3Env
@@ -203,7 +203,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         elif self.env.control_mode == ControlMode.CARTESIAN_TQuart:
             self.action_space.spaces.update(
                 get_space(
-                    LimitedTQuartRelDictType, params={"cart_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
+                    LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}
                 ).spaces
             )
         else:
@@ -216,39 +216,36 @@ class RelativeActionSpace(gym.ActionWrapper):
     def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
         if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
             joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
-            limited_joint_space: gym.spaces.Box = get_space(LimitedJointsRelDictType).spaces[self.joints_key]
-            limited_joints = np.clip(action[self.joints_key], limited_joint_space.low, limited_joint_space.high)
+            limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
             return JointsDictType(
                 joints=np.clip(self.env.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high)
             )
 
         elif self.env.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
-            limited_pose_space: gym.spaces.Box = get_space(LimitedTRPYRelDictType).spaces[self.trpy_key]
             clipped_translation = np.clip(
-                action[self.trpy_key][:3], limited_pose_space.low[:3], limited_pose_space.high[3:]
+                action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
             )
             unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
             return TRPYDictType(
                 xyzrpy=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_rpy().as_vector()],
                 )
             )
         elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
-            limited_pose_space: gym.spaces.Box = get_space(LimitedTRPYRelDictType).spaces[self.trpy_key]
             clipped_translation = np.clip(
-                action[self.tquart_key][:3], limited_pose_space.low[:3], limited_pose_space.high[3:]
+                action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
             )
             unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
-                translation=limited_pose_space, quaternion=action[self.tquart_key][3:]
+                translation=clipped_translation, quaternion=action[self.tquart_key][3:]
             )
             return TQuartDictType(
                 tquart=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[3:]),
+                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_q()],
                 )
             )
@@ -321,10 +318,11 @@ class GripperWrapper(gym.ObservationWrapper, gym.ActionWrapper):
 
     def observation(self, observation: dict[str, Any]) -> dict[str, Any]:
         observation[self.gripper_key] = self._gripper_state
+        return observation
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         assert self.gripper_key in action, "Gripper action not found."
         self._gripper_state = round(action["gripper"])
-        self._gripper.shut() if self._gripper_state == 0 else self._gripper.release()
+        self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
         del action[self.gripper_key]
         return action
