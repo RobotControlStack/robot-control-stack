@@ -24,7 +24,7 @@ class TRPYDictType(RCSpaceType):
         Vec6Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0, -np.deg2rad(180), -np.deg2rad(180), -np.deg2rad(180)]),
-            high=np.array([0.855, 0.855, 0.1188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
+            high=np.array([0.855, 0.855, 1.188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
             dtype=np.float32,
         ),
     ]
@@ -47,7 +47,7 @@ class TQuartDictType(RCSpaceType):
         Vec7Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0] + [-1] + [-np.inf] * 3),
-            high=np.array([0.855, 0.855, 0.1188] + [1] + [np.inf] * 3),
+            high=np.array([0.855, 0.855, 1.188] + [1] + [np.inf] * 3),
             dtype=np.float32,
         ),
     ]
@@ -146,7 +146,7 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquart_key = get_space_keys(TQuartDictType)[0]
 
-    def _get_obs(self) -> ArmObsType:
+    def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquart=np.concat(
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
