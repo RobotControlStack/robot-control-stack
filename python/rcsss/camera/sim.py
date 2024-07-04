@@ -24,7 +24,7 @@ class SimCameraConfig(BaseCameraConfig):
 
 
 class SimCameraSetConfig(BaseCameraSetConfig):
-    cameras: dict[str, SimCameraConfig] = []
+    cameras: dict[str, SimCameraConfig] = {} # noqa: RUF012
 
 
 class SimCameraSet(_SimCameraSet):
@@ -40,12 +40,11 @@ class SimCameraSet(_SimCameraSet):
         def get_type(t):
             if t == CameraType.fixed:
                 return CameraType.fixed
-            elif t == CameraType.tracking:
+            if t == CameraType.tracking:
                 return CameraType.tracking
-            elif t == CameraType.free:
+            if t == CameraType.free:
                 return CameraType.free
-            else:
-                return CameraType.default_free
+            return CameraType.default_free
 
         for name, camera_cfg in cfg.cameras.items():
             cpp_camera_cfg = _SimCameraConfig()
@@ -93,4 +92,4 @@ class SimCameraSet(_SimCameraSet):
 
     @property
     def name_to_identifier(self) -> dict[str, str]:
-        self._cfg.name_to_identifier
+        return self._cfg.name_to_identifier
