@@ -8,7 +8,7 @@ import numpy as np
 from rcsss import common
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
-    ObservationInfoWrapper,
+    ActObsInfoWrapper,
     RCSpaceType,
     Vec6Type,
     Vec7Type,
@@ -260,7 +260,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             raise RuntimeError(msg)
 
 
-class CameraSetWrapper(ObservationInfoWrapper):
+class CameraSetWrapper(ActObsInfoWrapper):
     def __init__(self, env: FR3Env, camera_set: BaseCameraSet):
         self.env: FR3Env
         self.observation_space: gym.spaces.Dict
@@ -304,8 +304,8 @@ class CameraSetWrapper(ObservationInfoWrapper):
         return observation, info
 
 
-# TODO: sticky gripper, like in aloha
-class GripperWrapper(gym.ObservationWrapper, gym.ActionWrapper):
+class GripperWrapper(ActObsInfoWrapper):
+    # TODO: sticky gripper, like in aloha
     def __init__(self, env, gripper: common.Gripper):
         self.env: FR3Env
         super().__init__(env)
@@ -315,20 +315,21 @@ class GripperWrapper(gym.ObservationWrapper, gym.ActionWrapper):
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
-        self._gripper_state = True
+        self._gripper_state = 1
 
-    def reset(self, **kwargs):
-        self._gripper.release()
+    def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
+        self._gripper.reset()
         self._gripper_state = 1
         return super().reset(**kwargs)
 
-    def observation(self, observation: dict[str, Any]) -> dict[str, Any]:
-        observation[self.gripper_key] = self._gripper_state
-        return observation
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation[self.gripper_key] = self._gripper.get_normalized_width()
+        return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         assert self.gripper_key in action, "Gripper action not found."
-        self._gripper_state = round(action["gripper"])
+        self._gripper_state = np.round(action["gripper"])
         self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
+        # self._gripper.set_normalized_width(action["gripper"])
         del action[self.gripper_key]
         return action

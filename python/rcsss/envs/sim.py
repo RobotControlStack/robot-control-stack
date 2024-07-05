@@ -46,16 +46,23 @@ if __name__ == "__main__":
     env = RelativeActionSpace(env)
     env_sim = FR3Sim(env, simulation)
     cameras = {
-        "birdeye": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=True),
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=False),
         "default_free": SimCameraConfig(identifier="", type=CameraType.default_free, on_screen_render=True),
     }
     cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
     camera_set = SimCameraSet(simulation, cam_cfg)
     env_cam = CameraSetWrapper(env_sim, camera_set)
+
+    gripper_cfg = sim.FHConfig()
+    gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+    env_cam = GripperWrapper(env_cam, gripper)
     obs, info = env_cam.reset()
-    for _ in range(100):
+    for i in range(100):
         act = env_cam.action_space.sample()
+        # act = {"tquart": np.array([0, 0, 0, 0, 0, 0, 1]), "gripper": i%2}
+        # act["gripper"] = i % 2
         obs, reward, terminated, truncated, info = env_cam.step(act)
         if truncated or terminated:
+            print("Truncated or terminated!")
             env_cam.reset()
-        print(simulation.data.time)  # noqa: T201
+        print(act["gripper"], obs["gripper"])
