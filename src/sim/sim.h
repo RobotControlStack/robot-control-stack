@@ -27,6 +27,7 @@ class Renderer {
 struct Config {
   bool async = false;
   bool realtime = false;
+  int max_convergence_steps = -1;
 };
 
 struct Callback {
@@ -61,6 +62,8 @@ class Sim {
   void invoke_callbacks();
   bool invoke_condition_callbacks();
   void invoke_rendering_callbacks();
+  size_t convergence_steps = 0;
+  bool converged = true;
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)
@@ -70,6 +73,7 @@ class Sim {
   Sim(mjModel* m, mjData* d);
   bool set_config(const Config& cfg);
   Config get_config();
+  bool is_converged();
   void step_until_convergence();
   void step(size_t k);
   /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the

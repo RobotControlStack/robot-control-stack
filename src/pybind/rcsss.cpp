@@ -356,6 +356,7 @@ PYBIND11_MODULE(_core, m) {
            }),
            py::arg("mjmdl"), py::arg("mjdata"))
       .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("is_converged", &rcs::sim::Sim::is_converged)
       .def("step", &rcs::sim::Sim::step, py::arg("k"));
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
