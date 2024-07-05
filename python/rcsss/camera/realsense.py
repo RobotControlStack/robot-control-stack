@@ -4,7 +4,6 @@ import numpy as np
 import pyrealsense2 as rs
 from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
 from rcsss.camera.interface import (
-    BaseCameraConfig,
     CameraFrame,
     DataFrame,
     Frame,
