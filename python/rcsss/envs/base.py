@@ -188,24 +188,22 @@ class RelativeActionSpace(gym.ActionWrapper):
     MAX_JOINT_MOV = np.deg2rad(5)
 
     def __init__(self, env):
-        self.env: FR3Env
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
-        if self.env.control_mode == ControlMode.CARTESIAN_TRPY:
+        if self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
                 get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
-        elif self.env.control_mode == ControlMode.JOINTS:
+        elif self.unwrapped.control_mode == ControlMode.JOINTS:
             self.action_space.spaces.update(
                 get_space(
                     LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
                 ).spaces
             )
-        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart:
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart:
             self.action_space.spaces.update(
-                get_space(
-                    LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}
-                ).spaces
+                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
         else:
             msg = "Control mode not recognized!"
@@ -222,41 +220,49 @@ class RelativeActionSpace(gym.ActionWrapper):
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         action = copy.deepcopy(action)
-        if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
+        if self.unwrapped.control_mode == ControlMode.JOINTS and self.joints_key in action:
             joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
-            action.update(JointsDictType(
-                joints=np.clip(self.env.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high)
-            ))
-
-        elif self.env.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
-            pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
-            clipped_translation = np.clip(
-                action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
+            action.update(
+                JointsDictType(
+                    joints=np.clip(
+                        self.unwrapped.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high
+                    )
+                )
             )
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
+            clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
-            action.update(TRPYDictType(
-                xyzrpy=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
-                    unclipped_pose.rotation_rpy().as_vector()],
+            action.update(
+                TRPYDictType(
+                    xyzrpy=np.concat(
+                        [
+                            np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
+                            unclipped_pose.rotation_rpy().as_vector(),
+                        ],
+                    )
                 )
-            ))
-        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
-            pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
-            clipped_translation = np.clip(
-                action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
             )
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
+            clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, quaternion=action[self.tquart_key][3:]
             )
-            action.update(TQuartDictType(
-                tquart=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
-                    unclipped_pose.rotation_q()],
+            action.update(
+                TQuartDictType(
+                    tquart=np.concat(
+                        [
+                            np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
+                            unclipped_pose.rotation_q(),
+                        ],
+                    )
                 )
-            ))
+            )
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
@@ -264,10 +270,10 @@ class RelativeActionSpace(gym.ActionWrapper):
 
 
 class CameraSetWrapper(ActObsInfoWrapper):
-    def __init__(self, env: FR3Env, camera_set: BaseCameraSet):
-        self.env: FR3Env
-        self.observation_space: gym.spaces.Dict
+    def __init__(self, env, camera_set: BaseCameraSet):
         super().__init__(env)
+        self.unwrapped: FR3Env
+        self.observation_space: gym.spaces.Dict
         self.camera_set = camera_set
 
         self.observation_space: gym.spaces.Dict
@@ -312,8 +318,8 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
     def __init__(self, env, gripper: common.Gripper):
-        self.env: FR3Env
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.observation_space: gym.spaces.Dict
         self.observation_space.spaces.update(get_space(GripperDictType).spaces)
         self.action_space: gym.spaces.Dict

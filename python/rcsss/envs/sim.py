@@ -11,17 +11,17 @@ from rcsss.envs.base import CameraSetWrapper, ControlMode, FR3Env, GripperWrappe
 
 
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env: FR3Env, simulation: sim.Sim):
-        self.env: FR3Env
+    def __init__(self, env, simulation: sim.Sim):
         super().__init__(env)
-        assert isinstance(self.env.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim_robot = cast(sim.FR3, self.env.robot)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim_robot = cast(sim.FR3, self.unwrapped.robot)
         self.sim = simulation
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
-        obs, _, _, _, info = self.env.step(action)
+        obs, _, _, _, info = self.unwrapped.step(action)
         self.sim.step_until_convergence()
-        obs = self.env.get_obs()
+        obs = self.unwrapped.get_obs()
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
@@ -33,7 +33,8 @@ class FR3Sim(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim_robot.reset()
         self.sim.step(1)
-        return self.env.reset(seed=seed, options=options)
+        return self.unwrapped.reset(seed=seed, options=options)
+
 
 class CollisionGuard(gym.Wrapper):
     """
@@ -43,6 +44,7 @@ class CollisionGuard(gym.Wrapper):
     def __init__(self, env: FR3Env, simulation: sim.Sim, collision_env: FR3Sim):
         self.env: FR3Env
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.collision_env = collision_env
         self.sim = simulation
         self.last_obs: tuple[dict[str, Any], dict[str, Any]] | None = None
@@ -98,6 +100,7 @@ if __name__ == "__main__":
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     robot.set_parameters(cfg)
+    # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
     env = FR3Env(robot, ControlMode.JOINTS)
     env_sim = FR3Sim(env, simulation)
     cameras = {
