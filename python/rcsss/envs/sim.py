@@ -41,14 +41,15 @@ class CollisionGuard(gym.Wrapper):
     - Gripper Wrapper has to be added before this as it removes the gripper action
     - RelativeActionSpace has to be added after this as it changes the input space, and the input expects absolute actions
     """
-    def __init__(self, env: FR3Env, simulation: sim.Sim, collision_env: FR3Sim):
-        self.env: FR3Env
+
+    def __init__(self, env: FR3Env, simulation: sim.Sim, collision_env: FR3Sim, check_home_collision: bool = True):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.collision_env = collision_env
         self.sim = simulation
         self.last_obs: tuple[dict[str, Any], dict[str, Any]] | None = None
         self._logger = logging.getLogger(__name__)
+        self.check_home_collision = check_home_collision
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
         _, _, _, _, info = self.collision_env.step(action)
@@ -69,17 +70,22 @@ class CollisionGuard(gym.Wrapper):
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         # check if move to home is collision free
-        self.collision_env.sim_robot.move_home()
-        self.collision_env.sim.step_until_convergence()
-        state = self.collision_env.sim_robot.get_state()
-        if state.collision or not state.ik_success:
-            raise RuntimeError("Collision detected while moving to home position!")
+        if self.check_home_collision:
+            self.collision_env.sim_robot.move_home()
+            self.collision_env.sim.step_until_convergence()
+            state = self.collision_env.sim_robot.get_state()
+            if state.collision or not state.ik_success:
+                raise RuntimeError("Collision detected while moving to home position!")
+        else:
+            self.collision_env.sim_robot.reset()
         obs, info = super().reset(seed=seed, options=options)
         self.last_obs = obs, info
         return obs, info
 
     @classmethod
-    def env_from_xml_paths(cls, env, mjmld: str, rlmdl: str, id="0", gripper=False) -> FR3Sim:
+    def env_from_xml_paths(
+        cls, env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True
+    ) -> FR3Sim:
         simulation = sim.Sim(mjmld)
         robot = rcsss.sim.FR3(simulation, id, rlmdl)
         cfg = sim.FR3Config()
@@ -91,7 +97,8 @@ class CollisionGuard(gym.Wrapper):
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
             c_env = GripperWrapper(c_env, gripper)
-        return cls(env, simulation, FR3Sim(c_env, simulation))
+        return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision)
+
 
 if __name__ == "__main__":
     simulation = sim.Sim("models/mjcf/fr3_modular/scene.xml")
@@ -114,7 +121,13 @@ if __name__ == "__main__":
     gripper_cfg = sim.FHConfig()
     gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
     env_cam = GripperWrapper(env_cam, gripper)
-    env_cam = CollisionGuard.env_from_xml_paths(env_cam, "models/mjcf/fr3_modular/scene.xml", "models/fr3/urdf/fr3_from_panda.urdf", gripper=True)
+    env_cam = CollisionGuard.env_from_xml_paths(
+        env_cam,
+        "models/mjcf/fr3_modular/scene.xml",
+        "models/fr3/urdf/fr3_from_panda.urdf",
+        gripper=True,
+        check_home_collision=False,
+    )
     env_cam = RelativeActionSpace(env_cam)
     obs, info = env_cam.reset()
     for i in range(100):
