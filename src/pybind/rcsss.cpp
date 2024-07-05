@@ -12,6 +12,7 @@
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
 #include <sim/camera.h>
+#include <sim/FrankaHand.h>
 
 #include <memory>
 
@@ -376,6 +377,22 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("collision", &rcs::sim::FR3State::collision)
       .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
       .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
+  py::class_<rcs::sim::FHConfig, rcs::common::GConfig>(sim, "FHConfig")
+      .def(py::init<>())
+      .def_readwrite("epsilon_inner", &rcs::sim::FHConfig::epsilon_inner)
+      .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer);
+  py::class_<rcs::sim::FHState, rcs::common::GState>(sim, "FHState")
+      .def(py::init<>())
+      .def_readonly("last_commanded_width", &rcs::sim::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width", &rcs::sim::FHState::max_unnormalized_width);
+
+  py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
+             std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string&, const rcs::sim::FHConfig&>(), py::arg("sim"), py::arg("id"), py::arg("cfg"))
+      .def("get_parameters", &rcs::sim::FrankaHand::get_parameters)
+      .def("get_state", &rcs::sim::FrankaHand::get_state)
+      .def("set_parameters", &rcs::sim::FrankaHand::set_parameters,
+           py::arg("cfg"));
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
              return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);

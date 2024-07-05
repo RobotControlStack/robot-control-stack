@@ -24,7 +24,7 @@ set_target_properties(
 
 add_library(sim)
 target_sources(sim
-  PRIVATE sim.cpp FR3.cpp renderer.cpp camera.cpp
+  PRIVATE sim.cpp FR3.cpp renderer.cpp camera.cpp FrankaHand.cpp
 )
 target_link_libraries(sim PUBLIC glfw common mujoco mdl)
 
