@@ -212,6 +212,12 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
         self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
+        self.initial_obs: dict[str, Any] | None = None
+
+    def reset(self, **kwargs) -> tuple[dict, dict[str, Any]]:
+        obs, info = super().reset(**kwargs)
+        self.initial_obs = obs
+        return obs, info
 
     def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
         if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
