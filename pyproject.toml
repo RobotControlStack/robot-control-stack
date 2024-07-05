@@ -65,6 +65,7 @@ cmake.define = { MUJOCO_VERSION = "3.1.5" }
 line-length = 120
 
 [tool.ruff.lint]
+fixable = ["ALL"]
 extend-select = [
   "B",           # flake8-bugbear
   # "I",           # isort
@@ -129,3 +130,21 @@ addopts = "-vv"
 testpaths = [
     "python/tests",
 ]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+ignore_missing_files = false
+tag = false
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
