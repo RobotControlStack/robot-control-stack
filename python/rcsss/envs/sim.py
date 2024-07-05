@@ -1,3 +1,4 @@
+import logging
 from typing import Any, cast
 
 import gymnasium as gym
@@ -35,6 +36,10 @@ class FR3Sim(gym.Wrapper):
         return self.env.reset(seed=seed, options=options)
 
 class CollisionGuard(gym.Wrapper):
+    """
+    - Gripper Wrapper has to be added before this as it removes the gripper action
+    - RelativeActionSpace has to be added after this as it changes the input space, and the input expects absolute actions
+    """
     def __init__(self, env: FR3Env, simulation: sim.Sim, collision_env: FR3Sim):
         self.env: FR3Env
         super().__init__(env)
@@ -93,8 +98,7 @@ if __name__ == "__main__":
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     robot.set_parameters(cfg)
-    env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
-    env = RelativeActionSpace(env)
+    env = FR3Env(robot, ControlMode.JOINTS)
     env_sim = FR3Sim(env, simulation)
     cameras = {
         "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=False),
@@ -108,6 +112,7 @@ if __name__ == "__main__":
     gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
     env_cam = GripperWrapper(env_cam, gripper)
     env_cam = CollisionGuard.env_from_xml_paths(env_cam, "models/mjcf/fr3_modular/scene.xml", "models/fr3/urdf/fr3_from_panda.urdf", gripper=True)
+    env_cam = RelativeActionSpace(env_cam)
     obs, info = env_cam.reset()
     for i in range(100):
         act = env_cam.action_space.sample()

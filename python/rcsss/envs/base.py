@@ -220,13 +220,14 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.initial_obs = obs
         return obs, info
 
-    def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        action = copy.deepcopy(action)
         if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
             joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
-            return JointsDictType(
+            action.update(JointsDictType(
                 joints=np.clip(self.env.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high)
-            )
+            ))
 
         elif self.env.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
@@ -236,12 +237,12 @@ class RelativeActionSpace(gym.ActionWrapper):
             unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
-            return TRPYDictType(
+            action.update(TRPYDictType(
                 xyzrpy=np.concat(
                     [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_rpy().as_vector()],
                 )
-            )
+            ))
         elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
             clipped_translation = np.clip(
@@ -250,15 +251,16 @@ class RelativeActionSpace(gym.ActionWrapper):
             unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, quaternion=action[self.tquart_key][3:]
             )
-            return TQuartDictType(
+            action.update(TQuartDictType(
                 tquart=np.concat(
                     [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_q()],
                 )
-            )
+            ))
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
+        return action
 
 
 class CameraSetWrapper(ActObsInfoWrapper):
