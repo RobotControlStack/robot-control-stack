@@ -61,6 +61,9 @@ class PyRobot : public rcs::common::Robot {
   void move_home() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
+  }
 
   void set_cartesian_position(const rcs::common::Pose &pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
@@ -85,16 +88,31 @@ class PyGripper : public rcs::common::Gripper {
                            get_state, );
   }
 
-  bool grasp() override {
-    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, grasp, );
+  void set_normalized_width(double width, double force) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, set_normalized_width, width, force);
   }
 
-  void release() override {
-    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, release, );
+  double get_normalized_width() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, get_normalized_width, );
+  }
+
+  bool is_grasped() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, is_grasped, );
+  }
+
+  void grasp() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, grasp, );
+  }
+
+  void open() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, open, );
   }
 
   void shut() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, shut, );
+  }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, reset, );
   }
 };
 
@@ -187,6 +205,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("q"))
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)
       .def("move_home", &rcs::common::Robot::move_home)
+      .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
 
@@ -194,9 +213,13 @@ PYBIND11_MODULE(_core, m) {
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
       .def("get_state", &rcs::common::Gripper::get_state)
+      .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width, py::arg("width"), py::arg("force") = 0)
+      .def("get_normalized_width", &rcs::common::Gripper::get_normalized_width)
       .def("grasp", &rcs::common::Gripper::grasp)
-      .def("release", &rcs::common::Gripper::release)
-      .def("shut", &rcs::common::Gripper::shut);
+      .def("is_grasped", &rcs::common::Gripper::is_grasped)
+      .def("open", &rcs::common::Gripper::open)
+      .def("shut", &rcs::common::Gripper::shut)
+      .def("reset", &rcs::common::Gripper::reset);
 
   py::class_<rcs::common::RobotWithGripper,
              std::shared_ptr<rcs::common::RobotWithGripper>>(common,
@@ -232,7 +255,7 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
            py::arg("idxs"))
       .def("grasp", &rcs::common::NRobotsWithGripper::grasp, py::arg("idxs"))
-      .def("release", &rcs::common::NRobotsWithGripper::release,
+      .def("open", &rcs::common::NRobotsWithGripper::open,
            py::arg("idxs"))
       .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
@@ -274,6 +297,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
+      .def_readonly("last_commanded_width", &rcs::hw::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width", &rcs::hw::FHState::max_unnormalized_width)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
   py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
@@ -298,11 +323,12 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
-      .def(py::init<const std::string &>(), py::arg("ip"))
+      .def(py::init<const std::string &, const rcs::hw::FHConfig&>(), py::arg("ip"), py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("set_parameters", &rcs::hw::FrankaHand::set_parameters,
            py::arg("cfg"))
+      .def("is_grasped", &rcs::hw::FrankaHand::is_grasped)
       .def("homing", &rcs::hw::FrankaHand::homing);
 
   auto hw_except =
@@ -364,8 +390,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
-      .def("get_state", &rcs::sim::FR3::get_state)
-      .def("reset", &rcs::sim::FR3::reset);
+      .def("get_state", &rcs::sim::FR3::get_state);
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
       .value("tracking", rcs::sim::CameraType::tracking)
