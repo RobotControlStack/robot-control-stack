@@ -1,5 +1,6 @@
 """Gym API."""
 
+import copy
 from enum import Enum
 from typing import Annotated, Any, TypeAlias, cast
 
@@ -287,6 +288,8 @@ class CameraSetWrapper(ActObsInfoWrapper):
         return super().reset(seed=seed, options=options)
 
     def observation(self, observation: dict, info: dict[str, Any]) -> dict[str, Any]:
+        observation = copy.deepcopy(observation)
+        info = copy.deepcopy(info)
         frameset = self.camera_set.get_latest_frames()
         if frameset is None:
             observation[self.camera_key] = {}
@@ -323,10 +326,12 @@ class GripperWrapper(ActObsInfoWrapper):
         return super().reset(**kwargs)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
         observation[self.gripper_key] = self._gripper.get_normalized_width()
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
         self._gripper_state = np.round(action["gripper"])
         self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
