@@ -1,3 +1,4 @@
+import logging
 from ctypes import c_bool, c_double, c_int
 from dataclasses import dataclass, field
 from enum import IntFlag, auto
@@ -6,7 +7,7 @@ from itertools import chain
 from multiprocessing import Array, Process, RLock, Value
 from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
 from multiprocessing.synchronize import RLock as RLockType
-from socket import AF_INET, SOCK_DGRAM, socket, timeout
+from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
 from threading import Event, Thread
 
@@ -18,10 +19,11 @@ from rcsss.envs.base import (
     FR3Env,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
-    TQuartDictType,
 )
 from rcsss.envs.sim import FR3Sim
 from rcsss.sim import FR3, FR3Config, Sim
+
+logger = logging.getLogger(__name__)
 
 
 class Button(IntFlag):
@@ -62,7 +64,8 @@ class UDPViveActionServer:
 
     def next_action(self) -> Pose:
         if not self.running:
-            raise RuntimeError("Server is not running.")
+            msg = "Server is not running."
+            raise RuntimeError(msg)
         while True:
             with self._lock:
                 if not Button(int(self._buttons.value)) & Button.R_SQUEEZE:
@@ -101,11 +104,12 @@ class UDPViveActionServer:
                 try:
                     unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
                     if warning_raised:
-                        print("[UDP Server] connection reestablished")
+                        logger.info("[UDP Server] connection reestablished")
                         warning_raised = False
-                except TimeoutError:
+                except TimeoutError as err:
                     if not warning_raised:
-                        raise RuntimeWarning(("[UDP server] socket timeout (0.1s), " "waiting for packets"))
+                        msg = "[UDP server] socket timeout (0.1s), waiting for packets"
+                        raise RuntimeWarning(msg) from err
                         warning_raised = True
                     break
                 with lock:
@@ -114,7 +118,8 @@ class UDPViveActionServer:
 
     def start_worker(self):
         if self.running:
-            raise RuntimeError("Server already running")
+            msg = "Server already running"
+            raise RuntimeError(msg)
         self._lock = RLock()
         self._server_proc = Process(
             target=UDPViveActionServer.worker(
@@ -125,13 +130,15 @@ class UDPViveActionServer:
 
     def stop_worker(self):
         if not self.running:
-            raise RuntimeError("Server is not running")
+            msg = "Server is not running"
+            raise RuntimeError(msg)
         assert self._server_proc
         self._exit_requested.value = c_bool(True)
         try:
             self._server_proc.join(timeout=1.0)
-        except TimeoutError:
-            raise RuntimeWarning("Could not join server process. Killing it.")
+        except TimeoutError as err:
+            msg = "Could not join server process. Killing it."
+            raise RuntimeWarning(msg) from err
             self._server_proc.kill()
 
     def __enter__(self):
@@ -172,8 +179,9 @@ def main():
         stop_event.set()
         try:
             t.join(5.0)
-        except TimeoutError:
-            raise RuntimeWarning(("Thread did not join after five seconds. ", "Exiting anyway."))
+        except TimeoutError as err:
+            msg = "Thread did not join after five seconds. Exiting anyway."
+            raise RuntimeWarning(msg) from err
 
 
 if __name__ == "__main__":
