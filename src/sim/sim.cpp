@@ -112,6 +112,8 @@ void Sim::step(size_t k) {
   }
 }
 
+void Sim::reset() { mj_resetData(this->m, this->d); }
+
 void Sim::register_cb(std::function<void(void)> cb,
                       mjtNum seconds_between_calls) {
   this->callbacks.push_back(Callback{cb, seconds_between_calls, 0.0});
