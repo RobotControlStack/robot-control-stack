@@ -76,6 +76,7 @@ class UDPViveActionServer:
                         quaternion=self._pose_raw_as_array[:4],
                         translation=self._pose_raw_as_array[4:]
                     )
+                    continue
                 # Trigger is pressed and first pose since press is recorded
                 self._controller_state.curr_controller_pose = Pose(
                     quaternion=self._pose_raw_as_array[:4],
