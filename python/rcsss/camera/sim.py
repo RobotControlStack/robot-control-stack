@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import cast
 
 import numpy as np
 from rcsss._core.sim import CameraType

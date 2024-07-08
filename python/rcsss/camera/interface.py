@@ -10,7 +10,7 @@ class BaseCameraConfig(BaseModel):
 
 
 class BaseCameraSetConfig(BaseModel):
-    cameras: dict[str, BaseCameraConfig] = {}  # noqa: RUF012
+    cameras: dict[str, BaseCameraConfig] = {}
     resolution_width: int = 1280  # pixels
     resolution_height: int = 720  # pixels
     frame_rate: int = 15  # Hz

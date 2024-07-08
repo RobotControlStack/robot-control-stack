@@ -189,13 +189,14 @@ def get_space(
             elif node in child_dict_keys_to_unfold:
                 unfold_key = node
             else:
-                raise ValueError(f"No matching key for child dict keys: {path}")
+                msg = f"No matching key for child dict keys: {path}"
+                raise ValueError(msg)
 
             return gym.spaces.Dict(
                 {key: value(get_args(t)[1], f"{path}/{key}") for key in child_dict_keys_to_unfold[unfold_key]}
             )
 
-        elif len(t.__metadata__) == 2 and callable(t.__metadata__[0]):
+        if len(t.__metadata__) == 2 and callable(t.__metadata__[0]):
             # space can be parametrized and is a function
             assert params is not None, "No params given."
 
@@ -206,13 +207,13 @@ def get_space(
             elif node in params:
                 param_key = node
             else:
-                raise ValueError(f"No matching key for child dict keys: {path}")
+                msg = f"No matching key for child dict keys: {path}"
+                raise ValueError(msg)
             space = t.__metadata__[0](**params[param_key])
             assert isinstance(space, gym.spaces.Space), "Not a gym space."
             return space
-        else:
-            assert isinstance(t.__metadata__[0], gym.spaces.Space), "Leaves must be gym spaces."
-            return t.__metadata__[0]
+        assert isinstance(t.__metadata__[0], gym.spaces.Space), "Leaves must be gym spaces."
+        return t.__metadata__[0]
 
     return gym.spaces.Dict({name: value(t) for name, t in get_type_hints(tp, include_extras=True).items()})
 

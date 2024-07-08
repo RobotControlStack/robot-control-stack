@@ -2,7 +2,7 @@
 
 import copy
 from enum import Enum
-from typing import Annotated, Any, TypeAlias, cast
+from typing import Annotated, Any, TypeAlias
 
 import gymnasium as gym
 import numpy as np

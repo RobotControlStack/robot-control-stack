@@ -11,7 +11,7 @@ from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
 class RealSenseSetConfig(HWCameraSetConfig):
     # dict with readable name and serial number
-    # devices_to_enable: dict[str, str] = {}  # noqa: RUF012
+    # devices_to_enable: dict[str, str] = {}
     # cameras: dict[str, RealSenseConfig] = []
     enable_ir_emitter: bool = False
     enable_ir: bool = False

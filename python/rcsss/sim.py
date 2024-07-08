@@ -2,7 +2,7 @@ import mujoco as mj
 from rcsss._core.sim import FR3, FHConfig, FHState, FR3Config, FR3State, FrankaHand
 from rcsss._core.sim import Sim as _Sim
 
-__all__ = ["Sim", "FR3", "FR3Config", "FR3State"]
+__all__ = ["Sim", "FR3", "FR3Config", "FR3State", "FHConfig", "FHState", "FrankaHand"]
 
 
 class Sim(_Sim):
