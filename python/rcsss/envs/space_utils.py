@@ -228,7 +228,7 @@ ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 
 
-class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActType]):
+class ActObsInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActType]):
     """Improved version of the ObservationWrapper from gymnasium. It also adds the info dict to the observation method.
 
     Superclass of wrappers that can modify observations using :meth:`observation` for :meth:`reset` and :meth:`step`.
@@ -257,11 +257,11 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
 
     def step(self, action: ActType) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`step` using :meth:`self.observation` on the returned observations."""
-        observation, reward, terminated, truncated, info = self.env.step(action)
+        observation, reward, terminated, truncated, info = self.env.step(self.action(action))
         observation, info = self.observation(observation, info)
         return observation, reward, terminated, truncated, info
 
-    def observation(self, observation: ObsType, info: dict[str, Any]) -> WrapperObsType:
+    def observation(self, observation: ObsType, info: dict[str, Any]) -> tuple[WrapperObsType, dict[str, Any]]:
         """Returns a modified observation.
 
         Args:
@@ -270,4 +270,15 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
         Returns:
             The modified observation
         """
-        raise NotImplementedError
+        return observation, info
+
+    def action(self, action: WrapperActType) -> ActType:
+        """Returns a modified action before :meth:`env.step` is called.
+
+        Args:
+            action: The original :meth:`step` actions
+
+        Returns:
+            The modified actions
+        """
+        return action

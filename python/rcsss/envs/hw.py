@@ -9,20 +9,22 @@ _logger = logging.getLogger(__name__)
 
 
 class FR3HW(gym.Wrapper):
-    def __init__(self, env: FR3Env):
-        self.env: FR3Env
+    def __init__(self, env):
         super().__init__(env)
-        assert isinstance(self.env.robot, hw.FR3), "Robot must be a hw.FR3 instance."
-        self.hw_robot = cast(hw.FR3, self.env.robot)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
+        self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
         try:
-            return self.env.step(action)
+            return self.unwrapped.step(action)
         except hw.exceptions.FrankaControlException as e:
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
-            return self.env._get_obs(), 0, False, True, {}
+            return self.unwrapped.get_obs(), 0, False, True, {}
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.hw_robot.move_home()
-        return self.env.reset(seed=seed, options=options)
+        return self.unwrapped.reset(seed=seed, options=options)

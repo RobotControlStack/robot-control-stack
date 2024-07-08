@@ -72,7 +72,7 @@ class GripperPose(Pose):
             self.pose = 0  # gripper[self.name].getState()[1]
 
         else:
-            gripper[self.name].release()
+            gripper[self.name].open()
             self.pose = None
 
     def replay(self, _: dict[str, hw.FR3], gripper: dict[str, hw.FrankaHand]):
@@ -87,7 +87,7 @@ class GripperPose(Pose):
             gripper[self.name].set_parameters(config)
             gripper[self.name].grasp()
         else:
-            gripper[self.name].release()
+            gripper[self.name].open()
 
     def __str__(self) -> str:
         return f"GripperPose;{self.name};{self.pose}"

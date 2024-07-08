@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
 from rcsss.camera.interface import BaseCameraConfig
-from rcsss.camera.realsense import RealSenseConfig, RealSenseSetConfig
+from rcsss.camera.realsense import RealSenseSetConfig
 from rcsss.camera.sim import SimCameraSetConfig
 
 

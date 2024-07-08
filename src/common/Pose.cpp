@@ -17,6 +17,7 @@ Pose::Pose() {
 Pose::Pose(const Eigen::Affine3d &pose) {
   this->m_translation = pose.translation();
   this->m_rotation = Eigen::Quaterniond(pose.rotation());
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const std::array<double, 16> &pose)
@@ -26,24 +27,28 @@ Pose::Pose(const Eigen::Matrix4d &pose) {
   Eigen::Affine3d affine_pose = Eigen::Affine3d(pose);
   this->m_translation = affine_pose.translation();
   this->m_rotation = Eigen::Quaterniond(affine_pose.rotation());
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Matrix3d &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
   this->m_rotation = Eigen::Quaterniond(rotation);
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Vector4d &quaternion,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
   this->m_rotation = Eigen::Quaterniond(quaternion);
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Quaterniond &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
   this->m_rotation = rotation;
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
@@ -52,6 +57,7 @@ Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
       Eigen::AngleAxisd(rotation.roll, Eigen::Vector3d::UnitX()) *
       Eigen::AngleAxisd(rotation.pitch, Eigen::Vector3d::UnitY()) *
       Eigen::AngleAxisd(rotation.yaw, Eigen::Vector3d::UnitZ());
+  this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Vector3d &rotation,
@@ -60,6 +66,7 @@ Pose::Pose(const Eigen::Vector3d &rotation,
   this->m_rotation = Eigen::AngleAxisd(rotation.x(), Eigen::Vector3d::UnitX()) *
                      Eigen::AngleAxisd(rotation.y(), Eigen::Vector3d::UnitY()) *
                      Eigen::AngleAxisd(rotation.z(), Eigen::Vector3d::UnitZ());
+  this->m_rotation.normalize();
 }
 
 // GETTERS
