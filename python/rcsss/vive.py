@@ -66,58 +66,46 @@ class UDPViveActionServer:
         while True:
             with self._lock:
                 if not Button(int(self._buttons.value)) & Button.R_SQUEEZE:
-                    self._controller_state.last_controller_pose_initialized = (
-                        False
-                    )
+                    self._controller_state.last_controller_pose_initialized = False
                     continue
                 # Trigger is pressed
                 if not self._controller_state.last_controller_pose_initialized:
                     self._controller_state.last_controller_pose = Pose(
-                        quaternion=self._pose_raw_as_array[:4],
-                        translation=self._pose_raw_as_array[4:]
+                        quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
                     )
                     continue
                 # Trigger is pressed and first pose since press is recorded
                 self._controller_state.curr_controller_pose = Pose(
-                    quaternion=self._pose_raw_as_array[:4],
-                    translation=self._pose_raw_as_array[4:]
+                    quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
                 )
                 displacement = (
-                    self._controller_state.curr_controller_pose *
-                    self._controller_state.last_controller_pose.inverse()
+                    self._controller_state.curr_controller_pose * self._controller_state.last_controller_pose.inverse()
                 )
-                self._controller_state.last_controller_pose = (
-                    self._controller_state.curr_controller_pose
-                )
+                self._controller_state.last_controller_pose = self._controller_state.curr_controller_pose
                 return displacement
 
     @staticmethod
-    def worker(shared_array: "SynchronizedArray[c_double]",
-               shared_int: "Synchronized[c_int]",
-               exit_requested: "Synchronized[c_bool]",
-               lock: RLockType,
-               host: str,
-               port: int,
-               ):
+    def worker(
+        shared_array: "SynchronizedArray[c_double]",
+        shared_int: "Synchronized[c_int]",
+        exit_requested: "Synchronized[c_bool]",
+        lock: RLockType,
+        host: str,
+        port: int,
+    ):
         warning_raised = False
         with socket(AF_INET, SOCK_DGRAM) as sock:
             sock.settimeout(0.1)
             sock.bind((host, port))
             while not exit_requested.value:
                 try:
-                    unpacked = unpack(
-                        UDPViveActionServer.FMT,
-                        sock.recv(7 * 8 + 4)
-                    )
+                    unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
                     if warning_raised:
                         print("[UDP Server] connection reestablished")
                         warning_raised = False
                 except TimeoutError:
                     if not warning_raised:
-                        raise RuntimeWarning((
-                            "[UDP server] socket timeout (0.1s), "
-                            "waiting for packets"
-                        ))
+                        raise RuntimeWarning(("[UDP server] socket timeout (0.1s), " "waiting for packets"))
                         warning_raised = True
                     break
                 with lock:
@@ -130,12 +118,7 @@ class UDPViveActionServer:
         self._lock = RLock()
         self._server_proc = Process(
             target=UDPViveActionServer.worker(
-                self._pose_raw,
-                self._buttons,
-                self._exit_requested,
-                self._lock,
-                self._host,
-                self._port
+                self._pose_raw, self._buttons, self._exit_requested, self._lock, self._host, self._port
             )
         )
         self._server_proc.start()
@@ -159,20 +142,14 @@ class UDPViveActionServer:
         self.stop_worker()
 
 
-def environment_step_loop(
-        action_server: UDPViveActionServer,
-        env: RelativeActionSpace,
-        stop_requested: Event
-):
+def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActionSpace, stop_requested: Event):
     # assert env.action_space is TQuartDictType
     while not stop_requested.is_set():
         displacement = action_server.next_action()
-        action = LimitedTQuartRelDictType(tquart=np.fromiter(
-            iter=chain(
-                displacement.translation(), displacement.rotation_q()
-            ),
-            dtype=np.float64,
-            count=7)
+        action = LimitedTQuartRelDictType(
+            tquart=np.fromiter(
+                iter=chain(displacement.translation(), displacement.rotation_q()), dtype=np.float64, count=7
+            )
         )
         env.action(action)
 
@@ -184,36 +161,19 @@ def main():
     robot = FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
     fr3_config = FR3Config()
     fr3_config.realtime = False
-    fr3_config.tcp_offset = Pose(
-        quaternion=np.array([0, 0, 0, 1]),
-        translation=np.array([0, 0, 0.1034])
-    )
-    env = RelativeActionSpace(
-        FR3Sim(
-            FR3Env(
-                robot,
-                ControlMode.CARTESIAN_TQuart
-            ),
-            simulation
-        )
-    )
+    fr3_config.tcp_offset = Pose(quaternion=np.array([0, 0, 0, 1]), translation=np.array([0, 0, 0.1034]))
+    env = RelativeActionSpace(FR3Sim(FR3Env(robot, ControlMode.CARTESIAN_TQuart), simulation))
     env.reset()
     with UDPViveActionServer(host, port) as action_server:
         stop_event = Event()
-        t = Thread(
-            target=environment_step_loop,
-            args=(action_server, env, stop_event)
-        )
+        t = Thread(target=environment_step_loop, args=(action_server, env, stop_event))
         t.start()
         input("Press enter to exit: ")
         stop_event.set()
         try:
             t.join(5.0)
         except TimeoutError:
-            raise RuntimeWarning((
-                "Thread did not join after five seconds. ",
-                "Exiting anyway."
-            ))
+            raise RuntimeWarning(("Thread did not join after five seconds. ", "Exiting anyway."))
 
 
 if __name__ == "__main__":
