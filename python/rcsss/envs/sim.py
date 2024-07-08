@@ -2,7 +2,6 @@ import logging
 from typing import Any, cast
 
 import gymnasium as gym
-import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss._core.sim import CameraType
@@ -63,7 +62,8 @@ class CollisionGuard(gym.Wrapper):
             # return old obs, with truncated and print warning
             self._logger.warning("Collision detected! Truncating episode.")
             if self.last_obs is None:
-                raise RuntimeError("Collisions detected and no old observation.")
+                msg = "Collisions detected and no old observation."
+                raise RuntimeError(msg)
             old_obs, old_info = self.last_obs
             old_info.update(info)
             return old_obs, 0, False, True, old_info
@@ -81,7 +81,8 @@ class CollisionGuard(gym.Wrapper):
             self.collision_env.sim.step_until_convergence()
             state = self.collision_env.sim_robot.get_state()
             if state.collision or not state.ik_success:
-                raise RuntimeError("Collision detected while moving to home position!")
+                msg = "Collision detected while moving to home position!"
+                raise RuntimeError(msg)
         else:
             self.collision_env.sim_robot.reset()
         obs, info = super().reset(seed=seed, options=options)
@@ -107,6 +108,7 @@ class CollisionGuard(gym.Wrapper):
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
     simulation = sim.Sim("models/mjcf/fr3_modular/scene.xml")
     robot = rcsss.sim.FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
     cfg = sim.FR3Config()
@@ -136,12 +138,12 @@ if __name__ == "__main__":
     )
     env_cam = RelativeActionSpace(env_cam)
     obs, info = env_cam.reset()
-    for i in range(100):
+    for _ in range(100):
         act = env_cam.action_space.sample()
         # act = {"tquart": np.array([0, 0, 0, 0, 0, 0, 1]), "gripper": i%2}
         # act["gripper"] = i % 2
         obs, reward, terminated, truncated, info = env_cam.step(act)
         if truncated or terminated:
-            print("Truncated or terminated!")
+            logger.info("Truncated or terminated!")
             env_cam.reset()
-        print(act["gripper"], obs["gripper"])
+        logger.info(act["gripper"], obs["gripper"])
