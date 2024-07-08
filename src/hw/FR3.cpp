@@ -128,8 +128,7 @@ void FR3::move_home() { this->set_joint_position(q_home); }
 
 void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
-void FR3::reset() {
-}
+void FR3::reset() {}
 
 void FR3::wait_milliseconds(int milliseconds) {
   std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));

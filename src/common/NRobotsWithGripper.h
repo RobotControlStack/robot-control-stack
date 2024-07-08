@@ -99,7 +99,8 @@ class NRobotsWithGripper {
 
   void shut(const std::vector<size_t> &idxs);
 
-  // missing functions: set_normalized_width, is_grasped, reset (also from robot)
+  // missing functions: set_normalized_width, is_grasped, reset (also from
+  // robot)
 };
 
 }  // namespace common

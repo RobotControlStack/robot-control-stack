@@ -11,8 +11,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
-#include <sim/camera.h>
 #include <sim/FrankaHand.h>
+#include <sim/camera.h>
 
 #include <memory>
 
@@ -90,7 +90,8 @@ class PyGripper : public rcs::common::Gripper {
   }
 
   void set_normalized_width(double width, double force) override {
-    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, set_normalized_width, width, force);
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, set_normalized_width,
+                           width, force);
   }
 
   double get_normalized_width() override {
@@ -214,7 +215,8 @@ PYBIND11_MODULE(_core, m) {
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
       .def("get_state", &rcs::common::Gripper::get_state)
-      .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width, py::arg("width"), py::arg("force") = 0)
+      .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width,
+           py::arg("width"), py::arg("force") = 0)
       .def("get_normalized_width", &rcs::common::Gripper::get_normalized_width)
       .def("grasp", &rcs::common::Gripper::grasp)
       .def("is_grasped", &rcs::common::Gripper::is_grasped)
@@ -256,8 +258,7 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
            py::arg("idxs"))
       .def("grasp", &rcs::common::NRobotsWithGripper::grasp, py::arg("idxs"))
-      .def("open", &rcs::common::NRobotsWithGripper::open,
-           py::arg("idxs"))
+      .def("open", &rcs::common::NRobotsWithGripper::open, py::arg("idxs"))
       .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
   // HARDWARE MODULE
@@ -298,8 +299,10 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
-      .def_readonly("last_commanded_width", &rcs::hw::FHState::last_commanded_width)
-      .def_readonly("max_unnormalized_width", &rcs::hw::FHState::max_unnormalized_width)
+      .def_readonly("last_commanded_width",
+                    &rcs::hw::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width",
+                    &rcs::hw::FHState::max_unnormalized_width)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
   py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
@@ -324,7 +327,8 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
-      .def(py::init<const std::string &, const rcs::hw::FHConfig&>(), py::arg("ip"), py::arg("cfg"))
+      .def(py::init<const std::string &, const rcs::hw::FHConfig &>(),
+           py::arg("ip"), py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("set_parameters", &rcs::hw::FrankaHand::set_parameters,
@@ -383,12 +387,16 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer);
   py::class_<rcs::sim::FHState, rcs::common::GState>(sim, "FHState")
       .def(py::init<>())
-      .def_readonly("last_commanded_width", &rcs::sim::FHState::last_commanded_width)
-      .def_readonly("max_unnormalized_width", &rcs::sim::FHState::max_unnormalized_width);
+      .def_readonly("last_commanded_width",
+                    &rcs::sim::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width",
+                    &rcs::sim::FHState::max_unnormalized_width);
 
   py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string&, const rcs::sim::FHConfig&>(), py::arg("sim"), py::arg("id"), py::arg("cfg"))
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+                    const rcs::sim::FHConfig &>(),
+           py::arg("sim"), py::arg("id"), py::arg("cfg"))
       .def("get_parameters", &rcs::sim::FrankaHand::get_parameters)
       .def("get_state", &rcs::sim::FrankaHand::get_state)
       .def("set_parameters", &rcs::sim::FrankaHand::set_parameters,
@@ -418,7 +426,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
       .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def_readwrite("on_screen_render", &rcs::sim::SimCameraConfig::on_screen_render);
+      .def_readwrite("on_screen_render",
+                     &rcs::sim::SimCameraConfig::on_screen_render);
   py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
       .def(py::init<>())
       .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)

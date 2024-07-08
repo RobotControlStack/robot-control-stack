@@ -5,18 +5,18 @@
 
 #include <Eigen/Core>
 #include <cmath>
-#include <string>
 #include <set>
+#include <string>
+
 #include "sim/sim.h"
 
 namespace rcs {
 namespace sim {
 
-
 struct FHConfig : common::GConfig {
   double epsilon_inner = 0.005;
   double epsilon_outer = 0.005;
-  double seconds_between_callbacks = 0.05;    // 20 Hz
+  double seconds_between_callbacks = 0.05;  // 20 Hz
 };
 
 struct FHState : common::GState {
@@ -43,7 +43,8 @@ class FrankaHand : public common::Gripper {
   std::set<size_t> cgeom;
 
  public:
-  FrankaHand(std::shared_ptr<Sim> sim, const std::string &id, const FHConfig& cfg);
+  FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
+             const FHConfig &cfg);
   ~FrankaHand() override;
 
   bool set_parameters(const FHConfig &cfg);

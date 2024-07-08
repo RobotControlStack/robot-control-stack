@@ -98,10 +98,8 @@ NRobotsWithGripper::get_state_g(const std::vector<size_t> &idxs) {
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-void NRobotsWithGripper::grasp(
-    const std::vector<size_t> &idxs) {
-  std::function<void(size_t)> f =
-      [this, &idxs](size_t i) {
+void NRobotsWithGripper::grasp(const std::vector<size_t> &idxs) {
+  std::function<void(size_t)> f = [this, &idxs](size_t i) {
     if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
       this->robots_with_gripper[idxs[i]]->gripper.value()->grasp();
     }

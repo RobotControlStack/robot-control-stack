@@ -3,12 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import pyrealsense2 as rs
 from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
-from rcsss.camera.interface import (
-    CameraFrame,
-    DataFrame,
-    Frame,
-    IMUFrame,
-)
+from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
 # class RealSenseConfig(BaseCameraConfig):
 # dict with readable name and serial number

@@ -25,11 +25,9 @@ SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{}, cameras{} {
   for (auto const& [id, cam] : cfg.cameras) {
     this->sim->register_rendering_callback(
-        [this](const std::string& id, mjrContext& ctx, mjvScene& scene, mjvOption& opt) {
-          this->frame_callback(id, ctx, scene, opt);
-        },
-        id,
-        1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
+        [this](const std::string& id, mjrContext& ctx, mjvScene& scene,
+               mjvOption& opt) { this->frame_callback(id, ctx, scene, opt); },
+        id, 1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
         this->cfg.resolution_height, !cam.on_screen_render);
 
     mjvCamera mjcam;
@@ -39,7 +37,8 @@ SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
       mjv_defaultFreeCamera(this->sim->m, &mjcam);
     } else {
       mjcam.type = cam.type;
-      mjcam.fixedcamid = mj_name2id(this->sim->m, mjOBJ_CAMERA, cam.identifier.c_str());
+      mjcam.fixedcamid =
+          mj_name2id(this->sim->m, mjOBJ_CAMERA, cam.identifier.c_str());
     }
     cameras[id] = mjcam;
   }
@@ -72,11 +71,8 @@ std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
   return std::nullopt;
 }
 
-
 void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
-                                    mjvScene& scene, mjvOption& opt) {
-
-
+                                  mjvScene& scene, mjvOption& opt) {
   mjrRect viewport = mjr_maxViewport(&ctx);
   int W = viewport.width;
   int H = viewport.height;
@@ -87,8 +83,8 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   // update abstract scene
   // TODO: we might be able to call this once for all cameras
   // there is also a mjv_updateCamera function
-  mjv_updateScene(this->sim->m, this->sim->d, &opt, NULL, &this->cameras[id], mjCAT_ALL,
-                  &scene);
+  mjv_updateScene(this->sim->m, this->sim->d, &opt, NULL, &this->cameras[id],
+                  mjCAT_ALL, &scene);
   // mjv_updateCamera(this->sim->m, this->sim->d, &this->cameras[id], &scene);
 
   // render scene in offscreen buffer
@@ -101,9 +97,9 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   std::lock_guard<std::mutex> lock(buffer_lock);
   // The following code assumes that all render callbacks for a timestep
   // happen directly after each other
-  if(this->last_ts == ts) {
-    buffer[buffer.size()-1].color_frames[id] = frame;
-  }else{
+  if (this->last_ts == ts) {
+    buffer[buffer.size() - 1].color_frames[id] = frame;
+  } else {
     FrameSet fs;
     fs.timestamp = ts;
     fs.color_frames[id] = frame;
