@@ -187,8 +187,8 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
 }
 void FR3::is_moving_callback() {
   common::Vector7d current_angles = this->get_joint_position();
-  this->state.is_moving =
-      not this->state.previous_angles.isApprox(current_angles, 0.0001); // TODO: careful with isapprox
+  this->state.is_moving = not this->state.previous_angles.isApprox(
+      current_angles, 0.0001);  // TODO: careful with isapprox
   this->state.previous_angles = current_angles;
 }
 

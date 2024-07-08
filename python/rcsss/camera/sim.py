@@ -24,7 +24,7 @@ class SimCameraConfig(BaseCameraConfig):
 
 
 class SimCameraSetConfig(BaseCameraSetConfig):
-    cameras: dict[str, SimCameraConfig] = {} # noqa: RUF012
+    cameras: dict[str, SimCameraConfig] = {}  # noqa: RUF012
 
 
 class SimCameraSet(_SimCameraSet):
