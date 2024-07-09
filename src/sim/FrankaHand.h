@@ -41,6 +41,7 @@ class FrankaHand : public common::Gripper {
   bool convergence_callback();
   bool collision_callback();
   std::set<size_t> cgeom;
+  void m_reset();
 
  public:
   FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,

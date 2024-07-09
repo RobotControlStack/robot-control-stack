@@ -18,7 +18,8 @@ namespace sim {
 
 FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
                        const FHConfig &cfg)
-    : sim{sim}, cfg{cfg}, id{id}, state{state} {
+    : sim{sim}, cfg{cfg}, id{id} {
+  this->state = FHState();
   this->actuator_id = mj_name2id(this->sim->m, mjOBJ_ACTUATOR,
                                  (gripper_names.actuator + "_" + id).c_str());
   if (this->actuator_id == -1) {
@@ -50,7 +51,7 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
                              this->cfg.seconds_between_callbacks);
   this->sim->register_any_cb(std::bind(&FrankaHand::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
-  this->reset();
+  this->m_reset();
 }
 
 FrankaHand::~FrankaHand() {}
@@ -130,11 +131,13 @@ void FrankaHand::grasp() { this->shut(); }
 void FrankaHand::open() { this->set_normalized_width(1); }
 void FrankaHand::shut() { this->set_normalized_width(0); }
 
-void FrankaHand::reset() {
+void FrankaHand::m_reset() {
   this->state = FHState();
   this->state.max_unnormalized_width = this->MAX_WIDTH;
   // reset state hard
   this->sim->d->qpos[this->joint_id] = this->MAX_JOINT_WIDTH;
 }
+
+void FrankaHand::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs

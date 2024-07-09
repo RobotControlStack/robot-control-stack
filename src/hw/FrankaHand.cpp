@@ -13,7 +13,10 @@ namespace hw {
 FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
     : gripper(ip), cfg{} {
   this->cfg = cfg;
-  this->reset();
+  franka::GripperState gripper_state = gripper.readOnce();
+  this->max_width = gripper_state.max_width - 0.001;
+  this->last_commanded_width = this->max_width;
+  gripper.move(this->max_width, this->cfg.speed);
 }
 
 FrankaHand::~FrankaHand() {}
