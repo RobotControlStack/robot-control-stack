@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
 import rcsss
@@ -24,9 +24,8 @@ class FR3Sim(gym.Wrapper):
         self.sim = simulation
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
-        obs, _, _, _, info = self.unwrapped.step(action)
+        obs, _, _, _, info = super().step(action)
         self.sim.step_until_convergence()
-        obs = self.unwrapped.get_obs()
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
@@ -38,16 +37,16 @@ class FR3Sim(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim_robot.reset()
         self.sim.step(1)
-        return self.unwrapped.reset(seed=seed, options=options)
+        return super().reset(seed=seed, options=options)
 
 
-class CollisionGuard(gym.Wrapper):
+class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
     """
     - Gripper Wrapper has to be added before this as it removes the gripper action
     - RelativeActionSpace has to be added after this as it changes the input space, and the input expects absolute actions
     """
 
-    def __init__(self, env: FR3Env, simulation: sim.Sim, collision_env: FR3Sim, check_home_collision: bool = True):
+    def __init__(self, env: gym.Env, simulation: sim.Sim, collision_env: FR3Sim, check_home_collision: bool = True):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.collision_env = collision_env
@@ -56,7 +55,7 @@ class CollisionGuard(gym.Wrapper):
         self._logger = logging.getLogger(__name__)
         self.check_home_collision = check_home_collision
 
-    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
         _, _, _, _, info = self.collision_env.step(action)
         if info["collision"] or not info["ik_success"]:
             # return old obs, with truncated and print warning
@@ -91,8 +90,9 @@ class CollisionGuard(gym.Wrapper):
 
     @classmethod
     def env_from_xml_paths(
-        cls, env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True
-    ) -> FR3Sim:
+        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True
+    ) -> "CollisionGuard":
+        assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
         robot = rcsss.sim.FR3(simulation, id, rlmdl)
         cfg = sim.FR3Config()
@@ -103,7 +103,8 @@ class CollisionGuard(gym.Wrapper):
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-            c_env = GripperWrapper(c_env, gripper)
+            g_env = GripperWrapper(c_env, gripper)
+            return cls(env, simulation, FR3Sim(g_env, simulation), check_home_collision)
         return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision)
 
 
@@ -119,12 +120,12 @@ if __name__ == "__main__":
     env = FR3Env(robot, ControlMode.JOINTS)
     env_sim = FR3Sim(env, simulation)
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=CameraType.fixed, on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=CameraType.default_free, on_screen_render=True),
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
+        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
     }
     cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
     camera_set = SimCameraSet(simulation, cam_cfg)
-    env_cam = CameraSetWrapper(env_sim, camera_set)
+    env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
 
     gripper_cfg = sim.FHConfig()
     gripper = sim.FrankaHand(simulation, "0", gripper_cfg)

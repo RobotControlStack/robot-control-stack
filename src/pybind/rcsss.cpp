@@ -392,6 +392,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("max_unnormalized_width",
                     &rcs::sim::FHState::max_unnormalized_width);
 
+  py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
+      .def(py::init([](long m, long d) {
+             return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
+           }),
+           py::arg("mjmdl"), py::arg("mjdata"))
+      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("step", &rcs::sim::Sim::step, py::arg("k"))
+      .def("reset", &rcs::sim::Sim::reset);
   py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
@@ -401,14 +409,6 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state", &rcs::sim::FrankaHand::get_state)
       .def("set_parameters", &rcs::sim::FrankaHand::set_parameters,
            py::arg("cfg"));
-  py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
-      .def(py::init([](long m, long d) {
-             return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
-           }),
-           py::arg("mjmdl"), py::arg("mjdata"))
-      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
-      .def("step", &rcs::sim::Sim::step, py::arg("k"))
-      .def("reset", &rcs::sim::Sim::reset);
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,

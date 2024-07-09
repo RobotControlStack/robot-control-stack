@@ -2,7 +2,7 @@
 
 import copy
 from enum import Enum
-from typing import Annotated, Any, TypeAlias
+from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -125,7 +125,7 @@ class ControlMode(Enum):
     CARTESIAN_TQuart = 3
 
 
-class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
+class FR3Env(gym.Env):
     """Joint Gym Environment for Franka Research 3."""
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
@@ -157,14 +157,18 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
         if self.control_mode == ControlMode.JOINTS and self.joints_key in action:
-            self.robot.set_joint_position(action[self.joints_key])
+            # cast is needed because typed dicts cannot be checked at runtime
+            action_dict = cast(dict, action)
+            self.robot.set_joint_position(action_dict[self.joints_key])
         elif self.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
+                common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
         elif self.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.tquart_key][:3], quaternion=action[self.tquart_key][3:])
+                common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
             )
         else:
             msg = "Given type is not matching control mode!"
@@ -221,7 +225,7 @@ class RelativeActionSpace(gym.ActionWrapper):
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         action = copy.deepcopy(action)
         if self.unwrapped.control_mode == ControlMode.JOINTS and self.joints_key in action:
-            joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
+            joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
             action.update(
                 JointsDictType(
@@ -232,7 +236,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             )
 
         elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
-            pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
+            pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
             clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
             unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
@@ -248,7 +252,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
             )
         elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
-            pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
+            pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
             clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
             unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, quaternion=action[self.tquart_key][3:]
@@ -273,7 +277,6 @@ class CameraSetWrapper(ActObsInfoWrapper):
     def __init__(self, env, camera_set: BaseCameraSet):
         super().__init__(env)
         self.unwrapped: FR3Env
-        self.observation_space: gym.spaces.Dict
         self.camera_set = camera_set
 
         self.observation_space: gym.spaces.Dict
@@ -295,7 +298,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
         self.camera_set.clear_buffer()
         return super().reset(seed=seed, options=options)
 
-    def observation(self, observation: dict, info: dict[str, Any]) -> dict[str, Any]:
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         info = copy.deepcopy(info)
         frameset = self.camera_set.get_latest_frames()

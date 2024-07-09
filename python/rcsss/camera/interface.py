@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BaseCameraConfig(BaseModel):
@@ -10,7 +10,7 @@ class BaseCameraConfig(BaseModel):
 
 
 class BaseCameraSetConfig(BaseModel):
-    cameras: dict[str, BaseCameraConfig] = {}
+    cameras: dict = Field(default={})
     resolution_width: int = 1280  # pixels
     resolution_height: int = 720  # pixels
     frame_rate: int = 15  # Hz
@@ -71,7 +71,7 @@ class BaseCameraSet(Protocol):
         """Deletes all frames from the buffer."""
 
     @property
-    def config(self) -> BaseCameraConfig:
+    def config(self) -> BaseCameraSetConfig:
         """Return the configuration object of the cameras."""
 
     @property
