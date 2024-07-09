@@ -38,7 +38,7 @@ include(FetchContent)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.10.0
+    GIT_TAG 0.13.3
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
