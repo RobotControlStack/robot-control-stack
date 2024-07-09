@@ -33,11 +33,12 @@ def home(ip: str, username: str, password: str, shut: bool):
         config.controller = rcsss.hw.IKController.internal
         config.guiding_mode_enabled = False
         f.set_parameters(config)
-        g = rcsss.hw.FrankaHand(ip)
+        config_hand = rcsss.hw.FHConfig()
+        g = rcsss.hw.FrankaHand(ip, config_hand)
         if shut:
             g.shut()
         else:
-            g.release()
+            g.open()
         f.move_home()
 
 

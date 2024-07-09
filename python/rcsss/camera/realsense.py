@@ -37,7 +37,8 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
     def __init__(self, cfg: RealSenseSetConfig) -> None:
-        super().__init__(cfg)
+        super().__init__()
+        self._cfg = cfg
         self.D400_config = rs.config()
 
         self.D400_config.enable_stream(

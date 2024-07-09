@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseSetConfig
-from rcsss.camera.sim import SimCameraSetConfig
+from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
 
 
 # TODO: this design might need to be adapted in order to
@@ -39,7 +39,8 @@ def create_sample_config_yaml(path: str):
     real_sense_cfg = RealSenseSetConfig(cameras=cameras)
     camera_cfg = CameraConfig(realsense_config=real_sense_cfg)
     hw = HWConfig(username="...", password="...", urdf_model_path="path/to/urdf", camera_config=camera_cfg)
-    sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras))
+    cameras_sim = {"human_readable_name": SimCameraConfig(identifier="mjcf_name", type=0, on_screen_render=False)}
+    sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras_sim))
     cfg = Config(hw=hw, sim=sim)
     yml = to_yaml_str(cfg)
     with open(path, "w") as f:

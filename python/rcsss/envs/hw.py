@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
 from rcsss import hw
@@ -15,16 +15,18 @@ class FR3HW(gym.Wrapper):
         assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
         self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
 
-    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+    def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict]:
         try:
-            return self.unwrapped.step(action)
+            return super().step(action)
         except hw.exceptions.FrankaControlException as e:
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
+            # TODO: this does not work if some wrappers are inbetween
+            # FR3HW and FR3Env
             return self.unwrapped.get_obs(), 0, False, True, {}
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.hw_robot.move_home()
-        return self.unwrapped.reset(seed=seed, options=options)
+        return super().reset(seed=seed, options=options)
