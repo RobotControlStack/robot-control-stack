@@ -47,6 +47,8 @@ class Robot {
 
   virtual void move_home() = 0;
 
+  virtual void reset() = 0;
+
   virtual void set_cartesian_position(const Pose& pose) = 0;
 };
 
@@ -61,14 +63,23 @@ class Gripper {
   virtual GConfig* get_parameters() = 0;
   virtual GState* get_state() = 0;
 
+  // set width of the gripper, 0 is closed, 1 is open
+  virtual void set_normalized_width(double width, double force = 0) = 0;
+  virtual double get_normalized_width() = 0;
+
+  virtual bool is_grasped() = 0;
+
   // close gripper with force, return true if the object is grasped successfully
-  virtual bool grasp() = 0;
+  virtual void grasp() = 0;
 
   // open gripper
-  virtual void release() = 0;
+  virtual void open() = 0;
 
   // close gripper without applying force
   virtual void shut() = 0;
+
+  // puts the gripper to max position
+  virtual void reset() = 0;
 };
 
 class RobotWithGripper {

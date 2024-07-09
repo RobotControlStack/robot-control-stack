@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/Eigen>
 #include <eigen3/Eigen/Geometry>
 #include <memory>
+
 #include "utils.h"
 
 namespace rcs {
@@ -197,7 +198,6 @@ class Pose {
    * @return interpolated Pose
    */
   Pose interpolate(const Pose &dest_pose, double progress) const;
-
 
   /**
    * @brief Returns the XYZRPY representation of the Pose
