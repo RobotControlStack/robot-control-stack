@@ -119,6 +119,14 @@ CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
 LimitedCartOrJointContType: TypeAlias = LimitedTQuartRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
 
+class ActionsRelative(LimitedJointsRelDictType):
+    pass
+
+
+class ObsArmsGrCam(ArmObsType, GripperDictType, CameraDictType):
+    pass
+
+
 class ControlMode(Enum):
     JOINTS = 1
     CARTESIAN_TRPY = 2
