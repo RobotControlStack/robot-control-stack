@@ -1,5 +1,7 @@
 import typing
 import rcsss
+from rcsss._core.sim import CameraType
+from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import CollisionGuard
 from rcsss.envs.base import (
@@ -15,8 +17,6 @@ from rcsss.envs.base import (
     LimitedJointsRelDictType
 )
 from rcsss import sim
-from rcsss._core.sim import CameraType, SimCameraSet, SimCameraSetConfig
-from rcsss.camera.sim import SimCameraConfig
 from rcsss.envs.base import ArmObsType, CameraSetWrapper, CartOrJointContType, ControlMode, FR3Env, JointsDictType, TQuartDictType, TRPYDictType
 from rcsss.envs.sim import FR3Sim
 import gymnasium as gym
@@ -24,7 +24,7 @@ from rcsss import hw
 
 
 def produce_env_sim(
-    mjcf_path: str, urdf_path: str, control_mode: ControlMode, cfg: sim.FR3Config, robot_id="0"
+    mjcf_path: str, urdf_path: str, control_mode: ControlMode, cfg: sim.FR3Config, robot_id: str = "0"
 ) -> tuple[gym.Env[ArmObsType, CartOrJointContType], dict[str, typing.Any]]:
     simulation = sim.Sim(mjcf_path)
     robot = sim.FR3(simulation, robot_id, urdf_path)
@@ -36,7 +36,7 @@ def produce_env_sim(
 
 
 def produce_env_sim_joints(
-    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id="0"
+    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id: str = "0"
 ) -> tuple[gym.Env[ArmObsType, JointsDictType], dict[str, typing.Any]]:
     env, info = produce_env_sim(mjcf_path, urdf_path, control_mode=ControlMode.JOINTS, cfg=cfg, robot_id=robot_id)
     return typing.cast(
@@ -46,9 +46,9 @@ def produce_env_sim_joints(
 
 
 def produce_env_sim_trpy(
-    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id="0"
+    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id: str = "0"
 ) -> tuple[gym.Env[ArmObsType, TRPYDictType], dict[str, typing.Any]]:
-    env, info = produce_env_sim(mjcf_path, urdf_path, control_mode=ControlMode.JOINTS, cfg=cfg, robot_id=robot_id)
+    env, info = produce_env_sim(mjcf_path, urdf_path, control_mode=ControlMode.CARTESIAN_TRPY, cfg=cfg, robot_id=robot_id)
     return typing.cast(
         gym.Env[ArmObsType, TRPYDictType],
         env,
@@ -56,7 +56,7 @@ def produce_env_sim_trpy(
 
 
 def produce_env_sim_tquart(
-    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id="0"
+    mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, robot_id: str = "0"
 ) -> tuple[gym.Env[ArmObsType, TQuartDictType], dict[str, typing.Any]]:
     env, info = produce_env_sim(mjcf_path, urdf_path, control_mode=ControlMode.CARTESIAN_TQuart, cfg=cfg, robot_id=robot_id)
     return typing.cast(gym.Env[ArmObsType, TQuartDictType], env), info
@@ -64,34 +64,34 @@ def produce_env_sim_tquart(
 
 def produce_env_sim_tquart_gripper_camera(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
-    cam_cfg: rcsss.camera.sim.SimCameraSetConfig, robot_id="0"
+    cam_cfg: SimCameraSetConfig, robot_id: str = "0"
 ) -> gym.Env[ArmObsType, TQuartDictType]:
     """Environment with tquart, grippter, camera, collision guard and relative limits"""
     env_sim, info = produce_env_sim_tquart(mjcf_path, urdf_path, cfg, robot_id)
     simulation = info["sim"]
-    gripper = sim.FrankaHand(info["sim"], "0", gripper_cfg)
-    env_sim = GripperWrapper(env_sim, gripper)
+    gripper = sim.FrankaHand(simulation, robot_id, gripper_cfg)
+    env_sim_gripper = GripperWrapper(env_sim, gripper)
     camera_set = SimCameraSet(simulation, cam_cfg)
-    env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
-    env_cam = GripperWrapper(env_cam, gripper)
+    env_sim_gripper_cam: gym.Env = CameraSetWrapper(env_sim_gripper, camera_set)
     return typing.cast(
         gym.Env[ObsArmsGrCam, TQuartDictType],
-        env_cam,
+        env_sim_gripper_cam,
     )
 
 
 def produce_env_sim_tquart_gripper_camera_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
-    cam_cfg: rcsss.camera.sim.SimCameraSetConfig, robot_id="0"
-) -> gym.Env[ArmObsType, TQuartDictType]:
+    cam_cfg: SimCameraSetConfig, robot_id="0"
+) -> gym.Env[ArmObsType, LimitedTQuartRelDictType]:
     """Environment with tquart, grippter, camera, collision guard and relative limits"""
     env_cam = produce_env_sim_tquart_gripper_camera(mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg, robot_id)
-    env_cam = RelativeActionSpace(env_cam)
+    env_rel = RelativeActionSpace(env_cam)
     return typing.cast(
         gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType],
-        env_cam,
+        env_rel,
     )
 
+# --- fixed until here ----
 
 def produce_env_sim_tquart_gripper_camera_cg(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
