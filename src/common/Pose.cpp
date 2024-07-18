@@ -4,13 +4,15 @@ namespace rcs {
 namespace common {
 
 Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
-Eigen::Matrix3d IdentityRotation() { return Eigen::Matrix3d::Identity(); }
+Eigen::Matrix3d IdentityRotMatrix() { return Eigen::Matrix3d::Identity(); }
+Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
+Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
 // CONSTRUCTORS
 
 Pose::Pose() {
-  this->m_translation = Eigen::Vector3d::Zero();
-  this->m_rotation = Eigen::Quaterniond::Identity();
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = IdentityRotQuart();
 }
 
 Pose::Pose(const Eigen::Affine3d &pose) {
@@ -52,20 +54,48 @@ Pose::Pose(const Eigen::Quaterniond &rotation,
 
 Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation =
-      Eigen::AngleAxisd(rotation.roll, Eigen::Vector3d::UnitX()) *
-      Eigen::AngleAxisd(rotation.pitch, Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(rotation.yaw, Eigen::Vector3d::UnitZ());
+  this->m_rotation = rotation.as_quaternion();
   this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Vector3d &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation = Eigen::AngleAxisd(rotation.x(), Eigen::Vector3d::UnitX()) *
-                     Eigen::AngleAxisd(rotation.y(), Eigen::Vector3d::UnitY()) *
-                     Eigen::AngleAxisd(rotation.z(), Eigen::Vector3d::UnitZ());
+  this->m_rotation = RPY(rotation).as_quaternion();
   this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Vector3d &translation) {
+  this->m_translation = translation;
+  this->m_rotation = IdentityRotQuart();
+}
+
+Pose::Pose(const Eigen::Quaterniond &quaterion) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = quaterion;
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Vector4d &quaterion) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = Eigen::Quaterniond(quaterion);
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const RPY &rpy) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = rpy.as_quaternion();
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Matrix3d &rotation) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = Eigen::Quaterniond(rotation);
+}
+
+Pose::Pose(const Pose &pose) {
+  this->m_translation = pose.translation();
+  this->m_rotation = pose.quaternion();
 }
 
 // GETTERS
