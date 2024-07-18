@@ -172,7 +172,8 @@ Pose Pose::operator*(const Pose &pose_b) const {
 }
 
 Pose Pose::inverse() const {
-  return Pose(this->m_rotation.inverse(), -this->m_translation);
+  auto new_rot = this->m_rotation.conjugate();
+  return Pose(new_rot, -(new_rot * this->m_translation));
 }
 
 bool Pose::is_close(const Pose &other, double eps_r, double eps_t) const {
