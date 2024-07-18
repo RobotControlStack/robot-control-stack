@@ -267,3 +267,34 @@ def produce_env_sim_joints_gripper_camera_cg_rel():
 
 # permutations base(sim|hw) x Control(joints|trpy|tquart) x Util(Gripper,Camera,CollisionGuard,RelativeAction|Gripper,Camera,CollisionGuard|Gripper,Camera,RelativeAction)
 # 2 + 2x3 + 2x3x3 = 26 permutations
+if __name__ == "__main__":
+    mjcf = "models/mjcf/fr3_modular/scene.xml"
+    urdf = "models/fr3/urdf/fr3_from_panda.urdf"
+    robot_id = "0"
+
+    cfg = sim.FR3Config()
+    cfg.ik_duration_in_milliseconds = 300
+    cfg.realtime = False
+    gripper_cfg = sim.FHConfig()
+
+    cameras = {
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
+        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+    }
+    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
+
+    env = produce_env_sim_tquart_gripper_camera_rel(mjcf_path=mjcf,
+                                              urdf_path=urdf,
+                                              cfg=cfg,
+                                              gripper_cfg=gripper_cfg,
+                                              cam_cfg=cam_cfg,
+                                              robot_id=robot_id
+    )
+    obs, info = env.reset()
+    for _ in range(100):
+        act = env.action_space.sample()
+        act["tquart"][3:] = [0, 0, 0, 1]
+        obs, reward, terminated, truncated, info = env.step(act)
+        if truncated or terminated:
+            env.reset()
+
