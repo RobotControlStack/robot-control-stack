@@ -166,7 +166,7 @@ std::string Pose::str() const {
 
 Pose Pose::operator*(const Pose &pose_b) const {
   Eigen::Vector3d trans =
-      pose_b.rotation_m() * this->translation() + pose_b.translation();
+      this->m_rotation * pose_b.translation() + this->m_translation;
   Eigen::Quaterniond rot = this->m_rotation * pose_b.m_rotation;
   return Pose(rot, trans);
 }
