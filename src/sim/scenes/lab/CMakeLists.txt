@@ -1,0 +1,68 @@
+set(MESHES
+    mjcf/assets/link0_0.obj
+    mjcf/assets/link0_1.obj
+    mjcf/assets/link0_2.obj
+    mjcf/assets/link0_3.obj
+    mjcf/assets/link0_4.obj
+    mjcf/assets/link0_5.obj
+    mjcf/assets/link0_6.obj
+    mjcf/assets/link1.obj
+    mjcf/assets/link2.obj
+    mjcf/assets/link3_0.obj
+    mjcf/assets/link3_1.obj
+    mjcf/assets/link4_0.obj
+    mjcf/assets/link4_1.obj
+    mjcf/assets/link5_0.obj
+    mjcf/assets/link5_1.obj
+    mjcf/assets/link5_2.obj
+    mjcf/assets/link6_0.obj
+    mjcf/assets/link6_1.obj
+    mjcf/assets/link6_2.obj
+    mjcf/assets/link6_3.obj
+    mjcf/assets/link6_4.obj
+    mjcf/assets/link6_5.obj
+    mjcf/assets/link6_6.obj
+    mjcf/assets/link6_7.obj
+    mjcf/assets/link7_0.obj
+    mjcf/assets/link7_1.obj
+    mjcf/assets/link7_2.obj
+    mjcf/assets/link7_3.obj
+    mjcf/assets/link7.stl
+    mjcf/assets/link0.stl
+    mjcf/assets/link1.stl
+    mjcf/assets/link2.stl
+    mjcf/assets/link3.stl
+    mjcf/assets/link4.stl
+    mjcf/assets/link5.stl
+    mjcf/assets/link6.stl
+    mjcf/assets/hand_0.obj
+    mjcf/assets/hand_1.obj
+    mjcf/assets/hand_2.obj
+    mjcf/assets/hand_3.obj
+    mjcf/assets/hand_4.obj
+    mjcf/assets/hand.stl
+    mjcf/assets/finger_0.obj
+    mjcf/assets/finger_1.obj
+)
+
+set(MJCF_FILES
+    scenes/lab/fr3_0.xml
+    scenes/lab/fr3_1.xml
+    scenes/lab/fr3_common.xml
+    scenes/lab/scene.xml
+    scenes/lab/vention_table_low_poly.xml
+)
+
+set(REF 4f2eac492aaa8b91afbd5206648a11778f95cde5)
+set(ASSET_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+
+download_assets_if_missing(
+    "${MESHES}"
+    ${REF}
+    ${ASSET_PATH}
+)
+download_assets_if_missing(
+    "${MJCF_FILES}"
+    ${REF}
+    ${ASSET_PATH}
+)
