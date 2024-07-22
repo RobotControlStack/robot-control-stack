@@ -37,6 +37,8 @@ set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
 set(RL_BUILD_EXTRAS OFF)
 
+option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires GITLAB_MODELS_TOKEN to be set to a valid token wit read_api permissions")
+
 include(FetchContent)
 FetchContent_Declare(
     libfranka
@@ -60,7 +62,7 @@ FetchContent_Declare(pybind11
 
 FetchContent_MakeAvailable(libfranka rl pybind11)
 
-if (DEFINED UTN_MODELS)
+if (DEFINED INCLUDE_UTN_MODELS)
     if (DEFINED GITLAB_MODELS_TOKEN)
       include(download_scenes)
       download_scenes(f31cde2879f4b39d1f8d3ae329dd10155727b352)
