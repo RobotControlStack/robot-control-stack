@@ -1,3 +1,4 @@
+include(download_scenes)
 set(MESHES
     mjcf/assets/link0_0.obj
     mjcf/assets/link0_1.obj

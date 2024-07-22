@@ -7,6 +7,8 @@ project(
     DESCRIPTION "UTNs Robot Control Stack Library"
 )
 
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Set version in project
 # Allow target properties affecting visibility during linking in static libraries
 set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
