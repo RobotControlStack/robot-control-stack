@@ -28,12 +28,20 @@ function(download_file remote_path ref dst_path)
      )
 endfunction()
 
-function(download_assets_if_missing asset_remote_paths ref dst_dir)
-    foreach(remote_path ${asset_remote_paths})
-        cmake_path(GET remote_path FILENAME file_name)
-        cmake_path(APPEND dst_dir ${file_name} OUTPUT_VARIABLE local_path)
-        if (NOT (EXISTS ${local_path}))
-            download_file(${remote_path} ${ref} ${local_path})
-        endif()
-    endforeach()
+function(download_scenes ref)
+  FetchContent_Declare(
+    scenes
+    URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"
+    HTTP_HEADER "PRIVATE-TOKEN: ${GITLAB_MODELS_TOKEN}"
+  )
+  FetchContent_MakeAvailable(scenes)
+  file(GLOB_RECURSE files ${scenes_SOURCE_DIR}/*)
+  foreach(file ${files})
+    if(IS_SYMLINK ${file})
+      file(READ_SYMLINK ${file} symlink)
+      string(REGEX REPLACE "^\.\.\/" "" remote_path ${symlink})
+      file(REMOVE ${file})
+      download_file(${remote_path} ${ref} ${file})
+    endif()
+  endforeach()
 endfunction()

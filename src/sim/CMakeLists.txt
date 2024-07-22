@@ -30,4 +30,3 @@ target_link_libraries(sim PUBLIC glfw common mujoco mdl)
 
 add_executable(test_sim test.cpp sim.cpp)
 target_link_libraries(test_sim PRIVATE sim mujoco common mdl glfw)
-add_subdirectory(scenes)
