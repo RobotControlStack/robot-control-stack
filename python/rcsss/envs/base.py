@@ -1,7 +1,7 @@
 """Gym API."""
 
 import copy
-from enum import Enum
+from enum import Enum, auto
 from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
@@ -187,14 +187,20 @@ class FR3Env(gym.Env):
         return self.get_obs(), {}
 
 
+class RelativeTo(Enum):
+    LAST_STEP = auto()
+    CONFIGURED_ORIGIN = auto()
+
+
 class RelativeActionSpace(gym.ActionWrapper):
     MAX_CART_MOV = 0.01
     MAX_JOINT_MOV = np.deg2rad(5)
 
-    def __init__(self, env):
+    def __init__(self, env, relative_to: RelativeTo = RelativeTo.LAST_STEP):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
+        self.relative_to = relative_to
         if self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
                 get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
@@ -216,29 +222,50 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
         self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
         self.initial_obs: dict[str, Any] | None = None
+        self._origin: common.Pose | Vec7Type | None = None
+
+    def set_origin(self, origin: common.Pose | Vec7Type):
+        if self.unwrapped.control_mode == ControlMode.JOINTS:
+            assert isinstance(
+                origin, np.ndarray
+            ), "Invalid origin type. If control mode is joints, origin must be Vec7Type."
+            self._origin = copy.deepcopy(origin)
+        else:
+            assert isinstance(
+                origin, common.Pose
+            ), "Invalid origin type. If control mode is cartesian, origin must be Pose."
+            self._origin = copy.deepcopy(origin)
+
+    def set_origin_to_current(self):
+        if self.unwrapped.control_mode == ControlMode.JOINTS:
+            self._origin = self.unwrapped.robot.get_joint_position()
+        else:
+            self._origin = self.unwrapped.robot.get_cartesian_position()
 
     def reset(self, **kwargs) -> tuple[dict, dict[str, Any]]:
         obs, info = super().reset(**kwargs)
         self.initial_obs = obs
+        self.set_origin_to_current()
         return obs, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if self.relative_to == RelativeTo.LAST_STEP:
+            # TODO: should we use the last observation instead?
+            self.set_origin_to_current()
         action = copy.deepcopy(action)
         if self.unwrapped.control_mode == ControlMode.JOINTS and self.joints_key in action:
+            assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
             action.update(
-                JointsDictType(
-                    joints=np.clip(
-                        self.unwrapped.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high
-                    )
-                )
+                JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
             )
 
         elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
             clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
-            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
+            unclipped_pose = self._origin * common.Pose(
                 translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
             action.update(
@@ -252,9 +279,10 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
             )
         elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
             clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
-            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
+            unclipped_pose = self._origin * common.Pose(
                 translation=clipped_translation, quaternion=action[self.tquart_key][3:]
             )
             action.update(
