@@ -1,24 +1,18 @@
 import logging
-from ctypes import c_bool, c_double, c_int
-from dataclasses import dataclass, field
 from enum import IntFlag, auto
-from functools import cached_property
-from itertools import chain
-from multiprocessing import Array, Process, RLock, Value
-from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
-from multiprocessing.synchronize import RLock as RLockType
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
-from threading import Event, Thread
+import threading
+import typing
 
 import numpy as np
-from numpy.typing import NDArray
 from rcsss._core.common import Pose
 from rcsss.envs.base import (
     ControlMode,
     FR3Env,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
+    RelativeTo,
 )
 from rcsss.envs.sim import FR3Sim
 from rcsss.sim import FR3, FR3Config, Sim
@@ -33,132 +27,78 @@ class Button(IntFlag):
     R_TRIGGER = auto()
 
 
-@dataclass(slots=True)
-class ViveControllerState:
-    last_controller_pose_initialized: bool = False
-    last_controller_pose: Pose = field(default_factory=Pose)
-    curr_controller_pose: Pose = field(default_factory=Pose)
-
-
-class UDPViveActionServer:
+class UDPViveActionServer(threading.Thread):
     # seven doubles and one integer in network byte order
     FMT = "!" + 7 * "d" + "i"
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, env: RelativeActionSpace, trg_btn=Button.R_SQUEEZE):
         self._host: str = host
         self._port: int = port
-        self._server_proc: Process | None = None
-        self._lock: RLockType = RLock()
-        self._pose_raw = Array(c_double, 7, lock=False)
-        self._buttons = Value(c_int, 0, lock=False)
-        self._exit_requested = Value(c_bool, False, lock=False)
-        self._controller_state = ViveControllerState()
 
-    @cached_property
-    def _pose_raw_as_array(self) -> NDArray:
-        return np.ctypeslib.as_array(self._pose_raw[:])
-
-    @property
-    def running(self) -> bool:
-        return self._server_proc is not None and self._server_proc.is_alive()
+        self._resource_lock = threading.Lock()
+        self._env_lock = threading.Lock()
+        self._env = env
+        self._trg_btn = trg_btn
+        self._buttons = 0
+        self._exit_requested = False
+        self._last_controller_pose = Pose()
+        self._offset_inverse_pose = Pose().inverse()
 
     def next_action(self) -> Pose:
-        if not self.running:
-            msg = "Server is not running."
-            raise RuntimeError(msg)
-        while True:
-            with self._lock:
-                if not Button(int(self._buttons.value)) & Button.R_SQUEEZE:
-                    self._controller_state.last_controller_pose_initialized = False
-                    continue
-                # Trigger is pressed
-                if not self._controller_state.last_controller_pose_initialized:
-                    self._controller_state.last_controller_pose = Pose(
-                        quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
-                    )
-                    continue
-                # Trigger is pressed and first pose since press is recorded
-                self._controller_state.curr_controller_pose = Pose(
-                    quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
-                )
-                displacement = (
-                    self._controller_state.curr_controller_pose * self._controller_state.last_controller_pose.inverse()
-                )
-                self._controller_state.last_controller_pose = self._controller_state.curr_controller_pose
-                return displacement
+        return self._last_controller_pose * self._offset_inverse_pose
 
-    @staticmethod
-    def worker(
-        shared_array: "SynchronizedArray[c_double]",
-        shared_int: "Synchronized[c_int]",
-        exit_requested: "Synchronized[c_bool]",
-        lock: RLockType,
-        host: str,
-        port: int,
-    ):
+    def run(self):
         warning_raised = False
         with socket(AF_INET, SOCK_DGRAM) as sock:
             sock.settimeout(0.1)
-            sock.bind((host, port))
-            while not exit_requested.value:
+            sock.bind((self._host, self._port))
+            while not self._exit_requested:
                 try:
                     unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
                     if warning_raised:
                         logger.info("[UDP Server] connection reestablished")
                         warning_raised = False
-                except TimeoutError as err:
+                except TimeoutError:
                     if not warning_raised:
-                        msg = "[UDP server] socket timeout (0.1s), waiting for packets"
-                        raise RuntimeWarning(msg) from err
+                        logger.warning("[UDP server] socket timeout (0.1s), waiting for packets")
                         warning_raised = True
-                    break
-                with lock:
-                    shared_array[:] = unpacked[:7]
-                    shared_int.value = unpacked[7]
+                with self._resource_lock:
+                    last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
+                    self._last_controller_pose = Pose(
+                        translation=last_controller_pose_raw[:3], quaternion=last_controller_pose_raw[3:]
+                    )
+                    if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
+                        # trigger just pressed (first data sample with button pressed)
+                        self._offset_inverse_pose = self._last_controller_pose.inverse()
+                        with self._env_lock:
+                            self._env.set_origin_to_current()
+                    self._buttons = unpacked[7]
 
-    def start_worker(self):
-        if self.running:
-            msg = "Server already running"
-            raise RuntimeError(msg)
-        self._lock = RLock()
-        self._server_proc = Process(
-            target=UDPViveActionServer.worker(
-                self._pose_raw, self._buttons, self._exit_requested, self._lock, self._host, self._port
-            )
-        )
-        self._server_proc.start()
+                if self._buttons & self._trg_btn:
+                    with self._env_lock:
+                        self._env.set_origin_to_current()
 
-    def stop_worker(self):
-        if not self.running:
-            msg = "Server is not running"
-            raise RuntimeError(msg)
-        assert self._server_proc
-        self._exit_requested.value = c_bool(True)
-        try:
-            self._server_proc.join(timeout=1.0)
-        except TimeoutError as err:
-            msg = "Could not join server process. Killing it."
-            raise RuntimeWarning(msg) from err
-            self._server_proc.kill()
+    def stop(self):
+        self._exit_requested = True
+        self.join()
 
     def __enter__(self):
-        self.start_worker()
+        self.start()
         return self
 
     def __exit__(self, *_):
-        self.stop_worker()
+        self.stop()
 
-
-def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActionSpace, stop_requested: Event):
-    # assert env.action_space is TQuartDictType
-    while not stop_requested.is_set():
-        displacement = action_server.next_action()
-        action = LimitedTQuartRelDictType(
-            tquart=np.fromiter(
-                iter=chain(displacement.translation(), displacement.rotation_q()), dtype=np.float64, count=7
-            )
-        )
-        env.action(action)
+    def environment_step_loop(self):
+        while True:
+            with self._resource_lock:
+                displacement = self.next_action()
+            action = typing.cast(dict, LimitedTQuartRelDictType(
+                tquart=np.concat([displacement.translation(), displacement.rotation_q()])
+            ))
+            with self._env_lock:
+                self._env.action(action)
+            # sleep(1)
 
 
 def main():
@@ -169,19 +109,12 @@ def main():
     fr3_config = FR3Config()
     fr3_config.realtime = False
     fr3_config.tcp_offset = Pose(quaternion=np.array([0, 0, 0, 1]), translation=np.array([0, 0, 0.1034]))
-    env = RelativeActionSpace(FR3Sim(FR3Env(robot, ControlMode.CARTESIAN_TQuart), simulation))
+    env = RelativeActionSpace(
+        FR3Sim(FR3Env(robot, ControlMode.CARTESIAN_TQuart), simulation), relative_to=RelativeTo.CONFIGURED_ORIGIN
+    )
     env.reset()
-    with UDPViveActionServer(host, port) as action_server:
-        stop_event = Event()
-        t = Thread(target=environment_step_loop, args=(action_server, env, stop_event))
-        t.start()
-        input("Press enter to exit: ")
-        stop_event.set()
-        try:
-            t.join(5.0)
-        except TimeoutError as err:
-            msg = "Thread did not join after five seconds. Exiting anyway."
-            raise RuntimeWarning(msg) from err
+    with UDPViveActionServer(host, port, env) as action_server:
+        action_server.environment_step_loop()
 
 
 if __name__ == "__main__":
