@@ -4,18 +4,20 @@ namespace rcs {
 namespace common {
 
 Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
-Eigen::Matrix3d IdentityRotation() { return Eigen::Matrix3d::Identity(); }
+Eigen::Matrix3d IdentityRotMatrix() { return Eigen::Matrix3d::Identity(); }
+Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
+Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
 // CONSTRUCTORS
 
 Pose::Pose() {
-  this->m_translation = Eigen::Vector3d::Zero();
-  this->m_rotation = Eigen::Quaterniond::Identity();
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = IdentityRotQuart();
 }
 
-Pose::Pose(const Eigen::Affine3d &pose) {
-  this->m_translation = pose.translation();
-  this->m_rotation = Eigen::Quaterniond(pose.rotation());
+Pose::Pose(const Eigen::Affine3d &pose_matrix) {
+  this->m_translation = pose_matrix.translation();
+  this->m_rotation = Eigen::Quaterniond(pose_matrix.rotation());
   this->m_rotation.normalize();
 }
 
@@ -52,20 +54,48 @@ Pose::Pose(const Eigen::Quaterniond &rotation,
 
 Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation =
-      Eigen::AngleAxisd(rotation.roll, Eigen::Vector3d::UnitX()) *
-      Eigen::AngleAxisd(rotation.pitch, Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(rotation.yaw, Eigen::Vector3d::UnitZ());
+  this->m_rotation = rotation.as_quaternion();
   this->m_rotation.normalize();
 }
 
 Pose::Pose(const Eigen::Vector3d &rotation,
            const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation = Eigen::AngleAxisd(rotation.x(), Eigen::Vector3d::UnitX()) *
-                     Eigen::AngleAxisd(rotation.y(), Eigen::Vector3d::UnitY()) *
-                     Eigen::AngleAxisd(rotation.z(), Eigen::Vector3d::UnitZ());
+  this->m_rotation = RPY(rotation).as_quaternion();
   this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Vector3d &translation) {
+  this->m_translation = translation;
+  this->m_rotation = IdentityRotQuart();
+}
+
+Pose::Pose(const Eigen::Quaterniond &quaternion) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = quaternion;
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Vector4d &quaternion) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = Eigen::Quaterniond(quaternion);
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const RPY &rpy) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = rpy.as_quaternion();
+  this->m_rotation.normalize();
+}
+
+Pose::Pose(const Eigen::Matrix3d &rotation) {
+  this->m_translation = IdentityTranslation();
+  this->m_rotation = Eigen::Quaterniond(rotation);
+}
+
+Pose::Pose(const Pose &pose) {
+  this->m_translation = pose.translation();
+  this->m_rotation = pose.quaternion();
 }
 
 // GETTERS
@@ -136,13 +166,14 @@ std::string Pose::str() const {
 
 Pose Pose::operator*(const Pose &pose_b) const {
   Eigen::Vector3d trans =
-      pose_b.rotation_m() * this->translation() + pose_b.translation();
+      this->m_rotation * pose_b.translation() + this->m_translation;
   Eigen::Quaterniond rot = this->m_rotation * pose_b.m_rotation;
   return Pose(rot, trans);
 }
 
 Pose Pose::inverse() const {
-  return Pose(this->m_rotation.inverse(), -this->m_translation);
+  auto new_rot = this->m_rotation.conjugate();
+  return Pose(new_rot, -(new_rot * this->m_translation));
 }
 
 bool Pose::is_close(const Pose &other, double eps_r, double eps_t) const {
