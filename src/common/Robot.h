@@ -51,9 +51,9 @@ class Robot {
 
   virtual void set_cartesian_position(const Pose& pose) = 0;
 
-  virtual common::Pose world_pose_to_robot_pose(const Pose& pose);
+  virtual common::Pose world_pose_to_robot_pose(const Pose& pose) = 0;
 
-  virtual common::Pose robot_pose_to_world_pose(const Pose& pose);
+  virtual common::Pose robot_pose_to_world_pose(const Pose& pose) = 0;
 };
 
 class Gripper {

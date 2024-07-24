@@ -224,6 +224,14 @@ void FR3::set_cartesian_position_rl(const common::Pose &pose) {
   }
 }
 
+common::Pose FR3::world_pose_to_robot_pose(const common::Pose &pose) {
+  return common::Pose();
+}
+
+common::Pose FR3::robot_pose_to_world_pose(const common::Pose &pose) {
+  return common::Pose();
+}
+
 void FR3::set_cartesian_position_internal(const common::Pose &pose,
                                           double max_time,
                                           std::optional<double> elbow,

@@ -62,6 +62,7 @@ class PyRobot : public rcs::common::Robot {
   void move_home() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
+
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
   }
@@ -69,6 +70,14 @@ class PyRobot : public rcs::common::Robot {
   void set_cartesian_position(const rcs::common::Pose &pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
                            pose);
+  }
+
+  rcs::common::Pose world_pose_to_robot_pose(const rcs::common::Pose& pose) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot, world_pose_to_robot_pose, pose);
+  }
+
+  rcs::common::Pose robot_pose_to_world_pose(const rcs::common::Pose& pose) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot, robot_pose_to_world_pose, pose);
   }
 };
 

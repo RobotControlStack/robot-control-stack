@@ -36,6 +36,7 @@ struct FR3Config : common::RConfig {
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
+  std::optional<common::Pose> world_to_robot = std::nullopt;
 };
 
 struct FR3State : common::RState {};
@@ -85,6 +86,10 @@ class FR3 : public common::Robot {
                                        std::optional<double> max_force = 5);
 
   void set_cartesian_position_rl(const common::Pose &x);
+
+  common::Pose world_pose_to_robot_pose(const common::Pose &pose) override;
+
+  common::Pose robot_pose_to_world_pose(const common::Pose &pose) override;
 
   void reset() override;
 };
