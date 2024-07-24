@@ -66,6 +66,7 @@ class FR3Config(rcsss._core.common.RConfig):
     load_parameters: FR3Load | None
     nominal_end_effector_frame: rcsss._core.common.Pose | None
     speed_factor: float
+    world_to_robot: rcsss._core.common.Pose | None
     def __init__(self) -> None: ...
 
 class FR3Load:
