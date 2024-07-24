@@ -61,11 +61,5 @@ jobs:
         run: python -m pip install dist/*.whl
       - name: Check that stub files are up-to-date
         run: make stubgen && git diff --exit-code
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rcsss
-          path: dist/*.whl
-          retention-days: 30
       - name: Ensure all unittests(pytest) are passing
         run: make pytest
