@@ -226,6 +226,24 @@ void FR3::m_reset() {
     this->sim->d->qpos[jnt_qposadr] = q_home[i];
   }
 }
+
+common::Pose FR3::world_pose_to_robot_pose(
+    const common::Pose& pose_in_world_coordinates) {
+  Eigen::Matrix3d rotation(this->sim->d->site_xmat + 9 * this->ids.joints[0]);
+  Eigen::Vector3d translation(this->sim->d->site_xpos +
+                              3 * this->ids.joints[0]);
+  common::Pose robot_pose_in_world_coordinates(rotation, translation);
+  return robot_pose_in_world_coordinates.inverse() * pose_in_world_coordinates;
+}
+
+common::Pose FR3::robot_pose_to_world_pose(const common::Pose& pose_in_world_coordinates) {
+  Eigen::Matrix3d rotation(this->sim->d->site_xmat + 9 * this->ids.joints[0]);
+  Eigen::Vector3d translation(this->sim->d->site_xpos +
+                              3 * this->ids.joints[0]);
+  common::Pose robot_pose_in_world_coordinates(rotation, translation);
+  return pose_in_world_coordinates.inverse() * robot_pose_in_world_coordinates;
+}
+
 void FR3::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs
