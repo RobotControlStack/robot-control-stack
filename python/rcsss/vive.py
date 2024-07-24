@@ -14,12 +14,7 @@ from threading import Event, Thread
 import numpy as np
 from numpy.typing import NDArray
 from rcsss._core.common import Pose
-from rcsss.envs.base import (
-    ControlMode,
-    FR3Env,
-    LimitedTQuartRelDictType,
-    RelativeActionSpace,
-)
+from rcsss.envs.base import ControlMode, FR3Env, RelativeActionSpace
 from rcsss.envs.sim import FR3Sim
 from rcsss.sim import FR3, FR3Config, Sim
 
@@ -153,11 +148,11 @@ def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActio
     # assert env.action_space is TQuartDictType
     while not stop_requested.is_set():
         displacement = action_server.next_action()
-        action = LimitedTQuartRelDictType(
-            tquart=np.fromiter(
+        action = {
+            "tquart": np.fromiter(
                 iter=chain(displacement.translation(), displacement.rotation_q()), dtype=np.float64, count=7
             )
-        )
+        }
         env.action(action)
 
 
