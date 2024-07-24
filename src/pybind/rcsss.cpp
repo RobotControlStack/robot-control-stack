@@ -71,7 +71,6 @@ class PyRobot : public rcs::common::Robot {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
                            pose);
   }
-
 };
 
 /**
@@ -213,8 +212,10 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"))
       .def("get_origin", &rcs::common::Robot::get_origin)
-      .def("to_world_frame", &rcs::common::Robot::to_world_frame, py::arg("pose"))
-      .def("to_robot_frame", &rcs::common::Robot::to_robot_frame, py::arg("pose"));
+      .def("to_world_frame", &rcs::common::Robot::to_world_frame,
+           py::arg("pose"))
+      .def("to_robot_frame", &rcs::common::Robot::to_robot_frame,
+           py::arg("pose"));
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")

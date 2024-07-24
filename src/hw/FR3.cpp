@@ -226,7 +226,8 @@ void FR3::set_cartesian_position_rl(const common::Pose &pose) {
 }
 
 common::Pose FR3::get_origin() {
-  return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value() : common::Pose();
+  return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value()
+                                              : common::Pose();
 }
 
 void FR3::set_cartesian_position_internal(const common::Pose &pose,

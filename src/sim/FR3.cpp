@@ -231,7 +231,8 @@ void FR3::m_reset() {
 }
 
 common::Pose FR3::get_origin() {
-  auto id = mj_name2id(this->sim->m, mjOBJ_BODY, (std::string("base_") + this->id).c_str());
+  auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
+                       (std::string("base_") + this->id).c_str());
   Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
   Eigen::Map<Eigen::Quaterniond> rotation(this->sim->d->xquat + 4 * id);
   return common::Pose(rotation, translation);
