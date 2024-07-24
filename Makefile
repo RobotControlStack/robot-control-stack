@@ -53,13 +53,10 @@ mypy:
 pytest:
 	pytest -vv
 
-bump-patch:
-	bump-my-version bump patch --commit --tag pyproject.toml CMakeLists.txt
+bump:
+	cz bump
 
-bump-patch:
-	bump-my-version bump minor --commit --tag pyproject.toml CMakeLists.txt
+commit:
+	cz commit
 
-bump-major:
-	bump-my-version bump minor --commit --tag pyproject.toml CMakeLists.txt
-
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump-patch bump-minor bump-major
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
