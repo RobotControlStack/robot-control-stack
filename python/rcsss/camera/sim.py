@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
-from typing import cast
 
 import numpy as np
+from pydantic import Field
 from rcsss._core.sim import CameraType
 from rcsss._core.sim import FrameSet as _FrameSet
 from rcsss._core.sim import SimCameraConfig as _SimCameraConfig
@@ -19,12 +19,12 @@ from rcsss.camera.interface import (
 
 
 class SimCameraConfig(BaseCameraConfig):
-    type: int  # CameraType
+    type: int  # CamBaseCameraConfigeraType
     on_screen_render: bool
 
 
 class SimCameraSetConfig(BaseCameraSetConfig):
-    cameras: dict[str, SimCameraConfig] = {} # noqa: RUF012
+    cameras: dict[str, SimCameraConfig] = Field(default={})
 
 
 class SimCameraSet(_SimCameraSet):
@@ -82,7 +82,7 @@ class SimCameraSet(_SimCameraSet):
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
     @property
-    def config(self) -> SimCameraConfig:
+    def config(self) -> SimCameraSetConfig:
         return self._cfg
 
     @property

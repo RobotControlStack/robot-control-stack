@@ -1,5 +1,5 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,bug-prone-*'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,bug-prone-*,-clang-diagnostic-ignored-optimization-argument'
 WarningsAsErrors: ''
 HeaderFilterRegex: 'src/*.h'
 AnalyzeTemporaryDtors: false

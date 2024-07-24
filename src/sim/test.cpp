@@ -130,8 +130,7 @@ int test_sim() {
   sim->set_config(cfg);
   std::string id = "0";
   auto fr3 = rcs::sim::FR3(sim, id, rlmdl);
-  auto tcp_offset = rcs::common::Pose(rcs::common::IdentityRotation(),
-                                      Eigen::Vector3d(0, 0, 0.1034));
+  auto tcp_offset = rcs::common::Pose(Eigen::Vector3d(0, 0, 0.1034));
   rcs::sim::FR3Config fr3_config = *fr3.get_parameters();
   fr3_config.tcp_offset = tcp_offset;
   fr3_config.seconds_between_callbacks = 0.05;  // 20hz

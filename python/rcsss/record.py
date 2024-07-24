@@ -72,7 +72,7 @@ class GripperPose(Pose):
             self.pose = 0  # gripper[self.name].getState()[1]
 
         else:
-            gripper[self.name].release()
+            gripper[self.name].open()
             self.pose = None
 
     def replay(self, _: dict[str, hw.FR3], gripper: dict[str, hw.FrankaHand]):
@@ -87,7 +87,7 @@ class GripperPose(Pose):
             gripper[self.name].set_parameters(config)
             gripper[self.name].grasp()
         else:
-            gripper[self.name].release()
+            gripper[self.name].open()
 
     def __str__(self) -> str:
         return f"GripperPose;{self.name};{self.pose}"
@@ -195,7 +195,12 @@ class PoseList:
         urdf_path: str | None = None,
     ):
         self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in name2ip.items()}
-        self.g: dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip) for key, ip in name2ip.items()}
+        # TODO: this config should be given to the constructor
+        cfg = hw.FHConfig()
+        cfg.epsilon_inner = 0.1
+        cfg.epsilon_outer = 0.1
+        cfg.force = 20
+        self.g: dict[str, hw.FrankaHand] = {key: hw.FrankaHand(ip, cfg) for key, ip in name2ip.items()}
         self.r_ip: dict[str, hw.FR3] = {ip: self.r[key] for key, ip in name2ip.items()}
         self.g_ip: dict[str, hw.FrankaHand] = {ip: self.g[key] for key, ip in name2ip.items()}
         self.ip2name: dict[str, str] = {ip: name for name, ip in name2ip.items()}
