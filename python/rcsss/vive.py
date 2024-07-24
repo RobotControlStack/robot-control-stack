@@ -153,7 +153,7 @@ def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActio
     # assert env.action_space is TQuartDictType
     while not stop_requested.is_set():
         displacement = action_server.next_action()
-        action = LimitedTQuartRelDictType(
+        action = dict(
             tquart=np.fromiter(
                 iter=chain(displacement.translation(), displacement.rotation_q()), dtype=np.float64, count=7
             )
