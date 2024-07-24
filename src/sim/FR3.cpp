@@ -236,7 +236,8 @@ common::Pose FR3::world_pose_to_robot_pose(
   return robot_pose_in_world_coordinates.inverse() * pose_in_world_coordinates;
 }
 
-common::Pose FR3::robot_pose_to_world_pose(const common::Pose& pose_in_world_coordinates) {
+common::Pose FR3::robot_pose_to_world_pose(
+    const common::Pose& pose_in_world_coordinates) {
   Eigen::Matrix3d rotation(this->sim->d->site_xmat + 9 * this->ids.joints[0]);
   Eigen::Vector3d translation(this->sim->d->site_xpos +
                               3 * this->ids.joints[0]);

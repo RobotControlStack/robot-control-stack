@@ -72,12 +72,16 @@ class PyRobot : public rcs::common::Robot {
                            pose);
   }
 
-  rcs::common::Pose world_pose_to_robot_pose(const rcs::common::Pose& pose) override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot, world_pose_to_robot_pose, pose);
+  rcs::common::Pose world_pose_to_robot_pose(
+      const rcs::common::Pose &pose) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
+                           world_pose_to_robot_pose, pose);
   }
 
-  rcs::common::Pose robot_pose_to_world_pose(const rcs::common::Pose& pose) override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot, robot_pose_to_world_pose, pose);
+  rcs::common::Pose robot_pose_to_world_pose(
+      const rcs::common::Pose &pose) override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
+                           robot_pose_to_world_pose, pose);
   }
 };
 
