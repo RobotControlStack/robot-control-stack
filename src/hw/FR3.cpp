@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "MotionGenerator.h"
+#include "common/Pose.h"
 
 namespace rcs {
 namespace hw {
@@ -224,16 +225,8 @@ void FR3::set_cartesian_position_rl(const common::Pose &pose) {
   }
 }
 
-common::Pose FR3::world_pose_to_robot_pose(const common::Pose &pose) {
-  return this->cfg.world_to_robot.has_value()
-             ? this->cfg.world_to_robot.value().inverse() * pose
-             : pose;
-}
-
-common::Pose FR3::robot_pose_to_world_pose(const common::Pose &pose) {
-  return this->cfg.world_to_robot.has_value()
-             ? pose.inverse() * this->cfg.world_to_robot.value()
-             : pose;
+common::Pose FR3::get_origin() {
+  return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value() : common::Pose();
 }
 
 void FR3::set_cartesian_position_internal(const common::Pose &pose,

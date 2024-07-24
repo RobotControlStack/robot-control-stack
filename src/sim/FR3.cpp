@@ -1,5 +1,6 @@
 #include "FR3.h"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <math.h>
 
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -171,6 +173,7 @@ common::Vector7d FR3::get_joint_position() {
 }
 
 void FR3::set_cartesian_position(const common::Pose& pose) {
+  // pose is assumed to be in the robots coordinate frame
   this->rl.kin->setPosition(this->get_joint_position());
   this->rl.kin->forwardPosition();
   // TODO: Why do we have to take the tcp offset and not the inverse here?
@@ -227,22 +230,11 @@ void FR3::m_reset() {
   }
 }
 
-common::Pose FR3::world_pose_to_robot_pose(
-    const common::Pose& pose_in_world_coordinates) {
-  Eigen::Matrix3d rotation(this->sim->d->site_xmat + 9 * this->ids.joints[0]);
-  Eigen::Vector3d translation(this->sim->d->site_xpos +
-                              3 * this->ids.joints[0]);
-  common::Pose robot_pose_in_world_coordinates(rotation, translation);
-  return robot_pose_in_world_coordinates.inverse() * pose_in_world_coordinates;
-}
-
-common::Pose FR3::robot_pose_to_world_pose(
-    const common::Pose& pose_in_world_coordinates) {
-  Eigen::Matrix3d rotation(this->sim->d->site_xmat + 9 * this->ids.joints[0]);
-  Eigen::Vector3d translation(this->sim->d->site_xpos +
-                              3 * this->ids.joints[0]);
-  common::Pose robot_pose_in_world_coordinates(rotation, translation);
-  return pose_in_world_coordinates.inverse() * robot_pose_in_world_coordinates;
+common::Pose FR3::get_origin() {
+  auto id = mj_name2id(this->sim->m, mjOBJ_BODY, (std::string("base_") + this->id).c_str());
+  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
+  Eigen::Map<Eigen::Quaterniond> rotation(this->sim->d->xquat + 4 * id);
+  return common::Pose(rotation, translation);
 }
 
 void FR3::reset() { this->m_reset(); }

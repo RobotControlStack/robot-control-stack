@@ -72,17 +72,6 @@ class PyRobot : public rcs::common::Robot {
                            pose);
   }
 
-  rcs::common::Pose world_pose_to_robot_pose(
-      const rcs::common::Pose &pose) override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
-                           world_pose_to_robot_pose, pose);
-  }
-
-  rcs::common::Pose robot_pose_to_world_pose(
-      const rcs::common::Pose &pose) override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
-                           robot_pose_to_world_pose, pose);
-  }
 };
 
 /**
@@ -222,7 +211,10 @@ PYBIND11_MODULE(_core, m) {
       .def("move_home", &rcs::common::Robot::move_home)
       .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
-           &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
+           &rcs::common::Robot::set_cartesian_position, py::arg("pose"))
+      .def("get_origin", &rcs::common::Robot::get_origin)
+      .def("to_world_frame", &rcs::common::Robot::to_world_frame, py::arg("pose"))
+      .def("to_robot_frame", &rcs::common::Robot::to_robot_frame, py::arg("pose"));
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
