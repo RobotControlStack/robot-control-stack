@@ -177,7 +177,7 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const Eigen::Vector3d &, const Eigen::Vector3d &>(),
            py::arg("rpy_vector"), py::arg("translation"))
       .def(py::init<const Eigen::Vector3d &>(), py::arg("translation"))
-      .def(py::init<const Eigen::Vector4d &>(), py::arg("quaterion"))
+      .def(py::init<const Eigen::Vector4d &>(), py::arg("quaternion"))
       .def(py::init<const rcs::common::RPY &>(), py::arg("rpy"))
       .def(py::init<const Eigen::Matrix3d &>(), py::arg("rotation"))
       .def(py::init<const rcs::common::Pose &>(), py::arg("pose"))

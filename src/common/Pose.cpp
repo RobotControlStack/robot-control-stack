@@ -70,15 +70,15 @@ Pose::Pose(const Eigen::Vector3d &translation) {
   this->m_rotation = IdentityRotQuart();
 }
 
-Pose::Pose(const Eigen::Quaterniond &quaterion) {
+Pose::Pose(const Eigen::Quaterniond &quaternion) {
   this->m_translation = IdentityTranslation();
-  this->m_rotation = quaterion;
+  this->m_rotation = quaternion;
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Vector4d &quaterion) {
+Pose::Pose(const Eigen::Vector4d &quaternion) {
   this->m_translation = IdentityTranslation();
-  this->m_rotation = Eigen::Quaterniond(quaterion);
+  this->m_rotation = Eigen::Quaterniond(quaternion);
   this->m_rotation.normalize();
 }
 

@@ -157,17 +157,17 @@ class Pose {
    * translation.
    * For python bindings.
    *
-   * @param quaterion
+   * @param quaternion
    */
-  Pose(const Eigen::Vector4d &quaterion);
+  Pose(const Eigen::Vector4d &quaternion);
 
   /**
    * @brief Construct a new Pose object from a 4D quaternion and identity
    * translation.
    *
-   * @param quaterion
+   * @param quaternion
    */
-  Pose(const Eigen::Quaterniond &quaterion);
+  Pose(const Eigen::Quaterniond &quaternion);
 
   /**
    * @brief Construct a new Pose object from a RPY struct and identity
