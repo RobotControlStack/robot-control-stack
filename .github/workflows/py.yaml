@@ -5,6 +5,7 @@ on:
     paths:
     - "python/**"
     - "src/pybind/**"
+    - ".github/workflows/**"
 
 jobs:
   lint:

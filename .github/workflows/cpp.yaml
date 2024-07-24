@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
     - "src/**"
+    - ".github/workflows/**"
 
 jobs:
   build_clang:
