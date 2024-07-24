@@ -167,7 +167,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose_matrix"))
       .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
            py::arg("rotation"), py::arg("translation"))
       .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),

@@ -122,7 +122,6 @@ profile = "black"
 ignore_missing_imports = true
 check_untyped_defs = true
 pretty = true
-# mypy_path = "python/pyrealsense2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

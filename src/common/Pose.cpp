@@ -15,9 +15,9 @@ Pose::Pose() {
   this->m_rotation = IdentityRotQuart();
 }
 
-Pose::Pose(const Eigen::Affine3d &pose) {
-  this->m_translation = pose.translation();
-  this->m_rotation = Eigen::Quaterniond(pose.rotation());
+Pose::Pose(const Eigen::Affine3d &pose_matrix) {
+  this->m_translation = pose_matrix.translation();
+  this->m_rotation = Eigen::Quaterniond(pose_matrix.rotation());
   this->m_rotation.normalize();
 }
 

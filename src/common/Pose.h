@@ -88,7 +88,7 @@ class Pose {
    */
   Pose();
 
-  Pose(const Eigen::Affine3d &pose);
+  Pose(const Eigen::Affine3d &pose_matrix);
 
   Pose(const std::array<double, 16> &pose);
 

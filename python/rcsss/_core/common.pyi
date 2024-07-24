@@ -67,7 +67,7 @@ class Pose:
     def __init__(self) -> None: ...
     @typing.overload
     def __init__(
-        self, pose: numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]
+        self, pose_matrix: numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]
     ) -> None: ...
     @typing.overload
     def __init__(
