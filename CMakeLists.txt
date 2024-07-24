@@ -55,6 +55,7 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 
+set(PYBIND11_FINDPYTHON True)
 FetchContent_MakeAvailable(libfranka rl pybind11)
 
 find_package(Eigen3 REQUIRED)
