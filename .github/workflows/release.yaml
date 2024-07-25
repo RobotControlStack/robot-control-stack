@@ -2,11 +2,16 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+  workflow_run:
+    workflows: ["Python", "Cpp"]
+    branches: [master]
+    types:
+      - completed
 
 jobs:
   release:
-    if: "startsWith(github.event.head_commit.message, 'bump:')"
+    if: ${{ startsWith(github.event.head_commit.message, 'bump:') and github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
