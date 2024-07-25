@@ -211,11 +211,11 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"))
-      .def("get_origin", &rcs::common::Robot::get_origin)
-      .def("to_world_frame", &rcs::common::Robot::to_world_frame,
-           py::arg("pose"))
-      .def("to_robot_frame", &rcs::common::Robot::to_robot_frame,
-           py::arg("pose"));
+      .def("get_base_pose_in_world_coordinates", &rcs::common::Robot::get_base_pose_in_world_coordinates)
+      .def("to_pose_in_robot_coordinates", &rcs::common::Robot::to_pose_in_robot_coordinates,
+           py::arg("pose_in_world_coordinates"))
+      .def("to_pose_in_world_coordinates", &rcs::common::Robot::to_pose_in_world_coordinates,
+           py::arg("pose_in_robot_coordinates"));
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")

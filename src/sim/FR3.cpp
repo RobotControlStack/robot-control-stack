@@ -230,7 +230,7 @@ void FR3::m_reset() {
   }
 }
 
-common::Pose FR3::get_origin() {
+common::Pose FR3::get_base_pose_in_world_coordinates() {
   auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
                        (std::string("base_") + this->id).c_str());
   Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);

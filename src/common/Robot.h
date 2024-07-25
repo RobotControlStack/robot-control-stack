@@ -51,11 +51,11 @@ class Robot {
 
   virtual void set_cartesian_position(const Pose& pose) = 0;
 
-  common::Pose to_world_frame(const Pose& pose);
+  common::Pose to_pose_in_world_coordinates(const Pose& pose_in_robot_coordinates);
 
-  common::Pose to_robot_frame(const Pose& pose);
+  common::Pose to_pose_in_robot_coordinates(const Pose& pose_in_world_coordinates);
 
-  virtual common::Pose get_origin() = 0;
+  virtual common::Pose get_base_pose_in_world_coordinates() = 0;
 };
 
 class Gripper {

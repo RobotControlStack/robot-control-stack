@@ -87,7 +87,7 @@ class FR3 : public common::Robot {
 
   void set_cartesian_position_rl(const common::Pose &x);
 
-  common::Pose get_origin() override;
+  common::Pose get_base_pose_in_world_coordinates() override;
 
   void reset() override;
 };
