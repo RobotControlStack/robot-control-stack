@@ -110,8 +110,11 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
-    simulation = sim.Sim("models/mjcf/fr3_modular/scene.xml")
-    robot = rcsss.sim.FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
+    if "lab" not in rcsss.scenes:
+        logger.error("This pip package was not built with the UTN lab models, aborting.")
+        exit()
+    simulation = sim.Sim(rcsss.scenes["lab"])
+    robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     cfg = sim.FR3Config()
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
@@ -132,8 +135,8 @@ if __name__ == "__main__":
     env_cam = GripperWrapper(env_cam, gripper)
     env_cam = CollisionGuard.env_from_xml_paths(
         env_cam,
-        "models/mjcf/fr3_modular/scene.xml",
-        "models/fr3/urdf/fr3_from_panda.urdf",
+        str(rcsss.scenes["lab"]),
+        str(rcsss.scenes["lab"].parent / "fr3.urdf"),
         gripper=True,
         check_home_collision=False,
     )

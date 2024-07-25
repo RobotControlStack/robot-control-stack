@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 from rcsss._core.common import Pose
 from rcsss.envs.base import ControlMode, FR3Env, RelativeActionSpace
 from rcsss.envs.sim import FR3Sim
+import rcsss
 from rcsss.sim import FR3, FR3Config, Sim
 
 logger = logging.getLogger(__name__)
@@ -157,10 +158,13 @@ def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActio
 
 
 def main():
+    if "lab" not in rcsss.scenes:
+        "This pip package was not built with the UTN lab models, aborting."
+        return
     host = "localhost"
     port = 54321
-    simulation = Sim("models/mjcf/fr3_modular/scene.xml")
-    robot = FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
+    simulation = Sim(rcsss.scenes["lab"])
+    robot = FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     fr3_config = FR3Config()
     fr3_config.realtime = False
     fr3_config.tcp_offset = Pose(quaternion=np.array([0, 0, 0, 1]), translation=np.array([0, 0, 0.1034]))
