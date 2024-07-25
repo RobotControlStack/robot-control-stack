@@ -127,10 +127,10 @@ class ControlMode(Enum):
 
 class FR3Env(gym.Env):
     """Joint Gym Environment for Franka Research 3.
-    
+
     Top view of on the robot. Robot faces into x direction.
     z direction faces upwards.
-        ^ x 
+        ^ x
     <-  RobotBase
     y
     """
