@@ -123,7 +123,15 @@ class ActionsRelative(LimitedJointsRelDictType):
     pass
 
 
+class ObsArmsGr(ArmObsType, GripperDictType):
+    pass
+
+
 class ObsArmsGrCam(ArmObsType, GripperDictType, CameraDictType):
+    pass
+
+
+class ObsArmsGrCamCG(ArmObsType, GripperDictType, CameraDictType):
     pass
 
 
