@@ -272,8 +272,8 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
             clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
-            unclipped_pose = self._origin * common.Pose(
-                translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
+            unclipped_pose = (
+                common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]) * self._origin
             )
             action.update(
                 TRPYDictType(
@@ -289,8 +289,8 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
             clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
-            unclipped_pose = self._origin * common.Pose(
-                translation=clipped_translation, quaternion=action[self.tquart_key][3:]
+            unclipped_pose = (
+                common.Pose(translation=clipped_translation, quaternion=action[self.tquart_key][3:]) * self._origin
             )
             action.update(
                 TQuartDictType(
