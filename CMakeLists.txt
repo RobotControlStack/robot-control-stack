@@ -60,6 +60,7 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 
+set(PYBIND11_FINDPYTHON True)
 FetchContent_MakeAvailable(libfranka rl pybind11)
 
 if (${INCLUDE_UTN_MODELS})
