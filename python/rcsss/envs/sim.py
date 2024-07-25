@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
@@ -112,7 +113,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
-        exit()
+        sys.exit()
     simulation = sim.Sim(rcsss.scenes["lab"])
     robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     cfg = sim.FR3Config()

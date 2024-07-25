@@ -12,11 +12,11 @@ from struct import unpack
 from threading import Event, Thread
 
 import numpy as np
+import rcsss
 from numpy.typing import NDArray
 from rcsss._core.common import Pose
 from rcsss.envs.base import ControlMode, FR3Env, RelativeActionSpace
 from rcsss.envs.sim import FR3Sim
-import rcsss
 from rcsss.sim import FR3, FR3Config, Sim
 
 logger = logging.getLogger(__name__)

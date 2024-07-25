@@ -1,10 +1,14 @@
-import mujoco as mj
-from pathlib import Path
+from logging import getLogger
 from os import PathLike
+from pathlib import Path
+
+import mujoco as mj
 from rcsss._core.sim import FR3, FHConfig, FHState, FR3Config, FR3State, FrankaHand
 from rcsss._core.sim import Sim as _Sim
 
 __all__ = ["Sim", "FR3", "FR3Config", "FR3State", "FHConfig", "FHState", "FrankaHand"]
+
+logger = getLogger(__name__)
 
 
 class Sim(_Sim):
@@ -15,6 +19,7 @@ class Sim(_Sim):
         elif mjmdl.suffix == ".mjb":
             self.model = mj.MjModel.from_binary_path(str(mjmdl))
         else:
-            print(f"Filetype {mjmdl.suffix} is unknown")
+            msg = f"Filetype {mjmdl.suffix} is unknown"
+            logger.error(msg)
         self.data = mj.MjData(self.model)
         super().__init__(self.model._address, self.data._address)
