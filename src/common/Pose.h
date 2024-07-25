@@ -11,7 +11,9 @@ namespace rcs {
 namespace common {
 
 Eigen::Vector3d IdentityTranslation();
-Eigen::Matrix3d IdentityRotation();
+Eigen::Matrix3d IdentityRotMatrix();
+Eigen::Quaterniond IdentityRotQuart();
+Eigen::Vector4d IdentityRotQuartVec();
 
 struct RPY {
   double roll = 0;
@@ -23,6 +25,7 @@ struct RPY {
     return "RPY(" + std::to_string(roll) + ", " + std::to_string(pitch) + ", " +
            std::to_string(yaw) + ")";
   }
+  RPY(Eigen::Vector3d rpy) : roll(rpy[0]), pitch(rpy[1]), yaw(rpy[2]) {}
   RPY operator+(const RPY &rpy_b) const {
     return RPY{roll + rpy_b.roll, pitch + rpy_b.pitch, yaw + rpy_b.yaw};
   }
@@ -33,6 +36,18 @@ struct RPY {
                Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
     return rotation;
   }
+
+  Eigen::Quaterniond as_quaternion() const {
+    return Eigen::Quaterniond(
+        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
+  }
+
+  Eigen::Vector4d as_quaternion_vector() const {
+    return as_quaternion().coeffs();
+  }
+
   Eigen::Vector3d as_vector() const {
     Eigen::Vector3d rotation(
         (Eigen::Vector3d() << roll, pitch, yaw).finished());
@@ -73,7 +88,7 @@ class Pose {
    */
   Pose();
 
-  Pose(const Eigen::Affine3d &pose);
+  Pose(const Eigen::Affine3d &pose_matrix);
 
   Pose(const std::array<double, 16> &pose);
 
@@ -127,6 +142,56 @@ class Pose {
    * @param translation
    */
   Pose(const Eigen::Vector3d &rotation, const Eigen::Vector3d &translation);
+
+  /**
+   * @brief Construct a new Pose object from a 3D translation vector and
+   * identity rotation.
+   * For python bindings.
+   *
+   * @param translation
+   */
+  Pose(const Eigen::Vector3d &translation);
+
+  /**
+   * @brief Construct a new Pose object from a 4D quaternion and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param quaternion
+   */
+  Pose(const Eigen::Vector4d &quaternion);
+
+  /**
+   * @brief Construct a new Pose object from a 4D quaternion and identity
+   * translation.
+   *
+   * @param quaternion
+   */
+  Pose(const Eigen::Quaterniond &quaternion);
+
+  /**
+   * @brief Construct a new Pose object from a RPY struct and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param rpy
+   */
+  Pose(const RPY &rpy);
+
+  /**
+   * @brief Construct a new Pose object from a 3x3 rotation matrix and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param rotation
+   */
+  Pose(const Eigen::Matrix3d &rotation);
+
+  /**
+   * @brief Copy the Pose object
+   * For python bindings.
+   */
+  Pose(const Pose &pose);
 
   // GETTERS
 

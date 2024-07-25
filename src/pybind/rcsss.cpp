@@ -137,14 +137,21 @@ PYBIND11_MODULE(_core, m) {
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
+
+  common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
+  common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
+  common.def("IdentityRotQuartVec", &rcs::common::IdentityRotQuartVec);
+
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
+      .def(py::init<Eigen::Vector3d>(), py::arg("rpy"))
       .def_readwrite("roll", &rcs::common::RPY::roll)
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("as_vector", &rcs::common::RPY::as_vector)
+      .def("as_quaternion_vector", &rcs::common::RPY::as_quaternion_vector)
       .def("is_close", &rcs::common::RPY::is_close, py::arg("other"),
            py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::RPY::str)
@@ -160,7 +167,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose_matrix"))
       .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
            py::arg("rotation"), py::arg("translation"))
       .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
@@ -169,6 +176,11 @@ PYBIND11_MODULE(_core, m) {
            py::arg("rpy"), py::arg("translation"))
       .def(py::init<const Eigen::Vector3d &, const Eigen::Vector3d &>(),
            py::arg("rpy_vector"), py::arg("translation"))
+      .def(py::init<const Eigen::Vector3d &>(), py::arg("translation"))
+      .def(py::init<const Eigen::Vector4d &>(), py::arg("quaternion"))
+      .def(py::init<const rcs::common::RPY &>(), py::arg("rpy"))
+      .def(py::init<const Eigen::Matrix3d &>(), py::arg("rotation"))
+      .def(py::init<const rcs::common::Pose &>(), py::arg("pose"))
       .def("translation", &rcs::common::Pose::translation)
       .def("rotation_m", &rcs::common::Pose::rotation_m)
       .def("rotation_q", &rcs::common::Pose::rotation_q)
@@ -398,6 +410,7 @@ PYBIND11_MODULE(_core, m) {
            }),
            py::arg("mjmdl"), py::arg("mjdata"))
       .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("is_converged", &rcs::sim::Sim::is_converged)
       .def("step", &rcs::sim::Sim::step, py::arg("k"))
       .def("reset", &rcs::sim::Sim::reset);
   py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
