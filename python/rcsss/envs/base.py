@@ -126,7 +126,14 @@ class ControlMode(Enum):
 
 
 class FR3Env(gym.Env):
-    """Joint Gym Environment for Franka Research 3."""
+    """Joint Gym Environment for Franka Research 3.
+    
+    Top view of on the robot. Robot faces into x direction.
+    z direction faces upwards.
+        ^ x 
+    <-  RobotBase
+    y
+    """
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
         self.robot = robot
@@ -193,7 +200,7 @@ class RelativeTo(Enum):
 
 
 class RelativeActionSpace(gym.ActionWrapper):
-    MAX_CART_MOV = 0.01
+    MAX_CART_MOV = 0.5
     MAX_JOINT_MOV = np.deg2rad(5)
 
     def __init__(self, env, relative_to: RelativeTo = RelativeTo.LAST_STEP):
