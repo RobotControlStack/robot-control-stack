@@ -83,9 +83,7 @@ void Sim::invoke_rendering_callbacks() {
   }
 }
 
-bool Sim::is_converged(){
-  return this->converged;
-}
+bool Sim::is_converged() { return this->converged; }
 void Sim::step_until_convergence() {
   this->convergence_steps = 0;
   this->converged = false;
@@ -98,8 +96,9 @@ void Sim::step_until_convergence() {
   }
   /* Step until all all_callbacks returned true or any any_callback returned
    * true */
-  while (not this->converged or (this->cfg.max_convergence_steps != -1 and
-         this->convergence_steps < this->cfg.max_convergence_steps)) {
+  while (not this->converged or
+         (this->cfg.max_convergence_steps != -1 and
+          this->convergence_steps < this->cfg.max_convergence_steps)) {
     this->step(1);
     this->convergence_steps++;
     this->converged = invoke_condition_callbacks();
