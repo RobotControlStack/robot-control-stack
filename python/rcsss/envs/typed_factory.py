@@ -3,12 +3,12 @@ from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.envs.hw import FR3HW
+from rcsss._core.hw import FHConfig
 from rcsss.envs.sim import CollisionGuard
 from rcsss.envs.base import (
     GripperWrapper,
     RelativeActionSpace,
     ObsArmsGrCam,
-    LimitedCartOrJointContType,
     LimitedTQuartRelDictType,
     LimitedTRPYRelDictType,
     LimitedJointsRelDictType
@@ -67,7 +67,7 @@ def produce_env_sim_tquart(
 def produce_env_sim_tquart_gripper_camera(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, TQuartDictType]:
+) -> gym.Env[ObsArmsGrCam, TQuartDictType]:
     """Environment with tquart, gripper, camera, collision guard and relative limits"""
     env_sim, info = produce_env_sim_tquart(mjcf_path, urdf_path, cfg, robot_id)
     simulation = info["sim"]
@@ -84,7 +84,7 @@ def produce_env_sim_tquart_gripper_camera(
 def produce_env_sim_tquart_gripper_camera_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, LimitedTQuartRelDictType]:
+) -> gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType]:
     """Environment with tquart, gripper, camera, collision guard and relative limits"""
     env_cam = produce_env_sim_tquart_gripper_camera(mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg, robot_id)
     env_rel = RelativeActionSpace(env_cam)
@@ -97,7 +97,7 @@ def produce_env_sim_tquart_gripper_camera_rel(
 def produce_env_sim_tquart_gripper_camera_cg(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, TQuartDictType]:
+) -> gym.Env[ObsArmsGrCam, TQuartDictType]:
     """Environment with tquart, gripper, camera, collision guard and relative limits"""
     env_sim_tquart_gripper_cam = produce_env_sim_tquart_gripper_camera(mjcf_path, urdf_path, cfg,
                                                                        gripper_cfg, cam_cfg, robot_id)
@@ -117,7 +117,7 @@ def produce_env_sim_tquart_gripper_camera_cg(
 def produce_env_sim_tquart_gripper_camera_cg_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, LimitedCartOrJointContType]:
+) -> gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType]:
     """Environment with tquart, gripper, camera, collision guard and relative limits"""
     env_sim_tquart_gripper_cam = produce_env_sim_tquart_gripper_camera_cg(mjcf_path, urdf_path, cfg,
                                                                           gripper_cfg, cam_cfg, robot_id)
@@ -131,7 +131,7 @@ def produce_env_sim_tquart_gripper_camera_cg_rel(
 def produce_env_sim_trpy_gripper_camera(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, TRPYDictType]:
+) -> gym.Env[ObsArmsGrCam, TRPYDictType]:
     """Environment with trpy, gripper, camera, collision guard and relative limits"""
     env_sim_trpy, info = produce_env_sim_trpy(mjcf_path, urdf_path, cfg, robot_id)
     simulation = info["sim"]
@@ -148,7 +148,7 @@ def produce_env_sim_trpy_gripper_camera(
 def produce_env_sim_trpy_gripper_camera_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, TRPYDictType]:
+) -> gym.Env[ObsArmsGrCam, TRPYDictType]:
     """Environment with trpy, gripper, camera, collision guard and relative limits"""
     env_sim_trpy_gripper_cam = produce_env_sim_trpy_gripper_camera(mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg,
                                                                    robot_id)
@@ -162,7 +162,7 @@ def produce_env_sim_trpy_gripper_camera_rel(
 def produce_env_sim_trpy_gripper_camera_cg(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, TRPYDictType]:
+) -> gym.Env[ObsArmsGrCam, TRPYDictType]:
     """Environment with trpy, gripper, camera, collision guard and relative limits"""
     env_sim_trpy_gripper_cam = produce_env_sim_trpy_gripper_camera(mjcf_path, urdf_path, cfg,
                                                                    gripper_cfg, cam_cfg, robot_id)
@@ -182,7 +182,7 @@ def produce_env_sim_trpy_gripper_camera_cg(
 def produce_env_sim_trpy_gripper_camera_cg_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, LimitedTRPYRelDictType]:
+) -> gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType]:
     """Environment with trpy, gripper, camera, collision guard and relative limits"""
     env_sim_trpy_gripper_camera_cg = produce_env_sim_trpy_gripper_camera_cg(mjcf_path, urdf_path, cfg,
                                                                             gripper_cfg, cam_cfg, robot_id)
@@ -196,24 +196,24 @@ def produce_env_sim_trpy_gripper_camera_cg_rel(
 def produce_env_sim_joints_gripper_camera(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, JointsDictType]:
+) -> gym.Env[ObsArmsGrCam, JointsDictType]:
     """Environment with joints, gripper, camera"""
     env_sim_joints, info = produce_env_sim_joints(mjcf_path, urdf_path, cfg, robot_id)
     simulation = info["sim"]
     gripper = sim.FrankaHand(simulation, robot_id, gripper_cfg)
-    env_sim_joints = GripperWrapper(env_sim_joints, gripper)
+    env_sim_joints_gripper = GripperWrapper(env_sim_joints, gripper)
     camera_set = SimCameraSet(simulation, cam_cfg)
-    env_sim_joints_cam: gym.Env = CameraSetWrapper(env_sim_joints, camera_set)
+    env_sim_joints_gripper_cam: gym.Env = CameraSetWrapper(env_sim_joints_gripper, camera_set)
     return typing.cast(
         gym.Env[ObsArmsGrCam, JointsDictType],
-        env_sim_joints_cam,
+        env_sim_joints_gripper_cam,
     )
 
 
 def produce_env_sim_joints_gripper_camera_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, JointsDictType]:
+) -> gym.Env[ObsArmsGrCam, JointsDictType]:
     """Environment with joints, gripper, camera, collision guard and relative limits"""
     env_sim_joints_cam = produce_env_sim_joints_gripper_camera(mjcf_path, urdf_path, cfg,
                                                                gripper_cfg, cam_cfg, robot_id)
@@ -227,7 +227,7 @@ def produce_env_sim_joints_gripper_camera_rel(
 def produce_env_sim_joints_gripper_camera_cg(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, JointsDictType]:
+) -> gym.Env[ObsArmsGrCam, JointsDictType]:
     """Environment with joints, gripper, camera, collision guard and relative limits"""
     env_sim_joints_gripper_cam = produce_env_sim_joints_gripper_camera(mjcf_path, urdf_path, cfg,
                                                                        gripper_cfg, cam_cfg, robot_id)
@@ -247,7 +247,7 @@ def produce_env_sim_joints_gripper_camera_cg(
 def produce_env_sim_joints_gripper_camera_cg_rel(
     mjcf_path: str, urdf_path: str, cfg: sim.FR3Config, gripper_cfg: sim.FHConfig,
     cam_cfg: SimCameraSetConfig, robot_id: str = "0"
-) -> gym.Env[ArmObsType, LimitedJointsRelDictType]:
+) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
     """Environment with joints, gripper, camera, collision guard and relative limits"""
     env_sim_joints_gripper_cam_cg = produce_env_sim_joints_gripper_camera_cg(mjcf_path, urdf_path, cfg, gripper_cfg,
                                                                              cam_cfg, robot_id)
@@ -271,45 +271,45 @@ def produce_env_hw(ip: str, urdf_path: str, control_mode: ControlMode, cfg_path:
     return typing.cast(gym.Env[ArmObsType, CartOrJointContType], env_hw)
 
 
-def produce_env_hw_joints(ip: str, urdf_path: str, control_mode: ControlMode.JOINTS, cfg_path: str)\
+def produce_env_hw_joints(ip: str, urdf_path: str, cfg_path: str)\
         -> gym.Env[ArmObsType, JointsDictType]:
-    env_hw_joints = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_joints = produce_env_hw(ip, urdf_path, ControlMode.JOINTS, cfg_path)
     return typing.cast(gym.Env[ArmObsType, JointsDictType], env_hw_joints)
 
 
-def produce_env_hw_joints_gripper(ip: str, urdf_path: str, control_mode: ControlMode,
-                                  gripper_cfg: hw.FHConfig, cfg_path: str) -> (
+def produce_env_hw_joints_gripper(ip: str, urdf_path: str,
+                                  gripper_cfg: FHConfig, cfg_path: str) -> (
         gym.Env)[ObsArmsGr, JointsDictType]:
-    env_hw_joints = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_joints = produce_env_hw_joints(ip, urdf_path, cfg_path)
     gripper = hw.FrankaHand(ip, gripper_cfg)
     env_hw_joints_gripper = GripperWrapper(env_hw_joints, gripper)
     return typing.cast(gym.Env[ObsArmsGr, JointsDictType], env_hw_joints_gripper)
 
 
-def produce_env_hw_joints_gripper_camera(ip: str, urdf_path: str, control_mode: ControlMode, gripper_cfg: sim.FHConfig,
+def produce_env_hw_joints_gripper_camera(ip: str, urdf_path: str, gripper_cfg: FHConfig,
                                          cam_cfg: RealSenseSetConfig, cfg_path: str) \
-        -> (gym.Env)[ObsArmsGr, JointsDictType]:
-    env_hw_joints_gripper = produce_env_hw_joints_gripper(ip, urdf_path, control_mode, gripper_cfg, cfg_path)
+        -> (gym.Env)[ObsArmsGrCam, JointsDictType]:
+    env_hw_joints_gripper = produce_env_hw_joints_gripper(ip, urdf_path, gripper_cfg, cfg_path)
     camera_set = RealSenseCameraSet(cam_cfg)
     env_hw_joints_gripper_cam: gym.Env = CameraSetWrapper(env_hw_joints_gripper, camera_set)
     return typing.cast(gym.Env[ObsArmsGrCam, JointsDictType], env_hw_joints_gripper_cam)
 
 
-def produce_env_hw_joints_gripper_camera_rel(ip: str, urdf_path: str, control_mode: ControlMode,
-                                             gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
+def produce_env_hw_joints_gripper_camera_rel(ip: str, urdf_path: str,
+                                             gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig,
                                              cfg_path: str) \
         -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
-    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, control_mode,
+    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path,
                                                                      gripper_cfg, cam_cfg, cfg_path)
     env_sim_joints_gripper_cam_rel = RelativeActionSpace(env_hw_joints_gripper_cam)
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedJointsRelDictType], env_sim_joints_gripper_cam_rel)
 
 
-def produce_env_hw_joints_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: str, control_mode: ControlMode,
-                                            gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
+def produce_env_hw_joints_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: str,
+                                            gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig,
                                             cfg_path: str)\
-        -> gym.Env[ObsArmsGr, JointsDictType]:
-    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, control_mode,
+        -> gym.Env[ObsArmsGrCam, JointsDictType]:
+    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path,
                                                                      gripper_cfg, cam_cfg, cfg_path)
     env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_joints_gripper_cam,
@@ -321,11 +321,10 @@ def produce_env_hw_joints_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: 
     return typing.cast(gym.Env[ObsArmsGrCam, JointsDictType], env_hw_joints_gripper_cam_cg)
 
 
-def produce_env_hw_joints_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str,
-                                                control_mode: ControlMode, gripper_cfg: sim.FHConfig,
+def produce_env_hw_joints_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig,
                                                 cam_cfg: RealSenseSetConfig, cfg_path: str)\
-        -> gym.Env[ObsArmsGr, LimitedJointsRelDictType]:
-    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, control_mode, gripper_cfg,
+        -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
+    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, gripper_cfg,
                                                                      cam_cfg, cfg_path)
     env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_joints_gripper_cam,
@@ -337,47 +336,44 @@ def produce_env_hw_joints_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_pa
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedJointsRelDictType], env_hw_joints_gripper_cam_cg)
 
 
-def produce_env_hw_trpy(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TRPY, cfg_path: str)\
+def produce_env_hw_trpy(ip: str, urdf_path: str, cfg_path: str)\
         -> gym.Env[ArmObsType, TRPYDictType]:
-    env_hw_trpy = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_trpy = produce_env_hw(ip, urdf_path, ControlMode.CARTESIAN_TRPY, cfg_path)
     return typing.cast(gym.Env[ArmObsType, TRPYDictType], env_hw_trpy)
 
 
-def produce_env_hw_trpy_gripper(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TRPY,
-                                gripper_cfg: hw.FHConfig, cfg_path: str) -> (
+def produce_env_hw_trpy_gripper(ip: str, urdf_path: str,
+                                gripper_cfg: FHConfig, cfg_path: str) -> (
         gym.Env)[ObsArmsGr, TRPYDictType]:
-    env_hw_joints = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_joints = produce_env_hw_trpy(ip, urdf_path, cfg_path)
     gripper = hw.FrankaHand(ip, gripper_cfg)
     env_hw_trpy_gripper = GripperWrapper(env_hw_joints, gripper)
     return typing.cast(gym.Env[ObsArmsGr, TRPYDictType], env_hw_trpy_gripper)
 
 
-def produce_env_hw_trpy_gripper_camera(ip: str, urdf_path: str, control_mode: ControlMode, gripper_cfg: sim.FHConfig,
+def produce_env_hw_trpy_gripper_camera(ip: str, urdf_path: str, gripper_cfg: FHConfig,
                                        cam_cfg: RealSenseSetConfig, cfg_path: str) \
-        -> gym.Env[ObsArmsGr, TRPYDictType]:
-    env_hw_trpy_gripper = produce_env_hw_trpy_gripper(ip, urdf_path, control_mode, gripper_cfg, cfg_path)
+        -> gym.Env[ObsArmsGrCam, TRPYDictType]:
+    env_hw_trpy_gripper = produce_env_hw_trpy_gripper(ip, urdf_path, gripper_cfg, cfg_path)
     camera_set = RealSenseCameraSet(cam_cfg)
     env_hw_trpy_gripper_cam: gym.Env = CameraSetWrapper(env_hw_trpy_gripper, camera_set)
     return typing.cast(gym.Env[ObsArmsGrCam, TRPYDictType], env_hw_trpy_gripper_cam)
 
 
-def produce_env_hw_trpy_gripper_camera_rel(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TRPY,
-                                           gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
+def produce_env_hw_trpy_gripper_camera_rel(ip: str, urdf_path: str,
+                                           gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig,
                                            cfg_path: str) \
         -> gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType]:
-    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, control_mode,
-                                                                 gripper_cfg, cam_cfg, cfg_path)
+    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_trpy_gripper_cam_rel = RelativeActionSpace(env_hw_trpy_gripper_cam)
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType], env_hw_trpy_gripper_cam_rel)
 
 
 def produce_env_hw_trpy_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: str,
-                                          control_mode: ControlMode.CARTESIAN_TRPY,
-                                          gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
+                                          gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig,
                                           cfg_path: str)\
-        -> gym.Env[ObsArmsGr, TRPYDictType]:
-    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, control_mode,
-                                                                 gripper_cfg, cam_cfg, cfg_path)
+        -> gym.Env[ObsArmsGrCam, TRPYDictType]:
+    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_trpy_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_trpy_gripper_cam,
         mjcf_path,
@@ -388,11 +384,10 @@ def produce_env_hw_trpy_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: st
     return typing.cast(gym.Env[ObsArmsGrCam, TRPYDictType], env_hw_trpy_gripper_cam_cg)
 
 
-def produce_env_hw_trpy_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str,
-                                              control_mode: ControlMode, gripper_cfg: sim.FHConfig,
+def produce_env_hw_trpy_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig,
                                               cam_cfg: RealSenseSetConfig, cfg_path: str)\
-        -> gym.Env[ObsArmsGr, LimitedTRPYRelDictType]:
-    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, control_mode, gripper_cfg,
+        -> gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType]:
+    env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, gripper_cfg,
                                                                  cam_cfg, cfg_path)
     env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_trpy_gripper_cam,
@@ -404,46 +399,43 @@ def produce_env_hw_trpy_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType], env_hw_joints_gripper_cam_cg)
 
 
-def produce_env_hw_tquart(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TQuart, cfg_path: str)\
+def produce_env_hw_tquart(ip: str, urdf_path: str, cfg_path: str)\
         -> gym.Env[ArmObsType, TQuartDictType]:
-    env_hw_tquart = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_tquart = produce_env_hw(ip, urdf_path, ControlMode.CARTESIAN_TQuart, cfg_path)
     return typing.cast(gym.Env[ArmObsType, TQuartDictType], env_hw_tquart)
 
 
-def produce_env_hw_tquart_gripper(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TQuart,
-                                  gripper_cfg: hw.FHConfig, cfg_path: str) -> (
+def produce_env_hw_tquart_gripper(ip: str, urdf_path: str, gripper_cfg: FHConfig, cfg_path: str) -> (
         gym.Env)[ObsArmsGr, TQuartDictType]:
-    env_hw_tquart = produce_env_hw(ip, urdf_path, control_mode, cfg_path)
+    env_hw_tquart = produce_env_hw_tquart(ip, urdf_path, cfg_path)
     gripper = hw.FrankaHand(ip, gripper_cfg)
     env_hw_tquart_gripper = GripperWrapper(env_hw_tquart, gripper)
     return typing.cast(gym.Env[ObsArmsGr, TQuartDictType], env_hw_tquart_gripper)
 
 
-def produce_env_hw_tquart_gripper_camera(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TQuart,
-                                         gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig, cfg_path: str) \
-        -> gym.Env[ObsArmsGr, TQuartDictType]:
-    env_hw_tquart_gripper = produce_env_hw_tquart_gripper(ip, urdf_path, control_mode, gripper_cfg, cfg_path)
+def produce_env_hw_tquart_gripper_camera(ip: str, urdf_path: str, gripper_cfg: FHConfig,
+                                         cam_cfg: RealSenseSetConfig, cfg_path: str) \
+        -> gym.Env[ObsArmsGrCam, TQuartDictType]:
+    env_hw_tquart_gripper = produce_env_hw_tquart_gripper(ip, urdf_path, gripper_cfg, cfg_path)
     camera_set = RealSenseCameraSet(cam_cfg)
     env_hw_tquart_gripper_cam: gym.Env = CameraSetWrapper(env_hw_tquart_gripper, camera_set)
     return typing.cast(gym.Env[ObsArmsGrCam, TQuartDictType], env_hw_tquart_gripper_cam)
 
 
-def produce_env_hw_tquart_gripper_camera_rel(ip: str, urdf_path: str, control_mode: ControlMode.CARTESIAN_TQuart,
-                                             gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
+def produce_env_hw_tquart_gripper_camera_rel(ip: str, urdf_path: str,
+                                             gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig,
                                              cfg_path: str) \
         -> gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType]:
-    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path, control_mode,
+    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path,
                                                                      gripper_cfg, cam_cfg, cfg_path)
     env_sim_tquart_gripper_cam_rel = RelativeActionSpace(env_hw_tquart_gripper_cam)
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType], env_sim_tquart_gripper_cam_rel)
 
 
 def produce_env_hw_tquart_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: str,
-                                            control_mode: ControlMode.CARTESIAN_TQuart,
-                                            gripper_cfg: sim.FHConfig, cam_cfg: RealSenseSetConfig,
-                                            cfg_path: str)\
-        -> gym.Env[ObsArmsGr, TQuartDictType]:
-    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path, control_mode,
+                                            gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig, cfg_path: str)\
+        -> gym.Env[ObsArmsGrCam, TQuartDictType]:
+    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path,
                                                                      gripper_cfg, cam_cfg, cfg_path)
     env_hw_tquart_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_tquart_gripper_cam,
@@ -455,12 +447,11 @@ def produce_env_hw_tquart_gripper_camera_cg(ip: str, urdf_path: str, mjcf_path: 
     return typing.cast(gym.Env[ObsArmsGrCam, TQuartDictType], env_hw_tquart_gripper_cam_cg)
 
 
-def produce_env_hw_tquart_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str,
-                                                control_mode: ControlMode.CARTESIAN_TQuart, gripper_cfg: sim.FHConfig,
+def produce_env_hw_tquart_gripper_camera_cg_rel(ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig,
                                                 cam_cfg: RealSenseSetConfig, cfg_path: str)\
-        -> gym.Env[ObsArmsGr, LimitedTQuartRelDictType]:
-    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path, control_mode, gripper_cfg,
-                                                                     cam_cfg, cfg_path)
+        -> gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType]:
+    env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera_cg(ip, urdf_path, mjcf_path, gripper_cfg,
+                                                                        cam_cfg, cfg_path)
     env_hw_tquart_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
         env_hw_tquart_gripper_cam,
         mjcf_path,
