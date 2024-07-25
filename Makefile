@@ -54,4 +54,10 @@ mypy:
 pytest:
 	pytest -vv
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest
+bump:
+	cz bump
+
+commit:
+	cz commit
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
