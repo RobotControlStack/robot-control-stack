@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11", "pip"]
+requires = ["scikit-build-core>=0.3.3", "pybind11", "pip", "mujoco==3.1.5"]
 build-backend = "scikit_build_core.build"
 
 [project]

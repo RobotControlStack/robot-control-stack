@@ -15,8 +15,10 @@
 #include "sim.h"
 #include "sim/FR3.h"
 
-const std::string mjcf = MODEL_DIR "/mjcf/fr3_modular/scene.xml";
-const std::string urdf = MODEL_DIR "/fr3/urdf/fr3_from_panda.urdf";
+// const std::string mjcf = MODEL_DIR "/mjcf/fr3_modular/scene.xml";
+// const std::string urdf = MODEL_DIR "/fr3/urdf/fr3_from_panda.urdf";
+const std::string mjcf = "build/_deps/scenes-src/scenes/lab/scene.xml";
+const std::string urdf = "build/_deps/scenes-src/scenes/lab/assets/fr3.urdf";
 static const Eigen::Matrix<double, 1, 3, Eigen::RowMajor> iso_cube_center(
     0.498, 0.0, 0.226);
 static const float iso_cube_size = 0.4;
