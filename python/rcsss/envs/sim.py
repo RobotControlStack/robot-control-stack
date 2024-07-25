@@ -30,6 +30,7 @@ class FR3Sim(gym.Wrapper):
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
+        info["is_sim_converged"] = self.sim.is_converged()
         # truncate episode if collision
         return obs, 0, False, state.collision or not state.ik_success, info
 
