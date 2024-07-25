@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11", "pip"]
+requires = ["scikit-build-core>=0.3.3", "pybind11", "pip", "mujoco==3.1.5"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -14,7 +14,7 @@ dependencies = ["websockets>=11.0",
     "gymnasium~=0.29.1",
     "pydantic_yaml~=1.3",
     "absl-py~=2.1",
-    "etils[epath]~=1.9.1",
+    "etils[epath]>=1.7.0",
     "glfw~=2.7",
     "pyopengl",
     "pyrealsense2~=2.55.1",
@@ -94,6 +94,7 @@ ignore = [
   "E741",    # ambiguous variable name
   "ICN001",  #  `numpy` should be imported as `np`
   "PGH003",  # Use specfic rule code when ignoring types issues
+  # "RET504",
 ]
 
 [tool.pylint.format]
@@ -121,7 +122,6 @@ profile = "black"
 ignore_missing_imports = true
 check_untyped_defs = true
 pretty = true
-# mypy_path = "python/pyrealsense2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

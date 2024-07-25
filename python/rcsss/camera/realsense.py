@@ -3,13 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import pyrealsense2 as rs
 from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
-from rcsss.camera.interface import (
-    BaseCameraConfig,
-    CameraFrame,
-    DataFrame,
-    Frame,
-    IMUFrame,
-)
+from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
 # class RealSenseConfig(BaseCameraConfig):
 # dict with readable name and serial number
@@ -17,7 +11,7 @@ from rcsss.camera.interface import (
 
 class RealSenseSetConfig(HWCameraSetConfig):
     # dict with readable name and serial number
-    # devices_to_enable: dict[str, str] = {}  # noqa: RUF012
+    # devices_to_enable: dict[str, str] = {}
     # cameras: dict[str, RealSenseConfig] = []
     enable_ir_emitter: bool = False
     enable_ir: bool = False
@@ -43,7 +37,8 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
     def __init__(self, cfg: RealSenseSetConfig) -> None:
-        super().__init__(cfg)
+        super().__init__()
+        self._cfg = cfg
         self.D400_config = rs.config()
 
         self.D400_config.enable_stream(

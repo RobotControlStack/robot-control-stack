@@ -3,9 +3,9 @@ from typing import (
     Any,
     Literal,
     SupportsFloat,
+    Type,
     TypeAlias,
     TypedDict,
-    TypeVar,
     get_args,
     get_origin,
     get_type_hints,
@@ -23,7 +23,7 @@ class RCSpaceType(TypedDict): ...
 
 
 def get_space(
-    tp: RCSpaceType,
+    tp: Type[RCSpaceType],
     params: dict[str, dict[str, Any]] | None = None,
     child_dict_keys_to_unfold: dict[str, list[str]] | None = None,
 ) -> gym.spaces.Dict:
@@ -189,13 +189,14 @@ def get_space(
             elif node in child_dict_keys_to_unfold:
                 unfold_key = node
             else:
-                raise ValueError(f"No matching key for child dict keys: {path}")
+                msg = f"No matching key for child dict keys: {path}"
+                raise ValueError(msg)
 
             return gym.spaces.Dict(
                 {key: value(get_args(t)[1], f"{path}/{key}") for key in child_dict_keys_to_unfold[unfold_key]}
             )
 
-        elif len(t.__metadata__) == 2 and callable(t.__metadata__[0]):
+        if len(t.__metadata__) == 2 and callable(t.__metadata__[0]):
             # space can be parametrized and is a function
             assert params is not None, "No params given."
 
@@ -206,29 +207,23 @@ def get_space(
             elif node in params:
                 param_key = node
             else:
-                raise ValueError(f"No matching key for child dict keys: {path}")
+                msg = f"No matching key for child dict keys: {path}"
+                raise ValueError(msg)
             space = t.__metadata__[0](**params[param_key])
             assert isinstance(space, gym.spaces.Space), "Not a gym space."
             return space
-        else:
-            assert isinstance(t.__metadata__[0], gym.spaces.Space), "Leaves must be gym spaces."
-            return t.__metadata__[0]
+        assert isinstance(t.__metadata__[0], gym.spaces.Space), "Leaves must be gym spaces."
+        return t.__metadata__[0]
 
     return gym.spaces.Dict({name: value(t) for name, t in get_type_hints(tp, include_extras=True).items()})
 
 
-def get_space_keys(tp: RCSpaceType) -> list[str]:
+def get_space_keys(tp: Type[RCSpaceType]) -> list[str]:
     assert tp.__class__.__name__ == "_TypedDictMeta", "Type must be a TypedDict type. Hint: inherit from RCSpaceType."
     return list(get_type_hints(tp).keys())
 
 
-WrapperObsType = TypeVar("WrapperObsType")
-WrapperActType = TypeVar("WrapperActType")
-ObsType = TypeVar("ObsType")
-ActType = TypeVar("ActType")
-
-
-class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActType]):
+class ActObsInfoWrapper(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
     """Improved version of the ObservationWrapper from gymnasium. It also adds the info dict to the observation method.
 
     Superclass of wrappers that can modify observations using :meth:`observation` for :meth:`reset` and :meth:`step`.
@@ -243,25 +238,25 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
     index of the timestep to the observation.
     """
 
-    def __init__(self, env: gym.Env[ObsType, ActType]):
+    def __init__(self, env: gym.Env[dict[str, Any], dict[str, Any]]):
         """Constructor for the observation wrapper."""
         gym.Wrapper.__init__(self, env)
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
-    ) -> tuple[WrapperObsType, dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`reset`, returning a modified observation using :meth:`self.observation`."""
         observation, info = self.env.reset(seed=seed, options=options)
-        observation, info = self.observation(observation, info)
-        return observation, info
+        wrapped_obs, wrapped_info = self.observation(observation, info)
+        return wrapped_obs, wrapped_info
 
-    def step(self, action: ActType) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
         """Modifies the :attr:`env` after calling :meth:`step` using :meth:`self.observation` on the returned observations."""
-        observation, reward, terminated, truncated, info = self.env.step(action)
-        observation, info = self.observation(observation, info)
-        return observation, reward, terminated, truncated, info
+        observation, reward, terminated, truncated, info = self.env.step(self.action(action))
+        wrapped_obs, wrapped_info = self.observation(observation, info)
+        return wrapped_obs, reward, terminated, truncated, wrapped_info
 
-    def observation(self, observation: ObsType, info: dict[str, Any]) -> WrapperObsType:
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         """Returns a modified observation.
 
         Args:
@@ -270,4 +265,15 @@ class ObservationInfoWrapper(gym.Wrapper[WrapperObsType, ActType, ObsType, ActTy
         Returns:
             The modified observation
         """
-        raise NotImplementedError
+        return observation, info  # type: ignore
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Returns a modified action before :meth:`env.step` is called.
+
+        Args:
+            action: The original :meth:`step` actions
+
+        Returns:
+            The modified actions
+        """
+        return action  # type: ignore

@@ -11,6 +11,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/FR3.h>
+#include <sim/FrankaHand.h>
 #include <sim/camera.h>
 
 #include <memory>
@@ -61,6 +62,9 @@ class PyRobot : public rcs::common::Robot {
   void move_home() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
+  }
 
   void set_cartesian_position(const rcs::common::Pose &pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
@@ -85,16 +89,32 @@ class PyGripper : public rcs::common::Gripper {
                            get_state, );
   }
 
-  bool grasp() override {
-    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, grasp, );
+  void set_normalized_width(double width, double force) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, set_normalized_width,
+                           width, force);
   }
 
-  void release() override {
-    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, release, );
+  double get_normalized_width() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, get_normalized_width, );
+  }
+
+  bool is_grasped() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Gripper, is_grasped, );
+  }
+
+  void grasp() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, grasp, );
+  }
+
+  void open() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, open, );
   }
 
   void shut() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, shut, );
+  }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, reset, );
   }
 };
 
@@ -117,14 +137,21 @@ PYBIND11_MODULE(_core, m) {
 
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
+
+  common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
+  common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
+  common.def("IdentityRotQuartVec", &rcs::common::IdentityRotQuartVec);
+
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
+      .def(py::init<Eigen::Vector3d>(), py::arg("rpy"))
       .def_readwrite("roll", &rcs::common::RPY::roll)
       .def_readwrite("pitch", &rcs::common::RPY::pitch)
       .def_readwrite("yaw", &rcs::common::RPY::yaw)
       .def("rotation_matrix", &rcs::common::RPY::rotation_matrix)
       .def("as_vector", &rcs::common::RPY::as_vector)
+      .def("as_quaternion_vector", &rcs::common::RPY::as_quaternion_vector)
       .def("is_close", &rcs::common::RPY::is_close, py::arg("other"),
            py::arg("eps") = 1e-8)
       .def("__str__", &rcs::common::RPY::str)
@@ -140,7 +167,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
-      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose"))
+      .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose_matrix"))
       .def(py::init<const Eigen::Matrix3d &, const Eigen::Vector3d &>(),
            py::arg("rotation"), py::arg("translation"))
       .def(py::init<const Eigen::Vector4d &, const Eigen::Vector3d &>(),
@@ -149,6 +176,11 @@ PYBIND11_MODULE(_core, m) {
            py::arg("rpy"), py::arg("translation"))
       .def(py::init<const Eigen::Vector3d &, const Eigen::Vector3d &>(),
            py::arg("rpy_vector"), py::arg("translation"))
+      .def(py::init<const Eigen::Vector3d &>(), py::arg("translation"))
+      .def(py::init<const Eigen::Vector4d &>(), py::arg("quaternion"))
+      .def(py::init<const rcs::common::RPY &>(), py::arg("rpy"))
+      .def(py::init<const Eigen::Matrix3d &>(), py::arg("rotation"))
+      .def(py::init<const rcs::common::Pose &>(), py::arg("pose"))
       .def("translation", &rcs::common::Pose::translation)
       .def("rotation_m", &rcs::common::Pose::rotation_m)
       .def("rotation_q", &rcs::common::Pose::rotation_q)
@@ -187,6 +219,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("q"))
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)
       .def("move_home", &rcs::common::Robot::move_home)
+      .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
 
@@ -194,9 +227,14 @@ PYBIND11_MODULE(_core, m) {
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
       .def("get_state", &rcs::common::Gripper::get_state)
+      .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width,
+           py::arg("width"), py::arg("force") = 0)
+      .def("get_normalized_width", &rcs::common::Gripper::get_normalized_width)
       .def("grasp", &rcs::common::Gripper::grasp)
-      .def("release", &rcs::common::Gripper::release)
-      .def("shut", &rcs::common::Gripper::shut);
+      .def("is_grasped", &rcs::common::Gripper::is_grasped)
+      .def("open", &rcs::common::Gripper::open)
+      .def("shut", &rcs::common::Gripper::shut)
+      .def("reset", &rcs::common::Gripper::reset);
 
   py::class_<rcs::common::RobotWithGripper,
              std::shared_ptr<rcs::common::RobotWithGripper>>(common,
@@ -232,8 +270,7 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
            py::arg("idxs"))
       .def("grasp", &rcs::common::NRobotsWithGripper::grasp, py::arg("idxs"))
-      .def("release", &rcs::common::NRobotsWithGripper::release,
-           py::arg("idxs"))
+      .def("open", &rcs::common::NRobotsWithGripper::open, py::arg("idxs"))
       .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
   // HARDWARE MODULE
@@ -274,6 +311,10 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
+      .def_readonly("last_commanded_width",
+                    &rcs::hw::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width",
+                    &rcs::hw::FHState::max_unnormalized_width)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
   py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
@@ -298,11 +339,13 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand")
-      .def(py::init<const std::string &>(), py::arg("ip"))
+      .def(py::init<const std::string &, const rcs::hw::FHConfig &>(),
+           py::arg("ip"), py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("set_parameters", &rcs::hw::FrankaHand::set_parameters,
            py::arg("cfg"))
+      .def("is_grasped", &rcs::hw::FrankaHand::is_grasped)
       .def("homing", &rcs::hw::FrankaHand::homing);
 
   auto hw_except =
@@ -350,6 +393,17 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("collision", &rcs::sim::FR3State::collision)
       .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
       .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
+  py::class_<rcs::sim::FHConfig, rcs::common::GConfig>(sim, "FHConfig")
+      .def(py::init<>())
+      .def_readwrite("epsilon_inner", &rcs::sim::FHConfig::epsilon_inner)
+      .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer);
+  py::class_<rcs::sim::FHState, rcs::common::GState>(sim, "FHState")
+      .def(py::init<>())
+      .def_readonly("last_commanded_width",
+                    &rcs::sim::FHState::last_commanded_width)
+      .def_readonly("max_unnormalized_width",
+                    &rcs::sim::FHState::max_unnormalized_width);
+
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
              return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
@@ -357,7 +411,17 @@ PYBIND11_MODULE(_core, m) {
            py::arg("mjmdl"), py::arg("mjdata"))
       .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
       .def("is_converged", &rcs::sim::Sim::is_converged)
-      .def("step", &rcs::sim::Sim::step, py::arg("k"));
+      .def("step", &rcs::sim::Sim::step, py::arg("k"))
+      .def("reset", &rcs::sim::Sim::reset);
+  py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
+             std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+                    const rcs::sim::FHConfig &>(),
+           py::arg("sim"), py::arg("id"), py::arg("cfg"))
+      .def("get_parameters", &rcs::sim::FrankaHand::get_parameters)
+      .def("get_state", &rcs::sim::FrankaHand::get_state)
+      .def("set_parameters", &rcs::sim::FrankaHand::set_parameters,
+           py::arg("cfg"));
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
@@ -365,8 +429,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
-      .def("get_state", &rcs::sim::FR3::get_state)
-      .def("reset", &rcs::sim::FR3::reset);
+      .def("get_state", &rcs::sim::FR3::get_state);
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
       .value("tracking", rcs::sim::CameraType::tracking)
@@ -377,7 +440,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
       .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def_readwrite("on_screen_render", &rcs::sim::SimCameraConfig::on_screen_render);
+      .def_readwrite("on_screen_render",
+                     &rcs::sim::SimCameraConfig::on_screen_render);
   py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
       .def(py::init<>())
       .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)

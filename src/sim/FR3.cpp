@@ -73,7 +73,7 @@ void FR3::construct() {
                              this->cfg.seconds_between_callbacks);
   this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
-  this->reset();
+  this->m_reset();
 }
 
 void FR3::move_home() { this->set_joint_position(q_home); }
@@ -187,8 +187,8 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
 }
 void FR3::is_moving_callback() {
   common::Vector7d current_angles = this->get_joint_position();
-  this->state.is_moving =
-      not this->state.previous_angles.isApprox(current_angles, 0.0001); // TODO: careful with isapprox
+  this->state.is_moving = not this->state.previous_angles.isApprox(
+      current_angles, 0.0001);  // TODO: careful with isapprox
   this->state.previous_angles = current_angles;
 }
 
@@ -219,12 +219,13 @@ bool FR3::convergence_callback() {
   return this->state.is_arrived and not this->state.is_moving;
 }
 
-void FR3::reset() {
+void FR3::m_reset() {
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
     this->sim->d->qpos[jnt_qposadr] = q_home[i];
   }
 }
+void FR3::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs

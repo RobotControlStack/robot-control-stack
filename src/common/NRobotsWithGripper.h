@@ -93,11 +93,14 @@ class NRobotsWithGripper {
   std::vector<std::optional<std::unique_ptr<GState>>> get_state_g(
       const std::vector<size_t> &idxs);
 
-  std::vector<std::optional<bool>> grasp(const std::vector<size_t> &idxs);
+  void grasp(const std::vector<size_t> &idxs);
 
-  void release(const std::vector<size_t> &idxs);
+  void open(const std::vector<size_t> &idxs);
 
   void shut(const std::vector<size_t> &idxs);
+
+  // missing functions: set_normalized_width, is_grasped, reset (also from
+  // robot)
 };
 
 }  // namespace common

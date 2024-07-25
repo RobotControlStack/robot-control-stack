@@ -1,5 +1,6 @@
 """Gym API."""
 
+import copy
 from enum import Enum
 from typing import Annotated, Any, TypeAlias, cast
 
@@ -8,7 +9,7 @@ import numpy as np
 from rcsss import common
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
-    ObservationInfoWrapper,
+    ActObsInfoWrapper,
     RCSpaceType,
     Vec6Type,
     Vec7Type,
@@ -124,7 +125,7 @@ class ControlMode(Enum):
     CARTESIAN_TQuart = 3
 
 
-class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
+class FR3Env(gym.Env):
     """Joint Gym Environment for Franka Research 3."""
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
@@ -156,14 +157,18 @@ class FR3Env(gym.Env[ArmObsType, CartOrJointContType]):
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
         if self.control_mode == ControlMode.JOINTS and self.joints_key in action:
-            self.robot.set_joint_position(action[self.joints_key])
+            # cast is needed because typed dicts cannot be checked at runtime
+            action_dict = cast(dict, action)
+            self.robot.set_joint_position(action_dict[self.joints_key])
         elif self.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
+                common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
         elif self.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.tquart_key][:3], quaternion=action[self.tquart_key][3:])
+                common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
             )
         else:
             msg = "Given type is not matching control mode!"
@@ -187,24 +192,22 @@ class RelativeActionSpace(gym.ActionWrapper):
     MAX_JOINT_MOV = np.deg2rad(5)
 
     def __init__(self, env):
-        self.env: FR3Env
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
-        if self.env.control_mode == ControlMode.CARTESIAN_TRPY:
+        if self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
                 get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
-        elif self.env.control_mode == ControlMode.JOINTS:
+        elif self.unwrapped.control_mode == ControlMode.JOINTS:
             self.action_space.spaces.update(
                 get_space(
                     LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
                 ).spaces
             )
-        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart:
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart:
             self.action_space.spaces.update(
-                get_space(
-                    LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}
-                ).spaces
+                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
         else:
             msg = "Control mode not recognized!"
@@ -212,53 +215,68 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
         self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
+        self.initial_obs: dict[str, Any] | None = None
 
-    def action(self, action: LimitedCartOrJointContType) -> CartOrJointContType:
-        if self.env.control_mode == ControlMode.JOINTS and self.joints_key in action:
-            joint_space: gym.spaces.Box = get_space(JointsDictType).spaces[self.joints_key]
+    def reset(self, **kwargs) -> tuple[dict, dict[str, Any]]:
+        obs, info = super().reset(**kwargs)
+        self.initial_obs = obs
+        return obs, info
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        action = copy.deepcopy(action)
+        if self.unwrapped.control_mode == ControlMode.JOINTS and self.joints_key in action:
+            joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
-            return JointsDictType(
-                joints=np.clip(self.env.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high)
-            )
-
-        elif self.env.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
-            pose_space: gym.spaces.Box = get_space(TRPYDictType).spaces[self.trpy_key]
-            clipped_translation = np.clip(
-                action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
-            )
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
-                translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
-            )
-            return TRPYDictType(
-                xyzrpy=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
-                    unclipped_pose.rotation_rpy().as_vector()],
+            action.update(
+                JointsDictType(
+                    joints=np.clip(
+                        self.unwrapped.robot.get_joint_position() + limited_joints, joint_space.low, joint_space.high
+                    )
                 )
             )
-        elif self.env.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
-            pose_space: gym.spaces.Box = get_space(TQuartDictType).spaces[self.tquart_key]
-            clipped_translation = np.clip(
-                action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV
+
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+            pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
+            clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
+                translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]
             )
-            unclipped_pose = self.env.robot.get_cartesian_position() * common.Pose(
+            action.update(
+                TRPYDictType(
+                    xyzrpy=np.concat(
+                        [
+                            np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
+                            unclipped_pose.rotation_rpy().as_vector(),
+                        ],
+                    )
+                )
+            )
+        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+            pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
+            clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            unclipped_pose = self.unwrapped.robot.get_cartesian_position() * common.Pose(
                 translation=clipped_translation, quaternion=action[self.tquart_key][3:]
             )
-            return TQuartDictType(
-                tquart=np.concat(
-                    [np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
-                    unclipped_pose.rotation_q()],
+            action.update(
+                TQuartDictType(
+                    tquart=np.concat(
+                        [
+                            np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
+                            unclipped_pose.rotation_q(),
+                        ],
+                    )
                 )
             )
         else:
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
+        return action
 
 
-class CameraSetWrapper(ObservationInfoWrapper):
-    def __init__(self, env: FR3Env, camera_set: BaseCameraSet):
-        self.env: FR3Env
-        self.observation_space: gym.spaces.Dict
+class CameraSetWrapper(ActObsInfoWrapper):
+    def __init__(self, env, camera_set: BaseCameraSet):
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.camera_set = camera_set
 
         self.observation_space: gym.spaces.Dict
@@ -280,7 +298,9 @@ class CameraSetWrapper(ObservationInfoWrapper):
         self.camera_set.clear_buffer()
         return super().reset(seed=seed, options=options)
 
-    def observation(self, observation: dict, info: dict[str, Any]) -> dict[str, Any]:
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        info = copy.deepcopy(info)
         frameset = self.camera_set.get_latest_frames()
         if frameset is None:
             observation[self.camera_key] = {}
@@ -298,31 +318,34 @@ class CameraSetWrapper(ObservationInfoWrapper):
         return observation, info
 
 
-# TODO: sticky gripper, like in aloha
-class GripperWrapper(gym.ObservationWrapper, gym.ActionWrapper):
+class GripperWrapper(ActObsInfoWrapper):
+    # TODO: sticky gripper, like in aloha
     def __init__(self, env, gripper: common.Gripper):
-        self.env: FR3Env
         super().__init__(env)
+        self.unwrapped: FR3Env
         self.observation_space: gym.spaces.Dict
         self.observation_space.spaces.update(get_space(GripperDictType).spaces)
         self.action_space: gym.spaces.Dict
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
-        self._gripper_state = True
+        self._gripper_state = 1
 
-    def reset(self, **kwargs):
-        self._gripper.release()
+    def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
+        self._gripper.reset()
         self._gripper_state = 1
         return super().reset(**kwargs)
 
-    def observation(self, observation: dict[str, Any]) -> dict[str, Any]:
-        observation[self.gripper_key] = self._gripper_state
-        return observation
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        observation[self.gripper_key] = self._gripper.get_normalized_width()
+        return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
-        self._gripper_state = round(action["gripper"])
+        self._gripper_state = np.round(action["gripper"])
         self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
+        # self._gripper.set_normalized_width(action["gripper"])
         del action[self.gripper_key]
         return action

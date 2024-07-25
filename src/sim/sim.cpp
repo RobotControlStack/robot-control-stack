@@ -71,7 +71,8 @@ void Sim::invoke_rendering_callbacks() {
     if (dt > cb.seconds_between_calls) {
       // if (!scene_updated) {
       //   // update scene once for all cameras
-      //   mjv_updateScene(this->m, this->d, &this->renderer.opt, NULL, NULL, mjCAT_ALL,
+      //   mjv_updateScene(this->m, this->d, &this->renderer.opt, NULL, NULL,
+      //   mjCAT_ALL,
       //                   &this->renderer.scene);
       //   scene_updated = true;
       // }
@@ -117,6 +118,8 @@ void Sim::step(size_t k) {
   }
 }
 
+void Sim::reset() { mj_resetData(this->m, this->d); }
+
 void Sim::register_cb(std::function<void(void)> cb,
                       mjtNum seconds_between_calls) {
   this->callbacks.push_back(Callback{cb, seconds_between_calls, 0.0});
@@ -135,15 +138,17 @@ void Sim::register_all_cb(std::function<bool(void)> cb,
 }
 
 void Sim::register_rendering_callback(
-    std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)> cb,
-    const std::string& id, mjtNum seconds_between_calls, size_t width, size_t height, bool offscreen) {
+    std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
+        cb,
+    const std::string& id, mjtNum seconds_between_calls, size_t width,
+    size_t height, bool offscreen) {
   this->renderer.register_context(id, width, height, offscreen);
   // dont register off screen in normal callback, but special gui callback
-  this->rendering_callbacks.push_back(RenderingCallback{
-      .cb = cb,
-      .id = id,
-      .seconds_between_calls = seconds_between_calls,
-      .last_call_timestamp = 0});
+  this->rendering_callbacks.push_back(
+      RenderingCallback{.cb = cb,
+                        .id = id,
+                        .seconds_between_calls = seconds_between_calls,
+                        .last_call_timestamp = 0});
 }
 }  // namespace sim
 }  // namespace rcs

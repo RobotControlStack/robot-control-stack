@@ -1,9 +1,10 @@
 #include <mujoco/mjrender.h>
 #include <mujoco/mujoco.h>
+
+#include <iostream>
 #include <stdexcept>
 
 #include "sim/sim.h"
-#include <iostream>
 namespace rcs {
 namespace sim {
 
@@ -15,7 +16,8 @@ Renderer::Renderer(mjModel* m) : m{m} {
   mjv_defaultScene(&this->scene);
   size_t max_geoms = 2000;
   mjv_makeScene(this->m, &this->scene, max_geoms);
-  this->ctxs = std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>>();
+  this->ctxs =
+      std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>>();
 }
 
 Renderer::~Renderer() {
@@ -26,7 +28,8 @@ Renderer::~Renderer() {
   mjv_freeScene(&this->scene);
 }
 
-void Renderer::register_context(const std::string& id, size_t width, size_t height, bool offscreen) {
+void Renderer::register_context(const std::string& id, size_t width,
+                                size_t height, bool offscreen) {
   // create invisible window, single-buffered
   if (offscreen) {
     glfwWindowHint(GLFW_VISIBLE, 0);

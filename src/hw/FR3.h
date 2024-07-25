@@ -85,6 +85,8 @@ class FR3 : public common::Robot {
                                        std::optional<double> max_force = 5);
 
   void set_cartesian_position_rl(const common::Pose &x);
+
+  void reset() override;
 };
 }  // namespace hw
 }  // namespace rcs
