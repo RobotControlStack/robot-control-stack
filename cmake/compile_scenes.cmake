@@ -14,7 +14,6 @@ function(compile_scenes)
         execute_process(
             COMMAND
             python -c "import mujoco as mj; mj.mj_saveModel(mj.MjModel.from_xml_path('${scene}'), '${CMAKE_BINARY_DIR}/scenes/${scene_name}/scene.mjb')"
-            COMMAND_ECHO STDOUT
         )
         install(FILES ${CMAKE_BINARY_DIR}/scenes/${scene_name}/scene.mjb DESTINATION rcsss/scenes/${scene_name} COMPONENT python_package)
     endforeach()
