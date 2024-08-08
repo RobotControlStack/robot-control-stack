@@ -96,8 +96,8 @@ void Sim::step_until_convergence() {
   }
   /* Step until all all_callbacks returned true or any any_callback returned
    * true */
-  while (not this->converged or
-         (this->cfg.max_convergence_steps != -1 and
+  while (not this->converged and
+         (this->cfg.max_convergence_steps == -1 or
           this->convergence_steps < this->cfg.max_convergence_steps)) {
     this->step(1);
     this->convergence_steps++;
