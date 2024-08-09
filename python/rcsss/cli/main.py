@@ -134,6 +134,26 @@ def unlock(
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
     cfg = read_config_yaml(path)
     rcsss.desk.unlock(ip, cfg.hw.username, cfg.hw.password)
+    with rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password) as d:
+        d.activate_fci()
+
+
+@fr3_app.command()
+def fci(
+    ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
+    shutdown: Annotated[bool, typer.Option("-s", help="After ctrl+c shuts the robot down")] = False,
+):
+    """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
+    cfg = read_config_yaml(path)
+    try:
+        with rcsss.desk.FCI(rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock) as d:
+            while True:
+                sleep(1)
+    except KeyboardInterrupt:
+        if shutdown:
+            rcsss.desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
 
 
 @fr3_app.command()
