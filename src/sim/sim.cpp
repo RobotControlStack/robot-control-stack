@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <functional>
+#include <iostream>
 #include <thread>
 
 namespace rcs {
@@ -103,6 +104,9 @@ void Sim::step_until_convergence() {
     this->convergence_steps++;
     this->converged = invoke_condition_callbacks();
   };
+  if (this->convergence_steps == this->cfg.max_convergence_steps) {
+    std::cerr << "WARNING: Max convergence steps reached!" << std::endl;
+  }
 }
 
 void Sim::step(size_t k) {

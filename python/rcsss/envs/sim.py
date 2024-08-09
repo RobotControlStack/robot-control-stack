@@ -58,8 +58,9 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         self.check_home_collision = check_home_collision
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
+        # TODO: we should set the state of the sim to the state of the real robot
         _, _, _, _, info = self.collision_env.step(action)
-        if info["collision"] or not info["ik_success"]:
+        if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
             # return old obs, with truncated and print warning
             self._logger.warning("Collision detected! Truncating episode.")
             if self.last_obs is None:
