@@ -148,7 +148,7 @@ def fci(
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
     cfg = read_config_yaml(path)
     try:
-        with rcsss.desk.FCI(rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock) as d:
+        with rcsss.desk.FCI(rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock):
             while True:
                 sleep(1)
     except KeyboardInterrupt:

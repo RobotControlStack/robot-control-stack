@@ -45,7 +45,7 @@ if __name__ == "__main__":
         logger = logging.getLogger(__name__)
         robot = hw.FR3("192.168.101.1", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
         env = FR3Env(robot, ControlMode.JOINTS)
-        env_hw = FR3HW(env)
+        env_hw: gym.Env = FR3HW(env)
         gripper_cfg = hw.FHConfig()
         gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
         gripper_cfg.speed = 0.1
@@ -53,9 +53,9 @@ if __name__ == "__main__":
         gripper = hw.FrankaHand("192.168.101.1", gripper_cfg)
         env_hw = GripperWrapper(env_hw, gripper)
 
-        env_cam = CollisionGuard.env_from_xml_paths(
+        env_cam: gym.Env = CollisionGuard.env_from_xml_paths(
             env_hw,
-            rcsss.scenes["fr3_empty_world"],
+            str(rcsss.scenes["fr3_empty_world"]),
             str(rcsss.scenes["lab"].parent / "fr3.urdf"),
             gripper=True,
             check_home_collision=False,
