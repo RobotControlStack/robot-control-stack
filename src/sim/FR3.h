@@ -19,7 +19,8 @@ const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
 
 struct FR3Config : common::RConfig {
   rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
-  double joint_rotational_tolerance = .5 * (std::numbers::pi / 180.0);
+  double joint_rotational_tolerance =
+      .05 * (std::numbers::pi / 180.0);      // 0.05 degree
   double seconds_between_callbacks = 0.1;    // 10 Hz
   size_t ik_duration_in_milliseconds = 300;  // milliseconds
   bool realtime = false;
