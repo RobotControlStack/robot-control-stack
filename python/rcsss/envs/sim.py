@@ -93,7 +93,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
     @classmethod
     def env_from_xml_paths(
-        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True
+        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True, camera=False
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
@@ -102,12 +102,23 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cfg.ik_duration_in_milliseconds = 300
         cfg.realtime = False
         robot.set_parameters(cfg)
-        c_env = FR3Env(robot, env.unwrapped.control_mode)
+        c_env: gym.Env = FR3Env(robot, env.unwrapped.control_mode)
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-            g_env = GripperWrapper(c_env, gripper)
-            return cls(env, simulation, FR3Sim(g_env, simulation), check_home_collision)
+            c_env = GripperWrapper(c_env, gripper)
+        if camera:
+            cameras = {
+                "wrist": SimCameraConfig(
+                    identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False
+                ),
+                "default_free": SimCameraConfig(
+                    identifier="", type=int(CameraType.default_free), on_screen_render=True
+                ),
+            }
+            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=15)
+            camera_set = SimCameraSet(simulation, cam_cfg)
+            c_env = CameraSetWrapper(c_env, camera_set)
         return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision)
 
 
@@ -129,7 +140,7 @@ if __name__ == "__main__":
         "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
     }
-    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=50)
+    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=1)
     camera_set = SimCameraSet(simulation, cam_cfg)
     env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
 
@@ -142,6 +153,7 @@ if __name__ == "__main__":
         str(rcsss.scenes["lab"].parent / "fr3.urdf"),
         gripper=True,
         check_home_collision=False,
+        camera=True,
     )
     env_cam = RelativeActionSpace(env_cam)
     obs, info = env_cam.reset()

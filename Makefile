@@ -49,7 +49,7 @@ ruff:
 	ruff check ${PYSRC}
 
 mypy:
-	mypy ${PYSRC} --install-types --non-interactive
+	mypy ${PYSRC} --install-types --non-interactive --no-namespace-packages
 
 pytest:
 	pytest -vv

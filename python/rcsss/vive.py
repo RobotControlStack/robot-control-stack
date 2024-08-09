@@ -119,7 +119,7 @@ class UDPViveActionServer:
         self._lock = RLock()
         self._server_proc = Process(
             target=UDPViveActionServer.worker(
-                self._pose_raw, self._buttons, self._exit_requested, self._lock, self._host, self._port
+                self._pose_raw, self._buttons, self._exit_requested, self._lock, self._host, self._port  # type: ignore
             )
         )
         self._server_proc.start()
