@@ -15,6 +15,10 @@ Eigen::Matrix3d IdentityRotMatrix();
 Eigen::Quaterniond IdentityRotQuart();
 Eigen::Vector4d IdentityRotQuartVec();
 
+
+// Use extrinsic Euler angles: x/y/z <-> roll/pitch/yaw
+// https://math.stackexchange.com/questions/1137745/proof-of-the-extrinsic-to-intrinsic-rotation-transform
+// https://dominicplein.medium.com/extrinsic-intrinsic-rotation-do-i-multiply-from-right-or-left-357c38c1abfd
 struct RPY {
   double roll = 0;
   double pitch = 0;
@@ -31,17 +35,17 @@ struct RPY {
   }
   Eigen::Matrix3d rotation_matrix() const {
     Eigen::Matrix3d rotation;
-    rotation = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+    rotation = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
                Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-               Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+               Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
     return rotation;
   }
 
   Eigen::Quaterniond as_quaternion() const {
     return Eigen::Quaterniond(
-        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
         Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
+        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
   }
 
   Eigen::Vector4d as_quaternion_vector() const {
