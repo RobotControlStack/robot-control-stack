@@ -173,9 +173,6 @@ common::Vector7d FR3::get_joint_position() {
 void FR3::set_cartesian_position(const common::Pose& pose) {
   this->rl.kin->setPosition(this->get_joint_position());
   this->rl.kin->forwardPosition();
-  // TODO: Why do we have to take the tcp offset and not the inverse here?
-  // Should be the opposite.
-  // FW: fixed, inverse is correct
   rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
   this->rl.ik->addGoal(new_pose.affine_matrix(), 0);
   if (this->rl.ik->solve()) {

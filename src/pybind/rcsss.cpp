@@ -297,7 +297,8 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::hw::FR3Config::guiding_mode_enabled)
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
-                     &rcs::hw::FR3Config::nominal_end_effector_frame);
+                     &rcs::hw::FR3Config::nominal_end_effector_frame)
+      .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset);
 
   py::class_<rcs::hw::FHConfig, rcs::common::GConfig>(hw, "FHConfig")
       .def(py::init<>())
