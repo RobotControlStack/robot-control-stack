@@ -10,11 +10,14 @@
 namespace rcs {
 namespace common {
 
+class Pose;
+
 Eigen::Vector3d IdentityTranslation();
 Eigen::Matrix3d IdentityRotMatrix();
 Eigen::Quaterniond IdentityRotQuart();
 Eigen::Vector4d IdentityRotQuartVec();
 
+Pose FrankaHandTCPOffset();
 
 // Use extrinsic Euler angles: x/y/z <-> roll/pitch/yaw
 // https://math.stackexchange.com/questions/1137745/proof-of-the-extrinsic-to-intrinsic-rotation-transform

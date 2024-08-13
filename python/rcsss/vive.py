@@ -171,7 +171,7 @@ def main():
     robot = FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     fr3_config = FR3Config()
     fr3_config.realtime = False
-    fr3_config.tcp_offset = Pose(quaternion=np.array([0, 0, 0, 1]), translation=np.array([0, 0, 0.1034]))
+    fr3_config.tcp_offset = rcsss.common.FrankaHandTCPOffset()
     env_sim = FR3Sim(FR3Env(robot, ControlMode.CARTESIAN_TQuart), simulation)
 
     cameras = {

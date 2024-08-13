@@ -92,7 +92,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
     @classmethod
     def env_from_xml_paths(
-        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True
+        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True, tcp_offset=None
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
@@ -100,6 +100,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cfg = sim.FR3Config()
         cfg.ik_duration_in_milliseconds = 300
         cfg.realtime = False
+        if tcp_offset is not None:
+            cfg.tcp_offset = tcp_offset
         robot.set_parameters(cfg)
         c_env = FR3Env(robot, env.unwrapped.control_mode)
         if gripper:
@@ -118,6 +120,7 @@ if __name__ == "__main__":
     simulation = sim.Sim(rcsss.scenes["lab"])
     robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     cfg = sim.FR3Config()
+    cfg.tcp_offset = rcsss.common.FrankaHandTCPOffset()
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     robot.set_parameters(cfg)

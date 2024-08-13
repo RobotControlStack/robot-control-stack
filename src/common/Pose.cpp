@@ -8,6 +8,11 @@ Eigen::Matrix3d IdentityRotMatrix() { return Eigen::Matrix3d::Identity(); }
 Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
 Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
+Pose FrankaHandTCPOffset() {
+  return Pose(std::array<double, 16>{0.707, -0.707, 0, 0, 0.707, 0.707, 0, 0, 0,
+                                     0, 1, 0, 0, 0, 0.1034, 1});
+}
+
 // CONSTRUCTORS
 
 Pose::Pose() {
