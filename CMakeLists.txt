@@ -40,6 +40,12 @@ set(RL_BUILD_EXTRAS OFF)
 option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires GITLAB_MODELS_TOKEN to be set to a valid token wit read_api permissions" OFF)
 
 include(FetchContent)
+
+find_package(Eigen3 REQUIRED)
+find_package(glfw3 REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(pybind11 REQUIRED)
+
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
@@ -53,15 +59,8 @@ FetchContent_Declare(rl
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-FetchContent_Declare(pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG master
-    GIT_PROGRESS TRUE
-    EXCLUDE_FROM_ALL
-)
 
-set(PYBIND11_FINDPYTHON True)
-FetchContent_MakeAvailable(libfranka rl pybind11)
+FetchContent_MakeAvailable(libfranka rl)
 
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
@@ -73,8 +72,5 @@ if (${INCLUDE_UTN_MODELS})
       message(FATAL_ERROR "GITLAB_MODELS_TOKEN missing. Not including lab scene")
     endif()
 endif()
-
-find_package(Eigen3 REQUIRED)
-find_package(glfw3 REQUIRED)
 
 add_subdirectory(src)

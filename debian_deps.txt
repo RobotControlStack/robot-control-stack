@@ -15,3 +15,4 @@ ninja-build
 clang
 clang-format
 clang-tidy
+pybind11-dev
