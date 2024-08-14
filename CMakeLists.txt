@@ -46,6 +46,7 @@ include(FetchContent)
 find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(MuJoCo REQUIRED)
 find_package(pybind11 REQUIRED)
 
 FetchContent_Declare(
