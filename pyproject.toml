@@ -1,6 +1,4 @@
 [build-system]
-# NOTE: when changing the mujoco version, also change it below in the dependencies
-requires = ["scikit-build-core>=0.3.3", "pybind11", "mujoco==3.1.5"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -20,7 +18,7 @@ dependencies = ["websockets>=11.0",
     "pyopengl",
     "pyrealsense2~=2.55.1",
     "pillow~=10.3",
-    # NOTE: when changing the mujoco version, also change it above in the build dependencies
+    # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.1.5"
 ]
 readme = "README.md"
@@ -51,12 +49,12 @@ classifiers = [
 
 
 [tool.scikit-build]
-cmake.verbose = true
+build.verbose = true
+build.targets = ["_core", "utn_scenes"]
 logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["python/rcsss"]
 install.components = ["python_package"]
-cmake.targets = ["_core", "utn_scenes"]
 
 [tool.ruff]
 line-length = 120
