@@ -9,12 +9,14 @@ project(
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
-set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Set version in project
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Allow us to set options for subprojects
+
+cmake_policy(SET CMP0048 NEW) # Set version in project
 # Allow target properties affecting visibility during linking in static libraries
 set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
-set(CMAKE_POLICY_DEFAULT_CMP0072 NEW) # Use GLVND instead of legacy libGL.so
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Allow us to set options for subprojects
-set(CMAKE_POLICY_DEFAULT_CMP0135 NEW) # Use timestamp of file extraction not download
+cmake_policy(SET CMP0072 NEW) # Use GLVND instead of legacy libGL.so
+cmake_policy(SET CMP0135 NEW) # Use timestamp of file extraction not download
+cmake_policy(SET CMP0140 NEW) # Check return arguments
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
