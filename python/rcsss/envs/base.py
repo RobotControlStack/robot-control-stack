@@ -129,7 +129,7 @@ class FR3Env(gym.Env):
     """Joint Gym Environment for Franka Research 3.
 
     Top view of on the robot. Robot faces into x direction.
-    z direction faces upwards.
+    z direction faces upwards. (Right handed coordinate axis)
         ^ x
     <-  RobotBase
     y
@@ -137,7 +137,7 @@ class FR3Env(gym.Env):
 
     def __init__(self, robot: common.Robot, control_mode: ControlMode):
         self.robot = robot
-        self.control_mode = control_mode
+        self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
         if control_mode == ControlMode.JOINTS:
@@ -154,6 +154,23 @@ class FR3Env(gym.Env):
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquart_key = get_space_keys(TQuartDictType)[0]
 
+    def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
+        """Returns the unwrapped control mode at a certain index. 0 is the base control mode, -1 the last."""
+        return self._control_mode_overrides[idx]
+
+    def get_base_control_mode(self) -> ControlMode:
+        """Returns the unwrapped control mode"""
+        return self._control_mode_overrides[0]
+
+    def get_control_mode(self) -> ControlMode:
+        """Use this function to get the current wrapped control mode"""
+        return self._control_mode_overrides[-1]
+
+    def override_control_mode(self, control_mode: ControlMode):
+        """Sets a new wrapped control mode.
+        Use this in a wrapper that wants to modify the control mode"""
+        self._control_mode_overrides.append(control_mode)
+
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquart=np.concat(
@@ -163,16 +180,16 @@ class FR3Env(gym.Env):
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
-        if self.control_mode == ControlMode.JOINTS and self.joints_key in action:
+        if self.get_base_control_mode() == ControlMode.JOINTS and self.joints_key in action:
             # cast is needed because typed dicts cannot be checked at runtime
             action_dict = cast(dict, action)
             self.robot.set_joint_position(action_dict[self.joints_key])
-        elif self.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
-        elif self.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
@@ -208,17 +225,17 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
         self.relative_to = relative_to
-        if self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY:
+        if self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
                 get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
-        elif self.unwrapped.control_mode == ControlMode.JOINTS:
+        elif self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self.action_space.spaces.update(
                 get_space(
                     LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
                 ).spaces
             )
-        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart:
+        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart:
             self.action_space.spaces.update(
                 get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
             )
@@ -232,7 +249,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         self._origin: common.Pose | Vec7Type | None = None
 
     def set_origin(self, origin: common.Pose | Vec7Type):
-        if self.unwrapped.control_mode == ControlMode.JOINTS:
+        if self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             assert isinstance(
                 origin, np.ndarray
             ), "Invalid origin type. If control mode is joints, origin must be Vec7Type."
@@ -244,7 +261,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             self._origin = copy.deepcopy(origin)
 
     def set_origin_to_current(self):
-        if self.unwrapped.control_mode == ControlMode.JOINTS:
+        if self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self._origin = self.unwrapped.robot.get_joint_position()
         else:
             self._origin = self.unwrapped.robot.get_cartesian_position()
@@ -260,7 +277,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             # TODO: should we use the last observation instead?
             self.set_origin_to_current()
         action = copy.deepcopy(action)
-        if self.unwrapped.control_mode == ControlMode.JOINTS and self.joints_key in action:
+        if self.unwrapped.get_control_mode() == ControlMode.JOINTS and self.joints_key in action:
             assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
@@ -268,7 +285,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
             )
 
-        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
             clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
@@ -285,16 +302,15 @@ class RelativeActionSpace(gym.ActionWrapper):
                     )
                 )
             )
-        elif self.unwrapped.control_mode == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
             clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
 
-            unclipped_pose_offset = (
-                common.Pose(translation=clipped_translation, quaternion=action[self.tquart_key][3:]) 
-            )
-            unclipped_pose = (
-                common.Pose(translation=self._origin.translation()+unclipped_pose_offset.translation(), quaternion=(unclipped_pose_offset*self._origin).rotation_q()) 
+            unclipped_pose_offset = common.Pose(translation=clipped_translation, quaternion=action[self.tquart_key][3:])
+            unclipped_pose = common.Pose(
+                translation=self._origin.translation() + unclipped_pose_offset.translation(),
+                quaternion=(unclipped_pose_offset * self._origin).rotation_q(),
             )
 
             action.update(

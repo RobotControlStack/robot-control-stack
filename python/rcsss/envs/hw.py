@@ -8,8 +8,7 @@ from rcsss.config import read_config_yaml
 from rcsss.desk import Desk
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper, RelativeActionSpace
 from rcsss.envs.sim import CollisionGuard
-
-from python.rcsss.desk import FCI
+from rcsss.desk import FCI
 
 _logger = logging.getLogger(__name__)
 

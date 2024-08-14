@@ -48,7 +48,14 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
     - RelativeActionSpace has to be added after this as it changes the input space, and the input expects absolute actions
     """
 
-    def __init__(self, env: gym.Env, simulation: sim.Sim, collision_env: FR3Sim, check_home_collision: bool = True):
+    def __init__(
+        self,
+        env: gym.Env,
+        simulation: sim.Sim,
+        collision_env: FR3Sim,
+        check_home_collision: bool = True,
+        to_joint_control: bool = False,
+    ):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.collision_env = collision_env
@@ -56,15 +63,19 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         self.last_obs: tuple[dict[str, Any], dict[str, Any]] | None = None
         self._logger = logging.getLogger(__name__)
         self.check_home_collision = check_home_collision
+        self.to_joint_control = to_joint_control
+        if to_joint_control:
+            assert (
+                self.unwrapped.get_unwrapped_control_mode(-2) == ControlMode.JOINTS
+            ), "Previous control mode must be joints"
+            # change action space
+            self.action_space = self.collision_env.action_space
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
         # TODO: we should set the state of the sim to the state of the real robot
         _, _, _, _, info = self.collision_env.step(action)
-        if (
-            self.unwrapped.control_mode == ControlMode.JOINTS
-            and self.collision_env.unwrapped.control_mode != ControlMode.JOINTS
-        ):
-            action[self.unwrapped.joints_key] = self.collision_env.unwrapped.robot.get_cartesian_position()
+        if self.to_joint_control:
+            action[self.unwrapped.joints_key] = self.collision_env.unwrapped.robot.get_joint_position()
 
         # modify action to be joint angles down stream
         if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
@@ -120,7 +131,17 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
         robot.set_parameters(cfg)
-        c_env = FR3Env(robot, env.unwrapped.control_mode) if control_mode is None else FR3Env(robot, control_mode)
+        to_joint_control = False
+        if control_mode is not None:
+            if control_mode != env.unwrapped.get_control_mode():
+                assert (
+                    env.unwrapped.get_control_mode() == ControlMode.JOINTS
+                ), "A different control mode between collision guard and base env can only be used if the base env uses joint control"
+                env.unwrapped.override_control_mode(control_mode)
+                to_joint_control = True
+        else:
+            control_mode = env.unwrapped.get_control_mode()
+        c_env = FR3Env(robot, control_mode)
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
@@ -137,7 +158,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=15)
             camera_set = SimCameraSet(simulation, cam_cfg)
             c_env = CameraSetWrapper(c_env, camera_set)
-        return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision)
+        return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision, to_joint_control)
 
 
 if __name__ == "__main__":
@@ -145,7 +166,7 @@ if __name__ == "__main__":
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
-    simulation = sim.Sim(rcsss.scenes["lab"])
+    simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
     robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     cfg = sim.FR3Config()
     cfg.tcp_offset = rcsss.common.FrankaHandTCPOffset()
@@ -168,11 +189,13 @@ if __name__ == "__main__":
     env_cam = GripperWrapper(env_cam, gripper)
     env_cam = CollisionGuard.env_from_xml_paths(
         env_cam,
-        str(rcsss.scenes["lab"]),
+        str(rcsss.scenes["fr3_empty_world"]),
         str(rcsss.scenes["lab"].parent / "fr3.urdf"),
         gripper=True,
         check_home_collision=False,
         camera=True,
+        tcp_offset=cfg.tcp_offset,
+        control_mode=ControlMode.CARTESIAN_TQuart,
     )
     env_cam = RelativeActionSpace(env_cam)
     obs, info = env_cam.reset()
