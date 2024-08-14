@@ -28,13 +28,7 @@ function(download_file remote_path ref dst_path)
      )
 endfunction()
 
-function(download_scenes ref)
-  FetchContent_Declare(
-    scenes
-    URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"
-    HTTP_HEADER "PRIVATE-TOKEN: ${GITLAB_MODELS_TOKEN}"
-  )
-  FetchContent_MakeAvailable(scenes)
+function(resolve_symlinks ref)
   file(GLOB_RECURSE files ${scenes_SOURCE_DIR}/*)
   foreach(file ${files})
     if(IS_SYMLINK ${file})

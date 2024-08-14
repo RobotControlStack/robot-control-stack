@@ -55,6 +55,7 @@ FetchContent_Declare(
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
+
 FetchContent_Declare(rl
     GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
     GIT_TAG master
@@ -66,13 +67,19 @@ FetchContent_MakeAvailable(libfranka rl)
 
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
-      include(download_scenes)
-      include(compile_scenes)
-      download_scenes(3fbaa094c35381287d4f6bf3259aae7f123a3d94)
-      compile_scenes()
+        include(download_scenes)
+        set(ref 3fbaa094c35381287d4f6bf3259aae7f123a3d94)
+        FetchContent_Declare(
+            scenes
+            URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"
+            HTTP_HEADER "PRIVATE-TOKEN: ${GITLAB_MODELS_TOKEN}"
+        )
+        FetchContent_MakeAvailable(scenes)
+        resolve_symlinks(${ref})
     else()
       message(FATAL_ERROR "GITLAB_MODELS_TOKEN missing. Not including lab scene")
     endif()
 endif()
+include(compile_scenes)
 
 add_subdirectory(src)
