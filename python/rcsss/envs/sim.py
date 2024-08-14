@@ -59,6 +59,13 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
         _, _, _, _, info = self.collision_env.step(action)
+        if (
+            self.unwrapped.control_mode == ControlMode.JOINTS
+            and self.collision_env.unwrapped.control_mode != ControlMode.JOINTS
+        ):
+            action[self.unwrapped.joints_key] = self.collision_env.unwrapped.robot.get_cartesian_position()
+
+        # modify action to be joint angles down stream
         if info["collision"] or not info["ik_success"]:
             # return old obs, with truncated and print warning
             self._logger.warning("Collision detected! Truncating episode.")
@@ -92,7 +99,15 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
     @classmethod
     def env_from_xml_paths(
-        cls, env: gym.Env, mjmld: str, rlmdl: str, id="0", gripper=False, check_home_collision=True, tcp_offset=None
+        cls,
+        env: gym.Env,
+        mjmld: str,
+        rlmdl: str,
+        id="0",
+        gripper=False,
+        check_home_collision=True,
+        tcp_offset=None,
+        control_mode: ControlMode | None = None,
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
@@ -103,7 +118,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
         robot.set_parameters(cfg)
-        c_env = FR3Env(robot, env.unwrapped.control_mode)
+        c_env = FR3Env(robot, env.unwrapped.control_mode) if control_mode is None else FR3Env(robot, control_mode)
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
