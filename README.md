@@ -22,6 +22,9 @@ With Clang:
 make clangcompile
 ```
 
+### Include UTN models
+Add `--config-settings=cmake.define.INCLUDE_UTN_MODELS=ON --config-settings=cmake.define.GITLAB_MODELS_TOKEN=<token>` to the pip commands
+
 ### Formatting and Linting
 ```shell
 # check for formatting errors

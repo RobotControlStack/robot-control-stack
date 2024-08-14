@@ -1,4 +1,5 @@
 [build-system]
+requires = []
 build-backend = "scikit_build_core.build"
 
 [project]

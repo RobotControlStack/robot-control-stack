@@ -13,10 +13,12 @@ cpplint:
 	clang-tidy -p=build --warnings-as-errors='*' $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -name '*.h')
 
 gcccompile: 
-	pip wheel --verbose --wheel ./wheels --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=g++ .
+	pip install --upgrade --requirement requirements_dev.txt
+	pip wheel --verbose --wheel ./wheels --no-build-isolation --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=g++ .
 
 clangcompile: 
-	pip wheel -verbose --wheel ./wheels --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=clang++ .
+	pip install --upgrade --requirement requirements_dev.txt
+	pip wheel --verbose --wheel ./wheels --no-build-isolation --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=clang++ .
 
 # Auto generation of CPP binding stub files
 stubgen:
