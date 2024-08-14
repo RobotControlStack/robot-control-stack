@@ -62,7 +62,7 @@ struct RPY {
   }
 
   bool is_close(const RPY &other, double eps = 1e-8) const {
-    return this->as_vector().isApprox(other.as_vector(), eps);
+    return (this->as_vector() - other.as_vector()).lpNorm<1>() < eps;
   }
 };
 

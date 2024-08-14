@@ -185,15 +185,18 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
 }
 void FR3::is_moving_callback() {
   common::Vector7d current_angles = this->get_joint_position();
-  this->state.is_moving = not this->state.previous_angles.isApprox(
-      current_angles, 0.0001);  // TODO: careful with isapprox
+  // difference of the largest element is smaller than threshold
+  this->state.is_moving =
+      (current_angles - this->state.previous_angles).cwiseAbs().maxCoeff() >
+      0.0001;
   this->state.previous_angles = current_angles;
 }
 
 void FR3::is_arrived_callback() {
   common::Vector7d current_angles = this->get_joint_position();
-  this->state.is_arrived = this->state.target_angles.isApprox(
-      current_angles, this->cfg.joint_rotational_tolerance);
+  this->state.is_arrived =
+      (current_angles - this->state.target_angles).cwiseAbs().maxCoeff() <
+      this->cfg.joint_rotational_tolerance;
 }
 
 bool FR3::collision_callback() {

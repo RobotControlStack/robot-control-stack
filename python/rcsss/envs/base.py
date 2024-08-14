@@ -360,7 +360,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
-    def __init__(self, env, gripper: common.Gripper):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.observation_space: gym.spaces.Dict
@@ -370,6 +370,7 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
         self._gripper_state = 1
+        self.binary = binary
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         self._gripper.reset()
@@ -385,7 +386,9 @@ class GripperWrapper(ActObsInfoWrapper):
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
         self._gripper_state = np.round(action["gripper"])
-        self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
-        # self._gripper.set_normalized_width(action["gripper"])
+        if self.binary:
+            self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
+        else:
+            self._gripper.set_normalized_width(action["gripper"])
         del action[self.gripper_key]
         return action

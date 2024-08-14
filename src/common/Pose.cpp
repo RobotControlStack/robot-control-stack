@@ -182,7 +182,7 @@ Pose Pose::inverse() const {
 }
 
 bool Pose::is_close(const Pose &other, double eps_r, double eps_t) const {
-  return (this->translation() - other.translation()).norm() < eps_t &&
+  return (this->translation() - other.translation()).lpNorm<1>() < eps_t &&
          this->quaternion().angularDistance(other.quaternion()) < eps_r;
 }
 
