@@ -10,9 +10,8 @@ if (NOT MuJoCo_FOUND)
     # Run Python command to locate MuJoCo
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import mujoco; print(mujoco.__file__)" 
         OUTPUT_VARIABLE MUJOCO_FIND_OUTPUT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        OUTPUT_QUIET
         ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
         RESULT_VARIABLE result
     )
 
