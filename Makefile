@@ -14,11 +14,11 @@ cpplint:
 
 gcccompile: 
 	pip install --upgrade --requirement requirements_dev.txt
-	pip wheel --verbose --wheel ./wheels --no-build-isolation --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=g++ .
+	python -m build --verbose --no-isolation --config-setting=cmake.build-type="${COMPILE_MODE}" --config-setting=cmake.define.CMAKE_CXX_COMPILER=g++ .
 
 clangcompile: 
 	pip install --upgrade --requirement requirements_dev.txt
-	pip wheel --verbose --wheel ./wheels --no-build-isolation --config-settings=cmake.build-type="${COMPILE_MODE}" --config-settings=cmake.define.CMAKE_CXX_COMPILER=clang++ .
+	python -m build --verbose --no-isolation --config-setting=cmake.build-type="${COMPILE_MODE}" --config-setting=cmake.define.CMAKE_CXX_COMPILER=clang++ .
 
 # Auto generation of CPP binding stub files
 stubgen:
@@ -27,7 +27,6 @@ stubgen:
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
 	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
 	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
-
 	ruff check --fix python/rcsss/_core
 	isort python/rcsss/_core
 	black python/rcsss/_core
