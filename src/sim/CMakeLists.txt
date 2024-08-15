@@ -1,4 +1,5 @@
-find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+include(FindPython)
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(glfw3 REQUIRED)
 set(MUJOCO_DIR ${Python_SITELIB}/mujoco)
 set(MODEL_DIR ${CMAKE_SOURCE_DIR}/models)

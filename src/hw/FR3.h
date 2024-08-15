@@ -37,16 +37,21 @@ struct FR3Config : common::RConfig {
   std::optional<FR3Load> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
+  common::Pose tcp_offset = common::Pose::Identity();
 };
 
 struct FR3State : common::RState {};
+struct RL {
+  std::shared_ptr<rl::mdl::Model> mdl;
+  std::shared_ptr<rl::mdl::Kinematic> kin;
+  std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
+};
 
 class FR3 : public common::Robot {
  private:
   franka::Robot robot;
-  rl::mdl::Dynamic model;
-  std::optional<std::unique_ptr<rl::mdl::JacobianInverseKinematics>> ik;
   FR3Config cfg;
+  std::optional<RL> rl = std::nullopt;
 
  public:
   FR3(const std::string &ip,
