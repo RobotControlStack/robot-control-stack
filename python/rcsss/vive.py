@@ -17,6 +17,7 @@ from rcsss.envs.base import (
     CameraSetWrapper,
     ControlMode,
     FR3Env,
+    GripperDictType,
     GripperWrapper,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
@@ -40,10 +41,10 @@ ROBOT_IP = "192.168.101.1"
 
 
 class Button(IntFlag):
-    L_SQUEEZE = auto()
     L_TRIGGER = auto()
-    R_SQUEEZE = auto()
+    L_SQUEEZE = auto()
     R_TRIGGER = auto()
+    R_SQUEEZE = auto()
 
 
 class UDPViveActionServer(threading.Thread):
@@ -53,7 +54,9 @@ class UDPViveActionServer(threading.Thread):
     # base transform from OpenXR coordinate system
     transform_from_openxr = Pose(RPY(roll=0.5 * np.pi, yaw=np.pi))
 
-    def __init__(self, host: str, port: int, env: RelativeActionSpace, trg_btn=Button.R_SQUEEZE):
+    def __init__(
+        self, host: str, port: int, env: RelativeActionSpace, trg_btn=Button.R_TRIGGER, grp_btn=Button.R_SQUEEZE
+    ):
         super().__init__()
         self._host: str = host
         self._port: int = port
@@ -62,6 +65,8 @@ class UDPViveActionServer(threading.Thread):
         self._env_lock = threading.Lock()
         self._env = env
         self._trg_btn = trg_btn
+        self._grp_btn = grp_btn
+        self._grp_pos = 1
         self._buttons = 0
         self._exit_requested = False
         self._last_controller_pose = Pose()
@@ -166,6 +171,15 @@ class UDPViveActionServer(threading.Thread):
                             )
                             # send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
 
+                        if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
+                            # just pressed
+                            self._grp_pos = 0
+                        elif (
+                            not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn
+                        ):
+                            # just released
+                            self._grp_pos = 1
+
                         self._buttons = unpacked[7]
 
     def stop(self):
@@ -183,10 +197,10 @@ class UDPViveActionServer(threading.Thread):
         while True:
             with self._resource_lock:
                 displacement = self.next_action()
-            action = typing.cast(
-                dict,
-                LimitedTQuartRelDictType(tquart=np.concat([displacement.translation(), displacement.rotation_q()])),
+            action = dict(
+                LimitedTQuartRelDictType(tquart=np.concat([displacement.translation(), displacement.rotation_q()]))
             )
+            action.update(GripperDictType(gripper=self._grp_pos))
             with self._env_lock:
                 self._env.step(action)
 
@@ -208,11 +222,12 @@ def hw():
         env = FR3Env(robot, ControlMode.JOINTS)
         env_hw: gym.Env = FR3HW(env)
         gripper_cfg = rcsss.hw.FHConfig()
-        gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-        gripper_cfg.speed = 0.05
-        gripper_cfg.force = 10
-        gripper = rcsss.hw.FrankaHand("192.168.101.1", gripper_cfg)
-        env_hw = GripperWrapper(env_hw, gripper)
+        gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.5
+        gripper_cfg.speed = 0.1
+        gripper_cfg.force = 30
+        gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
+        # gripper.homing()
+        env_hw = GripperWrapper(env_hw, gripper, binary=True)
 
         # TODO: camera
         env_hw: gym.Env = CollisionGuard.env_from_xml_paths(

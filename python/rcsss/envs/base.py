@@ -401,10 +401,12 @@ class GripperWrapper(ActObsInfoWrapper):
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
-        self._gripper_state = np.round(action["gripper"])
-        if self.binary:
-            self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
-        else:
-            self._gripper.set_normalized_width(action["gripper"])
+        gripper_state = np.round(action["gripper"])
+        if gripper_state != self._gripper_state:
+            self._gripper_state = gripper_state
+            if self.binary:
+                self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
+            else:
+                self._gripper.set_normalized_width(action["gripper"])
         del action[self.gripper_key]
         return action
