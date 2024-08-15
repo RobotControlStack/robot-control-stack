@@ -69,7 +69,7 @@ FetchContent_MakeAvailable(libfranka rl)
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
         include(download_scenes)
-        set(ref 3fbaa094c35381287d4f6bf3259aae7f123a3d94)
+        set(ref 77e8782a3488cbf01361d2322f02e75c0d820644)
         FetchContent_Declare(
             scenes
             URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"
