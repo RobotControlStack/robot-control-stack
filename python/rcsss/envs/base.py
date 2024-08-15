@@ -153,6 +153,7 @@ class FR3Env(gym.Env):
         self.joints_key = get_space_keys(JointsDictType)[0]
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquart_key = get_space_keys(TQuartDictType)[0]
+        self.prev_action: dict | None = None
 
     def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
         """Returns the unwrapped control mode at a certain index. 0 is the base control mode, -1 the last."""
@@ -180,23 +181,38 @@ class FR3Env(gym.Env):
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
-        if self.get_base_control_mode() == ControlMode.JOINTS and self.joints_key in action:
+        if (
+            self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart
+            and self.tquart_key not in action
+            or self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY
+            and self.trpy_key not in action
+            or self.get_base_control_mode() == ControlMode.JOINTS
+            and self.joints_key not in action
+        ):
+            msg = "Given type is not matching control mode!"
+            raise RuntimeError(msg)
+
+        if self.get_base_control_mode() == ControlMode.JOINTS and (
+            self.prev_action is None or not np.allclose(action[self.joints_key], self.prev_action[self.joints_key])
+        ):
             # cast is needed because typed dicts cannot be checked at runtime
             action_dict = cast(dict, action)
             self.robot.set_joint_position(action_dict[self.joints_key])
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and not np.allclose(
+            action[self.trpy_key], self.prev_action[self.trpy_key]
+        ):
             action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
+            self.prev_action is None or not np.allclose(action[self.tquart_key], self.prev_action[self.tquart_key])
+        ):
             action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
             )
-        else:
-            msg = "Given type is not matching control mode!"
-            raise RuntimeError(msg)
+        self.prev_action = copy.deepcopy(action)
         return self.get_obs(), 0, False, False, {}
 
     def reset(
