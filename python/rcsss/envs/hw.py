@@ -59,24 +59,24 @@ def cartesian_example(ip: str, cfg_path: str):
             check_home_collision=False,
             camera=True,
             control_mode=ControlMode.CARTESIAN_TQuart,
-            tcp_offset=rcsss.common.FrankaHandTCPOffset(),
+            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
         )
         env_cam = RelativeActionSpace(env_cam)
         obs, info = env_cam.reset()
         print(env_cam.unwrapped.robot.get_cartesian_position())
         for _ in range(10):
-            for i in range(10):
+            for _ in range(10):
                 act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_cam.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
-                    exit(1)
-            for i in range(10):
+                    return
+            for _ in range(10):
                 act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_cam.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
-                    exit(1)
+                    return
 
 
 def joints_example(ip: str, cfg_path: str):
@@ -102,17 +102,17 @@ def joints_example(ip: str, cfg_path: str):
             check_home_collision=False,
             camera=True,
             control_mode=ControlMode.JOINTS,
-            tcp_offset=rcsss.common.FrankaHandTCPOffset(),
+            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
         )
         env_cam = RelativeActionSpace(env_cam)
-        for i in range(10):
+        for _ in range(10):
             obs, info = env_cam.reset()
             for _ in range(10):
                 act = env_cam.action_space.sample()
                 obs, reward, terminated, truncated, info = env_cam.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
-                    exit(1)
+                    return
                 logger.info(act["gripper"], obs["gripper"])
 
 

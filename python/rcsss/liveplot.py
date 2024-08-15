@@ -17,8 +17,8 @@ buffsize = 30
 
 titles = [["x", "rx"], ["y", "ry"], ["z", "rz"]]
 colors = [["r", "r"], ["b", "b"], ["g", "g"]]
-buffers = [[deque(maxlen=buffsize) for j in range(2)] for i in range(3)]
-plots = [[None for j in range(2)] for i in range(3)]
+buffers: list[list[deque]] = [[deque(maxlen=buffsize) for j in range(2)] for i in range(3)]
+plots: list[list[plt.Figure]] = [[None for j in range(2)] for i in range(3)]
 
 fig, axs = plt.subplots(3, 2)
 for i, j in product(range(3), range(2)):

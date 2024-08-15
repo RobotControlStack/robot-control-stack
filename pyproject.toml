@@ -96,6 +96,7 @@ ignore = [
   "ICN001",  #  `numpy` should be imported as `np`
   "PGH003",  # Use specfic rule code when ignoring types issues
   # "RET504",
+  "T201",    # print() used
 ]
 
 [tool.pylint.format]

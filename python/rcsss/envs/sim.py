@@ -141,7 +141,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
                 to_joint_control = True
         else:
             control_mode = env.unwrapped.get_control_mode()
-        c_env = FR3Env(robot, control_mode)
+        c_env: gym.Env = FR3Env(robot, control_mode)
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
     robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     cfg = sim.FR3Config()
-    cfg.tcp_offset = rcsss.common.FrankaHandTCPOffset()
+    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     robot.set_parameters(cfg)

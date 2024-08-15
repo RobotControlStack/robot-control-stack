@@ -181,38 +181,36 @@ class FR3Env(gym.Env):
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
+        action_dict = cast(dict, action)
         if (
             self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart
-            and self.tquart_key not in action
+            and self.tquart_key not in action_dict
             or self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY
-            and self.trpy_key not in action
+            and self.trpy_key not in action_dict
             or self.get_base_control_mode() == ControlMode.JOINTS
-            and self.joints_key not in action
+            and self.joints_key not in action_dict
         ):
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
 
         if self.get_base_control_mode() == ControlMode.JOINTS and (
-            self.prev_action is None or not np.allclose(action[self.joints_key], self.prev_action[self.joints_key])
+            self.prev_action is None or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key])
         ):
             # cast is needed because typed dicts cannot be checked at runtime
-            action_dict = cast(dict, action)
             self.robot.set_joint_position(action_dict[self.joints_key])
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and not np.allclose(
-            action[self.trpy_key], self.prev_action[self.trpy_key]
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
+            self.prev_action is None or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key])
         ):
-            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
-            self.prev_action is None or not np.allclose(action[self.tquart_key], self.prev_action[self.tquart_key])
+            self.prev_action is None or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key])
         ):
-            action_dict = cast(dict, action)
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
             )
-        self.prev_action = copy.deepcopy(action)
+        self.prev_action = copy.deepcopy(action_dict)
         return self.get_obs(), 0, False, False, {}
 
     def reset(
