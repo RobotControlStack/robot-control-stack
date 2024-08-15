@@ -149,7 +149,7 @@ common::Pose FR3::get_cartesian_position() {
                               3 * this->ids.attachment_site);
   common::Pose attachment_site(rotation, translation);
   // TODO: Why do we have to take the inverse here? Should be the normal offset
-  return attachment_site * this->state.inverse_tcp_offset;
+  return attachment_site * cfg.tcp_offset;
 }
 
 void FR3::set_joint_position(const common::Vector7d& q) {
@@ -173,9 +173,7 @@ common::Vector7d FR3::get_joint_position() {
 void FR3::set_cartesian_position(const common::Pose& pose) {
   this->rl.kin->setPosition(this->get_joint_position());
   this->rl.kin->forwardPosition();
-  // TODO: Why do we have to take the tcp offset and not the inverse here?
-  // Should be the opposite.
-  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset;
+  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
   this->rl.ik->addGoal(new_pose.affine_matrix(), 0);
   if (this->rl.ik->solve()) {
     this->state.ik_success = true;

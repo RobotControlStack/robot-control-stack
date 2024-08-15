@@ -66,6 +66,7 @@ class FR3Config(rcsss._core.common.RConfig):
     load_parameters: FR3Load | None
     nominal_end_effector_frame: rcsss._core.common.Pose | None
     speed_factor: float
+    tcp_offset: rcsss._core.common.Pose
     def __init__(self) -> None: ...
 
 class FR3Load:
