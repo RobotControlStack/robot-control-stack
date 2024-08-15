@@ -1,8 +1,9 @@
 ruff==0.3.2
 black==24.1.1
 isort==5.13.2
-mypy==1.4.1
+mypy==1.10.1
 types-requests~=2.31
 pybind11-stubgen==2.5.1
 build
 pytest==8.1.1
+commitizen~=3.28.0

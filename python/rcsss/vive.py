@@ -1,187 +1,290 @@
 import logging
-from ctypes import c_bool, c_double, c_int
-from dataclasses import dataclass, field
+import threading
 from enum import IntFlag, auto
-from functools import cached_property
-from itertools import chain
-from multiprocessing import Array, Process, RLock, Value
-from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
-from multiprocessing.synchronize import RLock as RLockType
 from socket import AF_INET, SOCK_DGRAM, socket
-from struct import unpack
-from threading import Event, Thread
+from struct import unpack  # , pack
 
+import gymnasium as gym
 import numpy as np
-from numpy.typing import NDArray
-from rcsss._core.common import Pose
+import rcsss
+from rcsss._core.common import RPY, Pose
+from rcsss._core.sim import CameraType
+from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcsss.config import read_config_yaml
+from rcsss.desk import FCI, Desk
 from rcsss.envs.base import (
+    CameraSetWrapper,
     ControlMode,
     FR3Env,
+    GripperDictType,
+    GripperWrapper,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
+    RelativeTo,
 )
-from rcsss.envs.sim import FR3Sim
+from rcsss.envs.hw import FR3HW
+from rcsss.envs.sim import CollisionGuard, FR3Sim
 from rcsss.sim import FR3, FR3Config, Sim
+
+# import matplotlib.pyplot as plt
+
 
 logger = logging.getLogger(__name__)
 
+EGO_LOCK = False
+VIVE_HOST = "192.168.100.1"
+VIVE_PORT = 54321
+USE_REAL_ROBOT = False
+INCLUDE_ROTATION = False
+ROBOT_IP = "192.168.101.1"
+
 
 class Button(IntFlag):
-    L_SQUEEZE = auto()
     L_TRIGGER = auto()
-    R_SQUEEZE = auto()
+    L_SQUEEZE = auto()
     R_TRIGGER = auto()
+    R_SQUEEZE = auto()
 
 
-@dataclass(slots=True)
-class ViveControllerState:
-    last_controller_pose_initialized: bool = False
-    last_controller_pose: Pose = field(default_factory=Pose)
-    curr_controller_pose: Pose = field(default_factory=Pose)
-
-
-class UDPViveActionServer:
+class UDPViveActionServer(threading.Thread):
     # seven doubles and one integer in network byte order
     FMT = "!" + 7 * "d" + "i"
 
-    def __init__(self, host: str, port: int):
+    # base transform from OpenXR coordinate system
+    transform_from_openxr = Pose(RPY(roll=0.5 * np.pi, yaw=np.pi))
+
+    def __init__(
+        self, host: str, port: int, env: RelativeActionSpace, trg_btn=Button.R_TRIGGER, grp_btn=Button.R_SQUEEZE
+    ):
+        super().__init__()
         self._host: str = host
         self._port: int = port
-        self._server_proc: Process | None = None
-        self._lock: RLockType = RLock()
-        self._pose_raw = Array(c_double, 7, lock=False)
-        self._buttons = Value(c_int, 0, lock=False)
-        self._exit_requested = Value(c_bool, False, lock=False)
-        self._controller_state = ViveControllerState()
 
-    @cached_property
-    def _pose_raw_as_array(self) -> NDArray:
-        return np.ctypeslib.as_array(self._pose_raw[:])
-
-    @property
-    def running(self) -> bool:
-        return self._server_proc is not None and self._server_proc.is_alive()
+        self._resource_lock = threading.Lock()
+        self._env_lock = threading.Lock()
+        self._env = env
+        self._trg_btn = trg_btn
+        self._grp_btn = grp_btn
+        self._grp_pos = 1
+        self._buttons = 0
+        self._exit_requested = False
+        self._last_controller_pose = Pose()
+        self._offset_pose = Pose()
+        self._ego_lock = EGO_LOCK
+        self._ego_transform = Pose()
+        self._env.set_origin_to_current()
 
     def next_action(self) -> Pose:
-        if not self.running:
-            msg = "Server is not running."
-            raise RuntimeError(msg)
-        while True:
-            with self._lock:
-                if not Button(int(self._buttons.value)) & Button.R_SQUEEZE:
-                    self._controller_state.last_controller_pose_initialized = False
-                    continue
-                # Trigger is pressed
-                if not self._controller_state.last_controller_pose_initialized:
-                    self._controller_state.last_controller_pose = Pose(
-                        quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
-                    )
-                    continue
-                # Trigger is pressed and first pose since press is recorded
-                self._controller_state.curr_controller_pose = Pose(
-                    quaternion=self._pose_raw_as_array[:4], translation=self._pose_raw_as_array[4:]
-                )
-                displacement = (
-                    self._controller_state.curr_controller_pose * self._controller_state.last_controller_pose.inverse()
-                )
-                self._controller_state.last_controller_pose = self._controller_state.curr_controller_pose
-                return displacement
+        transform = Pose(
+            translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
+            quaternion=(self._offset_pose.inverse() * self._last_controller_pose).rotation_q(),
+        )
+        return (
+            self._ego_transform
+            * UDPViveActionServer.transform_from_openxr
+            * transform
+            * UDPViveActionServer.transform_from_openxr.inverse()
+            * self._ego_transform.inverse()
+        )
 
-    @staticmethod
-    def worker(
-        shared_array: "SynchronizedArray[c_double]",
-        shared_int: "Synchronized[c_int]",
-        exit_requested: "Synchronized[c_bool]",
-        lock: RLockType,
-        host: str,
-        port: int,
-    ):
+    def get_last_controller_pose(self) -> Pose:
+        return self._last_controller_pose
+
+    def run(self):
         warning_raised = False
+
         with socket(AF_INET, SOCK_DGRAM) as sock:
-            sock.settimeout(0.1)
-            sock.bind((host, port))
-            while not exit_requested.value:
+            # with socket(AF_INET, SOCK_DGRAM) as send_sock:
+            sock.settimeout(2)
+            sock.bind((self._host, self._port))
+            # send_sock.connect(("127.0.0.1", self._port + 1))
+            while not self._exit_requested:
                 try:
                     unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
                     if warning_raised:
                         logger.info("[UDP Server] connection reestablished")
                         warning_raised = False
-                except TimeoutError as err:
+                except TimeoutError:
                     if not warning_raised:
-                        msg = "[UDP server] socket timeout (0.1s), waiting for packets"
-                        raise RuntimeWarning(msg) from err
+                        logger.warning("[UDP server] socket timeout (0.1s), waiting for packets")
                         warning_raised = True
-                    break
-                with lock:
-                    shared_array[:] = unpacked[:7]
-                    shared_int.value = unpacked[7]
+                    continue
+                with self._resource_lock:
+                    last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
+                    last_controller_pose = Pose(
+                        translation=last_controller_pose_raw[4:],
+                        quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else np.array([0, 0, 0, 1]),
+                    )
+                    if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
+                        # trigger just pressed (first data sample with button pressed
 
-    def start_worker(self):
-        if self.running:
-            msg = "Server already running"
-            raise RuntimeError(msg)
-        self._lock = RLock()
-        self._server_proc = Process(
-            target=UDPViveActionServer.worker(
-                self._pose_raw, self._buttons, self._exit_requested, self._lock, self._host, self._port
-            )
-        )
-        self._server_proc.start()
+                        # set forward direction based on current controller pose
+                        if self._ego_lock:
+                            x_axis = Pose(translation=np.array([1, 0, 0]))
+                            x_axis_rot = (
+                                UDPViveActionServer.transform_from_openxr
+                                * Pose(quaternion=last_controller_pose.rotation_q())
+                                * UDPViveActionServer.transform_from_openxr.inverse()
+                                * x_axis
+                            )
 
-    def stop_worker(self):
-        if not self.running:
-            msg = "Server is not running"
-            raise RuntimeError(msg)
-        assert self._server_proc
-        self._exit_requested.value = c_bool(True)
-        try:
-            self._server_proc.join(timeout=1.0)
-        except TimeoutError as err:
-            msg = "Could not join server process. Killing it."
-            raise RuntimeWarning(msg) from err
-            self._server_proc.kill()
+                            # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
+                            rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
+                                x_axis.translation()[1], x_axis.translation()[0]
+                            )
+                            rot_z -= np.pi / 2
+
+                            print(f"Angle: {rot_z*180/np.pi}")
+                            self._ego_transform = Pose(RPY(yaw=-rot_z))
+                        else:
+                            self._ego_transform = Pose()
+
+                        self._offset_pose = last_controller_pose
+                        self._last_controller_pose = last_controller_pose
+
+                    elif not Button(int(unpacked[7])) & self._trg_btn and Button(int(self._buttons)) & self._trg_btn:
+                        # released
+                        with self._env_lock:
+                            self._last_controller_pose = Pose()
+                            self._offset_pose = Pose()
+                            self._ego_transform = Pose()
+                            self._env.set_origin_to_current()
+
+                    elif Button(int(unpacked[7])) & self._trg_btn:
+                        # button is pressed
+                        self._last_controller_pose = last_controller_pose
+
+                        # plot current offset with liveplot.py
+                        # transform = Pose(
+                        #     translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
+                        #     quaternion=(self._offset_pose.inverse() * self._last_controller_pose).rotation_q(),
+                        # )
+                        # offset = (
+                        #     self._ego_transform
+                        #     * UDPViveActionServer.transform_from_openxr
+                        #     * transform
+                        #     * UDPViveActionServer.transform_from_openxr.inverse()
+                        #     * self._ego_transform.inverse()
+                        # )
+                        # send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
+
+                    if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
+                        # just pressed
+                        self._grp_pos = 0
+                    elif not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn:
+                        # just released
+                        self._grp_pos = 1
+
+                    self._buttons = unpacked[7]
+
+    def stop(self):
+        self._exit_requested = True
+        self.join()
 
     def __enter__(self):
-        self.start_worker()
+        self.start()
         return self
 
     def __exit__(self, *_):
-        self.stop_worker()
+        self.stop()
 
-
-def environment_step_loop(action_server: UDPViveActionServer, env: RelativeActionSpace, stop_requested: Event):
-    # assert env.action_space is TQuartDictType
-    while not stop_requested.is_set():
-        displacement = action_server.next_action()
-        action = LimitedTQuartRelDictType(
-            tquart=np.fromiter(
-                iter=chain(displacement.translation(), displacement.rotation_q()), dtype=np.float64, count=7
+    def environment_step_loop(self):
+        while True:
+            with self._resource_lock:
+                displacement = self.next_action()
+            action = dict(
+                LimitedTQuartRelDictType(tquart=np.concat([displacement.translation(), displacement.rotation_q()]))
             )
+            action.update(GripperDictType(gripper=self._grp_pos))
+            with self._env_lock:
+                self._env.step(action)
+
+
+def hw():
+
+    cfg = read_config_yaml("config.yaml")
+    d = Desk(ROBOT_IP, cfg.hw.username, cfg.hw.password)
+    with FCI(d, unlock=False, lock_when_done=False):
+
+        robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+        rcfg = rcsss.hw.FR3Config()
+        rcfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+        rcfg.speed_factor = 0.2
+        # rcfg.controller = rcsss.hw.IKController.robotics_library
+        robot.set_parameters(rcfg)
+
+        # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
+        env = FR3Env(robot, ControlMode.JOINTS)
+        env_hw: gym.Env = FR3HW(env)
+        gripper_cfg = rcsss.hw.FHConfig()
+        gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.5
+        gripper_cfg.speed = 0.1
+        gripper_cfg.force = 30
+        gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
+        # gripper.homing()
+        env_hw = GripperWrapper(env_hw, gripper, binary=True)
+
+        # TODO: camera
+        env_hw = CollisionGuard.env_from_xml_paths(
+            env_hw,
+            str(rcsss.scenes["fr3_empty_world"]),
+            str(rcsss.scenes["lab"].parent / "fr3.urdf"),
+            gripper=True,
+            check_home_collision=False,
+            camera=True,
+            control_mode=ControlMode.CARTESIAN_TQuart,
+            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
         )
-        env.action(action)
+
+        env_rel = RelativeActionSpace(env_hw, relative_to=RelativeTo.CONFIGURED_ORIGIN)
+        env_rel.reset()
+        with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
+            action_server.environment_step_loop()
+
+
+def sim():
+    simulation = Sim(rcsss.scenes["fr3_empty_world"])
+    robot = FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+    fr3_config = FR3Config()
+    fr3_config.realtime = False
+    # TODO: We might need a TCP offset with only translation here
+    env_sim = FR3Sim(FR3Env(robot, ControlMode.JOINTS), simulation)
+
+    cameras = {
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
+        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+    }
+    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=10)
+    camera_set = SimCameraSet(simulation, cam_cfg)
+    env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
+
+    gripper_cfg = rcsss.sim.FHConfig()
+    gripper = rcsss.sim.FrankaHand(simulation, "0", gripper_cfg)
+    env_cam = GripperWrapper(env_cam, gripper)
+
+    env_cam = CollisionGuard.env_from_xml_paths(
+        env_cam,
+        str(rcsss.scenes["fr3_empty_world"]),
+        str(rcsss.scenes["lab"].parent / "fr3.urdf"),
+        gripper=True,
+        camera=False,
+        check_home_collision=False,
+        control_mode=ControlMode.CARTESIAN_TQuart,
+    )
+    env_rel = RelativeActionSpace(env_cam, relative_to=RelativeTo.CONFIGURED_ORIGIN)
+    env_rel.reset()
+    with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
+        action_server.environment_step_loop()
 
 
 def main():
-    host = "localhost"
-    port = 54321
-    simulation = Sim("models/mjcf/fr3_modular/scene.xml")
-    robot = FR3(simulation, "0", "models/fr3/urdf/fr3_from_panda.urdf")
-    fr3_config = FR3Config()
-    fr3_config.realtime = False
-    fr3_config.tcp_offset = Pose(quaternion=np.array([0, 0, 0, 1]), translation=np.array([0, 0, 0.1034]))
-    env = RelativeActionSpace(FR3Sim(FR3Env(robot, ControlMode.CARTESIAN_TQuart), simulation))
-    env.reset()
-    with UDPViveActionServer(host, port) as action_server:
-        stop_event = Event()
-        t = Thread(target=environment_step_loop, args=(action_server, env, stop_event))
-        t.start()
-        input("Press enter to exit: ")
-        stop_event.set()
-        try:
-            t.join(5.0)
-        except TimeoutError as err:
-            msg = "Thread did not join after five seconds. Exiting anyway."
-            raise RuntimeWarning(msg) from err
+    if "lab" not in rcsss.scenes:
+        logger.error("This pip package was not built with the UTN lab models, aborting.")
+        return
+    if USE_REAL_ROBOT:
+        hw()
+    else:
+        sim()
 
 
 if __name__ == "__main__":

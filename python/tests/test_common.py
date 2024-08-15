@@ -15,7 +15,7 @@ class TestPose:
         """This fixture can be reused wherever if no transformation pose is needed"""
         return common.Pose()
 
-    def test_rotation_q(self, identity_pose):
+    def test_rotation_q(self, identity_pose: common.Pose):
         """
         Here the Pose class initiated using the rpy object and the translation vector.
         TestCase1: The quaternion corresponding to the identity pose should be expected_quaternion1
@@ -40,9 +40,9 @@ class TestPose:
             )
         ],
     )
-    def test_interpolate_r_t(self, initial_pose_rotation_m: np.array, initial_pose_translation: np.array,
-                             destination_pose_rotation_m: np.array, destination_pose_translation: np.array,
-                             progress: float, expected_pose_rotation_m: np.array, expected_pose_translation: np.array):
+    def test_interpolate_r_t(self, initial_pose_rotation_m: np.ndarray, initial_pose_translation: np.ndarray,
+                             destination_pose_rotation_m: np.ndarray, destination_pose_translation: np.ndarray,
+                             progress: float, expected_pose_rotation_m: np.ndarray, expected_pose_translation: np.ndarray):
         """
         Here the Pose class initiated using the rotation and the translation matrices is used.
         TestCase1: with progress=1, the interpolated pose should be equal to the start pose
@@ -82,14 +82,14 @@ class TestPose:
             ),
         ],
     )
-    def test_is_close(self, pose1_array: np.array, pose2_array: np.array, eps: float, expected_bool: bool):
+    def test_is_close(self, pose1_array: np.ndarray, pose2_array: np.ndarray, eps: float, expected_bool: bool):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
         TestCase1: there is a term with (1.3 -1) = 0.2 diff and hence with an absolute tolerance of 0.1, the two poses
                    are considered to be 'not' close to each other.
         """
-        pose1 = common.Pose(pose1_array)
-        pose2 = common.Pose(pose2_array)
+        pose1 = common.Pose(pose_matrix=pose1_array)
+        pose2 = common.Pose(pose_matrix=pose2_array)
         out_bool = pose1.is_close(pose2, eps_t=eps)
         print(f"{out_bool = }")
         assert out_bool == expected_bool
@@ -104,14 +104,14 @@ class TestPose:
             ),
         ],
     )
-    def test_multiply(self, pose1_array: np.array, pose2_array: np.array, expected_pose_array: np.array):
+    def test_multiply(self, pose1_array: np.ndarray, pose2_array: np.ndarray, expected_pose_array: np.ndarray):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
         TestCase1: pose1_array and pose2_array are pure translations, when multiplied they should lead to the pose array
                    containing the combined translations.
         """
-        pose1 = common.Pose(pose1_array)
-        pose2 = common.Pose(pose2_array)
+        pose1 = common.Pose(pose_matrix=pose1_array)
+        pose2 = common.Pose(pose_matrix=pose2_array)
 
         out_pose = pose1 * pose2
         assert np.array_equal(out_pose.pose_matrix(), expected_pose_array)
@@ -125,12 +125,12 @@ class TestPose:
             ),
         ],
     )
-    def test_inverse(self, pose_array: np.array, expected_pose_array: np.array):
+    def test_inverse(self, pose_array: np.ndarray, expected_pose_array: np.ndarray):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
         TestCase1: We have a pure translation and the expected inverse should negate the translations in the matrix.
         """
-        pose1 = common.Pose(pose_array)
+        pose1 = common.Pose(pose_matrix=pose_array)
         out_pose = pose1.inverse()
         assert np.array_equal(out_pose.pose_matrix(), expected_pose_array)
 
@@ -144,7 +144,7 @@ class TestPose:
             ),
         ],
     )
-    def test_pose_matrix(self, quaternion: np.array, translation_vector: np.array, expected_pose_matrix: np.array):
+    def test_pose_matrix(self, quaternion: np.ndarray, translation_vector: np.ndarray, expected_pose_matrix: np.ndarray):
         """
         Here the Pose class is initiated using a quaternion and a translation vector.
         TestCase1: The 'no rotation quaternion' and a unit translation in all three directions is used here.
@@ -162,12 +162,12 @@ class TestPose:
                 common.RPY(roll=0.0, pitch=0.0, yaw=0.0)
             )
         ])
-    def test_rotation_rpy(self, pose_m, expected_rpy):
+    def test_rotation_rpy(self, pose_m: np.ndarray, expected_rpy: common.RPY):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
         TestCase1: The 'no rotation pose_m' should lead to all roll, pitch, yaw being zero.
         """
-        pose = common.Pose(pose=pose_m)
+        pose = common.Pose(pose_matrix=pose_m)
         rpy = pose.rotation_rpy()
         for ang in ['roll', 'pitch', 'yaw']:
             out_angle = getattr(rpy, ang)
@@ -182,11 +182,11 @@ class TestPose:
                 np.array([1.0, 2.0, 3.0])
             )
         ])
-    def test_translation(self, pose_m, expected_translation_m):
+    def test_translation(self, pose_m: np.ndarray, expected_translation_m: np.ndarray):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
         TestCase1: The simple pose_m should yield the expected translation vector
         """
-        pose = common.Pose(pose=pose_m)
+        pose = common.Pose(pose_matrix=pose_m)
         out_translation_v = pose.translation()
         assert np.array_equal(expected_translation_m, out_translation_v)

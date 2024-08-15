@@ -4,13 +4,7 @@
 ### Dependencies
 To install the dependencies use the following command for debian based systems:
 ```shell
-sudo apt install build-essential cmake git libeigen3-dev libpoco-dev libxml2-dev libxslt1-dev libcoin-dev libglfw3-dev libboost-dev
-```
-For arch based systems:
-`libpoco` is `poco` and `libeigen` is `eigen` in pacman.
-Optional development dependencies:
-```shell
-sudo apt install ninja-build clang-format clang-tidy clang
+xargs sudo apt -y install < debian_deps.txt
 ```
 
 In order to use the `wrlview` program from the `rl` library, you have to install QT. On debian-based system use:

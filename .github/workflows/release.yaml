@@ -1,0 +1,34 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_run:
+    workflows: ["Python", "Cpp"]
+    branches: [master]
+    types:
+      - completed
+
+jobs:
+  release:
+    if: ${{ startsWith(github.event.head_commit.message, 'bump:') and github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    name: "Bump version and create changelog with commitizen"
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Create bump and changelog
+        uses: commitizen-tools/commitizen-action@master
+        with:
+          changelog_increment_filename: body.md
+          commit: false
+          push: false
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.REVISION }}
+          bodyFile: "body.md"
+          skipIfReleaseExists: true
+      # TODO: create pypi source distribution

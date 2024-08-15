@@ -449,9 +449,10 @@ class FCI:
     Can be used as a context manager to activate the Franka Control Interface (FCI).
     """
 
-    def __init__(self, desk: Desk, unlock: bool = False):
+    def __init__(self, desk: Desk, unlock: bool = False, lock_when_done: bool = True):
         self.desk = desk
         self.unlock = unlock
+        self.lock_when_done = lock_when_done
 
     def __enter__(self) -> Desk:
         self.desk.__enter__()
@@ -463,6 +464,8 @@ class FCI:
 
     def __exit__(self, *args):
         self.desk.deactivate_fci()
+        if self.lock_when_done:
+            self.desk.lock()
         self.desk.__exit__()
 
 

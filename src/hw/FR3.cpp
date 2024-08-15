@@ -26,7 +26,7 @@ namespace rcs {
 namespace hw {
 FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
          const std::optional<FR3Config> &cfg)
-    : robot(ip), model() {
+    : robot(ip) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true);
@@ -36,12 +36,13 @@ FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
   }  // else default constructor
 
   if (filename.has_value()) {
-    rl::mdl::UrdfFactory factory;
-    factory.load(filename.value(), &model);
-    ik = std::make_unique<rl::mdl::JacobianInverseKinematics>(
-        static_cast<rl::mdl::Kinematic *>(&model));
-  } else {
-    ik = std::nullopt;
+    this->rl = RL();
+
+    this->rl.value().mdl = rl::mdl::UrdfFactory().create(filename.value());
+    this->rl.value().kin =
+        std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl.value().mdl);
+    this->rl.value().ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
+        this->rl.value().kin.get());
   }
 }
 
@@ -101,7 +102,7 @@ void FR3::set_default_robot_behavior() {
 
 common::Pose FR3::get_cartesian_position() {
   franka::RobotState state = this->robot.readOnce();
-  common::Pose x(state.O_T_EE_c);
+  common::Pose x(state.O_T_EE);
   return x;
 }
 
@@ -194,30 +195,36 @@ void FR3::set_cartesian_position(const common::Pose &x) {
     nominal_end_effector_frame_value =
         this->cfg.nominal_end_effector_frame.value();
   } else {
-    // what does this exactly do, does it call the constructor?
-    nominal_end_effector_frame_value = Eigen::Affine3d::Identity();
+    nominal_end_effector_frame_value = common::Pose::Identity();
   }
 
-  // TODO: trajectory planner
   if (this->cfg.controller == IKController::internal) {
+    // if gripper is attached the tcp offset will automatically be applied
+    // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
+
   } else if (this->cfg.controller == IKController::robotics_library) {
     this->set_cartesian_position_rl(x);
   }
 }
 
 void FR3::set_cartesian_position_rl(const common::Pose &pose) {
-  if (!this->ik.has_value()) {
+  if (!this->rl.has_value()) {
     throw rl::mdl::Exception(
         "No file for robot model was provided. Cannot use RL for IK.");
   }
-  this->ik.value()->addGoal(pose.affine_matrix(), 0);
-  bool success = this->ik.value()->solve();
+  this->rl.value().kin->setPosition(this->get_joint_position());
+  this->rl.value().kin->forwardPosition();
+  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
+
+  this->rl.value().ik->addGoal(new_pose.affine_matrix(), 0);
+  bool success = this->rl.value().ik->solve();
   if (success) {
-    rl::math::Vector q(6);
-    q = this->model.getPosition();
-    this->set_joint_position(q);
+    // is this forward needed and is it mabye possible to call
+    // this on the model?
+    this->rl.value().kin->forwardPosition();
+    this->set_joint_position(this->rl.value().kin->getPosition());
   } else {
     // throw error
     throw rl::mdl::Exception("IK failed");
@@ -253,10 +260,7 @@ void FR3::set_cartesian_position_internal(const common::Pose &pose,
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          // Eigen::Matrix<double, 4, 4, Eigen::ColMajor> transMatrix(
-          //     state.O_T_EE_c.data());
-          // initial_pose.matrix() = transMatrix;
-          initial_pose = common::Pose(state.O_T_EE_c);
+          initial_pose = common::Pose(state.O_T_EE);
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;
@@ -272,7 +276,6 @@ void FR3::set_cartesian_position_internal(const common::Pose &pose,
         if (max_force.has_value()) {
           should_stop = force_stop_condition(state, progress);
         }
-        should_stop = force_stop_condition(state, progress);
         if (time >= max_time or should_stop) {
           if (elbow.has_value()) {
             return franka::MotionFinished({new_pose.affine_array(), new_elbow});

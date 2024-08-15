@@ -49,9 +49,15 @@ ruff:
 	ruff check ${PYSRC}
 
 mypy:
-	mypy ${PYSRC} --install-types --non-interactive
+	mypy ${PYSRC} --install-types --non-interactive --no-namespace-packages
 
 pytest:
 	pytest -vv
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest
+bump:
+	cz bump
+
+commit:
+	cz commit
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
