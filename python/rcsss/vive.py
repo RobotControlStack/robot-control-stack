@@ -5,12 +5,10 @@ from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack  # , pack
 
-# import matplotlib.pyplot as plt
-
 import gymnasium as gym
 import numpy as np
 import rcsss
-from rcsss._core.common import Pose, RPY
+from rcsss._core.common import RPY, Pose
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.config import read_config_yaml
@@ -28,12 +26,17 @@ from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import CollisionGuard, FR3Sim
 from rcsss.sim import FR3, FR3Config, Sim
 
+# import matplotlib.pyplot as plt
+
+
 logger = logging.getLogger(__name__)
 
 EGO_LOCK = False
 VIVE_HOST = "192.168.100.1"
 VIVE_PORT = 54321
-USE_HW = False
+USE_REAL_ROBOT = False
+INCLUDE_ROTATION = False
+ROBOT_IP = "192.168.101.1"
 
 
 class Button(IntFlag):
@@ -105,9 +108,9 @@ class UDPViveActionServer(threading.Thread):
                     with self._resource_lock:
                         last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
                         last_controller_pose = Pose(
-                            translation=last_controller_pose_raw[4:]  # , quaternion=last_controller_pose_raw[:4]
+                            translation=last_controller_pose_raw[4:],
+                            quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else [0, 0, 0, 1],
                         )
-
                         if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
                             # trigger just pressed (first data sample with button pressed
 
@@ -191,10 +194,17 @@ class UDPViveActionServer(threading.Thread):
 def hw():
 
     cfg = read_config_yaml("config.yaml")
-    d = Desk("192.168.101.1", cfg.hw.username, cfg.hw.password)
-    with FCI(d, unlock=True, lock_when_done=True):
+    d = Desk(ROBOT_IP, cfg.hw.username, cfg.hw.password)
+    with FCI(d, unlock=False, lock_when_done=False):
 
-        robot = rcsss.hw.FR3("192.168.101.1", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+        robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+        rcfg = rcsss.hw.FR3Config()
+        rcfg.tcp_offset = rcsss.common.FrankaHandTCPOffset()
+        rcfg.speed_factor = 0.2
+        # rcfg.controller = rcsss.hw.IKController.robotics_library
+        robot.set_parameters(rcfg)
+
+        # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
         env = FR3Env(robot, ControlMode.JOINTS)
         env_hw: gym.Env = FR3HW(env)
         gripper_cfg = rcsss.hw.FHConfig()
@@ -227,7 +237,7 @@ def sim():
     robot = FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     fr3_config = FR3Config()
     fr3_config.realtime = False
-    fr3_config.tcp_offset = rcsss.common.FrankaHandTCPOffset()
+    # TODO: We might need a TCP offset with only translation here
     env_sim = FR3Sim(FR3Env(robot, ControlMode.JOINTS), simulation)
 
     cameras = {
@@ -247,9 +257,9 @@ def sim():
         str(rcsss.scenes["fr3_empty_world"]),
         str(rcsss.scenes["lab"].parent / "fr3.urdf"),
         gripper=True,
-        camera=True,
+        camera=False,
         check_home_collision=False,
-        tcp_offset=fr3_config.tcp_offset,
+        control_mode=ControlMode.CARTESIAN_TQuart,
     )
     env_rel = RelativeActionSpace(env_cam, relative_to=RelativeTo.CONFIGURED_ORIGIN)
     env_rel.reset()
@@ -261,7 +271,7 @@ def main():
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         return
-    if USE_HW:
+    if USE_REAL_ROBOT:
         hw()
     else:
         sim()

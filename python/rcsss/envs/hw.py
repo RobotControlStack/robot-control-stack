@@ -5,10 +5,9 @@ import gymnasium as gym
 import rcsss
 from rcsss import hw
 from rcsss.config import read_config_yaml
-from rcsss.desk import Desk
+from rcsss.desk import FCI, Desk
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper, RelativeActionSpace
 from rcsss.envs.sim import CollisionGuard
-from rcsss.desk import FCI
 
 _logger = logging.getLogger(__name__)
 

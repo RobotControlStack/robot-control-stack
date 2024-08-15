@@ -217,12 +217,12 @@ PYBIND11_MODULE(_core, m) {
       .def("get_cartesian_position",
            &rcs::common::Robot::get_cartesian_position)
       .def("set_joint_position", &rcs::common::Robot::set_joint_position,
-           py::arg("q"))
+           py::arg("q"), py::call_guard<py::gil_scoped_release>())
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)
-      .def("move_home", &rcs::common::Robot::move_home)
+      .def("move_home", &rcs::common::Robot::move_home, py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
-           &rcs::common::Robot::set_cartesian_position, py::arg("pose"));
+           &rcs::common::Robot::set_cartesian_position, py::arg("pose"), py::call_guard<py::gil_scoped_release>());
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
@@ -231,11 +231,11 @@ PYBIND11_MODULE(_core, m) {
       .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width,
            py::arg("width"), py::arg("force") = 0)
       .def("get_normalized_width", &rcs::common::Gripper::get_normalized_width)
-      .def("grasp", &rcs::common::Gripper::grasp)
+      .def("grasp", &rcs::common::Gripper::grasp, py::call_guard<py::gil_scoped_release>())
       .def("is_grasped", &rcs::common::Gripper::is_grasped)
-      .def("open", &rcs::common::Gripper::open)
-      .def("shut", &rcs::common::Gripper::shut)
-      .def("reset", &rcs::common::Gripper::reset);
+      .def("open", &rcs::common::Gripper::open, py::call_guard<py::gil_scoped_release>())
+      .def("shut", &rcs::common::Gripper::shut, py::call_guard<py::gil_scoped_release>())
+      .def("reset", &rcs::common::Gripper::reset, py::call_guard<py::gil_scoped_release>());
 
   py::class_<rcs::common::RobotWithGripper,
              std::shared_ptr<rcs::common::RobotWithGripper>>(common,
@@ -411,7 +411,7 @@ PYBIND11_MODULE(_core, m) {
              return std::make_shared<rcs::sim::Sim>((mjModel *)m, (mjData *)d);
            }),
            py::arg("mjmdl"), py::arg("mjdata"))
-      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence)
+      .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence, py::call_guard<py::gil_scoped_release>())
       .def("is_converged", &rcs::sim::Sim::is_converged)
       .def("step", &rcs::sim::Sim::step, py::arg("k"))
       .def("reset", &rcs::sim::Sim::reset);

@@ -155,7 +155,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
                     identifier="", type=int(CameraType.default_free), on_screen_render=True
                 ),
             }
-            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=15)
+            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=5)
             camera_set = SimCameraSet(simulation, cam_cfg)
             c_env = CameraSetWrapper(c_env, camera_set)
         return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision, to_joint_control)
