@@ -14,11 +14,13 @@ cpplint:
 
 gcccompile: 
 	pip install --upgrade --requirement requirements_dev.txt
-	python -m build --verbose --no-isolation --config-setting=cmake.build-type="${COMPILE_MODE}" --config-setting=cmake.define.CMAKE_CXX_COMPILER=g++ .
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
+	cmake --build build
 
 clangcompile: 
 	pip install --upgrade --requirement requirements_dev.txt
-	python -m build --verbose --no-isolation --config-setting=cmake.build-type="${COMPILE_MODE}" --config-setting=cmake.define.CMAKE_CXX_COMPILER=clang++ .
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
+	cmake --build build
 
 # Auto generation of CPP binding stub files
 stubgen:
