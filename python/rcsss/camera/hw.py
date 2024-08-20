@@ -8,7 +8,12 @@ from time import sleep
 
 import numpy as np
 from pydantic import Field
-from rcsss.camera.interface import BaseCameraConfig, BaseCameraSetConfig, Frame, FrameSet
+from rcsss.camera.interface import (
+    BaseCameraConfig,
+    BaseCameraSetConfig,
+    Frame,
+    FrameSet,
+)
 
 
 class HWCameraSetConfig(BaseCameraSetConfig):
@@ -118,7 +123,7 @@ class BaseHardwareCameraSet(ABC):
     @property
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
-        return [camera for camera in self.config.cameras.keys()]
+        return list(self.config.cameras)
 
     @property
     def name_to_identifier(self) -> dict[str, str]:

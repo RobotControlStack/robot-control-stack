@@ -38,7 +38,13 @@ def create_sample_config_yaml(path: str):
     cameras = {"human_readable_name": BaseCameraConfig(identifier="serial_number")}
     real_sense_cfg = RealSenseSetConfig(cameras=cameras)
     camera_cfg = CameraConfig(realsense_config=real_sense_cfg)
-    hw = HWConfig(username="...", password="...", urdf_model_path="path/to/urdf", camera_config=camera_cfg, camera_type="realsense")
+    hw = HWConfig(
+        username="...",
+        password="...",
+        urdf_model_path="path/to/urdf",
+        camera_config=camera_cfg,
+        camera_type="realsense",
+    )
     cameras_sim = {"human_readable_name": SimCameraConfig(identifier="mjcf_name", type=0, on_screen_render=False)}
     sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras_sim))
     cfg = Config(hw=hw, sim=sim)

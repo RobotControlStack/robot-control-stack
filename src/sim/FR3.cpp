@@ -1,5 +1,6 @@
 #include "FR3.h"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <math.h>
 
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -148,8 +150,7 @@ common::Pose FR3::get_cartesian_position() {
   Eigen::Vector3d translation(this->sim->d->site_xpos +
                               3 * this->ids.attachment_site);
   common::Pose attachment_site(rotation, translation);
-  // TODO: Why do we have to take the inverse here? Should be the normal offset
-  return attachment_site * cfg.tcp_offset;
+  return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
 void FR3::set_joint_position(const common::Vector7d& q) {
@@ -171,6 +172,7 @@ common::Vector7d FR3::get_joint_position() {
 }
 
 void FR3::set_cartesian_position(const common::Pose& pose) {
+  // pose is assumed to be in the robots coordinate frame
   this->rl.kin->setPosition(this->get_joint_position());
   this->rl.kin->forwardPosition();
   rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
@@ -227,6 +229,15 @@ void FR3::m_reset() {
     this->sim->d->qpos[jnt_qposadr] = q_home[i];
   }
 }
+
+common::Pose FR3::get_base_pose_in_world_coordinates() {
+  auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
+                       (std::string("base_") + this->id).c_str());
+  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
+  Eigen::Map<Eigen::Quaterniond> rotation(this->sim->d->xquat + 4 * id);
+  return common::Pose(rotation, translation);
+}
+
 void FR3::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs
