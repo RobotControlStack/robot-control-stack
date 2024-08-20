@@ -150,8 +150,7 @@ common::Pose FR3::get_cartesian_position() {
   Eigen::Vector3d translation(this->sim->d->site_xpos +
                               3 * this->ids.attachment_site);
   common::Pose attachment_site(rotation, translation);
-  // TODO: Why do we have to take the inverse here? Should be the normal offset
-  return attachment_site * cfg.tcp_offset;
+  return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
 void FR3::set_joint_position(const common::Vector7d& q) {
