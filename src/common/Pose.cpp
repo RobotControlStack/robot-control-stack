@@ -9,8 +9,8 @@ Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
 Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
 Eigen::Matrix4d FrankaHandTCPOffset() {
-  return (Eigen::Matrix4d() << 0.707, -0.707, 0, 0, 0.707, 0.707, 0, 0, 0, 0, 1,
-          0, 0, 0, 0.1034, 1)
+  return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1,
+          0.1034, 0, 0, 0, 1)
       .finished();
 }
 
