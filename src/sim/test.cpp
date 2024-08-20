@@ -9,7 +9,6 @@
 #include <thread>
 
 #include "common/Pose.h"
-#include "config.h"
 #include "rl/mdl/Model.h"
 #include "rl/mdl/UrdfFactory.h"
 #include "sim.h"
