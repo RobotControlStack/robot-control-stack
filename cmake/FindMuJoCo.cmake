@@ -7,28 +7,8 @@ if (NOT MuJoCo_FOUND)
         return()
     endif()
 
-    # Run Python command to locate MuJoCo
-    execute_process(COMMAND ${Python3_EXECUTABLE} -c "import mujoco; print(mujoco.__file__)" 
-        OUTPUT_VARIABLE MUJOCO_FIND_OUTPUT
-        ERROR_QUIET
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE result
-    )
-
-    # Check if the Python command was successful
-    if (NOT result EQUAL 0)
-        set(MuJoCo_FOUND FALSE)
-        if (MuJoCo_FIND_REQUIRED)
-            message(FATAL_ERROR "Could not find MuJoCo. Please install MuJoCo using pip.")
-        endif()
-        return()
-    endif()
-
-    # Get the include directory path
-    cmake_path(GET MUJOCO_FIND_OUTPUT PARENT_PATH MuJoCo_INCLUDE_DIRS)
-    cmake_path(APPEND MuJoCo_INCLUDE_DIRS include) 
-
     # Check if the include directory exists
+    cmake_path(APPEND Python3_SITELIB mujoco include OUTPUT_VARIABLE MuJoCo_INCLUDE_DIRS)
     if (NOT EXISTS ${MuJoCo_INCLUDE_DIRS})
         set(MuJoCo_FOUND FALSE)
         if (MuJoCo_FIND_REQUIRED)
@@ -37,11 +17,9 @@ if (NOT MuJoCo_FOUND)
         return()
     endif()
 
-    # Locate the MuJoCo library
-    cmake_path(GET MUJOCO_FIND_OUTPUT PARENT_PATH mujoco_library_path)
+    # Check if the library file exists
+    cmake_path(APPEND Python3_SITELIB mujoco OUTPUT_VARIABLE mujoco_library_path)
     file(GLOB mujoco_library_path "${mujoco_library_path}/libmujoco.so.*")
-
-    # Check if the library was found
     if (NOT mujoco_library_path)
         set(MuJoCo_FOUND FALSE)
         if (MuJoCo_FIND_REQUIRED)
