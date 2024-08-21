@@ -1,29 +1,52 @@
-name: Python CI
+name: Setup venv
 on:
   push:
     branches: krack/ci
 jobs:
-  build:
+  setup_venv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Set up venv
+      - name: Set up venv # TODO: cache this venv forever
         run: |
-          python3 -m venv .venv
+          python3 -m venv --upgrade-deps --prompt RCS .venv
           source .venv/bin/activate
           pip config --site set global.no-build-isolation false
           pip install --requirement requirements_dev.txt
-      - name: Build and install
-        run: |
-          source .venv/bin/activate
-          pip install -v .
-      - name: Lint
-        run: |
-          source .venv/bin/activate
-          make pycheckformat
-          make pylint
+      - name: Upload venv
+        uses: actions/upload-artifact@v4
+        with:
+          name: venv
+          path: .venv
+  cmake_initial_configure: # so we need to call fetch content only once. TODO: cache forever
+    runs-on: ubuntu-latest
+    needs: setup_venv
+    steps:
+      - name: Download configured venv
+        uses: actions/download-artifact@v4
+        with:
+          name: venv
+      - name: Configure cmake
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Upload build_dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_initial
+          path: build
+  build_gcc:
+    runs-on: ubuntu-latest
+    needs: cmake_initial_configure
+    steps:
+      - name: Download initial build_dir
+        uses: actions/download-artifact@v4
+        with:
+          name: build_initial
+      - name: CMake configure
+        run: cmake -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+      - name: CMake build
+        run: cmake --build build
+
