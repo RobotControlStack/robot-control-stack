@@ -8,20 +8,6 @@ on:
       - ".github/workflows/**"
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Install linting and formatting dependencies
-        run: python -m pip install -r requirements_dev.txt
-      - name: Code linting
-        run: make pylint
-
   format:
     runs-on: ubuntu-latest
     steps:
@@ -56,6 +42,8 @@ jobs:
         run: python -m build --no-isolation --wheel --outdir dist/
       - name: Install the wheel package
         run: python -m pip install dist/*.whl
+      - name: Code linting
+        run: make pylint
       - name: Check that stub files are up-to-date
         run: make stubgen && git diff --exit-code
       - name: Ensure all unittests(pytest) are passing
