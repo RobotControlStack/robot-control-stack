@@ -43,7 +43,6 @@ option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires G
 
 include(FetchContent)
 
-find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
@@ -64,7 +63,21 @@ FetchContent_Declare(rl
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(libfranka rl)
+FetchContent_Declare(Eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+    GIT_TAG 3.4.0
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_Declare(glfw3
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4.0
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable(libfranka rl Eigen3 glfw3)
 
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
