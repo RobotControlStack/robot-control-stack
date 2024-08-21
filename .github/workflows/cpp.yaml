@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: xargs sudo apt-get -y install < debian_deps.txt
+        run: sudo apt install $(cat debian_deps.txt)
       - name: Check clang format
         run: make cppcheckformat
       - name: Set up Python 3.11
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: xargs sudo apt-get -y install < debian_deps.txt
+        run: sudo apt install $(cat debian_deps.txt)
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
