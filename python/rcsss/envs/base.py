@@ -399,25 +399,28 @@ class GripperWrapper(ActObsInfoWrapper):
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
-        self._gripper_state = 1
+        self._last_gripper_action = 1
         self.binary = binary
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         self._gripper.reset()
-        self._gripper_state = 1
+        self._last_gripper_action = 1
         return super().reset(**kwargs)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         observation[self.gripper_key] = self._gripper.get_normalized_width()
+        if self.binary:
+            observation[self.gripper_key] = round(observation[self.gripper_key])
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
-        gripper_state = np.round(action["gripper"])
-        if gripper_state != self._gripper_state:
-            self._gripper_state = gripper_state
+
+        gripper_action = np.round(action["gripper"])
+        if gripper_action != self._last_gripper_action:
+            self._last_gripper_action = gripper_action
             if self.binary:
                 self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
             else:
