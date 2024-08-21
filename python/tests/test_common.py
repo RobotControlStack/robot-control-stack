@@ -25,9 +25,15 @@ class TestPose:
         assert np.array_equal(out_q, expected_quaternion1)
 
     @pytest.mark.parametrize(
-        ("initial_pose_rotation_m", "initial_pose_translation",
-         "destination_pose_rotation_m", "destination_pose_translation",
-         "progress", "expected_pose_rotation_m", "expected_pose_translation"),
+        (
+            "initial_pose_rotation_m",
+            "initial_pose_translation",
+            "destination_pose_rotation_m",
+            "destination_pose_translation",
+            "progress",
+            "expected_pose_rotation_m",
+            "expected_pose_translation",
+        ),
         [
             (
                 np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]]),
@@ -40,9 +46,16 @@ class TestPose:
             )
         ],
     )
-    def test_interpolate_r_t(self, initial_pose_rotation_m: np.ndarray, initial_pose_translation: np.ndarray,
-                             destination_pose_rotation_m: np.ndarray, destination_pose_translation: np.ndarray,
-                             progress: float, expected_pose_rotation_m: np.ndarray, expected_pose_translation: np.ndarray):
+    def test_interpolate_r_t(
+        self,
+        initial_pose_rotation_m: np.ndarray,
+        initial_pose_translation: np.ndarray,
+        destination_pose_rotation_m: np.ndarray,
+        destination_pose_translation: np.ndarray,
+        progress: float,
+        expected_pose_rotation_m: np.ndarray,
+        expected_pose_translation: np.ndarray,
+    ):
         """
         Here the Pose class initiated using the rotation and the translation matrices is used.
         TestCase1: with progress=1, the interpolated pose should be equal to the start pose
@@ -60,25 +73,25 @@ class TestPose:
                 np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
                 np.array([[1.0, 0, 0, 1.1], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
                 0.1,
-                False
+                False,
             ),
             (
                 np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
                 np.array([[1.0, 0, 0, 1.09], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
                 0.1,
-                True
+                True,
             ),
             (
                 np.array([[1.0, 1e-8, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
                 np.array([[1.0, 0, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
                 0.1,
-                True
+                True,
             ),
             (
                 np.array([[1.0, 1, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
                 np.array([[1.0, 0, 0, 0.0], [0, 1.0, 0, 0.0], [0, 0, 1.0, 0.0], [0, 0, 0, 1.0]]),
                 0.1,
-                False
+                False,
             ),
         ],
     )
@@ -100,7 +113,7 @@ class TestPose:
             (
                 np.array([[1.0, 0, 0, 1], [0, 1.0, 0, 2], [0, 0, 1.0, 3], [0, 0, 0, 1]]),
                 np.array([[1.0, 0, 0, 4], [0, 1.0, 0, 5], [0, 0, 1.0, 6], [0, 0, 0, 1]]),
-                np.array([[1.0, 0, 0, 5], [0, 1.0, 0, 7], [0, 0, 1.0, 9], [0, 0, 0, 1]])
+                np.array([[1.0, 0, 0, 5], [0, 1.0, 0, 7], [0, 0, 1.0, 9], [0, 0, 0, 1]]),
             ),
         ],
     )
@@ -121,7 +134,7 @@ class TestPose:
         [
             (
                 np.array([[1.0, 0, 0, 1], [0, 1.0, 0, 2], [0, 0, 1.0, 3], [0, 0, 0, 1]]),
-                np.array([[1.0, 0, 0, -1], [0, 1.0, 0, -2], [0, 0, 1.0, -3], [0, 0, 0, 1]])
+                np.array([[1.0, 0, 0, -1], [0, 1.0, 0, -2], [0, 0, 1.0, -3], [0, 0, 0, 1]]),
             ),
         ],
     )
@@ -140,11 +153,13 @@ class TestPose:
             (
                 np.array([0, 0, 0, 1.0]),
                 np.array([1.0, 1.0, 1.0]),
-                np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 1.0], [0, 0, 1.0, 1.0], [0, 0, 0, 1.0]])
+                np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 1.0], [0, 0, 1.0, 1.0], [0, 0, 0, 1.0]]),
             ),
         ],
     )
-    def test_pose_matrix(self, quaternion: np.ndarray, translation_vector: np.ndarray, expected_pose_matrix: np.ndarray):
+    def test_pose_matrix(
+        self, quaternion: np.ndarray, translation_vector: np.ndarray, expected_pose_matrix: np.ndarray
+    ):
         """
         Here the Pose class is initiated using a quaternion and a translation vector.
         TestCase1: The 'no rotation quaternion' and a unit translation in all three directions is used here.
@@ -159,9 +174,10 @@ class TestPose:
         [
             (
                 np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 1.0], [0, 0, 1.0, 1.0], [0, 0, 0, 1.0]]),
-                common.RPY(roll=0.0, pitch=0.0, yaw=0.0)
+                common.RPY(roll=0.0, pitch=0.0, yaw=0.0),
             )
-        ])
+        ],
+    )
     def test_rotation_rpy(self, pose_m: np.ndarray, expected_rpy: common.RPY):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
@@ -169,7 +185,7 @@ class TestPose:
         """
         pose = common.Pose(pose_matrix=pose_m)
         rpy = pose.rotation_rpy()
-        for ang in ['roll', 'pitch', 'yaw']:
+        for ang in ["roll", "pitch", "yaw"]:
             out_angle = getattr(rpy, ang)
             exp_angle = getattr(expected_rpy, ang)
             assert math.isclose(out_angle, exp_angle, abs_tol=1e-8)
@@ -202,12 +218,8 @@ class TestPose:
 
     @pytest.mark.parametrize(
         ("pose_m", "expected_translation_m"),
-        [
-            (
-                np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]),
-                np.array([1.0, 2.0, 3.0])
-            )
-        ])
+        [(np.array([[1.0, 0, 0, 1.0], [0, 1.0, 0, 2.0], [0, 0, 1.0, 3.0], [0, 0, 0, 1.0]]), np.array([1.0, 2.0, 3.0]))],
+    )
     def test_translation(self, pose_m: np.ndarray, expected_translation_m: np.ndarray):
         """
         Here the Pose class is initiated using a single 4x4 matrix where the rotation and translation are combined.
