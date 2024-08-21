@@ -47,7 +47,6 @@ find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
-find_package(pybind11 REQUIRED)
 
 FetchContent_Declare(
     libfranka
@@ -56,15 +55,20 @@ FetchContent_Declare(
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-
 FetchContent_Declare(rl
     GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
-    GIT_TAG master
+    GIT_TAG 0b3797215345a1d37903634095361233d190b2e6
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_Declare(pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG v2.10.3
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(libfranka rl)
+FetchContent_MakeAvailable(libfranka rl pybind11)
 
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
