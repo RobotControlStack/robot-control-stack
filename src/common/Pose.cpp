@@ -134,7 +134,7 @@ RPY Pose::rotation_rpy() const {
   // ZYX, roll, pitch, yaw
   Eigen::Vector3d rpy_vec =
       this->m_rotation.toRotationMatrix().eulerAngles(2, 1, 0);
-  return RPY{rpy_vec.x(), rpy_vec.y(), rpy_vec.z()};
+  return RPY{rpy_vec.z(), rpy_vec.y(), rpy_vec.x()};
 }
 
 Pose Pose::interpolate(const Pose &dest_pose, double progress) const {

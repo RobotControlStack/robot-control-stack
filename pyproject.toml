@@ -8,7 +8,7 @@ version = "0.1.0"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
     "requests~=2.31",
-    "numpy~=2.0",
+    "numpy==2.0",
     "typer~=0.9",
     "pydantic~=2.6",
     "gymnasium~=0.29.1",
