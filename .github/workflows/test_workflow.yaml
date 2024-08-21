@@ -2,14 +2,11 @@ name: Python CI
 on:
   push:
     branches: krack/ci
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v4
-
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -20,15 +17,13 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip config --site set global.no-build-isolation false
-          pip install --requirements requirements_dev.txt
-       - name: Build and install
+          pip install --requirement requirements_dev.txt
+      - name: Build and install
+        run: |
           source .venv/bin/activate
           pip install -v .
-       - name: Lint
+      - name: Lint
+        run: |
           source .venv/bin/activate
           make pycheckformat
           make pylint
-
-
-
-
