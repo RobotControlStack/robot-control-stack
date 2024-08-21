@@ -174,6 +174,32 @@ class TestPose:
             exp_angle = getattr(expected_rpy, ang)
             assert math.isclose(out_angle, exp_angle, abs_tol=1e-8)
 
+    def test_rpy_conversion(self):
+        # equal to identity
+        assert common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])).is_close(common.Pose())
+
+        home_m = np.array(
+            [
+                [9.99999352e-01, 2.51302265e-05, -1.13823380e-03, 3.06764031e-01],
+                [2.65946429e-05, -9.99999172e-01, 1.28657214e-03, 1.39119827e-04],
+                [-1.13820053e-03, -1.28660158e-03, -9.99998525e-01, 4.86190811e-01],
+                [0.00000000e00, 0.00000000e00, 0.00000000e00, 1.00000000e00],
+            ]
+        )
+
+        home_pose = common.Pose(pose_matrix=home_m)
+
+        assert np.allclose(home_pose.pose_matrix(), home_m)
+
+        trpy = home_pose.xyzrpy()
+        assert np.allclose(trpy[:3], home_pose.translation())
+
+        home_pose2 = common.Pose(translation=trpy[:3], rpy_vector=trpy[3:])
+        home_m2 = home_pose2.pose_matrix()
+
+        assert home_pose.is_close(home_pose2)
+        assert np.allclose(home_m, home_m2)
+
     @pytest.mark.parametrize(
         ("pose_m", "expected_translation_m"),
         [
