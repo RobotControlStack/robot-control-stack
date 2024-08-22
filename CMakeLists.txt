@@ -43,6 +43,7 @@ option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires G
 
 include(FetchContent)
 
+find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)

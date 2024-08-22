@@ -7,25 +7,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
       - name: Apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes $(cat debian_deps.txt)
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Set up venv # TODO: cache this venv forever
-        run: |
-          python3 -m venv --upgrade-deps --prompt RCS .venv
-          source .venv/bin/activate
-          pip config --site set global.no-build-isolation false
-          pip install --requirement requirements_dev.txt
+      - name: Python dependencies
+        run: pip install --requirement requirements_dev.txt
       - name: Configure cmake
-        run: |
-          source .venv/bin/activate
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Upload build_dir
         uses: actions/upload-artifact@v4
         with:
@@ -36,28 +29,22 @@ jobs:
     needs: cmake_initial_configure
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
       - name: Apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes $(cat debian_deps.txt)
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Set up venv
-        run: |
-          python3 -m venv --upgrade-deps --prompt RCS .venv
-          source .venv/bin/activate
-          pip config --site set global.no-build-isolation false
-          pip install --requirement requirements_dev.txt
+      - name: Python dependencies
+        run: pip install --requirement requirements_dev.txt
       - name: Download initial build_dir
         uses: actions/download-artifact@v4
         with:
           name: build_initial
       - name: CMake configure
         run: |
-          source .venv/bin/activate
           cmake -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
       - name: CMake build
         run: cmake --build build
@@ -70,18 +57,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: cmake_initial_configure
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
       - name: Apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes $(cat debian_deps.txt)
-      - uses: actions/checkout@v4
+      - name: Python dependencies
+        run: pip install --requirement requirements_dev.txt
       - name: Download initial build_dir
         uses: actions/download-artifact@v4
         with:
           name: build_initial
       - name: CMake configure
         run: |
-          source .venv/bin/activate
           cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       - name: CMake build
         run: cmake --build build
