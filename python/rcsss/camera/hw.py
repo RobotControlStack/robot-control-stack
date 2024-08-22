@@ -1,6 +1,7 @@
 import logging
 import pickle
 import threading
+import typing
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +23,7 @@ class HWCameraSetConfig(BaseCameraSetConfig):
     record_path: str = "camera_frames"
     max_buffer_frames: int = 1000
 
+
 # TODO(juelg): refactor camera thread into their own class, to avoid a base hardware camera set class
 class BaseHardwareCameraSet(ABC):
     """This base class should have the ability to poll in a separate thread for all cameras and store them in a buffer.
@@ -29,7 +31,7 @@ class BaseHardwareCameraSet(ABC):
     """
 
     def __init__(self):
-        self._buffer: list[FrameSet|None] = [None for _ in range(self.config.max_buffer_frames)]
+        self._buffer: list[FrameSet | None] = [None for _ in range(self.config.max_buffer_frames)]
         self._buffer_lock = threading.Lock()
         self.running = False
         self._thread: threading.Thread | None = None
@@ -49,9 +51,11 @@ class BaseHardwareCameraSet(ABC):
         # iterate through the buffer and find the closest timestamp
         with self._buffer_lock:
             for i in range(self.config.max_buffer_frames):
-                idx = (self._next_ring_index - i - 1) % self.config.max_buffer_frames # iterate backwards
-                assert self._buffer[idx].avg_timestamp is not None
-                if self._buffer[idx].avg_timestamp <= ts.timestamp():
+                idx = (self._next_ring_index - i - 1) % self.config.max_buffer_frames  # iterate backwards
+                assert self._buffer[idx] is not None
+                item: FrameSet = typing.cast(FrameSet, self._buffer[idx])
+                assert item.avg_timestamp is not None
+                if item.avg_timestamp <= ts.timestamp():
                     return self._buffer[idx]
             return None
 
