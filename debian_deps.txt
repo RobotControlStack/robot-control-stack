@@ -2,9 +2,11 @@ build-essential
 cmake
 git
 libpoco-dev
+libeigen3-dev
 libxslt-dev
 libcoin-dev
 libccd-dev
+libglfw3-dev
 libboost-all-dev
 liblzma-dev
 libxml2-dev
@@ -13,4 +15,3 @@ ninja-build
 clang
 clang-format
 clang-tidy
-pybind11-dev
