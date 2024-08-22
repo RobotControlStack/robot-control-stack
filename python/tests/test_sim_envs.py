@@ -45,7 +45,7 @@ class TestSimEnvs:
 class TestSimEnvsTRPY:
     """This class is for testing TRPY sim env functionalities"""
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_zero_action_trpy(self, cfg):
         """
         Test that a zero action does not change the state significantly
@@ -69,9 +69,11 @@ class TestSimEnvsTRPY:
 
         Is the precision of 1 mm reasonable?
         """
-        assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.001, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = initial_pose
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_non_zero_action_trpy(self, cfg):
         """
         This is for testing that a certain action leads to the expected change in state
@@ -101,29 +103,36 @@ class TestSimEnvsTRPY:
         """
         @todo the test does not match the expected outputs
         """
-        assert np.allclose(obs["tquart"], expected_obs)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(expected_obs[:3]),
+                                    quaternion=np.array(expected_obs[3:]))
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
-    def test_relative_zero_action(self, cfg, gripper_cfg, cam_cfg):
+    def test_relative_zero_action_trpy(self, cfg, gripper_cfg, cam_cfg):
         # env creation
-        env = tf.produce_env_sim_trpy_gripper_camera_cg_rel(TestSimEnvs.mjcf_path, TestSimEnvs.urdf_path,
+        env = tf.produce_env_sim_trpy_gripper_camera_rel(TestSimEnvs.mjcf_path, TestSimEnvs.urdf_path,
                                                             cfg, gripper_cfg, cam_cfg, robot_id="0")
         obs_initial, info_ = env.reset()
 
         print(f"initial_obs: {obs_initial}")
         # action to be performed
-        zero_action = OrderedDict([("xyzrpy", np.array([0,  0,  0, 0, 0, 0], dtype=np.float32)),
+        zero_action = OrderedDict([("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)),
                                    ('gripper', np.array([0], dtype=np.float32))])
         print(f"zero_action: {zero_action}")
         obs, reward, terminated, truncated, info = env.step(zero_action)
         print(f"{obs=}")
+        print(f"{info=}")
         """
         @todo
         In this test case, a relative action of zeros should not lead to any change in the tcp trpy, but its not 
         functioning as expected."""
-        assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.001, rtol=0)
+        # assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.1, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(obs_initial["tquart"][:3]),
+                                    quaternion=np.array(obs_initial["tquart"][3:]))
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_relative_non_zero_action(self, cfg, gripper_cfg, cam_cfg):
         # env creation
         env = tf.produce_env_sim_trpy_gripper_camera_cg_rel(TestSimEnvs.mjcf_path, TestSimEnvs.urdf_path,
@@ -143,9 +152,12 @@ class TestSimEnvsTRPY:
         obs, reward, terminated, truncated, info = env.step(non_zero_action)
         print(f"{obs=}")
         """@todo here I expect the final pose to be at least close within 1mm, is this reasonable?"""
-        assert np.allclose(obs["tquart"], expected_obs, atol=0.001, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(expected_obs[:3]),
+                                    quaternion=np.array(expected_obs[3:]))
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
@@ -162,7 +174,8 @@ class TestSimEnvsTRPY:
         obs_, info_ = env_.reset()
         print(f"initial_obs: {obs_}")
         # an obvious below ground collision action
-        collision_action = OrderedDict([('xyzrpy', np.array([0.3, 0, -0.2, -0.13712998, -2.2763247,
+        # todo; run this multiple times and notice that sometimes it passes and sometimes it doesnt
+        collision_action = OrderedDict([('xyzrpy', np.array([0.3, 0, -0.1, -0.13712998, -2.2763247,
                                        -0.23976775], dtype=np.float32)),
                                         ('gripper', np.array([0.18612409], dtype=np.float32))])
         obs, reward, terminated, truncated, info = env_.step(collision_action)
@@ -197,7 +210,11 @@ class TestSimEnvsTquart:
         print(f"non_zero_action: {non_zero_action}")
         obs, reward, terminated, truncated, info = env.step(non_zero_action)
         print(f"{obs=}")
-        assert np.allclose(obs["tquart"], expected_obs, atol=0.001, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]),
+                               quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(expected_obs[:3]),
+                                    quaternion=np.array(expected_obs[3:]))
+        assert out_pose.is_close(expected_pose)
 
     def test_zero_action_tquart(self, cfg):
         """
@@ -222,16 +239,19 @@ class TestSimEnvsTquart:
         Is it reasonable to use atol=1mm and rtol=0 which means the two values can only vary less than 0.1 to be
         considered close to each other.
         """
-        assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.001, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(obs_initial["tquart"][:3]),
+                                    quaternion=np.array(obs_initial["tquart"][3:]))
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    #@pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_relative_zero_action_tquart(self, cfg, gripper_cfg, cam_cfg):
         # env creation
         env = tf.produce_env_sim_tquart_gripper_camera_rel(TestSimEnvs.mjcf_path, TestSimEnvs.urdf_path,
                                                            cfg, gripper_cfg, cam_cfg, robot_id="0")
         obs_initial, info_ = env.reset()
         print(f'{obs_initial = }')
-        zero_rel_action = OrderedDict([('tquart', np.array([0, 0, 0, 0, 0, 0, 0.], dtype=np.float32)),
+        zero_rel_action = OrderedDict([('tquart', np.array([0, 0, 0, 0, 0, 0, 1.], dtype=np.float32)),
                                        ('gripper', np.array([0], dtype=np.float32))])
         print(f"zero_rel_action: {zero_rel_action}")
         obs, reward, terminated, truncated, info = env.step(zero_rel_action)
@@ -240,9 +260,12 @@ class TestSimEnvsTquart:
         # @todo
         # In this test case, a relative action of zeros should not lead to any change in the tcp trpy, but its not
         # functioning as expected."""
-        assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.001, rtol=0)
+        out_pose = common.Pose(translation=np.array(obs["tquart"][:3]), quaternion=np.array(obs["tquart"][3:]))
+        expected_pose = common.Pose(translation=np.array(obs_initial["tquart"][:3]),
+                                    quaternion=np.array(obs_initial["tquart"][3:]))
+        assert out_pose.is_close(expected_pose)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
@@ -259,7 +282,7 @@ class TestSimEnvsTquart:
         obs_, info_ = env_.reset()
         print(f"initial_obs: {obs_}")
         # this is a pose with an obvious collision (below the floor)
-        act = OrderedDict([('tquart', np.array([0.3, 0, -0.5, 9.23879533e-01,
+        act = OrderedDict([('tquart', np.array([0.3, 0, -0.01, 9.23879533e-01,
                                                -3.82683432e-01, -7.25288143e-17, -3.00424186e-17])),
                           ('gripper', np.array([0], dtype=np.float32))])
         print(f"act: {act}")
@@ -287,9 +310,9 @@ class TestSimEnvsJoints:
         print(f"zero_action: {zero_action}")
         obs, reward, terminated, truncated, info = env_.step(zero_action)
         print(f"{obs=}")
-        assert np.allclose(obs["tquart"], obs_initial["tquart"], atol=0.001, rtol=0)
+        assert np.allclose(obs["joints"], obs_initial["joints"], atol=0.001, rtol=0)
 
-    @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
+    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_non_zero_action_joints(self, cfg):
         """
         This is for testing that a certain action leads to the expected change in state
