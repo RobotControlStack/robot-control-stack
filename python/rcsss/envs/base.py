@@ -303,8 +303,11 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
             clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
-            unclipped_pose = (
-                common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:]) * self._origin
+
+            unclipped_pose_offset = common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:])
+            unclipped_pose = common.Pose(
+                translation=self._origin.translation() + unclipped_pose_offset.translation(),
+                rpy_vector=(unclipped_pose_offset * self._origin).rotation_rpy(),
             )
             action.update(
                 TRPYDictType(
