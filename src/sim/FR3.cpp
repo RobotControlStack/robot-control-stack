@@ -234,7 +234,8 @@ common::Pose FR3::get_base_pose_in_world_coordinates() {
   auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
                        (std::string("base_") + this->id).c_str());
   Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
-  Eigen::Map<Eigen::Quaterniond> rotation(this->sim->d->xquat + 4 * id);
+  auto quat = this->sim->d->xquat + 4 * id;
+  Eigen::Quaterniond rotation(quat[0], quat[1], quat[2], quat[3]);
   return common::Pose(rotation, translation);
 }
 

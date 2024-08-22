@@ -1,6 +1,7 @@
 import logging
 import pickle
 import threading
+import typing
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -20,23 +21,25 @@ class HWCameraSetConfig(BaseCameraSetConfig):
     cameras: dict[str, BaseCameraConfig] = Field(default={})
     warm_up_disposal_frames: int = 30  # frames
     record_path: str = "camera_frames"
-    # max_frames: int = 1000
+    max_buffer_frames: int = 1000
 
 
+# TODO(juelg): refactor camera thread into their own class, to avoid a base hardware camera set class
 class BaseHardwareCameraSet(ABC):
     """This base class should have the ability to poll in a separate thread for all cameras and store them in a buffer.
     Implements BaseCameraSet
     """
 
     def __init__(self):
-        self._buffer: list[FrameSet] = []
+        self._buffer: list[FrameSet | None] = [None for _ in range(self.config.max_buffer_frames)]
         self._buffer_lock = threading.Lock()
         self.running = False
         self._thread: threading.Thread | None = None
         self._logger = logging.getLogger(__name__)
+        self._next_ring_index = 0
 
     def buffer_size(self) -> int:
-        return len(self._buffer)
+        return len(self._buffer) - self._buffer.count(None)
 
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
@@ -47,10 +50,13 @@ class BaseHardwareCameraSet(ABC):
         """Should return the frame from the camera with the given name and closest to the given timestamp."""
         # iterate through the buffer and find the closest timestamp
         with self._buffer_lock:
-            for frame_set in reversed(self._buffer):
-                assert frame_set.avg_timestamp is not None
-                if frame_set.avg_timestamp <= ts.timestamp():
-                    return frame_set
+            for i in range(self.config.max_buffer_frames):
+                idx = (self._next_ring_index - i - 1) % self.config.max_buffer_frames  # iterate backwards
+                assert self._buffer[idx] is not None
+                item: FrameSet = typing.cast(FrameSet, self._buffer[idx])
+                assert item.avg_timestamp is not None
+                if item.avg_timestamp <= ts.timestamp():
+                    return self._buffer[idx]
             return None
 
     def stop(self):
@@ -58,7 +64,7 @@ class BaseHardwareCameraSet(ABC):
         self.running = False
         assert self._thread is not None
         self._thread.join()
-        self._save_frames()
+        # self._save_frames()
 
     def start(self, warm_up: bool = True):
         """Should start the polling of the cameras."""
@@ -78,7 +84,8 @@ class BaseHardwareCameraSet(ABC):
         while self.running:
             frame_set = self.poll_frame_set()
             with self._buffer_lock:
-                self._buffer.append(frame_set)
+                self._buffer[self._next_ring_index] = frame_set
+                self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
             sleep(1 / self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
@@ -106,7 +113,8 @@ class BaseHardwareCameraSet(ABC):
     def clear_buffer(self):
         """Deletes all frames from the buffer."""
         with self._buffer_lock:
-            self._buffer = []
+            self._buffer = [None for _ in range(self.config.max_buffer_frames)]
+            self._next_ring_index = 0
 
     @property
     @abstractmethod

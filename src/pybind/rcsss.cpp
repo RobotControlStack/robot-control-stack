@@ -468,7 +468,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("resolution_width",
                      &rcs::sim::SimCameraSetConfig::resolution_width)
       .def_readwrite("resolution_height",
-                     &rcs::sim::SimCameraSetConfig::resolution_height);
+                     &rcs::sim::SimCameraSetConfig::resolution_height)
+      .def_readwrite("max_buffer_frames",
+                     &rcs::sim::SimCameraSetConfig::max_buffer_frames);
   py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
       .def(py::init<>())
       .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)

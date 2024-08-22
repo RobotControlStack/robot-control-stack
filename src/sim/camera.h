@@ -31,6 +31,7 @@ struct SimCameraSetConfig {
   int frame_rate;
   int resolution_width;
   int resolution_height;
+  int max_buffer_frames;
 };
 
 // (H,W,3)
