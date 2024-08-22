@@ -119,10 +119,6 @@ CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
 LimitedCartOrJointContType: TypeAlias = LimitedTQuartRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
 
-class ActionsRelative(LimitedJointsRelDictType):
-    pass
-
-
 class ObsArmsGr(ArmObsType, GripperDictType):
     pass
 
