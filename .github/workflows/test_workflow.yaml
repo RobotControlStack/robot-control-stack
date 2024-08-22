@@ -1,17 +1,12 @@
-name: Setup venv
+name: Build
 on:
   push:
     branches: krack/ci
 
+env:
+  PACKAGES: libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build
+
 jobs:
-  apt_dependencies:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
-          version: 1.0
   setup_venv:
     runs-on: ubuntu-latest
     steps:
@@ -32,57 +27,40 @@ jobs:
           source .venv/bin/activate
           python3 -m pip config --site set global.no-build-isolation false
           python3 -m pip install --requirement requirements_dev.txt
-
-  cmake_initial_configure:
+  install_apt_deps:
     runs-on: ubuntu-latest
-    needs: [setup_venv, apt_dependencies]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          packages: ${{ env.PACKAGES }}
           version: 1.0
-      - uses: actions/cache@v4
-        with:
-          path: ./.venv/
-          key: venv-${{ hashFiles('requirements_dev.txt') }}
-      - name: Configure cmake
-        run: |
-          source ./.venv/bin/activate
-          Python3_ROOT_DIR= cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-      - name: Upload build_dir
-        uses: actions/upload-artifact@v4
-        with:
-          name: build_initial
-          path: build
+
   build_gcc:
     runs-on: ubuntu-latest
-    needs: cmake_initial_configure
+    needs: [setup_venv, install_apt_deps]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
-          version: 1.0
       - uses: actions/cache@v4
+        id: cache-venv
         with:
           path: ./.venv/
           key: venv-${{ hashFiles('requirements_dev.txt') }}
-      - name: Download initial build_dir
-        uses: actions/download-artifact@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          name: build_initial
+          packages: ${{ env.PACKAGES }}
+          version: 1.0
+      - name: Install libboost explicitly
+        run: |
+          sudo apt-get update
+          sudo apt-get install libboost-all-dev
       - name: CMake configure
         run: |
-          cmake -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+          source .venv/bin/activate
+          Python3_ROOT_DIR= cmake -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
       - name: CMake build
         run: cmake --build build
       - name: Upload build_dir
@@ -92,28 +70,27 @@ jobs:
           path: build
   build_clang:
     runs-on: ubuntu-latest
-    needs: cmake_initial_configure
+    needs: [setup_venv, install_apt_deps]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          packages: ${{ env.PACKAGES }}
           version: 1.0
       - uses: actions/cache@v4
+        id: cache-venv
         with:
           path: ./.venv/
           key: venv-${{ hashFiles('requirements_dev.txt') }}
-      - name: Download initial build_dir
-        uses: actions/download-artifact@v4
-        with:
-          name: build_initial
       - name: CMake configure
         run: |
-          cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          cmake --version
+          cmake --help-policy CMP0167
+          source .venv/bin/activate
+          Python3_ROOT_DIR= cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       - name: CMake build
         run: cmake --build build
       - name: Upload build_dir
