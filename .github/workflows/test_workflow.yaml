@@ -4,6 +4,14 @@ on:
     branches: krack/ci
 
 jobs:
+  apt_dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          version: 1.0
   setup_venv:
     runs-on: ubuntu-latest
     steps:
@@ -27,16 +35,17 @@ jobs:
 
   cmake_initial_configure:
     runs-on: ubuntu-latest
+    needs: [setup_venv, apt_dependencies]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Apt dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes $(cat debian_deps.txt)
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          version: 1.0
       - uses: actions/cache@v4
         with:
           path: ./.venv/
@@ -59,12 +68,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Apt dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes $(cat debian_deps.txt)
-      - name: Python dependencies
-        run: pip install --requirement requirements_dev.txt
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          version: 1.0
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv/
+          key: venv-${{ hashFiles('requirements_dev.txt') }}
       - name: Download initial build_dir
         uses: actions/download-artifact@v4
         with:
@@ -88,12 +99,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Apt dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes $(cat debian_deps.txt)
-      - name: Python dependencies
-        run: pip install --requirement requirements_dev.txt
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential cmake git libpoco-dev libeigen3-dev libxslt-dev libcoin-dev libccd-dev libglfw3-dev libboost-all-dev liblzma-dev libxml2-dev libxslt1-dev ninja-build clang clang-format clang-tidy
+          version: 1.0
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv/
+          key: venv-${{ hashFiles('requirements_dev.txt') }}
       - name: Download initial build_dir
         uses: actions/download-artifact@v4
         with:
