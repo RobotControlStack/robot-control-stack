@@ -27,18 +27,10 @@ jobs:
           source .venv/bin/activate
           python3 -m pip config --site set global.no-build-isolation false
           python3 -m pip install --requirement requirements_dev.txt
-  install_apt_deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: ${{ env.PACKAGES }}
-          version: 1.0
 
   build_gcc:
     runs-on: ubuntu-latest
-    needs: [setup_venv, install_apt_deps]
+    needs: setup_venv
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,14 +41,10 @@ jobs:
         with:
           path: ./.venv/
           key: venv-${{ hashFiles('requirements_dev.txt') }}
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: ${{ env.PACKAGES }}
-          version: 1.0
-      - name: Install libboost explicitly
+      - name: Install apt dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libboost-all-dev
+          sudo apt-get install ${{ env.PACKAGES }}
       - name: CMake configure
         run: |
           source .venv/bin/activate
@@ -70,25 +58,23 @@ jobs:
           path: build
   build_clang:
     runs-on: ubuntu-latest
-    needs: [setup_venv, install_apt_deps]
+    needs: setup_venv
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: ${{ env.PACKAGES }}
-          version: 1.0
       - uses: actions/cache@v4
         id: cache-venv
         with:
           path: ./.venv/
           key: venv-${{ hashFiles('requirements_dev.txt') }}
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install ${{ env.PACKAGES }}
       - name: CMake configure
         run: |
-          cmake --version
-          cmake --help-policy CMP0167
           source .venv/bin/activate
           Python3_ROOT_DIR= cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       - name: CMake build
@@ -98,3 +84,29 @@ jobs:
         with:
           name: build_clang
           path: build
+
+  cpp_lint:
+    runs-on: ubuntu-latest
+    needs: setup_venv
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install ${{ env.PACKAGES }}
+      - uses: actions/cache@v4
+        id: cache-venv
+        with:
+          path: ./.venv/
+          key: venv-${{ hashFiles('requirements_dev.txt') }}
+      - name: CMake configure
+        run: |
+          source .venv/bin/activate
+          Python3_ROOT_DIR= cmake -B build
+      - run: clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
+
+  cpp_check_format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: clang-format -Werror -i $(find src -name '*.cpp' -o -name '*.cc' -o -name '*.h')
