@@ -425,7 +425,7 @@ class GripperWrapper(ActObsInfoWrapper):
         if gripper_action != self._last_gripper_action:
             self._last_gripper_action = gripper_action
             if self.binary:
-                self._gripper.grasp() if self._gripper_state == 0 else self._gripper.open()
+                self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
             else:
                 self._gripper.set_normalized_width(action["gripper"])
         del action[self.gripper_key]
