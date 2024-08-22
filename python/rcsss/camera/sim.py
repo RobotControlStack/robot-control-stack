@@ -25,6 +25,7 @@ class SimCameraConfig(BaseCameraConfig):
 
 class SimCameraSetConfig(BaseCameraSetConfig):
     cameras: dict[str, SimCameraConfig] = Field(default={})
+    max_buffer_frames: int = 1000
 
 
 class SimCameraSet(_SimCameraSet):
@@ -58,6 +59,7 @@ class SimCameraSet(_SimCameraSet):
         cpp_set_cfg.resolution_width = cfg.resolution_width
         cpp_set_cfg.resolution_height = cfg.resolution_height
         cpp_set_cfg.frame_rate = cfg.frame_rate
+        cpp_set_cfg.max_buffer_frames = cfg.max_buffer_frames
 
         super().__init__(sim, cpp_set_cfg)
 

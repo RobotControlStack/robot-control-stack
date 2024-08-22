@@ -144,6 +144,7 @@ class SimCameraSet:
 class SimCameraSetConfig:
     cameras: dict[str, SimCameraConfig]
     frame_rate: int
+    max_buffer_frames: int
     resolution_height: int
     resolution_width: int
     def __init__(self) -> None: ...
