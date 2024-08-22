@@ -1,5 +1,4 @@
 .cache
-.vscode
 build
 plugin.h
 .session.vim
