@@ -307,7 +307,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             unclipped_pose_offset = common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:])
             unclipped_pose = common.Pose(
                 translation=self._origin.translation() + unclipped_pose_offset.translation(),
-                rpy_vector=(unclipped_pose_offset * self._origin).rotation_rpy(),
+                rpy_vector=(unclipped_pose_offset * self._origin).rotation_rpy().as_vector(),
             )
             action.update(
                 TRPYDictType(
