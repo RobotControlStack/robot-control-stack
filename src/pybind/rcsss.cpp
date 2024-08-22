@@ -62,6 +62,7 @@ class PyRobot : public rcs::common::Robot {
   void move_home() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
+
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
   }
@@ -224,7 +225,15 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::common::Robot::reset)
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"),
-           py::call_guard<py::gil_scoped_release>());
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_base_pose_in_world_coordinates",
+           &rcs::common::Robot::get_base_pose_in_world_coordinates)
+      .def("to_pose_in_robot_coordinates",
+           &rcs::common::Robot::to_pose_in_robot_coordinates,
+           py::arg("pose_in_world_coordinates"))
+      .def("to_pose_in_world_coordinates",
+           &rcs::common::Robot::to_pose_in_world_coordinates,
+           py::arg("pose_in_robot_coordinates"));
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
@@ -305,6 +314,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame)
+      .def_readwrite("world_to_robot", &rcs::hw::FR3Config::world_to_robot)
       .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset);
 
   py::class_<rcs::hw::FHConfig, rcs::common::GConfig>(hw, "FHConfig")

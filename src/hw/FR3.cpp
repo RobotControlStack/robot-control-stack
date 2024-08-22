@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "MotionGenerator.h"
+#include "common/Pose.h"
 
 namespace rcs {
 namespace hw {
@@ -229,6 +230,11 @@ void FR3::set_cartesian_position_rl(const common::Pose &pose) {
     // throw error
     throw rl::mdl::Exception("IK failed");
   }
+}
+
+common::Pose FR3::get_base_pose_in_world_coordinates() {
+  return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value()
+                                              : common::Pose();
 }
 
 void FR3::set_cartesian_position_internal(const common::Pose &pose,

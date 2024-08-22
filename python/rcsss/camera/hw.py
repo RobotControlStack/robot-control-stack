@@ -7,10 +7,17 @@ from pathlib import Path
 from time import sleep
 
 import numpy as np
-from rcsss.camera.interface import BaseCameraSetConfig, Frame, FrameSet
+from pydantic import Field
+from rcsss.camera.interface import (
+    BaseCameraConfig,
+    BaseCameraSetConfig,
+    Frame,
+    FrameSet,
+)
 
 
 class HWCameraSetConfig(BaseCameraSetConfig):
+    cameras: dict[str, BaseCameraConfig] = Field(default={})
     warm_up_disposal_frames: int = 30  # frames
     record_path: str = "camera_frames"
     # max_frames: int = 1000
@@ -116,7 +123,7 @@ class BaseHardwareCameraSet(ABC):
     @property
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
-        return [camera.identifier for camera in self.config.cameras.values()]
+        return list(self.config.cameras)
 
     @property
     def name_to_identifier(self) -> dict[str, str]:

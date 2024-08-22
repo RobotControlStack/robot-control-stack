@@ -9,8 +9,8 @@ Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
 Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
 Eigen::Matrix4d FrankaHandTCPOffset() {
-  return (Eigen::Matrix4d() << 0.707, -0.707, 0, 0, 0.707, 0.707, 0, 0, 0, 0, 1,
-          0, 0, 0, 0.1034, 1)
+  return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1,
+          0.1034, 0, 0, 0, 1)
       .finished();
 }
 
@@ -134,7 +134,7 @@ RPY Pose::rotation_rpy() const {
   // ZYX, roll, pitch, yaw
   Eigen::Vector3d rpy_vec =
       this->m_rotation.toRotationMatrix().eulerAngles(2, 1, 0);
-  return RPY{rpy_vec.x(), rpy_vec.y(), rpy_vec.z()};
+  return RPY{rpy_vec.z(), rpy_vec.y(), rpy_vec.x()};
 }
 
 Pose Pose::interpolate(const Pose &dest_pose, double progress) const {
