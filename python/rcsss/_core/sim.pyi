@@ -67,6 +67,8 @@ class CameraType:
 class FHConfig(rcsss._core.common.GConfig):
     epsilon_inner: float
     epsilon_outer: float
+    ignored_collision_geoms: list[str]
+    seconds_between_callbacks: float
     def __init__(self) -> None: ...
 
 class FHState(rcsss._core.common.GState):
