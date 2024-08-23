@@ -111,8 +111,8 @@ class CameraDictType(RCSpaceType):
     ]
 
 
-# joining works with inhertiance but need to inherit from protocol again
-class ArmObsType(TQuartDictType, JointsDictType): ...
+# joining works with inheritance but need to inherit from protocol again
+class ArmObsType(TQuartDictType, JointsDictType, TRPYDictType): ...
 
 
 CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
@@ -191,6 +191,7 @@ class FR3Env(gym.Env):
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
             ),
             joints=self.robot.get_joint_position(),
+            xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
