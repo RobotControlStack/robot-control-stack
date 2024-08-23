@@ -17,6 +17,7 @@ struct FHConfig : common::GConfig {
   double epsilon_inner = 0.005;
   double epsilon_outer = 0.005;
   double seconds_between_callbacks = 0.05;  // 20 Hz
+  std::vector<std::string> ignored_collision_geoms = {};
 };
 
 struct FHState : common::GState {
@@ -41,6 +42,10 @@ class FrankaHand : public common::Gripper {
   bool convergence_callback();
   bool collision_callback();
   std::set<size_t> cgeom;
+  std::set<size_t> cfgeom;
+  std::set<size_t> ignored_collision_geoms;
+  void add_collision_geoms(const std::vector<std::string> &cgeoms_str,
+                           std::set<size_t> &cgeoms_set, bool clear_before);
   void m_reset();
 
  public:
