@@ -8,7 +8,13 @@
 #include <tuple>
 
 struct {
-  std::array<std::string, 2> collision_geoms{"hand_c", "d435i_collision"};
+  // TODO(juelg): add camera mount collision (first a name needs to be
+  // added to the model)
+  std::vector<std::string> collision_geoms{"hand_c", "d435i_collision",
+                                           "finger_0_left", "finger_0_right"};
+
+  std::vector<std::string> collision_geoms_fingers{"finger_0_left",
+                                                   "finger_0_right"};
   std::string joint = "finger_joint1";
   std::string actuator = "actuator8";
 } const gripper_names;
@@ -35,15 +41,9 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
         std::string("No joint named " + gripper_names.joint));
   }
   // Collision geoms
-  for (size_t i = 0; i < std::size(gripper_names.collision_geoms); ++i) {
-    std::string name = gripper_names.collision_geoms[i] + "_" + id;
-
-    int coll_id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
-    if (coll_id == -1) {
-      throw std::runtime_error(std::string("No geom named " + name));
-    }
-    this->cgeom.insert(coll_id);
-  }
+  this->add_collision_geoms(gripper_names.collision_geoms, this->cgeom, false);
+  this->add_collision_geoms(gripper_names.collision_geoms_fingers, this->cfgeom,
+                            false);
 
   this->sim->register_cb(std::bind(&FrankaHand::is_moving_callback, this),
                          this->cfg.seconds_between_callbacks);
@@ -56,7 +56,29 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
 
 FrankaHand::~FrankaHand() {}
 
-bool FrankaHand::set_parameters(const FHConfig &cfg) { return true; }
+void FrankaHand::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
+                                     std::set<size_t> &cgeoms_set,
+                                     bool clear_before) {
+  if (clear_before) {
+    cgeoms_set.clear();
+  }
+  for (size_t i = 0; i < std::size(cgeoms_str); ++i) {
+    std::string name = cgeoms_str[i] + "_" + id;
+
+    int coll_id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
+    if (coll_id == -1) {
+      throw std::runtime_error(std::string("No geom named " + name));
+    }
+    cgeoms_set.insert(coll_id);
+  }
+}
+
+bool FrankaHand::set_parameters(const FHConfig &cfg) {
+  this->cfg = cfg;
+  this->add_collision_geoms(cfg.ignored_collision_geoms,
+                            this->ignored_collision_geoms, true);
+  return true;
+}
 
 FHConfig *FrankaHand::get_parameters() {
   // copy config to heap
@@ -82,10 +104,8 @@ void FrankaHand::set_normalized_width(double width, double force) {
   // this->sim->d->actuator_force[this->gripper_id] = 0;
 }
 double FrankaHand::get_normalized_width() {
-  // return this->sim->d->qpos[this->sim->m->tendon_adr[this->tendon_id]] /
-  //        this->MAX_WIDTH;
   double width = this->sim->d->qpos[this->joint_id] / this->MAX_JOINT_WIDTH;
-  // sometimes the joint is slighly outside of the bounds
+  // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
     width = 0;
   } else if (width > 1) {
@@ -97,8 +117,20 @@ double FrankaHand::get_normalized_width() {
 bool FrankaHand::collision_callback() {
   this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
-    if (this->cgeom.contains(this->sim->d->contact[i].geom[0]) ||
-        this->cgeom.contains(this->sim->d->contact[i].geom[1])) {
+    if (this->cfgeom.contains(this->sim->d->contact[i].geom[0]) &&
+        this->cfgeom.contains(this->sim->d->contact[i].geom[1])) {
+      // ignore collisions between fingers
+      continue;
+    }
+
+    if ((this->cgeom.contains(this->sim->d->contact[i].geom[0]) or
+         this->cgeom.contains(this->sim->d->contact[i].geom[1])) and
+        // ignore all collision with ignored objects with frankahand
+        // not just fingers
+        not(this->ignored_collision_geoms.contains(
+                this->sim->d->contact[i].geom[1]) or
+            this->ignored_collision_geoms.contains(
+                this->sim->d->contact[i].geom[1]))) {
       this->state.collision = true;
       break;
     }

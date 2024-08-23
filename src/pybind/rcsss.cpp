@@ -414,7 +414,11 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FHConfig, rcs::common::GConfig>(sim, "FHConfig")
       .def(py::init<>())
       .def_readwrite("epsilon_inner", &rcs::sim::FHConfig::epsilon_inner)
-      .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer);
+      .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer)
+      .def_readwrite("seconds_between_callbacks",
+                     &rcs::sim::FHConfig::seconds_between_callbacks)
+      .def_readwrite("ignored_collision_geoms",
+                     &rcs::sim::FHConfig::ignored_collision_geoms);
   py::class_<rcs::sim::FHState, rcs::common::GState>(sim, "FHState")
       .def(py::init<>())
       .def_readonly("last_commanded_width",
