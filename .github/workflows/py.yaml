@@ -32,6 +32,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install CPP dependencies
         run: sudo apt install $(cat debian_deps.txt)
+      - name: Install virtual frame buffer tool
+        run: sudo apt install xvfb
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -52,4 +54,4 @@ jobs:
       - name: Check that stub files are up-to-date
         run: make stubgen && git diff --exit-code
       - name: Ensure all unittests(pytest) are passing
-        run: make pytest
+        run: xvfb-run make pytest
