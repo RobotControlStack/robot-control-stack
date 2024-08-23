@@ -88,7 +88,7 @@ class TestSimEnvsTRPY:
         q = initial_tquart[3:]
         initial_pose = common.Pose(translation=np.array(t), quaternion=np.array(q))
         xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
-        non_zero_action = OrderedDict([("xyzrpy", np.array(xyzrpy)), ("gripper", np.array([0], dtype=np.float32))])
+        non_zero_action = OrderedDict([("xyzrpy", np.array(xyzrpy)), ("gripper", 0)])
         expected_obs = obs_initial["tquart"].copy()
         expected_obs[0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
@@ -108,7 +108,7 @@ class TestSimEnvsTRPY:
 
         # action to be performed
         zero_action = OrderedDict(
-            [("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)), ("gripper", np.array([0], dtype=np.float32))]
+            [("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)), ("gripper", 0)]
         )
         obs, _, _, _, info = env.step(zero_action)
         assert info["ik_success"]
@@ -132,7 +132,7 @@ class TestSimEnvsTRPY:
         non_zero_action = OrderedDict(
             [
                 ("xyzrpy", np.array([x_pos_change, 0, 0, 0, 0, 0], dtype=np.float32)),
-                ("gripper", np.array([0], dtype=np.float32)),
+                ("gripper", 0),
             ]
         )
         expected_obs = obs_initial["tquart"].copy()
@@ -160,13 +160,15 @@ class TestSimEnvsTRPY:
             cam_cfg=cam_cfg,
             robot_id="0",
         )
-        env_.reset()
+        obs, _ = env_.reset()
         # an obvious below ground collision action
         # TODO: run this multiple times and notice that sometimes it passes and sometimes it doesnt
+        obs["xyzrpy"][2] = -0.2
+
         collision_action = OrderedDict(
             [
-                ("xyzrpy", np.array([0.3, 0, -0.1, -0.13712998, -2.2763247, -0.23976775], dtype=np.float32)),
-                ("gripper", np.array([0.18612409], dtype=np.float32)),
+                ("xyzrpy", obs["xyzrpy"]),
+                ("gripper", 0),
             ]
         )
         _, _, _, _, info = env_.step(collision_action)
@@ -174,6 +176,7 @@ class TestSimEnvsTRPY:
         # property is not populated correctly
 
         assert info["ik_success"]
+        assert info["is_sim_converged"]
         assert info["collision"]
 
 
@@ -234,7 +237,7 @@ class TestSimEnvsTquart:
         zero_rel_action = OrderedDict(
             [
                 ("tquart", np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32)),
-                ("gripper", np.array([0], dtype=np.float32)),
+                ("gripper", 0),
             ]
         )
         obs, _, _, _, info = env.step(zero_rel_action)
@@ -267,12 +270,13 @@ class TestSimEnvsTquart:
                     "tquart",
                     np.array([0.3, 0, -0.01, 9.23879533e-01, -3.82683432e-01, -7.25288143e-17, -3.00424186e-17]),
                 ),
-                ("gripper", np.array([0], dtype=np.float32)),
+                ("gripper", 0),
             ]
         )
         _, _, _, _, info = env_.step(act)
 
         assert info["ik_success"]
+        assert info["is_sim_converged"]
         assert info["collision"]
 
 
@@ -327,10 +331,12 @@ class TestSimEnvsJoints:
         act = OrderedDict(
             [
                 ("joints", np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32)),
-                ("gripper", np.array([0.5209108], dtype=np.float32)),
+                ("gripper", 1),
             ]
         )
         _, _, _, _, info = env_.step(act)
+        assert info["ik_success"]
+        assert info["is_sim_converged"]
         assert info["collision"]
 
     def test_relative_zero_action_joints(self, cfg, gripper_cfg, cam_cfg):
@@ -350,7 +356,7 @@ class TestSimEnvsJoints:
         act = OrderedDict(
             [
                 ("joints", np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32)),
-                ("gripper", np.array([0], dtype=np.float32)),
+                ("gripper", 0),
             ]
         )
         obs, _, _, _, info = env_.step(act)
