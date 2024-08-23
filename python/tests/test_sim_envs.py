@@ -1,18 +1,12 @@
-import pytest
 from collections import OrderedDict
-import numpy as np
-from rcsss._core import common
 
+import numpy as np
+import pytest
 import rcsss
+from rcsss import sim
+from rcsss._core import common
 from rcsss.camera.sim import SimCameraSetConfig
 from rcsss.envs import typed_factory as tf
-from rcsss import sim
-
-from rcsss._core.sim import CameraType
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet
-from rcsss.envs.base import CameraSetWrapper, ControlMode, FR3Env, GripperWrapper, RelativeActionSpace
-from rcsss.envs.sim import CollisionGuard, FR3Sim
-import gymnasium as gym
 
 
 @pytest.fixture
@@ -107,9 +101,7 @@ class TestSimEnvsTRPY:
         obs_initial, _ = env.reset()
 
         # action to be performed
-        zero_action = OrderedDict(
-            [("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)), ("gripper", 0)]
-        )
+        zero_action = OrderedDict([("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)), ("gripper", 0)])
         obs, _, _, _, info = env.step(zero_action)
         assert info["ik_success"]
         assert info["is_sim_converged"]
@@ -138,7 +130,7 @@ class TestSimEnvsTRPY:
         expected_obs = obs_initial["tquart"].copy()
 
         expected_obs[0] += x_pos_change
-        obs, reward, terminated, truncated, info = env.step(non_zero_action)
+        obs, _, _, _, info = env.step(non_zero_action)
         assert info["ik_success"]
         assert info["is_sim_converged"]
 
@@ -146,7 +138,7 @@ class TestSimEnvsTRPY:
         expected_pose = common.Pose(translation=np.array(expected_obs[:3]), quaternion=np.array(expected_obs[3:]))
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
 
-    # seems to make problems sometimes
+    # TODO: collision test still randomly fails
     def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
@@ -162,7 +154,6 @@ class TestSimEnvsTRPY:
         )
         obs, _ = env_.reset()
         # an obvious below ground collision action
-        # TODO: run this multiple times and notice that sometimes it passes and sometimes it doesnt
         obs["xyzrpy"][2] = -0.2
 
         collision_action = OrderedDict(
@@ -207,7 +198,6 @@ class TestSimEnvsTquart:
         assert info["ik_success"]
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
 
-    # @pytest.mark.skip(reason="temporarily making it fail due to the TODOs")
     def test_zero_action_tquart(self, cfg):
         """
         Test that a zero action does not change the state significantly in the tquart configuration
@@ -249,6 +239,7 @@ class TestSimEnvsTquart:
         )
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
 
+    # TODO: collision test still randomly fails
     def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard

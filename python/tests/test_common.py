@@ -1,8 +1,8 @@
 import math
 
+import numpy as np
 import pytest
 from rcsss import common
-import numpy as np
 
 
 class TestPose:
