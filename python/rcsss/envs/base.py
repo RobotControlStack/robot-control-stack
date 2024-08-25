@@ -6,7 +6,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import common
+from rcsss import common, sim
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -427,6 +427,12 @@ class GripperWrapper(ActObsInfoWrapper):
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         observation[self.gripper_key] = self._gripper.get_normalized_width()
+
+        # TODO: a cleaner solution would be to put this code into env/sim.py
+        # similar to sim fr3 has also a sim specific wrapper
+        if isinstance(self._gripper, sim.FrankaHand):
+            state = self._gripper.get_state()
+            info["collision"] = state.collision
         if self.binary:
             observation[self.gripper_key] = round(observation[self.gripper_key])
         return observation, info
