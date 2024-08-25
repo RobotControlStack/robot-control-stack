@@ -6,7 +6,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import common
+from rcsss import common, sim
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -16,8 +16,6 @@ from rcsss.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-
-from python.rcsss import sim
 
 
 class TRPYDictType(RCSpaceType):
