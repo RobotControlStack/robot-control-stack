@@ -111,12 +111,24 @@ class CameraDictType(RCSpaceType):
     ]
 
 
-# joining works with inhertiance but need to inherit from protocol again
-class ArmObsType(TQuartDictType, JointsDictType): ...
+# joining works with inheritance but need to inherit from protocol again
+class ArmObsType(TQuartDictType, JointsDictType, TRPYDictType): ...
 
 
 CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
 LimitedCartOrJointContType: TypeAlias = LimitedTQuartRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
+
+
+class ObsArmsGr(ArmObsType, GripperDictType):
+    pass
+
+
+class ObsArmsGrCam(ArmObsType, GripperDictType, CameraDictType):
+    pass
+
+
+class ObsArmsGrCamCG(ArmObsType, GripperDictType, CameraDictType):
+    pass
 
 
 class ControlMode(Enum):
@@ -131,7 +143,8 @@ class FR3Env(gym.Env):
     Top view of on the robot. Robot faces into x direction.
     z direction faces upwards. (Right handed coordinate axis)
         ^ x
-    <-  RobotBase
+        |
+    <-- RobotBase
     y
     """
 
@@ -178,6 +191,7 @@ class FR3Env(gym.Env):
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
             ),
             joints=self.robot.get_joint_position(),
+            xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
         )
 
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:

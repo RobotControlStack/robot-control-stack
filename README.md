@@ -12,7 +12,7 @@ sudo apt install $(cat debian_deps.txt)
 python3 -m venv .venv
 source .venv/bin/activate
 pip config --site set global.no-build-isolation false
-pip install --requirements requirements_dev.txt
+pip install -r requirements_dev.txt
 ```
 3. Build and install RCS:
 ```shell

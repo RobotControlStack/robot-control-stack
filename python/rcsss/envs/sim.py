@@ -25,14 +25,15 @@ class FR3Sim(gym.Wrapper):
         self.sim = simulation
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
-        obs, _, _, _, info = super().step(action)
+        _, _, _, _, info = super().step(action)
         self.sim.step_until_convergence()
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
         info["is_sim_converged"] = self.sim.is_converged()
         # truncate episode if collision
-        return obs, 0, False, state.collision or not state.ik_success, info
+
+        return dict(self.unwrapped.get_obs()), 0, False, state.collision or not state.ik_success, info
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None

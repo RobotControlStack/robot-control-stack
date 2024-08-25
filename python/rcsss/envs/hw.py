@@ -19,7 +19,7 @@ class FR3HW(gym.Wrapper):
         assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
         self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
 
-    def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict]:
+    def step(self, action: Any) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict]:
         try:
             return super().step(action)
         except hw.exceptions.FrankaControlException as e:
@@ -27,7 +27,7 @@ class FR3HW(gym.Wrapper):
             self.hw_robot.automatic_error_recovery()
             # TODO: this does not work if some wrappers are in between
             # FR3HW and FR3Env
-            return self.unwrapped.get_obs(), 0, False, True, {}
+            return dict(self.unwrapped.get_obs()), 0, False, True, {}
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None

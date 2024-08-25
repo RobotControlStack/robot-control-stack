@@ -1,8 +1,7 @@
 from typing import Annotated
 
-import numpy as np
 import gymnasium as gym
-
+import numpy as np
 from rcsss.envs.space_utils import RCSpaceType, get_space, get_space_keys
 
 
