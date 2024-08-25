@@ -424,7 +424,10 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("last_commanded_width",
                     &rcs::sim::FHState::last_commanded_width)
       .def_readonly("max_unnormalized_width",
-                    &rcs::sim::FHState::max_unnormalized_width);
+                    &rcs::sim::FHState::max_unnormalized_width)
+      .def_readonly("is_moving", &rcs::sim::FHState::is_moving)
+      .def_readonly("last_width", &rcs::sim::FHState::last_width)
+      .def_readonly("collision", &rcs::sim::FHState::collision);
 
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {

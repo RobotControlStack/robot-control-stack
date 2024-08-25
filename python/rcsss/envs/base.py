@@ -17,6 +17,8 @@ from rcsss.envs.space_utils import (
     get_space_keys,
 )
 
+from python.rcsss import sim
+
 
 class TRPYDictType(RCSpaceType):
     """Pose format is in transpose[3],r,p,y"""
@@ -413,6 +415,12 @@ class GripperWrapper(ActObsInfoWrapper):
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         observation[self.gripper_key] = self._gripper.get_normalized_width()
+
+        # TODO: a cleaner solution would be to put this code into env/sim.py
+        # similar to sim fr3 has also a sim specific wrapper
+        if isinstance(self._gripper, sim.FrankaHand):
+            state = self._gripper.get_state()
+            info["collision"] = state.collision
         if self.binary:
             observation[self.gripper_key] = round(observation[self.gripper_key])
         return observation, info
