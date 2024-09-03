@@ -208,18 +208,21 @@ class FR3Env(gym.Env):
             raise RuntimeError(msg)
 
         if self.get_base_control_mode() == ControlMode.JOINTS and (
-            self.prev_action is None or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
+            self.prev_action is None
+            or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
         ):
             # cast is needed because typed dicts cannot be checked at runtime
             self.robot.set_joint_position(action_dict[self.joints_key])
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
-            self.prev_action is None or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key], atol=1e-03, rtol=0)
+            self.prev_action is None
+            or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key], atol=1e-03, rtol=0)
         ):
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
-            self.prev_action is None or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
+            self.prev_action is None
+            or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
         ):
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])

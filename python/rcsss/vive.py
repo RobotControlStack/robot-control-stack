@@ -2,7 +2,7 @@ import logging
 import threading
 from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
-from struct import unpack, pack
+from struct import pack, unpack
 
 import gymnasium as gym
 import numpy as np
@@ -93,90 +93,89 @@ class UDPViveActionServer(threading.Thread):
     def run(self):
         warning_raised = False
 
-        with socket(AF_INET, SOCK_DGRAM) as sock:
-            with socket(AF_INET, SOCK_DGRAM) as send_sock:
-                sock.settimeout(2)
-                sock.setblocking(False)
-                sock.bind((self._host, self._port))
-                send_sock.connect(("127.0.0.1", self._port + 1))
-                while not self._exit_requested:
-                    try:
-                        unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
-                        if warning_raised:
-                            logger.info("[UDP Server] connection reestablished")
-                            warning_raised = False
-                    except TimeoutError:
-                        if not warning_raised:
-                            logger.warning("[UDP server] socket timeout (0.1s), waiting for packets")
-                            warning_raised = True
-                        continue
-                    with self._resource_lock:
-                        last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
-                        last_controller_pose = Pose(
-                            translation=last_controller_pose_raw[4:],
-                            quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else np.array([0, 0, 0, 1]),
-                        )
-                        if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
-                            # trigger just pressed (first data sample with button pressed
+        with socket(AF_INET, SOCK_DGRAM) as sock, socket(AF_INET, SOCK_DGRAM) as send_sock:
+            sock.settimeout(2)
+            sock.setblocking(False)
+            sock.bind((self._host, self._port))
+            send_sock.connect(("127.0.0.1", self._port + 1))
+            while not self._exit_requested:
+                try:
+                    unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
+                    if warning_raised:
+                        logger.info("[UDP Server] connection reestablished")
+                        warning_raised = False
+                except TimeoutError:
+                    if not warning_raised:
+                        logger.warning("[UDP server] socket timeout (0.1s), waiting for packets")
+                        warning_raised = True
+                    continue
+                with self._resource_lock:
+                    last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
+                    last_controller_pose = Pose(
+                        translation=last_controller_pose_raw[4:],
+                        quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else np.array([0, 0, 0, 1]),
+                    )
+                    if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
+                        # trigger just pressed (first data sample with button pressed
 
-                            # set forward direction based on current controller pose
-                            if self._ego_lock:
-                                x_axis = Pose(translation=np.array([1, 0, 0]))
-                                x_axis_rot = (
-                                    UDPViveActionServer.transform_from_openxr
-                                    * Pose(quaternion=last_controller_pose.rotation_q())
-                                    * UDPViveActionServer.transform_from_openxr.inverse()
-                                    * x_axis
-                                )
-
-                                # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
-                                rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
-                                    x_axis.translation()[1], x_axis.translation()[0]
-                                )
-                                rot_z -= np.pi / 2
-
-                                print(f"Angle: {rot_z*180/np.pi}")
-                                self._ego_transform = Pose(RPY(yaw=-rot_z))
-                            else:
-                                self._ego_transform = Pose()
-
-                            self._offset_pose = last_controller_pose
-                            self._last_controller_pose = last_controller_pose
-
-                        elif not Button(int(unpacked[7])) & self._trg_btn and Button(int(self._buttons)) & self._trg_btn:
-                            # released
-                            with self._env_lock:
-                                self._last_controller_pose = Pose()
-                                self._offset_pose = Pose()
-                                self._ego_transform = Pose()
-                                self._env.set_origin_to_current()
-
-                        elif Button(int(unpacked[7])) & self._trg_btn:
-                            # button is pressed
-                            self._last_controller_pose = last_controller_pose
-
-                            # plot current offset with liveplot.py
-                            transform = Pose(
-                                translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
-                                quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
-                            )
-                            offset = (
-                                self._ego_transform
-                                * UDPViveActionServer.transform_from_openxr
-                                * transform
+                        # set forward direction based on current controller pose
+                        if self._ego_lock:
+                            x_axis = Pose(translation=np.array([1, 0, 0]))
+                            x_axis_rot = (
+                                UDPViveActionServer.transform_from_openxr
+                                * Pose(quaternion=last_controller_pose.rotation_q())
                                 * UDPViveActionServer.transform_from_openxr.inverse()
-                                * self._ego_transform.inverse()
+                                * x_axis
                             )
-                            send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
 
-                        if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
-                            # just pressed
-                            self._grp_pos = 0
-                        elif not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn:
-                            # just released
-                            self._grp_pos = 1
+                            # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
+                            rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
+                                x_axis.translation()[1], x_axis.translation()[0]
+                            )
+                            rot_z -= np.pi / 2
 
-                        self._buttons = unpacked[7]
+                            print(f"Angle: {rot_z*180/np.pi}")
+                            self._ego_transform = Pose(RPY(yaw=-rot_z))
+                        else:
+                            self._ego_transform = Pose()
+
+                        self._offset_pose = last_controller_pose
+                        self._last_controller_pose = last_controller_pose
+
+                    elif not Button(int(unpacked[7])) & self._trg_btn and Button(int(self._buttons)) & self._trg_btn:
+                        # released
+                        with self._env_lock:
+                            self._last_controller_pose = Pose()
+                            self._offset_pose = Pose()
+                            self._ego_transform = Pose()
+                            self._env.set_origin_to_current()
+
+                    elif Button(int(unpacked[7])) & self._trg_btn:
+                        # button is pressed
+                        self._last_controller_pose = last_controller_pose
+
+                        # plot current offset with liveplot.py
+                        transform = Pose(
+                            translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
+                            quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
+                        )
+                        offset = (
+                            self._ego_transform
+                            * UDPViveActionServer.transform_from_openxr
+                            * transform
+                            * UDPViveActionServer.transform_from_openxr.inverse()
+                            * self._ego_transform.inverse()
+                        )
+                        send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
+
+                    if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
+                        # just pressed
+                        self._grp_pos = 0
+                    elif not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn:
+                        # just released
+                        self._grp_pos = 1
+
+                    self._buttons = unpacked[7]
 
     def stop(self):
         self._exit_requested = True
