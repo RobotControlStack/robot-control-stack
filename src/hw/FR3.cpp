@@ -39,11 +39,13 @@ FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
   if (filename.has_value()) {
     this->rl = RL();
 
-    this->rl.value().mdl = rl::mdl::UrdfFactory().create(filename.value());
-    this->rl.value().kin =
-        std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl.value().mdl);
-    this->rl.value().ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
-        this->rl.value().kin.get());
+    this->rl->mdl = rl::mdl::UrdfFactory().create(filename.value());
+    this->rl->kin =
+        std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl->mdl);
+    this->rl->ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
+        this->rl->kin.get());
+    this->rl->ik->setRandomRestarts(0);
+    this->rl->ik->setEpsilon(1e-3);
   }
 }
 
@@ -215,17 +217,17 @@ void FR3::set_cartesian_position_rl(const common::Pose &pose) {
     throw rl::mdl::Exception(
         "No file for robot model was provided. Cannot use RL for IK.");
   }
-  this->rl.value().kin->setPosition(this->get_joint_position());
-  this->rl.value().kin->forwardPosition();
+  this->rl->kin->setPosition(this->get_joint_position());
+  this->rl->kin->forwardPosition();
   rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
 
-  this->rl.value().ik->addGoal(new_pose.affine_matrix(), 0);
-  bool success = this->rl.value().ik->solve();
+  this->rl->ik->addGoal(new_pose.affine_matrix(), 0);
+  bool success = this->rl->ik->solve();
   if (success) {
     // is this forward needed and is it mabye possible to call
     // this on the model?
-    this->rl.value().kin->forwardPosition();
-    this->set_joint_position(this->rl.value().kin->getPosition());
+    this->rl->kin->forwardPosition();
+    this->set_joint_position(this->rl->kin->getPosition());
   } else {
     // throw error
     throw rl::mdl::Exception("IK failed");
