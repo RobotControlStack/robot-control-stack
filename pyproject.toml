@@ -18,6 +18,7 @@ dependencies = ["websockets>=11.0",
     "glfw~=2.7",
     "pyopengl",
     "pyrealsense2~=2.55.1",
+    "pynput~=1.7.7",
     "pillow~=10.3",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.1.5"
