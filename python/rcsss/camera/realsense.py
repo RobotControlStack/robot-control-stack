@@ -37,8 +37,8 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
     def __init__(self, cfg: RealSenseSetConfig) -> None:
-        super().__init__()
         self._cfg = cfg
+        super().__init__()
         self.D400_config = rs.config()
 
         self.D400_config.enable_stream(
@@ -190,7 +190,6 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
 
         # TODO(juelg): what is a "pose" (in frame) and how can we use it
         # TODO(juelg): decide whether to use the poll method and to wait if devices get ready
-
         assert camera_name in self.name_to_identifier, f"Camera {camera_name} not found in the enabled devices"
         serial = self.name_to_identifier[camera_name]
         device = self._enabled_devices[serial]
