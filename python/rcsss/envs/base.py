@@ -245,27 +245,44 @@ class RelativeTo(Enum):
 
 
 class RelativeActionSpace(gym.ActionWrapper):
-    MAX_CART_MOV = 0.5
-    MAX_JOINT_MOV = np.deg2rad(5)
+    DEFAULT_MAX_CART_MOV = 0.5
+    DEFAULT_MAX_JOINT_MOV = np.deg2rad(5)
 
-    def __init__(self, env, relative_to: RelativeTo = RelativeTo.LAST_STEP):
+    def __init__(self, env, relative_to: RelativeTo = RelativeTo.LAST_STEP, max_mov: float | None = None):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
         self.relative_to = relative_to
+        if (
+            self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY
+            or self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart
+        ):
+            if max_mov is None:
+                max_mov = self.DEFAULT_MAX_CART_MOV
+            else:
+                assert (
+                    max_mov <= 1
+                ), "maximal movement is set to a value higher than 1m, which is really high, consider setting it lower"
+        else:
+            if max_mov is None:
+                max_mov = self.DEFAULT_MAX_JOINT_MOV
+            else:
+                assert max_mov <= np.deg2rad(
+                    180
+                ), "maximal movement is set higher to a value higher than 180 degree, which is really high, consider setting it lower"
+        self.max_mov: float = max_mov
+
         if self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
-                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
+                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov}}).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self.action_space.spaces.update(
-                get_space(
-                    LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.MAX_JOINT_MOV}}
-                ).spaces
+                get_space(LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.max_mov}}).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart:
             self.action_space.spaces.update(
-                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.MAX_CART_MOV}}).spaces
+                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov}}).spaces
             )
         else:
             msg = "Control mode not recognized!"
@@ -308,7 +325,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS and self.joints_key in action:
             assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
-            limited_joints = np.clip(action[self.joints_key], -self.MAX_JOINT_MOV, self.MAX_JOINT_MOV)
+            limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
             action.update(
                 JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
             )
@@ -316,7 +333,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
-            clipped_translation = np.clip(action[self.trpy_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            clipped_translation = np.clip(action[self.trpy_key][:3], -self.max_mov, self.max_mov)
 
             unclipped_pose_offset = common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:])
             unclipped_pose = common.Pose(
@@ -336,7 +353,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
-            clipped_translation = np.clip(action[self.tquart_key][:3], -self.MAX_CART_MOV, self.MAX_CART_MOV)
+            clipped_translation = np.clip(action[self.tquart_key][:3], -self.max_mov, self.max_mov)
 
             unclipped_pose_offset = common.Pose(translation=clipped_translation, quaternion=action[self.tquart_key][3:])
             unclipped_pose = common.Pose(
