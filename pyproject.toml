@@ -93,6 +93,7 @@ ignore = [
   "PGH003",  # Use specfic rule code when ignoring types issues
   # "RET504",
   "T201",    # print() used
+  "PLR5501" # elif to reduce indentation
 ]
 
 [tool.pylint.format]
