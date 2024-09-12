@@ -145,11 +145,11 @@ FR3State* FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  Eigen::Matrix3d rotation(this->sim->d->site_xmat +
+  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation(this->sim->d->site_xmat +
                            9 * this->ids.attachment_site);
   Eigen::Vector3d translation(this->sim->d->site_xpos +
                               3 * this->ids.attachment_site);
-  common::Pose attachment_site(rotation, translation);
+  common::Pose attachment_site(Eigen::Matrix3d(rotation), translation);
   return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
