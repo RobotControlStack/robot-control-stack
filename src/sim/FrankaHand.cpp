@@ -15,7 +15,8 @@ struct {
 
   std::vector<std::string> collision_geoms_fingers{"finger_0_left",
                                                    "finger_0_right"};
-  std::string joint = "finger_joint1";
+  std::string joint1 = "finger_joint1";
+  std::string joint2 = "finger_joint2";
   std::string actuator = "actuator8";
 } const gripper_names;
 
@@ -34,11 +35,17 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
   }
   // this->tendon_id =
   //     mj_name2id(this->sim->m, mjOBJ_TENDON, ("split_" + id).c_str());
-  this->joint_id = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, (gripper_names.joint + "_" + id).c_str())];
-  if (this->joint_id == -1) {
+  this->joint_id_1 = this->sim->m->jnt_qposadr[mj_name2id(
+      this->sim->m, mjOBJ_JOINT, (gripper_names.joint1 + "_" + id).c_str())];
+  if (this->joint_id_1 == -1) {
     throw std::runtime_error(
-        std::string("No joint named " + gripper_names.joint));
+        std::string("No joint named " + gripper_names.joint1));
+  }
+  this->joint_id_2 = this->sim->m->jnt_qposadr[mj_name2id(
+      this->sim->m, mjOBJ_JOINT, (gripper_names.joint2 + "_" + id).c_str())];
+  if (this->joint_id_2 == -1) {
+    throw std::runtime_error(
+        std::string("No joint named " + gripper_names.joint2));
   }
   // Collision geoms
   this->add_collision_geoms(gripper_names.collision_geoms, this->cgeom, false);
@@ -104,7 +111,8 @@ void FrankaHand::set_normalized_width(double width, double force) {
   // this->sim->d->actuator_force[this->gripper_id] = 0;
 }
 double FrankaHand::get_normalized_width() {
-  double width = this->sim->d->qpos[this->joint_id] / this->MAX_JOINT_WIDTH;
+  // TODO: maybe we should use the mujoco sensors? Not sure what the difference is between reading out from qpos and reading from the sensors.
+  double width = this->sim->d->qpos[this->joint_id_1] / this->MAX_JOINT_WIDTH;
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
     width = 0;
@@ -167,7 +175,9 @@ void FrankaHand::m_reset() {
   this->state = FHState();
   this->state.max_unnormalized_width = this->MAX_WIDTH;
   // reset state hard
-  this->sim->d->qpos[this->joint_id] = this->MAX_JOINT_WIDTH;
+  this->sim->d->qpos[this->joint_id_1] = this->MAX_JOINT_WIDTH;
+  this->sim->d->qpos[this->joint_id_2] = this->MAX_JOINT_WIDTH;
+  this->sim->d->ctrl[this->actuator_id] = this->MAX_WIDTH;
 }
 
 void FrankaHand::reset() { this->m_reset(); }
