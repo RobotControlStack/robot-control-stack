@@ -181,7 +181,7 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
     this->state.ik_success = true;
     this->rl.kin->forwardPosition();
     this->set_joint_position(this->rl.kin->getPosition());
-    // forward kinematics can be accessed by 
+    // forward kinematics can be accessed by
     // this->rl.kin->getOperationalPosition(0);
   } else {
     this->state.ik_success = false;
