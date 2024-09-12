@@ -24,21 +24,26 @@ FR3_PASSWORD=<password on franka desk>
 
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-        env_rel = hw_env_rel(ROBOT_IP, ControlMode.JOINTS)
         creds = dotenv_values()
         resource_manger = FCI(
             Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
         )
     else:
-        env_rel = sim_env_rel(ControlMode.JOINTS)
         resource_manger = DummyResourceManager()
-
     with resource_manger:
+
+        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+            env_rel = hw_env_rel(ROBOT_IP, ControlMode.JOINTS)
+        else:
+            env_rel = sim_env_rel(ControlMode.JOINTS)
+
         for _ in range(10):
             obs, info = env_rel.reset()
-            for _ in range(10):
+            for _ in range(3):
                 # sample random relative action and execute it
                 act = env_rel.action_space.sample()
+                # if the first is open, then it does not open
+                act["gripper"] = 1
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")

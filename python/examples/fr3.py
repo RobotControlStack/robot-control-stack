@@ -36,47 +36,57 @@ def main():
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
-
-    if ROBOT_INSTANCE == RobotInstance.SIMULATION:
-        simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
-        robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
-        cfg = sim.FR3Config()
-        cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-        cfg.ik_duration_in_milliseconds = 300
-        cfg.realtime = False
-        robot.set_parameters(cfg)
-
-        gripper_cfg = sim.FHConfig()
-        gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-
-        # add camera to have a rendering gui
-        cameras = {
-            "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
-            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-            # TODO: odd behavior when not both cameras are used: only last image is shown
-        }
-        cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
-        camera_set = SimCameraSet(simulation, cam_cfg)
-        resource_manger = DummyResourceManager()
-
-    else:
-        robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
-        robot_cfg = FR3Config()
-        robot_cfg.controller = IKController.robotics_library
-        robot.set_parameters(robot_cfg)
-
-        gripper_cfg = rcsss.hw.FHConfig()
-        gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-        gripper_cfg.speed = 0.1
-        gripper_cfg.force = 30
-        gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
+    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         creds = dotenv_values()
         resource_manger = FCI(
             Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
         )
-        input("the robot is going to move, press enter whenever you are ready")
+    else:
+        resource_manger = DummyResourceManager()
+
 
     with resource_manger:
+        if ROBOT_INSTANCE == RobotInstance.SIMULATION:
+            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
+            robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+            cfg = sim.FR3Config()
+            cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+            cfg.ik_duration_in_milliseconds = 300
+            cfg.realtime = False
+            robot.set_parameters(cfg)
+
+            gripper_cfg = sim.FHConfig()
+            gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+
+            # add camera to have a rendering gui
+            cameras = {
+                "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+                "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
+                # TODO: odd behavior when not both cameras are used: only last image is shown
+            }
+            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
+            camera_set = SimCameraSet(simulation, cam_cfg)
+            resource_manger = DummyResourceManager()
+
+        else:
+            robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+            robot_cfg = FR3Config()
+            robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+            robot_cfg.controller = IKController.robotics_library
+            robot.set_parameters(robot_cfg)
+
+            gripper_cfg = rcsss.hw.FHConfig()
+            gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
+            gripper_cfg.speed = 0.1
+            gripper_cfg.force = 30
+            gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
+            creds = dotenv_values()
+            resource_manger = FCI(
+                Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
+            )
+            input("the robot is going to move, press enter whenever you are ready")
+
+
         # move to home position and open gripper
         robot.move_home()
         gripper.open()

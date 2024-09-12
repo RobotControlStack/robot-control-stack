@@ -31,6 +31,7 @@ def hw_env_rel(ip: str, control_mode: ControlMode) -> gym.Env[ObsArmsGr, Limited
         sys.exit()
     robot = rcsss.hw.FR3(ip, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     robot_cfg = FR3Config()
+    robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot.set_parameters(robot_cfg)
     # the robot itself is always controlled in joint space with the robotics library IK
     env = FR3Env(robot, ControlMode.JOINTS)
