@@ -35,6 +35,7 @@ def main():
         for _ in range(10):
             obs, info = env_rel.reset()
             for _ in range(10):
+                # sample random relative action and execute it
                 act = env_rel.action_space.sample()
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:

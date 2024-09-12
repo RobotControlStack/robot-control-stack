@@ -38,7 +38,7 @@ def hw_env_rel(ip: str, control_mode: ControlMode) -> gym.Env[ObsArmsGr, Limited
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
-    gripper_cfg.force = 10
+    gripper_cfg.force = 30
     gripper = rcsss.hw.FrankaHand(ip, gripper_cfg)
     env_hw = GripperWrapper(env_hw, gripper, binary=True)
 
