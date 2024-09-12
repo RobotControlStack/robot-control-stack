@@ -241,6 +241,7 @@ class FR3Env(gym.Env):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
+        self.robot.reset()
         return self.get_obs(), {}
 
 
