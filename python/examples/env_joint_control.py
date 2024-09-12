@@ -1,10 +1,12 @@
 import logging
+import mujoco
+import rcsss
 
 from dotenv import dotenv_values
 from rcsss.desk import FCI, Desk, DummyResourceManager
 from rcsss.envs.base import ControlMode, RobotInstance
 
-from common import hw_env_rel, sim_env_rel
+from env_common import hw_env_rel, sim_env_rel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
