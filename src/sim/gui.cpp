@@ -3,6 +3,7 @@
 #include <mujoco/mjdata.h>
 
 #include <boost/interprocess/creation_tags.hpp>
+#include <boost/interprocess/interprocess_fwd.hpp>
 
 const char* INFO_BYTE = "I";
 const char* STATE = "S";
@@ -33,14 +34,21 @@ enum {
 
 namespace rcs {
 namespace sim {
+
+GuiBase::GuiBase(boost::interprocess::managed_shared_memory manager,
+                 std::optional<size_t> state_size,
+                 std::optional<size_t> model_size)
+    : shm{.state{.size = state_size.value()},
+          .model{.size = model_size.value()},
+          .manager{std::move(manager)}} {}
+
 GuiServer::GuiServer(Sim& sim, const std::string& id)
     : sim{sim},
-      shm{.state{.ptr = nullptr,
-                 .size = calculate_state_size(sim.m, mjSTATE_FULLPHYSICS)},
-          .model{.ptr = nullptr, .size = calculate_mdl_size(sim.m)},
-          .info_byte = nullptr,
-          .manager{boost::interprocess::create_only, id.c_str(),
-                   calculate_shm_size(sim.m, sim.d, mjSTATE_FULLPHYSICS)}} {
+      GuiBase(boost::interprocess::managed_shared_memory(
+                  boost::interprocess::create_only, id.c_str(),
+                  calculate_shm_size(sim.m, sim.d, mjSTATE_FULLPHYSICS)),
+              calculate_state_size(sim.m, mjSTATE_FULLPHYSICS),
+              calculate_mdl_size(sim.m)) {
   this->shm.state.ptr =
       this->shm.manager.construct<mjtNum>(STATE)[this->shm.state.size]();
   this->shm.model.ptr =
@@ -66,19 +74,16 @@ void GuiServer::update_mjdata_callback() {
 }
 
 GuiClient::GuiClient(const std::string& id)
-    : shm{.state{
-              .ptr = nullptr,
-          },
-          .model{.ptr = nullptr},
-          .info_byte = nullptr,
-          .manager{boost::interprocess::open_only, id.c_str()}} {
+    : GuiBase(boost::interprocess::managed_shared_memory(
+          boost::interprocess::open_only, id.c_str())) {
   std::tie(this->shm.info_byte, std::ignore) =
       this->shm.manager.find<char>(INFO_BYTE);
   std::tie(this->shm.state.ptr, this->shm.state.size) =
       this->shm.manager.find<mjtNum>(STATE);
   mjVFS* vfs = (mjVFS*)mju_malloc(sizeof(mjVFS));
   mj_defaultVFS(vfs);
-  int failed = mj_addBufferVFS(vfs, "model.mjb", this->shm.model.ptr, this->shm.model.size);
+  int failed = mj_addBufferVFS(vfs, "model.mjb", this->shm.model.ptr,
+                               this->shm.model.size);
   if (failed != 0) {
     // TODO: error handling & cleanup VFS
   }
