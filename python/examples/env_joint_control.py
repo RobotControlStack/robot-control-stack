@@ -25,7 +25,7 @@ def main():
         env_rel = hw_env_rel(ROBOT_IP, ControlMode.JOINTS)
         creds = dotenv_values()
         resource_manger = FCI(
-            Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_USERNAME"]), unlock=False, lock_when_done=False
+            Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
         )
     else:
         env_rel = sim_env_rel(ControlMode.JOINTS)
