@@ -145,8 +145,8 @@ FR3State* FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation(this->sim->d->site_xmat +
-                           9 * this->ids.attachment_site);
+  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation(
+      this->sim->d->site_xmat + 9 * this->ids.attachment_site);
   Eigen::Vector3d translation(this->sim->d->site_xpos +
                               3 * this->ids.attachment_site);
   common::Pose attachment_site(Eigen::Matrix3d(rotation), translation);
@@ -181,6 +181,8 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
     this->state.ik_success = true;
     this->rl.kin->forwardPosition();
     this->set_joint_position(this->rl.kin->getPosition());
+    // forward kinematics can be accessed by 
+    // this->rl.kin->getOperationalPosition(0);
   } else {
     this->state.ik_success = false;
   }
