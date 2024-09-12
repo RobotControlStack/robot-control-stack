@@ -11,14 +11,14 @@ class GuiBase {
  protected:
   struct {
     struct {
-      mjtNum* ptr;
+      mjtNum* ptr = nullptr;
       size_t size;
     } state;  // physics state in shared memory
     struct {
-      char* ptr;
+      char* ptr = nullptr;
       size_t size;
-    } model;          // binary model in shared memory
-    char* info_byte;  // extra info byte in shared memory
+    } model;                    // binary model in shared memory
+    char* info_byte = nullptr;  // extra info byte in shared memory
     boost::interprocess::managed_shared_memory manager;
   } shm;
   GuiBase(boost::interprocess::managed_shared_memory manager,
