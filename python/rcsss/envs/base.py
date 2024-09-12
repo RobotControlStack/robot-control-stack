@@ -132,9 +132,14 @@ class ObsArmsGrCamCG(ArmObsType, GripperDictType, CameraDictType):
 
 
 class ControlMode(Enum):
-    JOINTS = 1
-    CARTESIAN_TRPY = 2
-    CARTESIAN_TQuart = 3
+    JOINTS = auto()
+    CARTESIAN_TRPY = auto()
+    CARTESIAN_TQuart = auto()
+
+
+class RobotInstance(Enum):
+    HARDWARE = auto()
+    SIMULATION = auto()
 
 
 class FR3Env(gym.Env):

@@ -131,11 +131,7 @@ def produce_env_sim_tquart_gripper_camera_cg(
         mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg, robot_id
     )
     env_sim_tquart_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_sim_tquart_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+        env_sim_tquart_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(
         gym.Env[ObsArmsGrCam, TQuartDictType],
@@ -215,11 +211,7 @@ def produce_env_sim_trpy_gripper_camera_cg(
         mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg, robot_id
     )
     env_sim_trpy_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_sim_trpy_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+        env_sim_trpy_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(
         gym.Env[ObsArmsGrCam, TRPYDictType],
@@ -299,11 +291,7 @@ def produce_env_sim_joints_gripper_camera_cg(
         mjcf_path, urdf_path, cfg, gripper_cfg, cam_cfg, robot_id
     )
     env_sim_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_sim_joints_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+        env_sim_joints_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(
         gym.Env[ObsArmsGrCam, JointsDictType],
@@ -358,6 +346,27 @@ def produce_env_hw_joints_gripper(
     return typing.cast(gym.Env[ObsArmsGr, JointsDictType], env_hw_joints_gripper)
 
 
+def produce_env_hw_joints_gripper_cg(
+    ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig, cfg_path: str
+) -> gym.Env[ObsArmsGr, JointsDictType]:
+    env_hw_joints_gripper = produce_env_hw_joints_gripper(ip, urdf_path, gripper_cfg, cfg_path)
+    env_hw_joints_gripper_cg = CollisionGuard.env_from_xml_paths(
+        env_hw_joints_gripper, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
+    )
+    return typing.cast(
+        gym.Env[ObsArmsGr, JointsDictType],
+        env_hw_joints_gripper_cg,
+    )
+
+
+def produce_env_hw_joints_gripper_cg_rel(
+    ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig, cfg_path: str
+) -> gym.Env[ObsArmsGr, LimitedJointsRelDictType]:
+    env_hw_joints_gripper_cg = produce_env_hw_joints_gripper_cg(ip, urdf_path, mjcf_path, gripper_cfg, cfg_path)
+    env_hw_joints_gripper_cg_rel = RelativeActionSpace(env_hw_joints_gripper_cg)
+    return typing.cast(gym.Env[ObsArmsGr, LimitedJointsRelDictType], env_hw_joints_gripper_cg_rel)
+
+
 def produce_env_hw_joints_gripper_camera(
     ip: str, urdf_path: str, gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig, cfg_path: str
 ) -> (gym.Env)[ObsArmsGrCam, JointsDictType]:
@@ -380,7 +389,7 @@ def produce_env_hw_joints_gripper_camera_cg(
 ) -> gym.Env[ObsArmsGrCam, JointsDictType]:
     env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_joints_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False
+        env_hw_joints_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(gym.Env[ObsArmsGrCam, JointsDictType], env_hw_joints_gripper_cam_cg)
 
@@ -388,15 +397,11 @@ def produce_env_hw_joints_gripper_camera_cg(
 def produce_env_hw_joints_gripper_camera_cg_rel(
     ip: str, urdf_path: str, mjcf_path: str, gripper_cfg: FHConfig, cam_cfg: RealSenseSetConfig, cfg_path: str
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
-    env_hw_joints_gripper_cam = produce_env_hw_joints_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
-    env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_joints_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+    env_hw_joints_gripper_cam_cg = produce_env_hw_joints_gripper_camera_cg(
+        ip, urdf_path, mjcf_path, gripper_cfg, cam_cfg, cfg_path
     )
-    return typing.cast(gym.Env[ObsArmsGrCam, LimitedJointsRelDictType], env_hw_joints_gripper_cam_cg)
+    env_hw_joints_gripper_cam_cg_rel = RelativeActionSpace(env_hw_joints_gripper_cam_cg)
+    return typing.cast(gym.Env[ObsArmsGrCam, LimitedJointsRelDictType], env_hw_joints_gripper_cam_cg_rel)
 
 
 def produce_env_hw_trpy(ip: str, urdf_path: str, cfg_path: str) -> gym.Env[ArmObsType, TRPYDictType]:
@@ -435,7 +440,7 @@ def produce_env_hw_trpy_gripper_camera_cg(
 ) -> gym.Env[ObsArmsGrCam, TRPYDictType]:
     env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_trpy_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_trpy_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False
+        env_hw_trpy_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(gym.Env[ObsArmsGrCam, TRPYDictType], env_hw_trpy_gripper_cam_cg)
 
@@ -445,11 +450,7 @@ def produce_env_hw_trpy_gripper_camera_cg_rel(
 ) -> gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType]:
     env_hw_trpy_gripper_cam = produce_env_hw_trpy_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_joints_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_trpy_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+        env_hw_trpy_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType], env_hw_joints_gripper_cam_cg)
 
@@ -490,7 +491,7 @@ def produce_env_hw_tquart_gripper_camera_cg(
 ) -> gym.Env[ObsArmsGrCam, TQuartDictType]:
     env_hw_tquart_gripper_cam = produce_env_hw_tquart_gripper_camera(ip, urdf_path, gripper_cfg, cam_cfg, cfg_path)
     env_hw_tquart_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_tquart_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False
+        env_hw_tquart_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(gym.Env[ObsArmsGrCam, TQuartDictType], env_hw_tquart_gripper_cam_cg)
 
@@ -502,11 +503,7 @@ def produce_env_hw_tquart_gripper_camera_cg_rel(
         ip, urdf_path, mjcf_path, gripper_cfg, cam_cfg, cfg_path
     )
     env_hw_tquart_gripper_cam_cg = CollisionGuard.env_from_xml_paths(
-        env_hw_tquart_gripper_cam,
-        mjcf_path,
-        urdf_path,
-        gripper=True,
-        check_home_collision=False,
+        env_hw_tquart_gripper_cam, mjcf_path, urdf_path, gripper=True, check_home_collision=False, camera=True
     )
     return typing.cast(gym.Env[ObsArmsGrCam, LimitedTQuartRelDictType], env_hw_tquart_gripper_cam_cg)
 

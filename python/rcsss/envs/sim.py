@@ -1,5 +1,4 @@
 import logging
-import sys
 from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
@@ -7,13 +6,7 @@ import rcsss
 from rcsss import sim
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.envs.base import (
-    CameraSetWrapper,
-    ControlMode,
-    FR3Env,
-    GripperWrapper,
-    RelativeActionSpace,
-)
+from rcsss.envs.base import CameraSetWrapper, ControlMode, FR3Env, GripperWrapper
 
 
 class FR3Sim(gym.Wrapper):
@@ -160,52 +153,3 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             camera_set = SimCameraSet(simulation, cam_cfg)
             c_env = CameraSetWrapper(c_env, camera_set)
         return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision, to_joint_control)
-
-
-if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    if "lab" not in rcsss.scenes:
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        sys.exit()
-    simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
-    robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
-    cfg = sim.FR3Config()
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    cfg.ik_duration_in_milliseconds = 300
-    cfg.realtime = False
-    robot.set_parameters(cfg)
-    # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
-    env = FR3Env(robot, ControlMode.JOINTS)
-    env_sim = FR3Sim(env, simulation)
-    cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
-    }
-    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=1)
-    camera_set = SimCameraSet(simulation, cam_cfg)
-    env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
-
-    gripper_cfg = sim.FHConfig()
-    gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-    env_cam = GripperWrapper(env_cam, gripper)
-    env_cam = CollisionGuard.env_from_xml_paths(
-        env_cam,
-        str(rcsss.scenes["fr3_empty_world"]),
-        str(rcsss.scenes["lab"].parent / "fr3.urdf"),
-        gripper=True,
-        check_home_collision=False,
-        camera=True,
-        tcp_offset=cfg.tcp_offset,
-        control_mode=ControlMode.CARTESIAN_TQuart,
-    )
-    env_cam = RelativeActionSpace(env_cam)
-    obs, info = env_cam.reset()
-    for _ in range(100):
-        act = env_cam.action_space.sample()
-        # act = {"tquart": np.array([0, 0, 0, 0, 0, 0, 1]), "gripper": i%2}
-        # act["gripper"] = i % 2
-        obs, reward, terminated, truncated, info = env_cam.step(act)
-        if truncated or terminated:
-            logger.info("Truncated or terminated!")
-            env_cam.reset()
-        logger.info(act["gripper"], obs["gripper"])

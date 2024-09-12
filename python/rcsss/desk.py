@@ -78,6 +78,14 @@ class Token:
     token: str = ""
 
 
+class DummyResourceManager:
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        pass
+
+
 class Desk:
     """
     Connects to the control unit running the web-based Desk interface
