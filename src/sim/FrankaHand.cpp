@@ -111,7 +111,8 @@ void FrankaHand::set_normalized_width(double width, double force) {
   // this->sim->d->actuator_force[this->gripper_id] = 0;
 }
 double FrankaHand::get_normalized_width() {
-  // TODO: maybe we should use the mujoco sensors? Not sure what the difference is between reading out from qpos and reading from the sensors.
+  // TODO: maybe we should use the mujoco sensors? Not sure what the difference
+  // is between reading out from qpos and reading from the sensors.
   double width = this->sim->d->qpos[this->joint_id_1] / this->MAX_JOINT_WIDTH;
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
