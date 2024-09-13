@@ -55,6 +55,7 @@ GuiServer::GuiServer(Sim& sim, const std::string& id)
   mj_step(sim.m, sim.d);  // TODO: check if this is necessary
   mj_getState(sim.m, sim.d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
   mj_saveModel(sim.m, NULL, this->shm.model.ptr, this->shm.model.size);
+  this->sim.register_cb(std::bind(&GuiServer::update_mjdata_callback, this), 0);
 }
 
 GuiServer::~GuiServer(){
