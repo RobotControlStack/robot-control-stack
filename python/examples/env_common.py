@@ -31,6 +31,7 @@ def hw_env_rel(ip: str, control_mode: ControlMode) -> gym.Env[ObsArmsGr, Limited
         sys.exit()
     robot = rcsss.hw.FR3(ip, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     robot_cfg = FR3Config()
+    robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot.set_parameters(robot_cfg)
     # the robot itself is always controlled in joint space with the robotics library IK
     env = FR3Env(robot, ControlMode.JOINTS)
@@ -38,7 +39,7 @@ def hw_env_rel(ip: str, control_mode: ControlMode) -> gym.Env[ObsArmsGr, Limited
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
-    gripper_cfg.force = 10
+    gripper_cfg.force = 30
     gripper = rcsss.hw.FrankaHand(ip, gripper_cfg)
     env_hw = GripperWrapper(env_hw, gripper, binary=True)
 

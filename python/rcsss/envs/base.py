@@ -241,6 +241,7 @@ class FR3Env(gym.Env):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
+        self.robot.reset()
         return self.get_obs(), {}
 
 
@@ -438,12 +439,10 @@ class GripperWrapper(ActObsInfoWrapper):
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
-        self._last_gripper_action = 1
         self.binary = binary
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         self._gripper.reset()
-        self._last_gripper_action = 1
         return super().reset(**kwargs)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -464,8 +463,10 @@ class GripperWrapper(ActObsInfoWrapper):
         assert self.gripper_key in action, "Gripper action not found."
 
         gripper_action = np.round(action["gripper"])
-        if gripper_action != self._last_gripper_action:
-            self._last_gripper_action = gripper_action
+        width = self._gripper.get_normalized_width()
+        if self.binary:
+            width = np.round(width)
+        if gripper_action != width:
             if self.binary:
                 self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
             else:

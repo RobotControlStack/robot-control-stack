@@ -1,10 +1,12 @@
 import logging
+import mujoco
+import rcsss
 
 from dotenv import dotenv_values
 from rcsss.desk import FCI, Desk, DummyResourceManager
 from rcsss.envs.base import ControlMode, RobotInstance
 
-from common import hw_env_rel, sim_env_rel
+from env_common import hw_env_rel, sim_env_rel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -22,31 +24,31 @@ FR3_PASSWORD=<password on franka desk>
 
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-        env_rel = hw_env_rel(ROBOT_IP, ControlMode.CARTESIAN_TQuart)
         creds = dotenv_values()
         resource_manger = FCI(
-            Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_USERNAME"]), unlock=False, lock_when_done=False
+            Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
         )
     else:
-        env_rel = sim_env_rel(ControlMode.CARTESIAN_TQuart)
         resource_manger = DummyResourceManager()
-
-    print(env_rel.unwrapped.robot.get_cartesian_position())
-
     with resource_manger:
+
+        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+            env_rel = hw_env_rel(ROBOT_IP, ControlMode.JOINTS)
+        else:
+            env_rel = sim_env_rel(ControlMode.JOINTS)
+
         for _ in range(10):
-            for _ in range(10):
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+            obs, info = env_rel.reset()
+            for _ in range(3):
+                # sample random relative action and execute it
+                act = env_rel.action_space.sample()
+                # if the first is open, then it does not open
+                act["gripper"] = 1
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-            for _ in range(10):
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
-                obs, reward, terminated, truncated, info = env_rel.step(act)
-                if truncated or terminated:
-                    logger.info("Truncated or terminated!")
-                    return
+                logger.info(act["gripper"], obs["gripper"])
 
 
 if __name__ == "__main__":
