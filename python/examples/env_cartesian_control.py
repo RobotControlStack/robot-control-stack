@@ -1,11 +1,18 @@
 import logging
 
 from dotenv import dotenv_values
+from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.desk import FCI, Desk, DummyResourceManager
 from rcsss.envs.base import ControlMode, RobotInstance
-from rcsss.envs.factories import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg, default_fr3_sim_robot_cfg, default_mujoco_cameraset_cfg, fr3_hw_env, fr3_sim_env
-
+from rcsss.envs.factories import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
+    default_fr3_sim_robot_cfg,
+    default_mujoco_cameraset_cfg,
+    fr3_hw_env,
+    fr3_sim_env,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,9 +31,7 @@ FR3_PASSWORD=<password on franka desk>
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(
-            Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False
-        )
+        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         resource_manger = DummyResourceManager()
 
@@ -38,17 +43,18 @@ def main():
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard=True,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                max_relative_movement=0.5
+                max_relative_movement=0.5,
             )
         else:
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
-                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
-                max_relative_movement=0.5
-                )
+                max_relative_movement=0.5,
+            )
 
+        env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())
 
         for _ in range(10):
