@@ -83,10 +83,11 @@ GuiClient::GuiClient(const std::string& id)
   int failed = mj_addBufferVFS(vfs, "model.mjb", this->shm.model.ptr,
                                this->shm.model.size);
   if (failed != 0) {
-    // TODO: error handling & cleanup VFS
+    mju_free(vfs);
+    throw std::runtime_error("Could not add file to VFS");
   }
-  // TODO: cleanup VFS
   this->m = mj_loadModel("model.mjb", vfs);
+  mju_free(vfs);
   this->d = mj_makeData(m);
   mj_setState(this->m, this->d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
   mj_step(this->m, this->d);
