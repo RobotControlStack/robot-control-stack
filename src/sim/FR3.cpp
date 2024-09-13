@@ -64,6 +64,8 @@ void FR3::construct() {
       std::make_shared<rl::mdl::JacobianInverseKinematics>(this->rl.kin.get());
   this->rl.ik->setDuration(
       std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
+  this->rl.ik->setRandomRestarts(0);
+  this->rl.ik->setEpsilon(1e-3);
   this->init_ids();
   this->sim->register_cb(std::bind(&FR3::collision_callback, this),
                          this->cfg.seconds_between_callbacks);

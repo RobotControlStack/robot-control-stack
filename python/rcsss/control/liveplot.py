@@ -11,8 +11,8 @@ host = "127.0.0.1"
 port = 54322
 FMT = "!" + 7 * "d" + "i"
 
-buffsize = 30
-# buffsize = 300
+# buffsize = 30
+buffsize = 300
 # Order of buffers: x, y, z, rx, ry, rz
 
 titles = [["x", "rx"], ["y", "ry"], ["z", "rz"]]
@@ -64,4 +64,4 @@ with socket(AF_INET, SOCK_DGRAM) as sock:
 
         plt.draw()
         plt.pause(0.001)
-        plt.pause(0.5)
+        # plt.pause(0.5)
