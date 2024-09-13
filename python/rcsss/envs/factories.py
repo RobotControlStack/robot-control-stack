@@ -58,9 +58,9 @@ def default_realsense(name2id: dict[str, str]):
 def fr3_hw_env(
     ip: str,
     control_mode: ControlMode,
-    robot_cfg: FR3Config,
+    robot_cfg: rcsss.hw.FR3Config,
     collision_guard: bool = True,
-    gripper_cfg: FR3Config | None = None,
+    gripper_cfg: rcsss.hw.FHConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
     max_relative_movement: float | None = None,
 ) -> gym.Env:
@@ -122,8 +122,8 @@ def default_mujoco_cameraset_cfg():
 
 def fr3_sim_env(
     control_mode: ControlMode,
-    robot_cfg: FR3Config,
-    gripper_cfg: FR3Config | None = None,
+    robot_cfg: rcsss.sim.FR3Config,
+    gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
