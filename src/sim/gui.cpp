@@ -1,6 +1,7 @@
 #include "gui.h"
 
 #include <mujoco/mjdata.h>
+#include <mujoco/mujoco.h>
 
 #include <boost/interprocess/creation_tags.hpp>
 #include <boost/interprocess/interprocess_fwd.hpp>
@@ -25,6 +26,7 @@ static size_t calculate_shm_size(mjModel const* m, mjData const* d) {
   return total_required_size + estimated_overhead;
 }
 
+// TODO: use std::bitset instead
 enum {
   UPDATE_SIM_STATE = (1u << 0),
   CLIENT_OPEN = (1u << 1),
@@ -35,18 +37,19 @@ namespace rcs {
 namespace sim {
 
 GuiBase::GuiBase(boost::interprocess::managed_shared_memory manager,
-                 std::optional<size_t> state_size,
+                 const std::string& id, std::optional<size_t> state_size,
                  std::optional<size_t> model_size)
     : shm{.state{.size = state_size.value()},
           .model{.size = model_size.value()},
-          .manager{std::move(manager)}} {}
+          .manager{std::move(manager)}},
+      id{id} {}
 
 GuiServer::GuiServer(Sim& sim, const std::string& id)
     : sim{sim},
       GuiBase(boost::interprocess::managed_shared_memory(
                   boost::interprocess::create_only, id.c_str(),
                   calculate_shm_size(sim.m, sim.d)),
-              calculate_state_size(sim.m), calculate_mdl_size(sim.m)) {
+              id, calculate_state_size(sim.m), calculate_mdl_size(sim.m)) {
   this->shm.state.ptr =
       this->shm.manager.construct<mjtNum>(STATE)[this->shm.state.size]();
   this->shm.model.ptr =
@@ -58,14 +61,22 @@ GuiServer::GuiServer(Sim& sim, const std::string& id)
   this->sim.register_cb(std::bind(&GuiServer::update_mjdata_callback, this), 0);
 }
 
-GuiServer::~GuiServer(){
-    // TODO: set server shutting down, wait until client open is false, then
-    // delete shared memory
-    // TODO: implement callback unergister, then unregister the callback.
+GuiServer::~GuiServer() {
+  *this->shm.info_byte &= SERVER_SHUTTING_DOWN;
+  // TODO: figure out something more robust than this
+  while (not(*this->shm.info_byte & CLIENT_OPEN)) {
+  };
+  this->shm.manager.destroy<char>(INFO_BYTE);
+  this->shm.manager.destroy<mjtNum>(STATE);
+  this->shm.manager.destroy<char>(MODEL);
+  boost::interprocess::shared_memory_object::remove("shared_memory");
 };
 
 void GuiServer::update_mjdata_callback() {
-  if (*this->shm.info_byte & UPDATE_SIM_STATE) {
+  // TODO: what happens when the GuiServer object is garbage collected on the
+  // python side? If the sim still lives and has this callback registered there
+  // will be problems... Can this even happen?
+  if (this->shm.info_byte and not(*this->shm.info_byte & UPDATE_SIM_STATE)) {
     mj_getState(this->sim.m, this->sim.d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
     *this->shm.info_byte &= ~UPDATE_SIM_STATE;
   }
@@ -73,7 +84,8 @@ void GuiServer::update_mjdata_callback() {
 
 GuiClient::GuiClient(const std::string& id)
     : GuiBase(boost::interprocess::managed_shared_memory(
-          boost::interprocess::open_only, id.c_str())) {
+                  boost::interprocess::open_only, id.c_str()),
+              id) {
   std::tie(this->shm.info_byte, std::ignore) =
       this->shm.manager.find<char>(INFO_BYTE);
   std::tie(this->shm.state.ptr, this->shm.state.size) =

@@ -21,7 +21,9 @@ class GuiBase {
     char* info_byte = nullptr;  // extra info byte in shared memory
     boost::interprocess::managed_shared_memory manager;
   } shm;
+  const std::string& id;
   GuiBase(boost::interprocess::managed_shared_memory manager,
+          const std::string& id,
           std::optional<size_t> state_size = 0,
           std::optional<size_t> model_size = 0);
 };
