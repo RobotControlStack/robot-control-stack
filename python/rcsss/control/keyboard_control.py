@@ -3,9 +3,8 @@ from threading import Lock
 from time import sleep
 
 import numpy as np
-from dotenv import dotenv_values
 from pynput import keyboard
-from rcsss.desk import FCI, Desk
+from rcsss.control.fr3_desk import FCI, Desk
 from rcsss.envs.base import ControlMode
 from rcsss.envs.factories import (
     default_fr3_hw_gripper_cfg,
