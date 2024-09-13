@@ -3,7 +3,7 @@
 import pathlib
 import site
 
-from rcsss import camera, sim, control
+from rcsss import camera, control, sim
 from rcsss._core import __version__, common, hw
 
 scenes = {

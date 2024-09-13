@@ -195,7 +195,9 @@ def record(
         with ExitStack() as stack:
             for r_ip in name2ip.values():
                 stack.enter_context(
-                    rcsss.control.fr3_desk.Desk.fci(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                    rcsss.control.fr3_desk.Desk.fci(
+                        r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
+                    )
                 )
 
             p = PoseList.load(name2ip, lpaths, cfg.hw.urdf_model_path)
@@ -204,7 +206,9 @@ def record(
     else:
         with ExitStack() as stack:
             gms = [
-                rcsss.control.fr3_desk.Desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                rcsss.control.fr3_desk.Desk.guiding_mode(
+                    r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
+                )
                 for r_ip in name2ip.values()
             ]
             for gm in gms:
