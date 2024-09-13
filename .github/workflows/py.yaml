@@ -6,6 +6,9 @@ on:
       - "python/**"
       - "src/pybind/**"
       - ".github/workflows/**"
+  push:
+    branches:
+      - master
 
 jobs:
   format:
