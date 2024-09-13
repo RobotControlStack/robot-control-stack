@@ -1,3 +1,9 @@
+## v0.2.1 (2024-09-13)
+
+### Fix
+
+- **examples**: desk import and max movement
+
 ## v0.2.0 (2024-09-13)
 
 ### Feat
