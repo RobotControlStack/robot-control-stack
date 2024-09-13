@@ -33,11 +33,12 @@ def home(ip: str, username: str, password: str, shut: bool):
         config.controller = rcsss.hw.IKController.internal
         config.guiding_mode_enabled = False
         f.set_parameters(config)
-        g = rcsss.hw.FrankaHand(ip)
+        config_hand = rcsss.hw.FHConfig()
+        g = rcsss.hw.FrankaHand(ip, config_hand)
         if shut:
             g.shut()
         else:
-            g.release()
+            g.open()
         f.move_home()
 
 
@@ -75,6 +76,14 @@ class Token:
     id: str = ""
     owned_by: str = ""
     token: str = ""
+
+
+class DummyResourceManager:
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        pass
 
 
 class Desk:
@@ -448,9 +457,10 @@ class FCI:
     Can be used as a context manager to activate the Franka Control Interface (FCI).
     """
 
-    def __init__(self, desk: Desk, unlock: bool = False):
+    def __init__(self, desk: Desk, unlock: bool = False, lock_when_done: bool = True):
         self.desk = desk
         self.unlock = unlock
+        self.lock_when_done = lock_when_done
 
     def __enter__(self) -> Desk:
         self.desk.__enter__()
@@ -462,6 +472,8 @@ class FCI:
 
     def __exit__(self, *args):
         self.desk.deactivate_fci()
+        if self.lock_when_done:
+            self.desk.lock()
         self.desk.__exit__()
 
 

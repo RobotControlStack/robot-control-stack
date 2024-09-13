@@ -1,5 +1,6 @@
 PYSRC = python/rcsss
 CPPSRC = src
+COMPILE_MODE = Release
 
 # CPP
 cppcheckformat:
@@ -11,14 +12,14 @@ cppformat:
 cpplint: 
 	clang-tidy -p=build --warnings-as-errors='*' $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -name '*.h')
 
-# NOTE: when changing the version, also change it in the pyproject.toml
-MUJOCO_VERSION=3.1.5
 gcccompile: 
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
+	pip install --upgrade --requirement requirements_dev.txt
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
 	cmake --build build
 
 clangcompile: 
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMUJOCO_VERSION=${MUJOCO_VERSION} -B build -G Ninja
+	pip install --upgrade --requirement requirements_dev.txt
+	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
 	cmake --build build
 
 # Auto generation of CPP binding stub files
@@ -27,7 +28,7 @@ stubgen:
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
 	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
 	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
-
+	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
 	ruff check --fix python/rcsss/_core
 	isort python/rcsss/_core
 	black python/rcsss/_core
@@ -47,9 +48,15 @@ ruff:
 	ruff check ${PYSRC}
 
 mypy:
-	mypy ${PYSRC} --install-types --non-interactive
+	mypy ${PYSRC} --install-types --non-interactive --no-namespace-packages
 
 pytest:
 	pytest -vv
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest
+bump:
+	cz bump
+
+commit:
+	cz commit
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit

@@ -1,6 +1,13 @@
 """Robot control stack python bindings."""
 
-from rcsss import camera, desk, sim
+import pathlib
+import site
+
+from rcsss import camera, control, sim
 from rcsss._core import __version__, common, hw
 
-__all__ = ["__doc__", "__version__", "common", "hw", "sim", "desk", "camera"]
+scenes = {
+    path.stem: path / "scene.mjb" for path in (pathlib.Path(site.getsitepackages()[0]) / "rcsss" / "scenes").glob("*")
+}
+
+__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control"]

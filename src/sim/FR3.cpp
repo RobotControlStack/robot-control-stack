@@ -1,102 +1,136 @@
 #include "FR3.h"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <math.h>
 
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <utility>
 
 #include "common/Robot.h"
-#include "glfw_adapter.h"
 #include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 #include "rl/mdl/JacobianInverseKinematics.h"
 #include "rl/mdl/UrdfFactory.h"
 
-enum { SIM_KF_HOME = 0 };
-
-double const POSE_REPEATABILITY = 0.0001;  // in meters
+const rcs::common::Vector7d q_home((rcs::common::Vector7d() << 0, -M_PI_4, 0,
+                                    -3 * M_PI_4, 0, M_PI_2, M_PI_4)
+                                       .finished());
 
 struct {
-  std::vector<std::string> arm = {"fr3_link0_collision", "fr3_link1_collision",
-                                  "fr3_link2_collision", "fr3_link3_collision",
-                                  "fr3_link4_collision", "fr3_link5_collision",
-                                  "fr3_link6_collision", "fr3_link7_collision"};
-  std::vector<std::string> hand = {"hand_c"};
-  std::vector<std::string> gripper = {
-      "finger_0_left",
-      "fingertip_pad_collision_1_left",
-      "fingertip_pad_collision_2_left",
-      "fingertip_pad_collision_3_left",
-      "fingertip_pad_collision_4_left",
-      "fingertip_pad_collision_5_left",
-      "finger_0_right",
-      "fingertip_pad_collision_1_right",
-      "fingertip_pad_collision_2_right",
-      "fingertip_pad_collision_3_right",
-      "fingertip_pad_collision_4_right",
-      "fingertip_pad_collision_5_right",
+  std::array<std::string, 8> arm_collision_geoms{
+      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
+      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
+      "fr3_link6_collision", "fr3_link7_collision"};
+  std::array<std::string, 7> joints = {
+      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
+      "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
-} const cgeom_names;
-
-static void init_geom_ids(std::set<size_t>& ids,
-                          std::vector<std::string> const& names,
-                          mjModel const& m) {
-  for (auto const& name : names) {
-    int id = mj_name2id(&m, mjOBJ_GEOM, name.c_str());
-    if (id == -1)
-      throw std::runtime_error(std::string("No geom named ") + name);
-    ids.insert(id);
-  }
-}
-
-template <typename T>
-std::set<T> set_union(const std::set<T>& a, const std::set<T>& b) {
-  std::set<T> result = a;
-  result.insert(b.begin(), b.end());
-  return result;
-}
+  std::array<std::string, 7> actuators = {
+      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
+      "fr3_joint5", "fr3_joint6", "fr3_joint7",
+  };
+} const model_names;
 
 namespace rcs {
 namespace sim {
 
-FR3::FR3(mjModel* mjmdl, mjData* mjdata, std::shared_ptr<rl::mdl::Model> rlmdl,
-         std::optional<bool> render)
-    : models{.mj = {.mdl = mjmdl, .data = mjdata},
-             .rl =
-                 {
-                     .mdl = rlmdl,
-                     .kin =
-                         std::dynamic_pointer_cast<rl::mdl::Kinematic>(rlmdl),
-                 }},
-      exit_requested(false) {
-  this->models.rl.ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
-      this->models.rl.kin.get());
-  /* Initialize collision geom id map */
-  init_geom_ids(this->cgeom_ids.arm, cgeom_names.arm, *this->models.mj.mdl);
-  init_geom_ids(this->cgeom_ids.gripper, cgeom_names.gripper,
-                *this->models.mj.mdl);
-  init_geom_ids(this->cgeom_ids.hand, cgeom_names.hand, *this->models.mj.mdl);
-  this->models.rl.ik->setDuration(
-      std::chrono::milliseconds(this->cfg.ik_duration));
-  /* Initialize sim */
-  this->reset();
-  if (render.value_or(true))
-    this->render_thread = std::jthread(std::bind(&FR3::render_loop, this));
+// TODO: use C++11 feature to call one constructor from another
+FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
+         std::shared_ptr<rl::mdl::Model> rlmdl)
+    : sim{sim}, id{id}, rl{.mdl = rlmdl}, cfg{}, state{} {
+  construct();
+}
+FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
+         const std::string& rlmdl)
+    : sim{sim}, id{id}, cfg{}, state{} {
+  this->rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
+  construct();
 }
 
-FR3::~FR3() { this->exit_requested = true; }
+FR3::~FR3() {}
+
+void FR3::construct() {
+  this->rl.kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl.mdl);
+  this->rl.ik =
+      std::make_shared<rl::mdl::JacobianInverseKinematics>(this->rl.kin.get());
+  this->rl.ik->setDuration(
+      std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
+  this->rl.ik->setRandomRestarts(0);
+  this->rl.ik->setEpsilon(1e-3);
+  this->init_ids();
+  this->sim->register_cb(std::bind(&FR3::collision_callback, this),
+                         this->cfg.seconds_between_callbacks);
+  this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),
+                         this->cfg.seconds_between_callbacks);
+  this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
+                         this->cfg.seconds_between_callbacks);
+  this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
+                             this->cfg.seconds_between_callbacks);
+  this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
+                             this->cfg.seconds_between_callbacks);
+  this->m_reset();
+}
+
+void FR3::move_home() { this->set_joint_position(q_home); }
+
+void FR3::init_ids() {
+  std::string name;
+  // Collision geoms
+  for (size_t i = 0; i < std::size(model_names.arm_collision_geoms); ++i) {
+    name = model_names.arm_collision_geoms[i];
+    name.append("_");
+    name.append(this->id);
+    int id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
+    if (id == -1) {
+      throw std::runtime_error(std::string("No geom named " + name));
+    }
+    this->ids.cgeom.insert(id);
+  }
+  // Sites
+  name = "attachment_site_";
+  name.append(this->id);
+  this->ids.attachment_site =
+      mj_name2id(this->sim->m, mjOBJ_SITE, name.c_str());
+  if (this->ids.attachment_site == -1) {
+    throw std::runtime_error(std::string("No site named " + name));
+  }
+  // Joints
+  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
+    name = model_names.joints[i];
+    name.append("_");
+    name.append(this->id);
+    this->ids.joints[i] = mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str());
+    if (this->ids.joints[i] == -1) {
+      throw std::runtime_error(std::string("No joint named " + name));
+    }
+  }
+  // Actuators
+  for (size_t i = 0; i < std::size(model_names.actuators); ++i) {
+    name = model_names.actuators[i];
+    name.append("_");
+    name.append(this->id);
+    this->ids.actuators[i] =
+        mj_name2id(this->sim->m, mjOBJ_ACTUATOR, name.c_str());
+    if (this->ids.actuators[i] == -1) {
+      throw std::runtime_error(std::string("No actuator named " + name));
+    }
+  }
+}
 
 bool FR3::set_parameters(const FR3Config& cfg) {
   this->cfg = cfg;
-  this->models.rl.ik->setDuration(
-      std::chrono::milliseconds(this->cfg.ik_duration));
+  this->rl.ik->setDuration(
+      std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
+  this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
   return true;
 }
 
@@ -113,170 +147,102 @@ FR3State* FR3::get_state() {
 }
 
 common::Pose FR3::get_cartesian_position() {
-  int tcp_id = mj_name2id(this->models.mj.mdl, mjOBJ_SITE, "tcp");
-  if (tcp_id == -1) throw std::runtime_error("No site named \"tcp\"");
-  return common::Pose(
-      Eigen::Matrix3d(this->models.mj.data->site_xmat + 9 * tcp_id),
-      Eigen::Vector3d(this->models.mj.data->site_xpos + 3 * tcp_id));
+  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation(
+      this->sim->d->site_xmat + 9 * this->ids.attachment_site);
+  Eigen::Vector3d translation(this->sim->d->site_xpos +
+                              3 * this->ids.attachment_site);
+  common::Pose attachment_site(Eigen::Matrix3d(rotation), translation);
+  return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
-void FR3::set_joint_position(common::Vector7d const& q) {
-  std::copy(q.begin(), q.end(), this->models.mj.data->ctrl);
-  this->wait_for_convergence(q);
+void FR3::set_joint_position(const common::Vector7d& q) {
+  this->state.target_angles = q;
+  this->state.previous_angles = this->get_joint_position();
+  this->state.is_moving = true;
+  this->state.is_arrived = false;
+  for (size_t i = 0; i < std::size(this->ids.actuators); ++i) {
+    this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
+  }
 }
 
 common::Vector7d FR3::get_joint_position() {
-  return common::Vector7d(this->models.mj.data->qpos);
+  common::Vector7d q;
+  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
+    q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
+  }
+  return q;
 }
 
-void FR3::move_home() { this->set_joint_position(q_home); }
-
-void FR3::set_cartesian_position(common::Pose const& pose) {
-  this->models.rl.kin->setPosition(
-      common::Vector7d(this->models.mj.data->qpos));
-  this->models.rl.kin->forwardPosition();
-  this->models.rl.ik->addGoal(pose.affine_matrix(), 0);
-  if (this->models.rl.ik->solve()) {
-    this->models.rl.kin->forwardPosition();
-    rl::math::Vector pos = this->models.rl.kin->getPosition();
-    std::copy(pos.begin(), pos.end(), this->models.mj.data->ctrl);
-    this->wait_for_convergence(pos);
+void FR3::set_cartesian_position(const common::Pose& pose) {
+  // pose is assumed to be in the robots coordinate frame
+  this->rl.kin->setPosition(this->get_joint_position());
+  this->rl.kin->forwardPosition();
+  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
+  this->rl.ik->addGoal(new_pose.affine_matrix(), 0);
+  if (this->rl.ik->solve()) {
+    this->state.ik_success = true;
+    this->rl.kin->forwardPosition();
+    this->set_joint_position(this->rl.kin->getPosition());
+    // forward kinematics can be accessed by
+    // this->rl.kin->getOperationalPosition(0);
   } else {
     this->state.ik_success = false;
   }
 }
+void FR3::is_moving_callback() {
+  common::Vector7d current_angles = this->get_joint_position();
+  // difference of the largest element is smaller than threshold
+  this->state.is_moving =
+      (current_angles - this->state.previous_angles).cwiseAbs().maxCoeff() >
+      0.0001;
+  this->state.previous_angles = current_angles;
+}
 
-void FR3::wait_for_convergence(common::Vector7d target_angles) {
-  bool arrived = false;
-  bool moving = false;
-  std::pair<common::Vector7d, Eigen::Map<common::Vector7d>> angles(
-      this->models.mj.data->qpos, this->models.mj.data->qpos);
-  // TODO: move to config
-  double tolerance = .5 * (std::numbers::pi / 180);
+void FR3::is_arrived_callback() {
+  common::Vector7d current_angles = this->get_joint_position();
+  this->state.is_arrived =
+      (current_angles - this->state.target_angles).cwiseAbs().maxCoeff() <
+      this->cfg.joint_rotational_tolerance;
+}
 
-  std::pair<common::Pose, common::Pose> marker(this->get_cartesian_position(),
-                                               this->get_cartesian_position());
-
-  float marker_col[4] = {0, 1, 0, 1};
-  int marker_count = 0;
-
-  while ((not arrived) or moving) {
-    mj_step(this->models.mj.mdl, this->models.mj.data);
-
-    if (this->cfg.trajectory_trace) {
-      if (marker_count == 0) {
-        marker.first = marker.second;
-        marker.second = this->get_cartesian_position();
-        this->add_line(marker.first, marker.second, 0.003, marker_col);
-      }
-      marker_count = ++marker_count % 10;
-    }
-
-    // TODO: Replace by actual clock synchronization
-    if (this->cfg.realtime)
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    moving = not angles.first.isApprox(angles.second, tolerance);
-    arrived = angles.second.isApprox(target_angles, tolerance);
-    angles.first = angles.second;
-    if (this->collision(this->cgeom_ids.arm)) {
+bool FR3::collision_callback() {
+  this->state.collision = false;
+  for (size_t i = 0; i < this->sim->d->ncon; ++i) {
+    if (this->ids.cgeom.contains(this->sim->d->contact[i].geom[0]) ||
+        this->ids.cgeom.contains(this->sim->d->contact[i].geom[1])) {
       this->state.collision = true;
-      return this->reset();
-    }
-    if (not moving and not arrived and
-        this->collision(
-            set_union(this->cgeom_ids.hand, this->cgeom_ids.gripper))) {
-      return this->reset();
+      break;
     }
   }
+  return this->state.collision;
 }
 
-bool FR3::collision(std::set<size_t> const& geom_ids) {
-  for (size_t i = 0; i < this->models.mj.data->ncon; ++i) {
-    if (geom_ids.contains(this->models.mj.data->contact[i].geom[0]) ||
-        geom_ids.contains(this->models.mj.data->contact[i].geom[1]))
-      return true;
+bool FR3::convergence_callback() {
+  /* When ik failed, the robot is not doing anything */
+  if (not this->state.ik_success) {
+    return true;
   }
-  return false;
+  /* Otherwise we are done when we arrived and stopped moving */
+  return this->state.is_arrived and not this->state.is_moving;
 }
 
-std::list<mjvGeom>::iterator FR3::add_sphere(const common::Pose& pose,
-                                             double size, const float* rgba) {
-  mjvGeom newgeom;
-  Eigen::Vector3d pos = pose.translation();
-  mjv_initGeom(&newgeom, mjGEOM_SPHERE, &size, pos.data(), NULL, rgba);
-  return this->markers.insert(this->markers.end(), newgeom);
-}
-
-std::list<mjvGeom>::iterator FR3::add_line(const common::Pose& pose_from,
-                                           const common::Pose& pose_to,
-                                           double size, const float* rgba) {
-  mjvGeom newgeom;
-  Eigen::Vector3d from = pose_from.translation();
-  Eigen::Vector3d to = pose_to.translation();
-  mjv_initGeom(&newgeom, mjGEOM_CAPSULE, &size, NULL, NULL, rgba);
-  mjv_connector(&newgeom, mjGEOM_CAPSULE, size, from.data(), to.data());
-  return this->markers.insert(this->markers.end(), newgeom);
-}
-
-void FR3::remove_marker(std::list<mjvGeom>::iterator& it) {
-  this->markers.erase(it);
-}
-
-void FR3::clear_markers() { this->markers.clear(); }
-
-void FR3::render_loop() {
-  constexpr int kMaxGeom = 20000;
-  mjvCamera cam;
-  mjvOption opt;
-  mjvScene scn;
-  mjvPerturb pert;
-  size_t current_sim = 0;
-
-  mujoco::GlfwAdapter ui_adapter = mujoco::GlfwAdapter();
-
-  mjv_defaultOption(&opt);
-  mjv_defaultScene(&scn);
-  mjv_makeScene(this->models.mj.mdl, &scn, kMaxGeom);
-  mjv_defaultFreeCamera(this->models.mj.mdl, &cam);
-
-  ui_adapter.RefreshMjrContext(this->models.mj.mdl, 1);
-  mjuiState uistate = ui_adapter.state();
-  std::memset(&uistate, 0, sizeof(mjuiState));
-  uistate.nrect = 1;
-  std::tie(uistate.rect[0].width, uistate.rect[0].height) =
-      ui_adapter.GetFramebufferSize();
-  if (!ui_adapter.IsGPUAccelerated()) {
-    scn.flags[mjRND_SHADOW] = 0;
-    scn.flags[mjRND_REFLECTION] = 0;
-  }
-  ui_adapter.SetVSync(true);
-  while (!(ui_adapter.ShouldCloseWindow() or this->exit_requested)) {
-    std::tie(uistate.rect[0].width, uistate.rect[0].height) =
-        ui_adapter.GetFramebufferSize();
-    mjv_updateScene(this->models.mj.mdl, this->models.mj.data, &opt, NULL, &cam,
-                    mjCAT_ALL, &scn);
-
-    // Add markers
-    for (mjvGeom marker : this->markers) {
-      if (scn.ngeom >= scn.maxgeom) {
-        mj_warning(this->models.mj.data, mjWARN_VGEOMFULL, scn.maxgeom);
-        break;
-      }
-      mjvGeom* thisgeom = scn.geoms + scn.ngeom;
-      *thisgeom = marker;
-      thisgeom->segid = scn.ngeom;
-      scn.ngeom++;
-    }
-
-    mjr_render(uistate.rect[0], &scn, &ui_adapter.mjr_context());
-    ui_adapter.SwapBuffers();
-    ui_adapter.PollEvents();
+void FR3::m_reset() {
+  for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
+    size_t jnt_id = this->ids.joints[i];
+    size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
+    this->sim->d->qpos[jnt_qposadr] = q_home[i];
   }
 }
-void FR3::reset() {
-  mj_resetDataKeyframe(this->models.mj.mdl, this->models.mj.data, SIM_KF_HOME);
-  mj_step(this->models.mj.mdl, this->models.mj.data);
+
+common::Pose FR3::get_base_pose_in_world_coordinates() {
+  auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
+                       (std::string("base_") + this->id).c_str());
+  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
+  auto quat = this->sim->d->xquat + 4 * id;
+  Eigen::Quaterniond rotation(quat[0], quat[1], quat[2], quat[3]);
+  return common::Pose(rotation, translation);
 }
+
+void FR3::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs

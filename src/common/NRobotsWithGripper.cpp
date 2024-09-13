@@ -98,22 +98,19 @@ NRobotsWithGripper::get_state_g(const std::vector<size_t> &idxs) {
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
-std::vector<std::optional<bool>> NRobotsWithGripper::grasp(
-    const std::vector<size_t> &idxs) {
-  std::function<std::optional<bool>(size_t)> f =
-      [this, &idxs](size_t i) -> std::optional<bool> {
-    if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
-      return this->robots_with_gripper[idxs[i]]->gripper.value()->grasp();
-    }
-    return std::nullopt;
-  };
-  return NRobotsWithGripper::execute_parallel(f, idxs.size());
-}
-
-void NRobotsWithGripper::release(const std::vector<size_t> &idxs) {
+void NRobotsWithGripper::grasp(const std::vector<size_t> &idxs) {
   std::function<void(size_t)> f = [this, &idxs](size_t i) {
     if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
-      this->robots_with_gripper[idxs[i]]->gripper.value()->release();
+      this->robots_with_gripper[idxs[i]]->gripper.value()->grasp();
+    }
+  };
+  NRobotsWithGripper::execute_parallel(f, idxs.size());
+}
+
+void NRobotsWithGripper::open(const std::vector<size_t> &idxs) {
+  std::function<void(size_t)> f = [this, &idxs](size_t i) {
+    if (this->robots_with_gripper[idxs[i]]->gripper.has_value()) {
+      this->robots_with_gripper[idxs[i]]->gripper.value()->open();
     }
   };
   NRobotsWithGripper::execute_parallel(f, idxs.size());

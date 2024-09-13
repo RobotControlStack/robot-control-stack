@@ -7,6 +7,10 @@
 namespace rcs {
 namespace common {
 
+typedef Eigen::Matrix<double, 6, 1, Eigen::ColMajor> Vector6d;
+typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
+typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
+
 /***
  * @brief convert between eigen and flattened array (col major as required by
  * libfranka)

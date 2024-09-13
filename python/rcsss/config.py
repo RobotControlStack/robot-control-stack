@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
-from rcsss.camera.realsense import RealSenseConfig
+from rcsss.camera.interface import BaseCameraConfig
+from rcsss.camera.realsense import RealSenseSetConfig
+from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
 
 
 # TODO: this design might need to be adapted in order to
@@ -8,7 +10,7 @@ from rcsss.camera.realsense import RealSenseConfig
 # For this one could add a dict of camera configs
 class CameraConfig(BaseModel):
     # kinect_config: KinectConfig | None = None
-    realsense_config: RealSenseConfig | None = None
+    realsense_config: RealSenseSetConfig | None = None
     # TODO: we can also add sim camera configs here
 
 
@@ -23,7 +25,7 @@ class HWConfig(BaseModel):
 
 
 class SimConfig(BaseModel):
-    pass
+    camera: SimCameraSetConfig
 
 
 class Config(BaseModel):
@@ -32,10 +34,19 @@ class Config(BaseModel):
 
 
 def create_sample_config_yaml(path: str):
-    real_sense_cfg = RealSenseConfig(devices_to_enable={"human_readable_name": "serial_number"})
+
+    cameras = {"human_readable_name": BaseCameraConfig(identifier="serial_number")}
+    real_sense_cfg = RealSenseSetConfig(cameras=cameras)
     camera_cfg = CameraConfig(realsense_config=real_sense_cfg)
-    hw = HWConfig(username="...", password="...", urdf_model_path="path/to/urdf", camera_config=camera_cfg)
-    sim = SimConfig()
+    hw = HWConfig(
+        username="...",
+        password="...",
+        urdf_model_path="path/to/urdf",
+        camera_config=camera_cfg,
+        camera_type="realsense",
+    )
+    cameras_sim = {"human_readable_name": SimCameraConfig(identifier="mjcf_name", type=0, on_screen_render=False)}
+    sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras_sim))
     cfg = Config(hw=hw, sim=sim)
     yml = to_yaml_str(cfg)
     with open(path, "w") as f:

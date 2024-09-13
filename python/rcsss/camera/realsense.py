@@ -2,18 +2,17 @@ from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcsss.camera.interface import (
-    BaseCameraConfig,
-    BaseCameraSet,
-    CameraFrame,
-    DataFrame,
-    Frame,
-    IMUFrame,
-)
+from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
+from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
+
+# class RealSenseConfig(BaseCameraConfig):
+# dict with readable name and serial number
 
 
-class RealSenseConfig(BaseCameraConfig):
-    devices_to_enable: dict[str, str]  # dict with readable name and serial number
+class RealSenseSetConfig(HWCameraSetConfig):
+    # dict with readable name and serial number
+    # devices_to_enable: dict[str, str] = {}
+    # cameras: dict[str, RealSenseConfig] = []
     enable_ir_emitter: bool = False
     enable_ir: bool = False
     laser_power: int = 330
@@ -34,12 +33,12 @@ class RealSenseDevicePipeline:
 
 
 # TODO(juelg): look at frame queue
-class RealSenseCameraSet(BaseCameraSet):
+class RealSenseCameraSet(BaseHardwareCameraSet):
     TIMESTAMP_FACTOR = 1e-3
 
-    def __init__(self, cfg: RealSenseConfig) -> None:
-        super().__init__()
+    def __init__(self, cfg: RealSenseSetConfig) -> None:
         self._cfg = cfg
+        super().__init__()
         self.D400_config = rs.config()
 
         self.D400_config.enable_stream(
@@ -85,11 +84,7 @@ class RealSenseCameraSet(BaseCameraSet):
         self._available_devices: dict[str, RealSenseDeviceInfo] = {}
         self.update_available_devices()
         self._enabled_devices: dict[str, RealSenseDevicePipeline] = {}  # serial numbers of te enabled devices
-        self.enable_devices(self._cfg.devices_to_enable, self._cfg.enable_ir_emitter)
-
-    @property
-    def camera_names(self) -> list[str]:
-        return list(self._cfg.devices_to_enable.keys())
+        self.enable_devices(self.name_to_identifier, self._cfg.enable_ir_emitter)
 
     def update_available_devices(self):
         self._available_devices = self.enumerate_connected_devices(self._context)
@@ -153,11 +148,11 @@ class RealSenseCameraSet(BaseCameraSet):
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
 
     @property
-    def config(self) -> RealSenseConfig:
+    def config(self) -> RealSenseSetConfig:
         return self._cfg
 
     @config.setter
-    def config(self, cfg: RealSenseConfig) -> None:
+    def config(self, cfg: RealSenseSetConfig) -> None:
         self._cfg = cfg
 
     @staticmethod
@@ -195,9 +190,8 @@ class RealSenseCameraSet(BaseCameraSet):
 
         # TODO(juelg): what is a "pose" (in frame) and how can we use it
         # TODO(juelg): decide whether to use the poll method and to wait if devices get ready
-
-        assert camera_name in self._cfg.devices_to_enable, f"Camera {camera_name} not found in the enabled devices"
-        serial = self._cfg.devices_to_enable[camera_name]
+        assert camera_name in self.name_to_identifier, f"Camera {camera_name} not found in the enabled devices"
+        serial = self.name_to_identifier[camera_name]
         device = self._enabled_devices[serial]
 
         streams = device.pipeline_profile.get_streams()

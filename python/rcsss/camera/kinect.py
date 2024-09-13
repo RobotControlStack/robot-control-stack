@@ -1,22 +1,17 @@
 import k4a
 import numpy as np
-from rcsss.camera.interface import (
-    BaseCameraConfig,
-    BaseCameraSet,
-    CameraFrame,
-    DataFrame,
-    Frame,
-    IMUFrame,
-)
+from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
+from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
 
-class KinectConfig(BaseCameraConfig):
+class KinectConfig(HWCameraSetConfig):
     include_imu: bool = False
     timeout_ms: int = 2000
 
 
-class KinectCamera(BaseCameraSet):
+class KinectCamera(BaseHardwareCameraSet):
     def __init__(self, cfg: KinectConfig) -> None:
+        super().__init__()
         self._cfg = cfg
         self._device = k4a.Device.open()
         device_config = k4a.DEVICE_CONFIG_BGRA32_1080P_NFOV_2X2BINNED_FPS15
@@ -62,7 +57,3 @@ class KinectCamera(BaseCameraSet):
                 temperature=imu_sample.temperature,
             )
         return Frame(camera=camera_frame, imu=imu_frame, avg_timestamp=None)
-
-    @property
-    def camera_names(self) -> list[str]:
-        return ["kinect"]

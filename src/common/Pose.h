@@ -5,12 +5,21 @@
 #include <eigen3/Eigen/Geometry>
 #include <memory>
 
+#include "utils.h"
+
 namespace rcs {
 namespace common {
 
 Eigen::Vector3d IdentityTranslation();
-Eigen::Matrix3d IdentityRotation();
+Eigen::Matrix3d IdentityRotMatrix();
+Eigen::Quaterniond IdentityRotQuart();
+Eigen::Vector4d IdentityRotQuartVec();
 
+Eigen::Matrix4d FrankaHandTCPOffset();
+
+// Use extrinsic Euler angles: x/y/z <-> roll/pitch/yaw
+// https://math.stackexchange.com/questions/1137745/proof-of-the-extrinsic-to-intrinsic-rotation-transform
+// https://dominicplein.medium.com/extrinsic-intrinsic-rotation-do-i-multiply-from-right-or-left-357c38c1abfd
 struct RPY {
   double roll = 0;
   double pitch = 0;
@@ -21,16 +30,29 @@ struct RPY {
     return "RPY(" + std::to_string(roll) + ", " + std::to_string(pitch) + ", " +
            std::to_string(yaw) + ")";
   }
+  RPY(Eigen::Vector3d rpy) : roll(rpy[0]), pitch(rpy[1]), yaw(rpy[2]) {}
   RPY operator+(const RPY &rpy_b) const {
     return RPY{roll + rpy_b.roll, pitch + rpy_b.pitch, yaw + rpy_b.yaw};
   }
   Eigen::Matrix3d rotation_matrix() const {
     Eigen::Matrix3d rotation;
-    rotation = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+    rotation = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
                Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-               Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+               Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
     return rotation;
   }
+
+  Eigen::Quaterniond as_quaternion() const {
+    return Eigen::Quaterniond(
+        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
+  }
+
+  Eigen::Vector4d as_quaternion_vector() const {
+    return as_quaternion().coeffs();
+  }
+
   Eigen::Vector3d as_vector() const {
     Eigen::Vector3d rotation(
         (Eigen::Vector3d() << roll, pitch, yaw).finished());
@@ -38,7 +60,7 @@ struct RPY {
   }
 
   bool is_close(const RPY &other, double eps = 1e-8) const {
-    return this->as_vector().isApprox(other.as_vector(), eps);
+    return (this->as_vector() - other.as_vector()).lpNorm<1>() < eps;
   }
 };
 
@@ -71,7 +93,7 @@ class Pose {
    */
   Pose();
 
-  Pose(const Eigen::Affine3d &pose);
+  Pose(const Eigen::Affine3d &pose_matrix);
 
   Pose(const std::array<double, 16> &pose);
 
@@ -125,6 +147,56 @@ class Pose {
    * @param translation
    */
   Pose(const Eigen::Vector3d &rotation, const Eigen::Vector3d &translation);
+
+  /**
+   * @brief Construct a new Pose object from a 3D translation vector and
+   * identity rotation.
+   * For python bindings.
+   *
+   * @param translation
+   */
+  Pose(const Eigen::Vector3d &translation);
+
+  /**
+   * @brief Construct a new Pose object from a 4D quaternion and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param quaternion
+   */
+  Pose(const Eigen::Vector4d &quaternion);
+
+  /**
+   * @brief Construct a new Pose object from a 4D quaternion and identity
+   * translation.
+   *
+   * @param quaternion
+   */
+  Pose(const Eigen::Quaterniond &quaternion);
+
+  /**
+   * @brief Construct a new Pose object from a RPY struct and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param rpy
+   */
+  Pose(const RPY &rpy);
+
+  /**
+   * @brief Construct a new Pose object from a 3x3 rotation matrix and identity
+   * translation.
+   * For python bindings.
+   *
+   * @param rotation
+   */
+  Pose(const Eigen::Matrix3d &rotation);
+
+  /**
+   * @brief Copy the Pose object
+   * For python bindings.
+   */
+  Pose(const Pose &pose);
 
   // GETTERS
 
@@ -196,6 +268,12 @@ class Pose {
    * @return interpolated Pose
    */
   Pose interpolate(const Pose &dest_pose, double progress) const;
+
+  /**
+   * @brief Returns the XYZRPY representation of the Pose
+   * For python bindings.
+   */
+  Vector6d xyzrpy() const;
 
   /**
    * @brief Converts a Pose to a String

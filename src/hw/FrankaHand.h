@@ -30,16 +30,20 @@ struct FHState : common::GState {
   double width;
   bool is_grasped;
   uint16_t temperature;
+  double last_commanded_width;
+  double max_unnormalized_width;
 };
 
 class FrankaHand : public common::Gripper {
  private:
   franka::Gripper gripper;
   FHConfig cfg;
+  double max_width;
+  double last_commanded_width;
+  void m_reset();
 
  public:
-  FrankaHand(const std::string &ip,
-             const std::optional<FHConfig> &cfg = std::nullopt);
+  FrankaHand(const std::string &ip, const FHConfig &cfg);
   ~FrankaHand() override;
 
   bool set_parameters(const FHConfig &cfg);
@@ -48,14 +52,18 @@ class FrankaHand : public common::Gripper {
 
   FHState *get_state() override;
 
-  // TODO: method that puts the gripper to certain position
-  // the move method should do this but it certainly does not work
-  // we should be able to do this with the stop command
+  void reset() override;
+
+  // normalized width of the gripper, 0 is closed, 1 is open
+  void set_normalized_width(double width, double force = 0) override;
+  double get_normalized_width() override;
+
+  bool is_grasped() override;
 
   bool homing();
 
-  bool grasp() override;
-  void release() override;
+  void grasp() override;
+  void open() override;
   void shut() override;
 };
 }  // namespace hw

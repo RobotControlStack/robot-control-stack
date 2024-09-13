@@ -10,12 +10,10 @@
 namespace rcs {
 namespace hw {
 
-FrankaHand::FrankaHand(const std::string &ip,
-                       const std::optional<FHConfig> &cfg)
-    : gripper(ip) {
-  if (cfg.has_value()) {
-    this->cfg = cfg.value();
-  }  // else default constructor
+FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
+    : gripper(ip), cfg{} {
+  this->cfg = cfg;
+  this->m_reset();
 }
 
 FrankaHand::~FrankaHand() {}
@@ -38,11 +36,51 @@ FHConfig *FrankaHand::get_parameters() {
 
 FHState *FrankaHand::get_state() {
   franka::GripperState gripper_state = gripper.readOnce();
+  if (std::abs(gripper_state.max_width - this->cfg.grasping_width) > 0.01) {
+    this->max_width = gripper_state.max_width - 0.001;
+  }
   FHState *state = new FHState();
-  state->width = gripper_state.width;
+  state->width = gripper_state.width / gripper_state.max_width;
   state->is_grasped = gripper_state.is_grasped;
   state->temperature = gripper_state.temperature;
+  state->max_unnormalized_width = this->max_width;
+  state->last_commanded_width = this->last_commanded_width;
   return state;
+}
+
+void FrankaHand::set_normalized_width(double width, double force) {
+  if (width < 0 || width > 1 || force < 0) {
+    throw std::invalid_argument(
+        "width must be between 0 and 1, force must be positive");
+  }
+  franka::GripperState gripper_state = gripper.readOnce();
+  width = width * gripper_state.max_width;
+  this->last_commanded_width = width;
+  if (force < 0.01) {
+    gripper.move(width, this->cfg.speed);
+  } else {
+    gripper.grasp(width, this->cfg.speed, force, this->cfg.epsilon_inner,
+                  this->cfg.epsilon_outer);
+  }
+}
+double FrankaHand::get_normalized_width() {
+  franka::GripperState gripper_state = gripper.readOnce();
+  return gripper_state.width / gripper_state.max_width;
+}
+
+void FrankaHand::m_reset() {
+  this->gripper.stop();
+  // open gripper
+  franka::GripperState gripper_state = gripper.readOnce();
+  this->max_width = gripper_state.max_width - 0.001;
+  this->last_commanded_width = this->max_width;
+  gripper.move(this->max_width, this->cfg.speed);
+}
+void FrankaHand::reset() { this->m_reset(); }
+
+bool FrankaHand::is_grasped() {
+  franka::GripperState gripper_state = gripper.readOnce();
+  return gripper_state.is_grasped;
 }
 
 bool FrankaHand::homing() {
@@ -51,16 +89,18 @@ bool FrankaHand::homing() {
   return gripper.homing();
 }
 
-bool FrankaHand::grasp() {
-  return gripper.grasp(this->cfg.grasping_width, this->cfg.speed,
-                       this->cfg.force, this->cfg.epsilon_inner,
-                       this->cfg.epsilon_outer);
+void FrankaHand::grasp() {
+  this->last_commanded_width = this->max_width;
+  gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
 }
 
-void FrankaHand::release() {
-  franka::GripperState gripper_state = gripper.readOnce();
-  gripper.move(gripper_state.max_width, this->cfg.speed);
+void FrankaHand::open() {
+  this->last_commanded_width = this->max_width;
+  gripper.move(this->max_width, this->cfg.speed);
 }
-void FrankaHand::shut() { gripper.move(0, this->cfg.speed); }
+void FrankaHand::shut() {
+  this->last_commanded_width = 0;
+  gripper.move(0, this->cfg.speed);
+}
 }  // namespace hw
 }  // namespace rcs

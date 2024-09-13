@@ -1,5 +1,4 @@
 .cache
-.vscode
 build
 plugin.h
 .session.vim
@@ -14,3 +13,6 @@ config.yaml
 MUJOCO_LOG.TXT
 src/pybind/mujoco
 python/mujoco
+config.h
+wheels
+.env
