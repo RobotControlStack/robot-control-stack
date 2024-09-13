@@ -5,6 +5,7 @@ from time import sleep
 import numpy as np
 from pynput import keyboard
 from rcsss.control.fr3_desk import FCI, Desk
+from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode
 from rcsss.envs.factories import (
     default_fr3_hw_gripper_cfg,
@@ -106,8 +107,8 @@ class RobotControl:
 
 
 def main():
-    creds = dotenv_values()
-    d = Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"])
+    user, pw = load_creds_fr3_desk()
+    d = Desk(ROBOT_IP, user, pw)
     with FCI(d, unlock=False, lock_when_done=False):
         env = fr3_hw_env(
             ROBOT_IP,

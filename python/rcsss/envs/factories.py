@@ -2,13 +2,12 @@ import logging
 import sys
 
 import gymnasium as gym
-import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss._core.hw import FR3Config
 from rcsss._core.sim import CameraType
 from rcsss.camera.hw import BaseHardwareCameraSet
-from rcsss.camera.interface import BaseCameraConfig, BaseCameraSet
+from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.base import (
@@ -17,7 +16,6 @@ from rcsss.envs.base import (
     FR3Env,
     GripperWrapper,
     LimitedJointsRelDictType,
-    ObsArmsGr,
     ObsArmsGrCam,
     RelativeActionSpace,
 )
@@ -85,7 +83,7 @@ def fr3_hw_env(
         env = CameraSetWrapper(env, camera_set)
 
     if collision_guard:
-        env: gym.Env = CollisionGuard.env_from_xml_paths(
+        env = CollisionGuard.env_from_xml_paths(
             env,
             str(rcsss.scenes["fr3_empty_world"]),
             str(rcsss.scenes["lab"].parent / "fr3.urdf"),
@@ -135,12 +133,12 @@ def fr3_sim_env(
     simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
     robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
     robot.set_parameters(robot_cfg)
-    env = FR3Env(robot, control_mode)
+    env: gym.Env = FR3Env(robot, control_mode)
     env = FR3Sim(env, simulation)
 
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)
-        env: gym.Env = CameraSetWrapper(env, camera_set)
+        env = CameraSetWrapper(env, camera_set)
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)

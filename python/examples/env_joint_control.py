@@ -3,6 +3,7 @@ import mujoco
 import rcsss
 
 from dotenv import dotenv_values
+from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.desk import FCI, Desk, DummyResourceManager
 from rcsss.envs.base import ControlMode, RobotInstance
 from rcsss.envs.factories import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg, default_fr3_sim_robot_cfg, default_mujoco_cameraset_cfg, fr3_hw_env, fr3_sim_env
@@ -24,9 +25,9 @@ FR3_PASSWORD=<password on franka desk>
 
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-        creds = dotenv_values()
+        user, pw = load_creds_fr3_desk()
         resource_manger = FCI(
-            Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"]), unlock=False, lock_when_done=False
+            Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False
         )
     else:
         resource_manger = DummyResourceManager()
