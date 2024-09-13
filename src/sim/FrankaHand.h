@@ -35,7 +35,8 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
   std::shared_ptr<Sim> sim;
   int actuator_id;
-  int joint_id;
+  int joint_id_1;
+  int joint_id_2;
   FHState state;
   std::string id;
   void is_moving_callback();

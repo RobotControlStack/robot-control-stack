@@ -40,6 +40,7 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
   double max_width;
   double last_commanded_width;
+  void m_reset();
 
  public:
   FrankaHand(const std::string &ip, const FHConfig &cfg);
