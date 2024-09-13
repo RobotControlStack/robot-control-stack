@@ -5,8 +5,8 @@ import rcsss
 from dotenv import dotenv_values
 from rcsss.desk import FCI, Desk, DummyResourceManager
 from rcsss.envs.base import ControlMode, RobotInstance
+from rcsss.envs.factories import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg, default_fr3_sim_robot_cfg, default_mujoco_cameraset_cfg, fr3_hw_env, fr3_sim_env
 
-from env_common import hw_env_rel, sim_env_rel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,9 +33,22 @@ def main():
     with resource_manger:
 
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            env_rel = hw_env_rel(ROBOT_IP, ControlMode.JOINTS)
+            env_rel = fr3_hw_env(
+                ip=ROBOT_IP,
+                control_mode=ControlMode.JOINTS,
+                robot_cfg=default_fr3_hw_robot_cfg(),
+                collision_guard=True,
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                max_relative_movement=0.5
+            )
         else:
-            env_rel = sim_env_rel(ControlMode.JOINTS)
+            env_rel = fr3_sim_env(
+                control_mode=ControlMode.JOINTS,
+                robot_cfg=default_fr3_sim_robot_cfg(),
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                camera_set_cfg=default_mujoco_cameraset_cfg(),
+                max_relative_movement=0.5
+                )
 
         for _ in range(10):
             obs, info = env_rel.reset()

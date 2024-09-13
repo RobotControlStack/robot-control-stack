@@ -3,10 +3,15 @@ from threading import Lock
 from time import sleep
 
 import numpy as np
+from dotenv import dotenv_values
 from pynput import keyboard
-from rcsss.config import read_config_yaml
 from rcsss.desk import FCI, Desk
-from rcsss.utils import hw
+from rcsss.envs.base import ControlMode
+from rcsss.envs.factories import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    fr3_hw_env,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -102,10 +107,17 @@ class RobotControl:
 
 
 def main():
-    cfg = read_config_yaml("config.yaml")
-    d = Desk(ROBOT_IP, cfg.hw.username, cfg.hw.password)
+    creds = dotenv_values()
+    d = Desk(ROBOT_IP, creds["FR3_USERNAME"], creds["FR3_PASSWORD"])
     with FCI(d, unlock=False, lock_when_done=False):
-        env = hw(ROBOT_IP)
+        env = fr3_hw_env(
+            ROBOT_IP,
+            control_mode=ControlMode.CARTESIAN_TRPY,
+            robot_cfg=default_fr3_hw_robot_cfg(),
+            collision_guard=True,
+            gripper_cfg=default_fr3_hw_gripper_cfg(),
+            max_relative_movement=0.2,
+        )
         controller = RobotControl(env)
         listener = keyboard.Listener(on_press=controller.on_press, on_release=controller.on_release)
         listener.start()
