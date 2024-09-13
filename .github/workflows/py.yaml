@@ -41,12 +41,14 @@ jobs:
           cache: "pip"
       - name: Install building dependencies
         run: python -m pip install -r requirements_dev.txt
+      - name: Install wheel
+        run: python -m pip install wheel
       - name: Download the models using cmake
         env:
           MODEL_TOKEN: ${{ secrets.MODEL_TOKEN }}
         run: cmake -G Ninja -B build -DINCLUDE_UTN_MODELS=ON -DGITLAB_MODELS_TOKEN="$MODEL_TOKEN" -DMUJOCO_VERSION=3.1.5
       - name: Install the package
-        run: python -m pip install --no-build-isolation
+        run: python -m pip install --no-build-isolation .
       - name: Code linting
         run: make pylint
       - name: Check that stub files are up-to-date
