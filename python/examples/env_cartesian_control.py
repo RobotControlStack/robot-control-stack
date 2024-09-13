@@ -1,0 +1,72 @@
+import logging
+
+from dotenv import dotenv_values
+from rcsss.control.utils import load_creds_fr3_desk
+from rcsss.desk import FCI, Desk, DummyResourceManager
+from rcsss.envs.base import ControlMode, RobotInstance
+from rcsss.envs.factories import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg, default_fr3_sim_robot_cfg, default_mujoco_cameraset_cfg, fr3_hw_env, fr3_sim_env
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+ROBOT_IP = "192.168.101.1"
+ROBOT_INSTANCE = RobotInstance.SIMULATION
+
+
+"""
+Create a .env file in the same directory as this file with the following content:
+FR3_USERNAME=<username on franka desk>
+FR3_PASSWORD=<password on franka desk>
+"""
+
+
+def main():
+    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+        user, pw = load_creds_fr3_desk()
+        resource_manger = FCI(
+            Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False
+        )
+    else:
+        resource_manger = DummyResourceManager()
+
+    with resource_manger:
+        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+            env_rel = fr3_hw_env(
+                ip=ROBOT_IP,
+                control_mode=ControlMode.CARTESIAN_TQuart,
+                robot_cfg=default_fr3_hw_robot_cfg(),
+                collision_guard=True,
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                max_relative_movement=0.5
+            )
+        else:
+            env_rel = fr3_sim_env(
+                control_mode=ControlMode.CARTESIAN_TQuart,
+                robot_cfg=default_fr3_sim_robot_cfg(),
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                camera_set_cfg=default_mujoco_cameraset_cfg(),
+                max_relative_movement=0.5
+                )
+
+        print(env_rel.unwrapped.robot.get_cartesian_position())
+
+        for _ in range(10):
+            for _ in range(10):
+                # move 1cm in x direction (forward) and close gripper
+                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+                obs, reward, terminated, truncated, info = env_rel.step(act)
+                if truncated or terminated:
+                    logger.info("Truncated or terminated!")
+                    return
+            for _ in range(10):
+                # move 1cm in negative x direction (backward) and open gripper
+                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                obs, reward, terminated, truncated, info = env_rel.step(act)
+                if truncated or terminated:
+                    logger.info("Truncated or terminated!")
+                    return
+
+
+if __name__ == "__main__":
+    main()

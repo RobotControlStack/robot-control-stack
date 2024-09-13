@@ -11,7 +11,7 @@ from rcsss._core.common import RPY, Pose
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.config import read_config_yaml
-from rcsss.desk import FCI, Desk
+from rcsss.control.fr3_desk import FCI, Desk
 from rcsss.envs.base import (
     CameraSetWrapper,
     ControlMode,

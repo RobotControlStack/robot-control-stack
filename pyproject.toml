@@ -18,7 +18,9 @@ dependencies = ["websockets>=11.0",
     "glfw~=2.7",
     "pyopengl",
     "pyrealsense2~=2.55.1",
+    "pynput~=1.7.7",
     "pillow~=10.3",
+    "python-dotenv==1.0.1",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.1.5"
 ]
@@ -93,6 +95,7 @@ ignore = [
   "PGH003",  # Use specfic rule code when ignoring types issues
   # "RET504",
   "T201",    # print() used
+  "PLR5501" # elif to reduce indentation
 ]
 
 [tool.pylint.format]

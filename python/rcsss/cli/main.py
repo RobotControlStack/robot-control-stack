@@ -10,7 +10,7 @@ import typer
 from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
-from rcsss.record import PoseList
+from rcsss.control.record import PoseList
 
 logger = logging.getLogger(__name__)
 

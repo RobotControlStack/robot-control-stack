@@ -37,6 +37,7 @@ class BaseHardwareCameraSet(ABC):
         self._thread: threading.Thread | None = None
         self._logger = logging.getLogger(__name__)
         self._next_ring_index = 0
+        self._buffer_len = 0
 
     def buffer_size(self) -> int:
         return len(self._buffer) - self._buffer.count(None)
@@ -44,13 +45,13 @@ class BaseHardwareCameraSet(ABC):
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
         with self._buffer_lock:
-            return self._buffer[-1] if len(self._buffer) > 0 else None
+            return self._buffer[self._next_ring_index - 1] if self._buffer_len > 0 else None
 
     def get_timestamp_frames(self, ts: datetime) -> FrameSet | None:
         """Should return the frame from the camera with the given name and closest to the given timestamp."""
         # iterate through the buffer and find the closest timestamp
         with self._buffer_lock:
-            for i in range(self.config.max_buffer_frames):
+            for i in range(self._buffer_len):
                 idx = (self._next_ring_index - i - 1) % self.config.max_buffer_frames  # iterate backwards
                 assert self._buffer[idx] is not None
                 item: FrameSet = typing.cast(FrameSet, self._buffer[idx])
@@ -68,6 +69,9 @@ class BaseHardwareCameraSet(ABC):
 
     def start(self, warm_up: bool = True):
         """Should start the polling of the cameras."""
+        if self.running:
+            self._logger.warning("Camera thread already running!")
+            return
         self.running = True
         self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
         self._thread.start()
@@ -86,6 +90,7 @@ class BaseHardwareCameraSet(ABC):
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
                 self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
+                self._buffer_len = max(self._buffer_len + 1, self.config.max_buffer_frames)
             sleep(1 / self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
@@ -115,6 +120,7 @@ class BaseHardwareCameraSet(ABC):
         with self._buffer_lock:
             self._buffer = [None for _ in range(self.config.max_buffer_frames)]
             self._next_ring_index = 0
+            self._buffer_len = 0
 
     @property
     @abstractmethod
