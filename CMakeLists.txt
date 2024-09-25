@@ -68,7 +68,7 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 set(MuJoCo_UI_URL https://raw.githubusercontent.com/google-deepmind/mujoco/${MuJoCo_VERSION}/simulate/)
-set(MuJoCo_UI_FILES plaform_ui_adapter.cc platform_ui_adapter.h glfw_adapter.cc glfw_adapter.h glfw_adapter.cc glfw_corevideo.h glfw_corevideo.mm glfw_dispatch.cc glfw_dispatch.h)
+set(MuJoCo_UI_FILES platform_ui_adapter.cc platform_ui_adapter.h glfw_adapter.cc glfw_adapter.h glfw_adapter.cc glfw_corevideo.h glfw_corevideo.mm glfw_dispatch.cc glfw_dispatch.h)
 # Set the destination directory for the downloaded files
 set(MuJoCo_UI_DIR "${CMAKE_BINARY_DIR}/mujoco_ui")
 
@@ -85,8 +85,10 @@ foreach(file ${MuJoCo_UI_FILES})
     message(STATUS "File ${file} already exists, skipping download.")
   endif()
 endforeach()
+
 # Add the include directories or link the files as needed
-add_library(mujoco_ui_lib INTERFACE)
+add_library(mujoco_ui_lib ${MuJoCo_UI_DIR}/glfw_adapter.cc ${MuJoCo_UI_DIR}/platform_ui_adapter.cc ${MuJoCo_UI_DIR}/glfw_dispatch.cc)
+target_link_libraries(mujoco_ui_lib MuJoCo::MuJoCo glfw)
 target_include_directories(mujoco_ui_lib INTERFACE ${MuJoCo_UI_DIR})
 
 FetchContent_MakeAvailable(libfranka rl pybind11)
