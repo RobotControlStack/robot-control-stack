@@ -56,7 +56,10 @@ class GuiServer {
   void update_mjdata_callback();
 
  private:
-  const std::string& id;
+  // don't make this a reference, apparently references are not valid in
+  // destructors. or at least in this case the reference to id was not longer
+  // valid in the destructor.
+  const std::string id;
   struct shm shm;
   mjModel* m;
   mjData* d;

@@ -36,6 +36,9 @@ class Sim(_Sim):
 
     def open_gui(self):
         if self._gui_uuid is None:
-            self._gui_uuid = str(uuid.uuid4())
+            self._gui_uuid = "rcsss_" + str(uuid.uuid4())
             self.start_gui_server(self._gui_uuid)
         self._mp_context.Process(target=_start_gui, args=(self._gui_uuid,)).start()
+
+    def __del__(self):
+        self.stop_gui_server()
