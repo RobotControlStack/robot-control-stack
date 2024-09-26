@@ -144,8 +144,8 @@ void Sim::register_rendering_callback(
     std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
         cb,
     const std::string& id, mjtNum seconds_between_calls, size_t width,
-    size_t height, bool offscreen) {
-  this->renderer.register_context(id, width, height, offscreen);
+    size_t height) {
+  this->renderer.register_context(id, width, height);
   // dont register off screen in normal callback, but special gui callback
   this->rendering_callbacks.push_back(
       RenderingCallback{.cb = cb,

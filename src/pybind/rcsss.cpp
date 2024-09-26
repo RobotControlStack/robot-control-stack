@@ -467,9 +467,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
       .def(py::init<>())
       .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
-      .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def_readwrite("on_screen_render",
-                     &rcs::sim::SimCameraConfig::on_screen_render);
+      .def_readwrite("type", &rcs::sim::SimCameraConfig::type);
   py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
       .def(py::init<>())
       .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)

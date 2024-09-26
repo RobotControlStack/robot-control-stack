@@ -20,7 +20,6 @@ from rcsss.camera.interface import (
 
 class SimCameraConfig(BaseCameraConfig):
     type: int  # CamBaseCameraConfigeraType
-    on_screen_render: bool
 
 
 class SimCameraSetConfig(BaseCameraSetConfig):
@@ -50,7 +49,6 @@ class SimCameraSet(_SimCameraSet):
         for name, camera_cfg in cfg.cameras.items():
             cpp_camera_cfg = _SimCameraConfig()
             cpp_camera_cfg.type = get_type(camera_cfg.type)
-            cpp_camera_cfg.on_screen_render = camera_cfg.on_screen_render
             cpp_camera_cfg.identifier = camera_cfg.identifier
             cameras[name] = cpp_camera_cfg
 

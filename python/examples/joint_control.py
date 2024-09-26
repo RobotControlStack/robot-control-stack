@@ -30,6 +30,8 @@ def main():
     else:
         env_rel = sim_env_rel(ControlMode.JOINTS)
         resource_manger = DummyResourceManager()
+        env_rel.get_wrapper_attr("sim").open_gui()
+
 
     with resource_manger:
         for _ in range(10):

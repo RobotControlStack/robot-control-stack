@@ -17,8 +17,7 @@ class Renderer {
  public:
   Renderer(mjModel* m);
   ~Renderer();
-  void register_context(const std::string& id, size_t width, size_t height,
-                        bool offscreen);
+  void register_context(const std::string& id, size_t width, size_t height);
   mjrContext* get_context(const std::string& id);
   mjvScene scene;
   mjvOption opt;
@@ -99,7 +98,7 @@ class Sim {
                          mjvOption&)>
           cb,
       const std::string& id, mjtNum seconds_between_calls, size_t width,
-      size_t height, bool offscreen);
+      size_t height);
   void start_gui_server(const std::string& id);
   void stop_gui_server();
 };

@@ -92,8 +92,8 @@ def sim_env_rel(control_mode: ControlMode) -> gym.Env[ObsArmsGrCam, LimitedJoint
     env = FR3Env(robot, control_mode)
     env_sim = FR3Sim(env, simulation)
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        #"default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free))
     }
     cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=10)
     camera_set = SimCameraSet(simulation, cam_cfg)

@@ -65,6 +65,7 @@ void FR3::construct() {
   this->rl.ik->setDuration(
       std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
   this->init_ids();
+  // TODO: remove this call
   this->sim->register_cb(std::bind(&FR3::collision_callback, this),
                          this->cfg.seconds_between_callbacks);
   this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),

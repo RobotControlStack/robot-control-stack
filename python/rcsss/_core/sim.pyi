@@ -141,7 +141,6 @@ class Sim:
 
 class SimCameraConfig:
     identifier: str
-    on_screen_render: bool
     type: CameraType
     def __init__(self) -> None: ...
 
