@@ -1,17 +1,9 @@
 name: Release
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_run:
-    workflows: ["Python", "Cpp"]
-    branches: [master]
-    types:
-      - completed
+  workflow_dispatch:
 
 jobs:
   release:
-    if: ${{ startsWith(github.event.head_commit.message, 'bump:') and github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -19,16 +11,21 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
-      - name: Create bump and changelog
+        with:
+          fetch-depth: 0
+          token: "${{ secrets.GITHUB_TOKEN }}"
+      - id: cz
+        name: Create bump and changelog
         uses: commitizen-tools/commitizen-action@master
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           changelog_increment_filename: body.md
-          commit: false
-          push: false
       - name: Release
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.REVISION }}
           bodyFile: "body.md"
           skipIfReleaseExists: true
+      - name: Print Version
+        run: echo "Bumped to version ${{ steps.cz.outputs.version }}"
       # TODO: create pypi source distribution

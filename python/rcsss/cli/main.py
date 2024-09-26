@@ -6,11 +6,12 @@ from typing import Annotated, Optional
 
 import pyrealsense2 as rs
 import rcsss
+import rcsss.control.fr3_desk
 import typer
 from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
-from rcsss.record import PoseList
+from rcsss.control.record import PoseList
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ def home(
 ):
     """Moves the FR3 to home position"""
     cfg = read_config_yaml(path)
-    rcsss.desk.home(ip, cfg.hw.username, cfg.hw.password, shut)
+    rcsss.control.fr3_desk.home(ip, cfg.hw.username, cfg.hw.password, shut)
 
 
 @fr3_app.command()
@@ -123,7 +124,7 @@ def lock(
 ):
     """Locks the robot."""
     cfg = read_config_yaml(path)
-    rcsss.desk.lock(ip, cfg.hw.username, cfg.hw.password)
+    rcsss.control.fr3_desk.lock(ip, cfg.hw.username, cfg.hw.password)
 
 
 @fr3_app.command()
@@ -133,8 +134,8 @@ def unlock(
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
     cfg = read_config_yaml(path)
-    rcsss.desk.unlock(ip, cfg.hw.username, cfg.hw.password)
-    with rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password) as d:
+    rcsss.control.fr3_desk.unlock(ip, cfg.hw.username, cfg.hw.password)
+    with rcsss.control.fr3_desk.Desk(ip, cfg.hw.username, cfg.hw.password) as d:
         d.activate_fci()
 
 
@@ -148,12 +149,14 @@ def fci(
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
     cfg = read_config_yaml(path)
     try:
-        with rcsss.desk.FCI(rcsss.desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock):
+        with rcsss.control.fr3_desk.FCI(
+            rcsss.control.fr3_desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock
+        ):
             while True:
                 sleep(1)
     except KeyboardInterrupt:
         if shutdown:
-            rcsss.desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
+            rcsss.control.fr3_desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
 
 
 @fr3_app.command()
@@ -164,7 +167,7 @@ def guiding_mode(
 ):
     """Enables or disables guiding mode."""
     cfg = read_config_yaml(path)
-    rcsss.desk.guiding_mode(ip, cfg.hw.username, cfg.hw.password, disable)
+    rcsss.control.fr3_desk.guiding_mode(ip, cfg.hw.username, cfg.hw.password, disable)
 
 
 @fr3_app.command()
@@ -174,7 +177,7 @@ def shutdown(
 ):
     """Shuts the robot down"""
     cfg = read_config_yaml(path)
-    rcsss.desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
+    rcsss.control.fr3_desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
 
 
 @fr3_app.command()
@@ -194,7 +197,9 @@ def record(
         with ExitStack() as stack:
             for r_ip in name2ip.values():
                 stack.enter_context(
-                    rcsss.desk.Desk.fci(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                    rcsss.control.fr3_desk.Desk.fci(
+                        r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
+                    )
                 )
 
             p = PoseList.load(name2ip, lpaths, cfg.hw.urdf_model_path)
@@ -203,7 +208,9 @@ def record(
     else:
         with ExitStack() as stack:
             gms = [
-                rcsss.desk.Desk.guiding_mode(r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True)
+                rcsss.control.fr3_desk.Desk.guiding_mode(
+                    r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
+                )
                 for r_ip in name2ip.values()
             ]
             for gm in gms:

@@ -2,7 +2,7 @@ import logging
 import threading
 from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
-from struct import unpack  # , pack
+from struct import pack, unpack
 
 import gymnasium as gym
 import numpy as np
@@ -11,7 +11,7 @@ from rcsss._core.common import RPY, Pose
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.config import read_config_yaml
-from rcsss.desk import FCI, Desk
+from rcsss.control.fr3_desk import FCI, Desk
 from rcsss.envs.base import (
     CameraSetWrapper,
     ControlMode,
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 EGO_LOCK = False
 VIVE_HOST = "192.168.100.1"
 VIVE_PORT = 54321
-USE_REAL_ROBOT = False
-INCLUDE_ROTATION = False
+USE_REAL_ROBOT = True
+INCLUDE_ROTATION = True
 ROBOT_IP = "192.168.101.1"
 
 
@@ -77,7 +77,7 @@ class UDPViveActionServer(threading.Thread):
     def next_action(self) -> Pose:
         transform = Pose(
             translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
-            quaternion=(self._offset_pose.inverse() * self._last_controller_pose).rotation_q(),
+            quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
         )
         return (
             self._ego_transform
@@ -93,11 +93,11 @@ class UDPViveActionServer(threading.Thread):
     def run(self):
         warning_raised = False
 
-        with socket(AF_INET, SOCK_DGRAM) as sock:
-            # with socket(AF_INET, SOCK_DGRAM) as send_sock:
+        with socket(AF_INET, SOCK_DGRAM) as sock, socket(AF_INET, SOCK_DGRAM) as send_sock:
             sock.settimeout(2)
+            sock.setblocking(False)
             sock.bind((self._host, self._port))
-            # send_sock.connect(("127.0.0.1", self._port + 1))
+            send_sock.connect(("127.0.0.1", self._port + 1))
             while not self._exit_requested:
                 try:
                     unpacked = unpack(UDPViveActionServer.FMT, sock.recv(7 * 8 + 4))
@@ -155,18 +155,18 @@ class UDPViveActionServer(threading.Thread):
                         self._last_controller_pose = last_controller_pose
 
                         # plot current offset with liveplot.py
-                        # transform = Pose(
-                        #     translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
-                        #     quaternion=(self._offset_pose.inverse() * self._last_controller_pose).rotation_q(),
-                        # )
-                        # offset = (
-                        #     self._ego_transform
-                        #     * UDPViveActionServer.transform_from_openxr
-                        #     * transform
-                        #     * UDPViveActionServer.transform_from_openxr.inverse()
-                        #     * self._ego_transform.inverse()
-                        # )
-                        # send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
+                        transform = Pose(
+                            translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
+                            quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
+                        )
+                        offset = (
+                            self._ego_transform
+                            * UDPViveActionServer.transform_from_openxr
+                            * transform
+                            * UDPViveActionServer.transform_from_openxr.inverse()
+                            * self._ego_transform.inverse()
+                        )
+                        send_sock.sendall(pack(UDPViveActionServer.FMT, *offset.rotation_q(), *offset.translation(), 0))
 
                     if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
                         # just pressed
@@ -210,7 +210,7 @@ def hw():
         rcfg = rcsss.hw.FR3Config()
         rcfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
         rcfg.speed_factor = 0.2
-        # rcfg.controller = rcsss.hw.IKController.robotics_library
+        rcfg.controller = rcsss.hw.IKController.robotics_library
         robot.set_parameters(rcfg)
 
         # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)

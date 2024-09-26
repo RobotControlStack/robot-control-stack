@@ -13,10 +13,7 @@ namespace hw {
 FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
     : gripper(ip), cfg{} {
   this->cfg = cfg;
-  franka::GripperState gripper_state = gripper.readOnce();
-  this->max_width = gripper_state.max_width - 0.001;
-  this->last_commanded_width = this->max_width;
-  gripper.move(this->max_width, this->cfg.speed);
+  this->m_reset();
 }
 
 FrankaHand::~FrankaHand() {}
@@ -71,12 +68,15 @@ double FrankaHand::get_normalized_width() {
   return gripper_state.width / gripper_state.max_width;
 }
 
-void FrankaHand::reset() {
+void FrankaHand::m_reset() {
   this->gripper.stop();
+  // open gripper
   franka::GripperState gripper_state = gripper.readOnce();
   this->max_width = gripper_state.max_width - 0.001;
-  this->open();
+  this->last_commanded_width = this->max_width;
+  gripper.move(this->max_width, this->cfg.speed);
 }
+void FrankaHand::reset() { this->m_reset(); }
 
 bool FrankaHand::is_grasped() {
   franka::GripperState gripper_state = gripper.readOnce();

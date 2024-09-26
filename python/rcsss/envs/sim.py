@@ -31,9 +31,9 @@ class FR3Sim(gym.Wrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        self.sim_robot.reset()
+        obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
-        return super().reset(seed=seed, options=options)
+        return obs, info
 
 
 class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):

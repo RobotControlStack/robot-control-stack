@@ -213,18 +213,21 @@ class FR3Env(gym.Env):
             raise RuntimeError(msg)
 
         if self.get_base_control_mode() == ControlMode.JOINTS and (
-            self.prev_action is None or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key])
+            self.prev_action is None
+            or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
         ):
             # cast is needed because typed dicts cannot be checked at runtime
             self.robot.set_joint_position(action_dict[self.joints_key])
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
-            self.prev_action is None or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key])
+            self.prev_action is None
+            or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key], atol=1e-03, rtol=0)
         ):
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
-            self.prev_action is None or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key])
+            self.prev_action is None
+            or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
         ):
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
@@ -241,6 +244,7 @@ class FR3Env(gym.Env):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
+        self.robot.reset()
         return self.get_obs(), {}
 
 
@@ -438,12 +442,10 @@ class GripperWrapper(ActObsInfoWrapper):
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
-        self._last_gripper_action = 1
         self.binary = binary
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         self._gripper.reset()
-        self._last_gripper_action = 1
         return super().reset(**kwargs)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -464,8 +466,10 @@ class GripperWrapper(ActObsInfoWrapper):
         assert self.gripper_key in action, "Gripper action not found."
 
         gripper_action = np.round(action["gripper"])
-        if gripper_action != self._last_gripper_action:
-            self._last_gripper_action = gripper_action
+        width = self._gripper.get_normalized_width()
+        if self.binary:
+            width = np.round(width)
+        if gripper_action != width:
             if self.binary:
                 self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
             else:

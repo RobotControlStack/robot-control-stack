@@ -69,6 +69,9 @@ class BaseHardwareCameraSet(ABC):
 
     def start(self, warm_up: bool = True):
         """Should start the polling of the cameras."""
+        if self.running:
+            self._logger.warning("Camera thread already running!")
+            return
         self.running = True
         self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
         self._thread.start()

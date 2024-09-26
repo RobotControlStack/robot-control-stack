@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcsss"
-version = "0.1.0"
+version = "0.2.1"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
     "requests~=2.31",
@@ -18,7 +18,9 @@ dependencies = ["websockets>=11.0",
     "glfw~=2.7",
     "pyopengl",
     "pyrealsense2~=2.55.1",
+    "pynput~=1.7.7",
     "pillow~=10.3",
+    "python-dotenv==1.0.1",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.1.5"
 ]
