@@ -36,9 +36,11 @@ struct SimCameraSetConfig {
 
 // (H,W,3)
 typedef Eigen::Matrix<unsigned char, Eigen::Dynamic, 1> ColorFrame;
+typedef Eigen::Matrix<float, Eigen::Dynamic, 1> DepthFrame;
 
 struct FrameSet {
   std::unordered_map<std::string, ColorFrame> color_frames;
+  std::unordered_map<std::string, DepthFrame> depth_frames;
   mjtNum timestamp;
 };
 

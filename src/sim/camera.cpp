@@ -77,9 +77,9 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   int W = viewport.width;
   int H = viewport.height;
 
-  // allocate rgb buffers
+  // allocate rgb and depth buffers
   ColorFrame frame = ColorFrame::Zero(3 * W * H);
-
+  DepthFrame depth = DepthFrame::Zero(1 * W * H);
   // update abstract scene
   // TODO: we might be able to call this once for all cameras
   // there is also a mjv_updateCamera function
@@ -91,7 +91,7 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   mjr_render(viewport, &scene, &ctx);
 
   // read rgb and depth buffers
-  mjr_readPixels(frame.data(), NULL, viewport, &ctx);
+  mjr_readPixels(frame.data(), depth.data(), viewport, &ctx);
 
   auto ts = this->sim->d->time;
   std::lock_guard<std::mutex> lock(buffer_lock);
@@ -99,10 +99,12 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   // happen directly after each other
   if (this->last_ts == ts) {
     buffer[buffer.size() - 1].color_frames[id] = frame;
+    buffer[buffer.size() - 1].depth_frames[id] = depth;
   } else {
     FrameSet fs;
     fs.timestamp = ts;
     fs.color_frames[id] = frame;
+    fs.depth_frames[id] = depth;
     buffer.push_back(fs);
     this->last_ts = ts;
   }

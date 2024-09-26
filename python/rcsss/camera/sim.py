@@ -75,10 +75,12 @@ class SimCameraSet(_SimCameraSet):
         if cpp_frameset is None:
             return None
         frames: dict[str, Frame] = {}
-        for frame_name, cpp_frame in cpp_frameset.color_frames.items():
+        for (frame_name, cpp_frame), (_, depth_frame) in zip(cpp_frameset.color_frames.items(), cpp_frameset.depth_frames.items()):
             # copy, reshape and flip the frame
             np_frame = np.copy(cpp_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[::-1]
-            cameraframe = CameraFrame(color=DataFrame(data=np_frame, timestamp=cpp_frameset.timestamp))
+            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[::-1]
+            cameraframe = CameraFrame(color=DataFrame(data=np_frame, timestamp=cpp_frameset.timestamp),
+                                      depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp))
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
             frames[frame_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
