@@ -2,7 +2,7 @@
 
 import copy
 from enum import Enum, auto
-from typing import Annotated, Any, TypeAlias, cast
+from typing import Annotated, Any, TypeAlias, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -420,10 +420,14 @@ class CameraSetWrapper(ActObsInfoWrapper):
             info["camera_available"] = False
             return observation, info
         assert frameset is not None, "No frame available."
-        color_frame_dict: dict[str, np.ndarray] = {
-            camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
+        frame_dict: dict[str, dict[str, Union[np.ndarray, None]]] = {
+            camera_name: {
+                "rgb": frame.camera.color.data,
+                "depth": frame.camera.depth.data if frame.camera.depth is not None else None,
+            }
+            for camera_name, frame in frameset.frames.items()
         }
-        observation[self.camera_key] = color_frame_dict
+        observation[self.camera_key] = frame_dict
 
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
