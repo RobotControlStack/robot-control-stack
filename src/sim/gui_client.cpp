@@ -92,7 +92,7 @@ void event_callback(mjuiState* state) {
   GuiClient* client = static_cast<GuiClient*>(state->userdata);
   mjrRect viewport = {0, 0, 0, 0};
   std::tie(viewport.width, viewport.height) =
-        client->platform_ui->GetFramebufferSize();
+      client->platform_ui->GetFramebufferSize();
   switch (state->type) {
     case mjEVENT_SCROLL:
       mjv_moveCamera(client->m, mjMOUSE_ZOOM, 0, -0.02 * state->sy,

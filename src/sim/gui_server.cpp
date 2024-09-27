@@ -27,9 +27,11 @@ GuiServer::GuiServer(mjModel* m, mjData* d, const std::string& id)
 }
 
 GuiServer::~GuiServer() {
-  bool ret = boost::interprocess::shared_memory_object::remove(this->id.c_str());
+  bool ret =
+      boost::interprocess::shared_memory_object::remove(this->id.c_str());
   if (not ret) {
-    std::cout << "Failed deleting the shared memory named " << this->id << std::endl;
+    std::cout << "Failed deleting the shared memory named " << this->id
+              << std::endl;
   }
 };
 

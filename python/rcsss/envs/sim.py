@@ -142,12 +142,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             c_env = GripperWrapper(c_env, gripper)
         if camera:
             cameras = {
-                "wrist": SimCameraConfig(
-                    identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False
-                ),
-                "default_free": SimCameraConfig(
-                    identifier="", type=int(CameraType.default_free), on_screen_render=True
-                ),
+                "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+                "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
             }
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=5)
             camera_set = SimCameraSet(simulation, cam_cfg)

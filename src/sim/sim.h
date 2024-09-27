@@ -8,8 +8,8 @@
 
 #include "GLFW/glfw3.h"
 #include "boost/interprocess/managed_shared_memory.hpp"
-#include "mujoco/mujoco.h"
 #include "gui.h"
+#include "mujoco/mujoco.h"
 
 namespace rcs {
 namespace sim {

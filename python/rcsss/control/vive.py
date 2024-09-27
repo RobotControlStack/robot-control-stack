@@ -251,8 +251,8 @@ def sim():
     env_sim = FR3Sim(FR3Env(robot, ControlMode.JOINTS), simulation)
 
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
     }
     cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=10)
     camera_set = SimCameraSet(simulation, cam_cfg)
