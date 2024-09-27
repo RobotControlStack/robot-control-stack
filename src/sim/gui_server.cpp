@@ -23,7 +23,6 @@ GuiServer::GuiServer(mjModel* m, mjData* d, const std::string& id)
   this->shm.model.ptr =
       this->shm.manager.construct<char>(MODEL)[this->shm.model.size]();
   this->shm.info_byte = this->shm.manager.construct<bool>(INFO_BYTE)(0);
-  mj_step(m, d);  // TODO: check if this is necessary
   mj_getState(m, d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
   mj_saveModel(m, NULL, this->shm.model.ptr, this->shm.model.size);
 }

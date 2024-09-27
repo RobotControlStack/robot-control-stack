@@ -69,7 +69,6 @@ void GuiClient::render_loop() {
   mjrRect viewport = {0, 0, 0, 0};
   this->platform_ui->RefreshMjrContext(this->m, mjFONTSCALE_100);
   this->platform_ui->SetVSync(true);
-  // TODO: Set event callback
   this->platform_ui->state().userdata = this;
   this->platform_ui->state().nrect = 1;
   this->platform_ui->SetEventCallback(event_callback);
