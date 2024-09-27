@@ -1,4 +1,6 @@
 from collections import OrderedDict
+
+import gym
 import numpy as np
 import pytest
 import rcsss
@@ -136,11 +138,11 @@ class TestSimEnvsTRPY:
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = fr3_sim_env(ControlMode.CARTESIAN_TRPY,
-                          cfg,
-                          gripper_cfg=gripper_cfg,
-                          camera_set_cfg=cam_cfg,
-                          max_relative_movement=0.5)
+        env: gym.Env[ObsArmsGrCam, LimitedTRPYRelDictType] = fr3_sim_env(ControlMode.CARTESIAN_TRPY,
+                                                                         cfg,
+                                                                         gripper_cfg=gripper_cfg,
+                                                                         camera_set_cfg=cam_cfg,
+                                                                         max_relative_movement=0.5)
         obs, _ = env.reset()
         # an obvious below ground collision action
         obs["xyzrpy"][2] = -0.2
@@ -270,11 +272,11 @@ class TestSimEnvsJoints:
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = fr3_sim_env(ControlMode.JOINTS,
-                          cfg,
-                          gripper_cfg=None,
-                          camera_set_cfg=None,
-                          max_relative_movement=None)
+        env: gym.Env[ObsArmsGrCam, LimitedJointsRelDictType] = fr3_sim_env(ControlMode.JOINTS,
+                                                                           cfg,
+                                                                           gripper_cfg=None,
+                                                                           camera_set_cfg=None,
+                                                                           max_relative_movement=None)
         obs_initial, _ = env.reset()
         # action to be performed
         non_zero_action = OrderedDict(
