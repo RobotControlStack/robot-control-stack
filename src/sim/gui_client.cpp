@@ -9,7 +9,7 @@
 
 namespace rcs {
 namespace sim {
-using namespace std::placeholders;
+using namespace boost::interprocess;
 
 void event_callback(mjuiState*);
 class GuiClient {
@@ -29,12 +29,13 @@ class GuiClient {
 };
 
 GuiClient::GuiClient(const std::string& id)
-    : shm{.manager{boost::interprocess::managed_shared_memory(
-          boost::interprocess::open_only, id.c_str())}},
+    : shm{.manager{open_only, id.c_str()},
+          .state_lock{open_only, (id + STATE_LOCK_POSTFIX).c_str()},
+          .info_lock{open_only, (id + INFO_LOCK_POSTFIX).c_str()}},
       id{id} {
   // setup shared memory
   std::tie(this->shm.info_byte, std::ignore) =
-      this->shm.manager.find<char>(INFO_BYTE);
+      this->shm.manager.find<bool>(INFO_BYTE);
   std::tie(this->shm.state.ptr, this->shm.state.size) =
       this->shm.manager.find<mjtNum>(STATE);
   std::tie(this->shm.model.ptr, this->shm.model.size) =
@@ -51,7 +52,9 @@ GuiClient::GuiClient(const std::string& id)
   this->m = mj_loadModel("model.mjb", vfs);
   mju_free(vfs);
   this->d = mj_makeData(m);
+  this->shm.state_lock.lock_sharable();
   mj_setState(this->m, this->d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
+  this->shm.state_lock.unlock_sharable();
   mj_step(this->m, this->d);
   // start UI window
   this->platform_ui = new mujoco::GlfwAdapter();
@@ -72,14 +75,18 @@ void GuiClient::render_loop() {
   this->platform_ui->SetEventCallback(event_callback);
   while (!this->platform_ui->ShouldCloseWindow()) {
     this->platform_ui->PollEvents();
+    this->shm.state_lock.lock_sharable();
     mj_setState(this->m, this->d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
+    this->shm.state_lock.unlock_sharable();
     mj_step(this->m, this->d);
     mjv_updateScene(this->m, this->d, &this->opt, NULL, &this->cam, mjCAT_ALL,
                     &this->scn);
     std::tie(viewport.width, viewport.height) =
         this->platform_ui->GetFramebufferSize();
     mjr_render(viewport, &this->scn, &this->platform_ui->mjr_context());
-    *this->shm.info_byte &= UPDATE_SIM_STATE;
+    this->shm.info_lock.lock();
+    *this->shm.info_byte = true;
+    this->shm.info_lock.unlock();
     this->platform_ui->SwapBuffers();
   }
 }

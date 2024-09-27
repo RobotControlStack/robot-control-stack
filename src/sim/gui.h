@@ -3,21 +3,20 @@
 #include <mujoco/mujoco.h>
 
 #include <bitset>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/sync/named_sharable_mutex.hpp>
+#include <boost/interprocess/sync/named_upgradable_mutex.hpp>
 #include <optional>
 #include <string>
 
-#include "boost/interprocess/managed_shared_memory.hpp"
-
 namespace rcs {
 namespace sim {
-enum {
-  UPDATE_SIM_STATE = (1u << 0),
-  CLIENT_OPEN = (1u << 1),
-  SERVER_SHUTTING_DOWN = (1u << 2)
-};
+using namespace boost::interprocess;
 static const char* INFO_BYTE = "I";
 static const char* STATE = "S";
 static const char* MODEL = "M";
+static const std::string STATE_LOCK_POSTFIX = "_state_lock";
+static const std::string INFO_LOCK_POSTFIX = "_info_lock";
 static constexpr mjtState MJ_PHYSICS_SPEC = mjSTATE_FULLPHYSICS;
 
 static size_t calculate_state_size(mjModel const* m) {
@@ -45,8 +44,10 @@ struct shm {
     char* ptr = nullptr;
     size_t size = 0;
   } model;
-  char* info_byte = nullptr;  // extra info byte in shared memory
-  boost::interprocess::managed_shared_memory manager;
+  bool* info_byte = nullptr;  // extra info byte in shared memory
+  managed_shared_memory manager;
+  named_sharable_mutex state_lock;
+  named_upgradable_mutex info_lock;
 };
 
 class GuiServer {
