@@ -91,6 +91,8 @@ void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
   mjr_render(viewport, &scene, &ctx);
 
   // read rgb and depth buffers
+  // depth documentation can be found here:
+  // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
   mjr_readPixels(frame.data(), depth.data(), viewport, &ctx);
 
   auto ts = this->sim->d->time;

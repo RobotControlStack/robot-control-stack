@@ -6,6 +6,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+from mergedeep import merge
 from rcsss import common, sim
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
@@ -102,11 +103,11 @@ class CameraDictType(RCSpaceType):
             Annotated[
                 np.ndarray,
                 # needs to be filled with values downstream
-                lambda height, width, color_dim: gym.spaces.Box(
-                    low=0,
-                    high=255,
+                lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+                    low=low,
+                    high=high,
                     shape=(height, width, color_dim),
-                    dtype=np.uint8,
+                    dtype=dtype,
                 ),
                 "frame",
             ],
@@ -405,7 +406,6 @@ class CameraSetWrapper(ActObsInfoWrapper):
             "frame": {
                 "height": camera_set.config.resolution_height,
                 "width": camera_set.config.resolution_width,
-                "color_dim": 3,
             }
         }
         if self.include_depth:
@@ -416,6 +416,9 @@ class CameraSetWrapper(ActObsInfoWrapper):
                         "height": camera_set.config.resolution_height,
                         "width": camera_set.config.resolution_width,
                         "color_dim": 1,
+                        "dtype": np.float32,
+                        "low": 0.0,
+                        "high": 1.0,
                     }
                     for name in camera_set.camera_names
                 }
@@ -451,13 +454,14 @@ class CameraSetWrapper(ActObsInfoWrapper):
             for camera_name, frame in frameset.frames.items()
         }
         if self.include_depth:
-            frame_dict.update(
+            merge(
+                frame_dict,
                 {
                     camera_name: {
                         self.DEPTH_KEY: frame.camera.depth.data,
                     }
                     for camera_name, frame in frameset.frames.items()
-                }
+                },
             )
         observation[self.camera_key] = frame_dict
 
