@@ -53,6 +53,7 @@ def main():
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
             )
+            env_rel.get_wrapper_attr("sim").open_gui()
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())

@@ -62,7 +62,7 @@ GuiClient::GuiClient(const std::string& id)
 }
 
 void GuiClient::render_loop() {
-  mjv_defaultCamera(&this->cam);
+  mjv_defaultFreeCamera(this->m, &this->cam);
   mjv_defaultOption(&this->opt);
   mjv_defaultScene(&this->scn);
   mjv_makeScene(this->m, &this->scn, mjFONTSCALE_100);
