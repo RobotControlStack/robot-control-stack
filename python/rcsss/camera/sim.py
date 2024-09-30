@@ -79,7 +79,9 @@ class SimCameraSet(_SimCameraSet):
         d_frames_iter = cpp_frameset.depth_frames.items()
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
-            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[::-1]
+            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
+                ::-1
+            ]
             depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)
             cameraframe = CameraFrame(
                 color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
