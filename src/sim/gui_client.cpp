@@ -119,11 +119,3 @@ void event_callback(mjuiState* state) {
 }
 }  // namespace sim
 }  // namespace rcs
-
-int main(int argc, char** argv) {
-  if (argc != 2) {
-    throw std::runtime_error("Usage: gui <id>");
-  }
-  std::string id{argv[1]};
-  rcs::sim::open_gui_window(id);
-}
