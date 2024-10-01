@@ -75,12 +75,20 @@ class SimCameraSet(_SimCameraSet):
         if cpp_frameset is None:
             return None
         frames: dict[str, Frame] = {}
-        for frame_name, cpp_frame in cpp_frameset.color_frames.items():
-            # copy, reshape and flip the frame
-            np_frame = np.copy(cpp_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[::-1]
-            cameraframe = CameraFrame(color=DataFrame(data=np_frame, timestamp=cpp_frameset.timestamp))
+        c_frames_iter = cpp_frameset.color_frames.items()
+        d_frames_iter = cpp_frameset.depth_frames.items()
+        for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
+            assert color_name == depth_name
+            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
+                ::-1
+            ]
+            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)
+            cameraframe = CameraFrame(
+                color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
+                depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp),
+            )
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
-            frames[frame_name] = frame
+            frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
     @property
@@ -90,7 +98,7 @@ class SimCameraSet(_SimCameraSet):
     @property
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
-        return [camera.identifier for camera in self._cfg.cameras.values()]
+        return list(self._cfg.cameras.keys())
 
     @property
     def name_to_identifier(self) -> dict[str, str]:

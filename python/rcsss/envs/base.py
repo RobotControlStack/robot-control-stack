@@ -97,16 +97,19 @@ class GripperDictType(RCSpaceType):
 class CameraDictType(RCSpaceType):
     frames: dict[
         Annotated[str, "camera_names"],
-        Annotated[
-            np.ndarray,
-            # needs to be filled with values downstream
-            lambda height, width: gym.spaces.Box(
-                low=0,
-                high=255,
-                shape=(height, width, 3),
-                dtype=np.uint8,
-            ),
-            "frame",
+        dict[
+            Annotated[str, "camera_type"],  # "rgb" or "depth"
+            Annotated[
+                np.ndarray,
+                # needs to be filled with values downstream
+                lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+                    low=low,
+                    high=high,
+                    shape=(height, width, color_dim),
+                    dtype=dtype,
+                ),
+                "frame",
+            ],
         ],
     ]
 
@@ -387,22 +390,46 @@ class RelativeActionSpace(gym.ActionWrapper):
 
 
 class CameraSetWrapper(ActObsInfoWrapper):
-    def __init__(self, env, camera_set: BaseCameraSet):
+    RGB_KEY = "rgb"
+    DEPTH_KEY = "depth"
+
+    def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.camera_set = camera_set
+        self.include_depth = include_depth
 
         self.observation_space: gym.spaces.Dict
+        # rgb is always included
+        params: dict = {
+            "frame": {
+                "height": camera_set.config.resolution_height,
+                "width": camera_set.config.resolution_width,
+            }
+        }
+        if self.include_depth:
+            # depth is optional
+            params.update(
+                {
+                    f"/{name}/{self.DEPTH_KEY}/frame": {
+                        "height": camera_set.config.resolution_height,
+                        "width": camera_set.config.resolution_width,
+                        "color_dim": 1,
+                        "dtype": np.float32,
+                        "low": 0.0,
+                        "high": 1.0,
+                    }
+                    for name in camera_set.camera_names
+                }
+            )
         self.observation_space.spaces.update(
             get_space(
                 CameraDictType,
-                child_dict_keys_to_unfold={"camera_names": camera_set.camera_names},
-                params={
-                    "frame": {
-                        "height": camera_set.config.resolution_height,
-                        "width": camera_set.config.resolution_height,
-                    }
+                child_dict_keys_to_unfold={
+                    "camera_names": camera_set.camera_names,
+                    "camera_type": [self.RGB_KEY, self.DEPTH_KEY] if self.include_depth else [self.RGB_KEY],
                 },
+                params=params,
             ).spaces
         )
         self.camera_key = get_space_keys(CameraDictType)[0]
@@ -419,11 +446,27 @@ class CameraSetWrapper(ActObsInfoWrapper):
             observation[self.camera_key] = {}
             info["camera_available"] = False
             return observation, info
-        assert frameset is not None, "No frame available."
-        color_frame_dict: dict[str, np.ndarray] = {
-            camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
+
+        def check_depth(depth):
+            if self.include_depth and depth is None:
+                msg = "Depth is not available in data but still requested."
+                raise ValueError(msg)
+            return self.include_depth
+
+        frame_dict: dict[str, dict[str, np.ndarray]] = {
+            camera_name: (
+                {
+                    self.RGB_KEY: frame.camera.color.data,
+                }
+                if check_depth(frame.camera.depth)
+                else {
+                    self.RGB_KEY: frame.camera.color.data,
+                    self.DEPTH_KEY: frame.camera.depth.data,  # type: ignore
+                }
+            )
+            for camera_name, frame in frameset.frames.items()
         }
-        observation[self.camera_key] = color_frame_dict
+        observation[self.camera_key] = frame_dict
 
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:

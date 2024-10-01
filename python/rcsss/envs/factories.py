@@ -138,7 +138,7 @@ def fr3_sim_env(
 
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)
-        env = CameraSetWrapper(env, camera_set)
+        env = CameraSetWrapper(env, camera_set, include_depth=True)
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
