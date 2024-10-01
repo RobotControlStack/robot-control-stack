@@ -6,7 +6,6 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from mergedeep import merge
 from rcsss import common, sim
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
@@ -402,7 +401,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
         self.observation_space: gym.spaces.Dict
         # rgb is always included
-        params = {
+        params: dict = {
             "frame": {
                 "height": camera_set.config.resolution_height,
                 "width": camera_set.config.resolution_width,
@@ -447,22 +446,26 @@ class CameraSetWrapper(ActObsInfoWrapper):
             observation[self.camera_key] = {}
             info["camera_available"] = False
             return observation, info
+
+        def check_depth(depth):
+            if self.include_depth and depth is None:
+                msg = "Depth is not available in data but still requested."
+                raise ValueError(msg)
+            return self.include_depth
+
         frame_dict: dict[str, dict[str, np.ndarray]] = {
-            camera_name: {
-                self.RGB_KEY: frame.camera.color.data,
-            }
+            camera_name: (
+                {
+                    self.RGB_KEY: frame.camera.color.data,
+                }
+                if check_depth(frame.camera.depth)
+                else {
+                    self.RGB_KEY: frame.camera.color.data,
+                    self.DEPTH_KEY: frame.camera.depth.data, # type: ignore
+                }
+            )
             for camera_name, frame in frameset.frames.items()
         }
-        if self.include_depth:
-            merge(
-                frame_dict,
-                {
-                    camera_name: {
-                        self.DEPTH_KEY: frame.camera.depth.data,
-                    }
-                    for camera_name, frame in frameset.frames.items()
-                },
-            )
         observation[self.camera_key] = frame_dict
 
         info["camera_available"] = True

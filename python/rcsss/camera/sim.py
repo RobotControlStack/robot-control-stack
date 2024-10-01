@@ -98,7 +98,7 @@ class SimCameraSet(_SimCameraSet):
     @property
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
-        return [camera for camera in self._cfg.cameras.keys()]
+        return list(self._cfg.cameras.keys())
 
     @property
     def name_to_identifier(self) -> dict[str, str]:
