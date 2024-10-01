@@ -1,3 +1,24 @@
+## v0.2.2 (2024-10-01)
+
+### Feat
+
+- **rcsss/envs/base.py**: adding the depth data to the CameraSetWrapper
+- **src/sim/camera.cpp**: added depth image data to the frameset
+
+### Fix
+
+- **camera env**: rgb+depth mode
+- **sim camera**: using defined keys in env not id
+- **python/rcsss/_core/sim.pyi**: updated missing pyi file
+
+### Refactor
+
+- **env camera**: fix linting, remove dict merge, assert available depth
+- **camera env**: correct handling of rgb and optional depth
+- **camera**: improved variable naming
+- **rcsss/camera/sim.py**: asserting that rgb and depth info come from the same camera
+- **python/rcsss/camera/sim.py**: pylint fixes
+
 ## v0.2.1 (2024-09-13)
 
 ### Fix

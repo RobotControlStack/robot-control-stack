@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcsss"
-version = "0.2.1"
+version = "0.2.2"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
     "requests~=2.31",
