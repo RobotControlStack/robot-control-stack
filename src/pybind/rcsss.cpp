@@ -440,8 +440,8 @@ PYBIND11_MODULE(_core, m) {
       .def("is_converged", &rcs::sim::Sim::is_converged)
       .def("step", &rcs::sim::Sim::step, py::arg("k"))
       .def("reset", &rcs::sim::Sim::reset)
-      .def("start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
-      .def("stop_gui_server", &rcs::sim::Sim::stop_gui_server);
+      .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
+      .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
