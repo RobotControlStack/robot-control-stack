@@ -68,6 +68,7 @@ def main():
             }
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
             camera_set = SimCameraSet(simulation, cam_cfg)
+            simulation.open_gui()
 
         else:
             robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
