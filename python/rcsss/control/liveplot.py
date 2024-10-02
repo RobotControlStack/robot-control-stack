@@ -2,6 +2,7 @@ from collections import deque
 from itertools import product
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +19,7 @@ buffsize = 300
 titles = [["x", "rx"], ["y", "ry"], ["z", "rz"]]
 colors = [["r", "r"], ["b", "b"], ["g", "g"]]
 buffers: list[list[deque]] = [[deque(maxlen=buffsize) for j in range(2)] for i in range(3)]
-plots: list[list[plt.Figure]] = [[None for j in range(2)] for i in range(3)]
+plots: list[list[Optional[plt.Figure]]] = [[None for j in range(2)] for i in range(3)]
 
 fig, axs = plt.subplots(3, 2)
 for i, j in product(range(3), range(2)):
@@ -56,8 +57,9 @@ with socket(AF_INET, SOCK_DGRAM) as sock:
 
         for i, j in product(range(3), range(2)):
             buffer = buffers[i][j]
-            plots[i][j].set_xdata(np.arange(len(buffer)))
-            plots[i][j].set_ydata(buffer)
+            # mypy fails to coerce type after assert so we just ignore
+            plots[i][j].set_xdata(np.arange(len(buffer)))  # type: ignore
+            plots[i][j].set_ydata(buffer)  # type: ignore
             axs[i][j].relim()
             axs[i][j].autoscale_view()
             axs[i][j].set_title(titles[i][j] + ": {:.2f}".format(buffer[-1]))

@@ -1,20 +1,23 @@
 #ifndef RCS_SIM_H
 #define RCS_SIM_H
+#include <mujoco/mjvisualize.h>
+
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "GLFW/glfw3.h"
+#include "boost/interprocess/managed_shared_memory.hpp"
+#include "gui.h"
 #include "mujoco/mujoco.h"
 
 namespace rcs {
 namespace sim {
-
 class Renderer {
  public:
   Renderer(mjModel* m);
   ~Renderer();
-  void register_context(const std::string& id, size_t width, size_t height,
-                        bool offscreen);
+  void register_context(const std::string& id, size_t width, size_t height);
   mjrContext* get_context(const std::string& id);
   mjvScene scene;
   mjvOption opt;
@@ -64,6 +67,7 @@ class Sim {
   void invoke_rendering_callbacks();
   size_t convergence_steps = 0;
   bool converged = true;
+  std::optional<GuiServer> gui;
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)
@@ -94,7 +98,9 @@ class Sim {
                          mjvOption&)>
           cb,
       const std::string& id, mjtNum seconds_between_calls, size_t width,
-      size_t height, bool offscreen);
+      size_t height);
+  void start_gui_server(const std::string& id);
+  void stop_gui_server();
 };
 }  // namespace sim
 }  // namespace rcs

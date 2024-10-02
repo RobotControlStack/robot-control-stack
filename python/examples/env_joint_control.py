@@ -56,6 +56,7 @@ def main():
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=np.deg2rad(5),
             )
+            env_rel.get_wrapper_attr("sim").open_gui()
 
         for _ in range(10):
             obs, info = env_rel.reset()

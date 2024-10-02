@@ -45,7 +45,7 @@ def create_sample_config_yaml(path: str):
         camera_config=camera_cfg,
         camera_type="realsense",
     )
-    cameras_sim = {"human_readable_name": SimCameraConfig(identifier="mjcf_name", type=0, on_screen_render=False)}
+    cameras_sim = {"human_readable_name": SimCameraConfig(identifier="mjcf_name", type=0)}
     sim = SimConfig(camera=SimCameraSetConfig(cameras=cameras_sim))
     cfg = Config(hw=hw, sim=sim)
     yml = to_yaml_str(cfg)

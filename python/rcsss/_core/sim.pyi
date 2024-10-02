@@ -25,6 +25,7 @@ __all__ = [
     "default_free",
     "fixed",
     "free",
+    "open_gui_window",
     "tracking",
 ]
 M = typing.TypeVar("M", bound=int)
@@ -132,6 +133,8 @@ class FrankaHand(rcsss._core.common.Gripper):
 
 class Sim:
     def __init__(self, mjmdl: int, mjdata: int) -> None: ...
+    def _start_gui_server(self, id: str) -> None: ...
+    def _stop_gui_server(self) -> None: ...
     def is_converged(self) -> bool: ...
     def reset(self) -> None: ...
     def step(self, k: int) -> None: ...
@@ -139,7 +142,6 @@ class Sim:
 
 class SimCameraConfig:
     identifier: str
-    on_screen_render: bool
     type: CameraType
     def __init__(self) -> None: ...
 
@@ -157,6 +159,8 @@ class SimCameraSetConfig:
     resolution_height: int
     resolution_width: int
     def __init__(self) -> None: ...
+
+def open_gui_window(uuid: str) -> None: ...
 
 default_free: CameraType  # value = <CameraType.default_free: 3>
 fixed: CameraType  # value = <CameraType.fixed: 2>
