@@ -29,13 +29,9 @@ Renderer::~Renderer() {
 }
 
 void Renderer::register_context(const std::string& id, size_t width,
-                                size_t height, bool offscreen) {
+                                size_t height) {
   // create invisible window, single-buffered
-  if (offscreen) {
-    glfwWindowHint(GLFW_VISIBLE, 0);
-  } else {
-    glfwWindowHint(GLFW_VISIBLE, 1);
-  }
+  glfwWindowHint(GLFW_VISIBLE, 0);
   // In record.cc this is false, glfw says in practice you always want true.
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
   GLFWwindow* window = glfwCreateWindow(width, height, "rcs", NULL, NULL);
@@ -48,16 +44,12 @@ void Renderer::register_context(const std::string& id, size_t width,
   mjrContext* ctx = new mjrContext();
   mjr_defaultContext(ctx);
   mjr_makeContext(this->m, ctx, 200);
-  if (offscreen) {
-    mjr_setBuffer(mjFB_OFFSCREEN, ctx);
-    mjr_resizeOffscreen(width, height, ctx);
-    if (ctx->currentBuffer != mjFB_OFFSCREEN) {
-      std::cout << "Warning: offscreen rendering not supported, using "
-                   "default/window framebuffer"
-                << std::endl;
-    }
-  } else {
-    mjr_setBuffer(mjFB_WINDOW, ctx);
+  mjr_setBuffer(mjFB_OFFSCREEN, ctx);
+  mjr_resizeOffscreen(width, height, ctx);
+  if (ctx->currentBuffer != mjFB_OFFSCREEN) {
+    std::cout << "Warning: offscreen rendering not supported, using "
+                 "default/window framebuffer"
+              << std::endl;
   }
   this->ctxs[id] = std::pair(window, ctx);
 }

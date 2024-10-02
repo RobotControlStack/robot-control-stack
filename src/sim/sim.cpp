@@ -144,8 +144,8 @@ void Sim::register_rendering_callback(
     std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
         cb,
     const std::string& id, mjtNum seconds_between_calls, size_t width,
-    size_t height, bool offscreen) {
-  this->renderer.register_context(id, width, height, offscreen);
+    size_t height) {
+  this->renderer.register_context(id, width, height);
   // dont register off screen in normal callback, but special gui callback
   this->rendering_callbacks.push_back(
       RenderingCallback{.cb = cb,
@@ -153,5 +153,17 @@ void Sim::register_rendering_callback(
                         .seconds_between_calls = seconds_between_calls,
                         .last_call_timestamp = 0});
 }
+
+void Sim::start_gui_server(const std::string& id) {
+  if (this->gui.has_value()) {
+    throw std::runtime_error("Start gui server should be called only once.");
+  }
+  this->gui.emplace(this->m, this->d, id);
+  this->register_cb(
+      std::bind(&GuiServer::update_mjdata_callback, &this->gui.value()), 0);
+}
+// TODO: when stop_gui_server is called, the callback still exists but now
+// points to an non existing gui
+void Sim::stop_gui_server() { this->gui.reset(); }
 }  // namespace sim
 }  // namespace rcs

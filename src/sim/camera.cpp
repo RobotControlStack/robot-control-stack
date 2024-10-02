@@ -28,7 +28,7 @@ SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
         [this](const std::string& id, mjrContext& ctx, mjvScene& scene,
                mjvOption& opt) { this->frame_callback(id, ctx, scene, opt); },
         id, 1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
-        this->cfg.resolution_height, !cam.on_screen_render);
+        this->cfg.resolution_height);
 
     mjvCamera mjcam;
     mjv_defaultCamera(&mjcam);

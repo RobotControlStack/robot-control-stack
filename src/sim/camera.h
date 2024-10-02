@@ -24,7 +24,6 @@ enum CameraType {
 struct SimCameraConfig {
   std::string identifier;
   CameraType type;
-  bool on_screen_render;
 };
 struct SimCameraSetConfig {
   std::unordered_map<std::string, SimCameraConfig> cameras;

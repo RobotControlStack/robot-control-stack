@@ -67,8 +67,6 @@ void FR3::construct() {
   this->rl.ik->setRandomRestarts(0);
   this->rl.ik->setEpsilon(1e-3);
   this->init_ids();
-  this->sim->register_cb(std::bind(&FR3::collision_callback, this),
-                         this->cfg.seconds_between_callbacks);
   this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),
                          this->cfg.seconds_between_callbacks);
   this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),

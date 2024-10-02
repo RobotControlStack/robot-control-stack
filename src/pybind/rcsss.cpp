@@ -13,6 +13,7 @@
 #include <sim/FR3.h>
 #include <sim/FrankaHand.h>
 #include <sim/camera.h>
+#include <sim/gui.h>
 
 #include <memory>
 
@@ -438,7 +439,9 @@ PYBIND11_MODULE(_core, m) {
            py::call_guard<py::gil_scoped_release>())
       .def("is_converged", &rcs::sim::Sim::is_converged)
       .def("step", &rcs::sim::Sim::step, py::arg("k"))
-      .def("reset", &rcs::sim::Sim::reset);
+      .def("reset", &rcs::sim::Sim::reset)
+      .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
+      .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
@@ -465,9 +468,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
       .def(py::init<>())
       .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
-      .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def_readwrite("on_screen_render",
-                     &rcs::sim::SimCameraConfig::on_screen_render);
+      .def_readwrite("type", &rcs::sim::SimCameraConfig::type);
   py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
       .def(py::init<>())
       .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)
@@ -492,4 +493,5 @@ PYBIND11_MODULE(_core, m) {
       .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
       .def("get_timestamp_frameset",
            &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
+  sim.def("open_gui_window", &rcs::sim::open_gui_window, py::arg("uuid"));
 }

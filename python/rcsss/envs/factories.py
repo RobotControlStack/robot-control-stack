@@ -114,8 +114,8 @@ def default_fr3_sim_gripper_cfg():
 def default_mujoco_cameraset_cfg():
 
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
+        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
     }
     return SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=10)
 
