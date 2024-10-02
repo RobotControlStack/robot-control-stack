@@ -457,11 +457,11 @@ class CameraSetWrapper(ActObsInfoWrapper):
             camera_name: (
                 {
                     self.RGB_KEY: frame.camera.color.data,
+                    self.DEPTH_KEY: frame.camera.depth.data,  # type: ignore
                 }
                 if check_depth(frame.camera.depth)
                 else {
                     self.RGB_KEY: frame.camera.color.data,
-                    self.DEPTH_KEY: frame.camera.depth.data,  # type: ignore
                 }
             )
             for camera_name, frame in frameset.frames.items()

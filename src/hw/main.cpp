@@ -1,8 +1,10 @@
+#include <common/IK.h>
 #include <franka/exception.h>
 #include <franka/gripper.h>
 #include <franka/robot.h>
 
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -11,11 +13,12 @@
 using namespace std;
 
 const string ip = "192.168.101.1";
-const string fn = "models/urdf/fr3.urdf";
+const string urdf_path = "models/urdf/fr3.urdf";
 
 int main() {
   try {
-    rcs::hw::FR3 robot(ip, fn);
+    auto ik = make_shared<rcs::common::IK>(urdf_path);
+    rcs::hw::FR3 robot(ip, ik);
     robot.automatic_error_recovery();
     std::cout << "WARNING: This example will move the robot! "
               << "Please make sure to have the user stop button at hand!"

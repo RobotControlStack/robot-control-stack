@@ -108,7 +108,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cls,
         env: gym.Env,
         mjmld: str,
-        rlmdl: str,
+        urdf: str,
         id="0",
         gripper=False,
         check_home_collision=True,
@@ -118,9 +118,9 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
-        robot = rcsss.sim.FR3(simulation, id, rlmdl)
+        ik = rcsss.common.IK(urdf, max_duration_ms=300)
+        robot = rcsss.sim.FR3(simulation, id, ik)
         cfg = sim.FR3Config()
-        cfg.ik_duration_in_milliseconds = 300
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset

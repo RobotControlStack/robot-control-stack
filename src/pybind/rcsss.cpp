@@ -1,3 +1,4 @@
+#include <common/IK.h>
 #include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
@@ -205,6 +206,12 @@ PYBIND11_MODULE(_core, m) {
             return rcs::common::Pose(t);
           }));
 
+  py::class_<rcs::common::IK, std::shared_ptr<rcs::common::IK>>(common, "IK")
+      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
+           py::arg("max_duration_ms") = 300)
+      .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
+           py::arg("tcp_offset") = rcs::common::Pose::Identity());
+
   py::class_<rcs::common::RConfig>(common, "RConfig");
   py::class_<rcs::common::RState>(common, "RState");
   py::class_<rcs::common::GConfig>(common, "GConfig");
@@ -227,6 +234,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"),
            py::call_guard<py::gil_scoped_release>())
+      .def("get_ik", &rcs::common::Robot::get_ik)
       .def("get_base_pose_in_world_coordinates",
            &rcs::common::Robot::get_base_pose_in_world_coordinates)
       .def("to_pose_in_robot_coordinates",
@@ -338,8 +346,9 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::hw::FR3, rcs::common::Robot, std::shared_ptr<rcs::hw::FR3>>(
       hw, "FR3")
-      .def(py::init<const std::string &, const std::optional<std::string> &>(),
-           py::arg("ip"), py::arg("filename") = std::nullopt)
+      .def(py::init<const std::string &,
+                    std::optional<std::shared_ptr<rcs::common::IK>>>(),
+           py::arg("ip"), py::arg("ik") = std::nullopt)
       .def("set_parameters", &rcs::hw::FR3::set_parameters, py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FR3::get_parameters)
       .def("get_state", &rcs::hw::FR3::get_state)
@@ -351,8 +360,8 @@ PYBIND11_MODULE(_core, m) {
       .def("double_tap_robot_to_continue",
            &rcs::hw::FR3::double_tap_robot_to_continue)
       .def("set_cartesian_position_internal",
-           &rcs::hw::FR3::set_cartesian_position_rl, py::arg("pose"))
-      .def("set_cartesian_position_rl",
+           &rcs::hw::FR3::set_cartesian_position_ik, py::arg("pose"))
+      .def("set_cartesian_position_ik",
            &rcs::hw::FR3::set_cartesian_position_internal, py::arg("pose"),
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 
@@ -397,8 +406,6 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::FR3Config::joint_rotational_tolerance)
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::FR3Config::seconds_between_callbacks)
-      .def_readwrite("ik_duration_in_milliseconds",
-                     &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
@@ -454,8 +461,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    const std::string &>(),
-           py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
+                    std::shared_ptr<rcs::common::IK>>(),
+           py::arg("sim"), py::arg("id"), py::arg("ik"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("get_state", &rcs::sim::FR3::get_state);

@@ -1,12 +1,11 @@
 #ifndef RCS_FR3_H
 #define RCS_FR3_H
 
+#include <common/IK.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
 #include <franka/robot.h>
-#include <rl/mdl/Dynamic.h>
-#include <rl/mdl/JacobianInverseKinematics.h>
 
 #include <cmath>
 #include <memory>
@@ -41,21 +40,16 @@ struct FR3Config : common::RConfig {
 };
 
 struct FR3State : common::RState {};
-struct RL {
-  std::shared_ptr<rl::mdl::Model> mdl;
-  std::shared_ptr<rl::mdl::Kinematic> kin;
-  std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
-};
 
 class FR3 : public common::Robot {
  private:
   franka::Robot robot;
   FR3Config cfg;
-  std::optional<RL> rl = std::nullopt;
+  std::optional<std::shared_ptr<common::IK>> m_ik;
 
  public:
   FR3(const std::string &ip,
-      const std::optional<std::string> &filename = std::nullopt,
+      std::optional<std::shared_ptr<common::IK>> ik = std::nullopt,
       const std::optional<FR3Config> &cfg = std::nullopt);
   ~FR3() override;
 
@@ -85,12 +79,14 @@ class FR3 : public common::Robot {
 
   void set_cartesian_position(const common::Pose &pose) override;
 
+  std::optional<std::shared_ptr<common::IK>> get_ik() override;
+
   void set_cartesian_position_internal(const common::Pose &pose,
                                        double max_time,
                                        std::optional<double> elbow,
                                        std::optional<double> max_force = 5);
 
-  void set_cartesian_position_rl(const common::Pose &x);
+  void set_cartesian_position_ik(const common::Pose &x);
 
   common::Pose get_base_pose_in_world_coordinates() override;
 

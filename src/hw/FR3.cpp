@@ -1,17 +1,6 @@
 #include "FR3.h"
 
 #include <franka/robot.h>
-#include <rl/hal/CartesianPositionActuator.h>
-#include <rl/hal/CartesianPositionSensor.h>
-#include <rl/hal/Gripper.h>
-#include <rl/hal/JointPositionActuator.h>
-#include <rl/hal/JointPositionSensor.h>
-#include <rl/math/Transform.h>
-#include <rl/mdl/Dynamic.h>
-#include <rl/mdl/Exception.h>
-#include <rl/mdl/JacobianInverseKinematics.h>
-#include <rl/mdl/Kinematic.h>
-#include <rl/mdl/UrdfFactory.h>
 
 #include <Eigen/Core>
 #include <algorithm>
@@ -25,9 +14,9 @@
 
 namespace rcs {
 namespace hw {
-FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
+FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
          const std::optional<FR3Config> &cfg)
-    : robot(ip) {
+    : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true);
@@ -35,18 +24,6 @@ FR3::FR3(const std::string &ip, const std::optional<std::string> &filename,
   if (cfg.has_value()) {
     this->cfg = cfg.value();
   }  // else default constructor
-
-  if (filename.has_value()) {
-    this->rl = RL();
-
-    this->rl->mdl = rl::mdl::UrdfFactory().create(filename.value());
-    this->rl->kin =
-        std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl->mdl);
-    this->rl->ik = std::make_shared<rl::mdl::JacobianInverseKinematics>(
-        this->rl->kin.get());
-    this->rl->ik->setRandomRestarts(0);
-    this->rl->ik->setEpsilon(1e-3);
-  }
 }
 
 FR3::~FR3() {}
@@ -195,7 +172,10 @@ double quintic_polynomial_speed_profile(double time, double start_time,
   // return (1 - std::cos(M_PI * progress)) / 2.0;
 }
 
+std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
+
 void FR3::set_cartesian_position(const common::Pose &x) {
+  // pose is assumed to be in the robots coordinate frame
   common::Pose nominal_end_effector_frame_value;
   if (this->cfg.nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value =
@@ -211,29 +191,24 @@ void FR3::set_cartesian_position(const common::Pose &x) {
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
 
   } else if (this->cfg.controller == IKController::robotics_library) {
-    this->set_cartesian_position_rl(x);
+    this->set_cartesian_position_ik(x);
   }
 }
 
-void FR3::set_cartesian_position_rl(const common::Pose &pose) {
-  if (!this->rl.has_value()) {
-    throw rl::mdl::Exception(
-        "No file for robot model was provided. Cannot use RL for IK.");
+void FR3::set_cartesian_position_ik(const common::Pose &pose) {
+  if (!this->m_ik.has_value()) {
+    throw std::runtime_error(
+        "No inverse kinematics was provided. Cannot use IK to set cartesian "
+        "position.");
   }
-  this->rl->kin->setPosition(this->get_joint_position());
-  this->rl->kin->forwardPosition();
-  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
+  auto joints = this->m_ik.value()->ik(pose, this->get_joint_position(),
+                                       this->cfg.tcp_offset);
 
-  this->rl->ik->addGoal(new_pose.affine_matrix(), 0);
-  bool success = this->rl->ik->solve();
-  if (success) {
-    // is this forward needed and is it mabye possible to call
-    // this on the model?
-    this->rl->kin->forwardPosition();
-    this->set_joint_position(this->rl->kin->getPosition());
+  if (!joints.has_value()) {
+    this->set_joint_position(joints.value());
   } else {
     // throw error
-    throw rl::mdl::Exception("IK failed");
+    throw std::runtime_error("IK failed");
   }
 }
 
