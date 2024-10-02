@@ -173,6 +173,10 @@ common::Vector7d FR3::get_joint_position() {
   return q;
 }
 
+std::optional<std::shared_ptr<common::IK>> FR3::get_ik() {
+  return std::nullopt;
+}
+
 void FR3::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
   this->rl.kin->setPosition(this->get_joint_position());

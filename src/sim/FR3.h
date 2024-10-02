@@ -1,5 +1,6 @@
 #ifndef RCS_FR3SIM_H
 #define RCS_FR3SIM_H
+#include <common/IK.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
@@ -53,6 +54,7 @@ class FR3 : public common::Robot {
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;
+  std::optional<std::shared_ptr<common::IK>> get_ik() override;
   void reset() override;
 
  private:

@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 
+#include "IK.h"
 #include "Pose.h"
 #include "utils.h"
 
@@ -50,6 +51,8 @@ class Robot {
   virtual void reset() = 0;
 
   virtual void set_cartesian_position(const Pose& pose) = 0;
+
+  virtual std::optional<std::shared_ptr<IK>> get_ik() = 0;
 
   common::Pose to_pose_in_world_coordinates(
       const Pose& pose_in_robot_coordinates);
