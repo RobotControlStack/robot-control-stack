@@ -149,7 +149,7 @@ def fr3_sim_env(
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
     simulation = sim.Sim(rcsss.scenes.get(mjcf, mjcf))  # type: ignore
-    ik = rcsss.common.IK(urdf_path) # type: ignore
+    ik = rcsss.common.IK(urdf_path)  # type: ignore
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
@@ -161,7 +161,7 @@ def fr3_sim_env(
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=True)
+        env = GripperWrapper(env, gripper, binary=False)
 
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement)
