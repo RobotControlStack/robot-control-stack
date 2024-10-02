@@ -1,30 +1,28 @@
 import logging
 import threading
+import typing
 from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack, unpack
 
-import gymnasium as gym
 import numpy as np
-import rcsss
 from rcsss._core.common import RPY, Pose
-from rcsss._core.sim import CameraType
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.config import read_config_yaml
-from rcsss.control.fr3_desk import FCI, Desk
 from rcsss.envs.base import (
-    CameraSetWrapper,
     ControlMode,
-    FR3Env,
     GripperDictType,
-    GripperWrapper,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
-    RelativeTo,
+    RobotInstance,
 )
-from rcsss.envs.hw import FR3HW
-from rcsss.envs.sim import CollisionGuard, FR3Sim
-from rcsss.sim import FR3, FR3Config, Sim
+from rcsss.envs.factories import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
+    default_fr3_sim_robot_cfg,
+    default_mujoco_cameraset_cfg,
+    fr3_hw_env,
+    fr3_sim_env,
+)
 
 # import matplotlib.pyplot as plt
 
@@ -34,16 +32,18 @@ logger = logging.getLogger(__name__)
 EGO_LOCK = False
 VIVE_HOST = "192.168.100.1"
 VIVE_PORT = 54321
-USE_REAL_ROBOT = True
 INCLUDE_ROTATION = True
 ROBOT_IP = "192.168.101.1"
+ROBOT_INSTANCE = RobotInstance.HARDWARE
 
 
 class Button(IntFlag):
     L_TRIGGER = auto()
     L_SQUEEZE = auto()
+    LT_CLICK = auto()
     R_TRIGGER = auto()
     R_SQUEEZE = auto()
+    RT_CLICK = auto()
 
 
 class UDPViveActionServer(threading.Thread):
@@ -200,91 +200,38 @@ class UDPViveActionServer(threading.Thread):
                 self._env.step(action)
 
 
-def hw():
+def main():
+    # if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+    #     user, pw = load_creds_fr3_desk()
+    #     resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+    # else:
+    #     resource_manger = DummyResourceManager()
 
-    cfg = read_config_yaml("config.yaml")
-    d = Desk(ROBOT_IP, cfg.hw.username, cfg.hw.password)
-    with FCI(d, unlock=False, lock_when_done=False):
+    # with resource_manger:
 
-        robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
-        rcfg = rcsss.hw.FR3Config()
-        rcfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-        rcfg.speed_factor = 0.2
-        rcfg.controller = rcsss.hw.IKController.robotics_library
-        robot.set_parameters(rcfg)
-
-        # env = FR3Env(robot, ControlMode.CARTESIAN_TQuart)
-        env = FR3Env(robot, ControlMode.JOINTS)
-        env_hw: gym.Env = FR3HW(env)
-        gripper_cfg = rcsss.hw.FHConfig()
-        gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.5
-        gripper_cfg.speed = 0.1
-        gripper_cfg.force = 30
-        gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
-        # gripper.homing()
-        env_hw = GripperWrapper(env_hw, gripper, binary=True)
-
-        # TODO: camera
-        env_hw = CollisionGuard.env_from_xml_paths(
-            env_hw,
-            str(rcsss.scenes["fr3_empty_world"]),
-            str(rcsss.scenes["lab"].parent / "fr3.urdf"),
-            gripper=True,
-            check_home_collision=False,
-            camera=True,
+    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+        env_rel = fr3_hw_env(
+            ip=ROBOT_IP,
             control_mode=ControlMode.CARTESIAN_TQuart,
-            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+            robot_cfg=default_fr3_hw_robot_cfg(),
+            collision_guard=False,
+            gripper_cfg=default_fr3_hw_gripper_cfg(),
+            max_relative_movement=0.5,
+        )
+    else:
+        env_rel = fr3_sim_env(
+            control_mode=ControlMode.CARTESIAN_TQuart,
+            # control_mode=ControlMode.JOINTS,
+            robot_cfg=default_fr3_sim_robot_cfg(),
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=default_mujoco_cameraset_cfg(),
+            max_relative_movement=0.5,
         )
 
-        env_rel = RelativeActionSpace(env_hw, relative_to=RelativeTo.CONFIGURED_ORIGIN)
-        env_rel.reset()
-        with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
-            action_server.environment_step_loop()
-
-
-def sim():
-    simulation = Sim(rcsss.scenes["fr3_empty_world"])
-    robot = FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
-    fr3_config = FR3Config()
-    fr3_config.realtime = False
-    # TODO: We might need a TCP offset with only translation here
-    env_sim = FR3Sim(FR3Env(robot, ControlMode.JOINTS), simulation)
-
-    cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed), on_screen_render=False),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free), on_screen_render=True),
-    }
-    cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=10)
-    camera_set = SimCameraSet(simulation, cam_cfg)
-    env_cam: gym.Env = CameraSetWrapper(env_sim, camera_set)
-
-    gripper_cfg = rcsss.sim.FHConfig()
-    gripper = rcsss.sim.FrankaHand(simulation, "0", gripper_cfg)
-    env_cam = GripperWrapper(env_cam, gripper)
-
-    env_cam = CollisionGuard.env_from_xml_paths(
-        env_cam,
-        str(rcsss.scenes["fr3_empty_world"]),
-        str(rcsss.scenes["lab"].parent / "fr3.urdf"),
-        gripper=True,
-        camera=False,
-        check_home_collision=False,
-        control_mode=ControlMode.CARTESIAN_TQuart,
-    )
-    env_rel = RelativeActionSpace(env_cam, relative_to=RelativeTo.CONFIGURED_ORIGIN)
     env_rel.reset()
-    with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
+
+    with UDPViveActionServer(VIVE_HOST, VIVE_PORT, typing.cast(RelativeActionSpace, env_rel)) as action_server:
         action_server.environment_step_loop()
-
-
-def main():
-    if "lab" not in rcsss.scenes:
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        return
-    if USE_REAL_ROBOT:
-        hw()
-    else:
-        sim()
 
 
 if __name__ == "__main__":
