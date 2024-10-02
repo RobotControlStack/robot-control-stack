@@ -6,9 +6,6 @@
 #include <common/utils.h>
 #include <mujoco/mujoco.h>
 
-#include "rl/mdl/JacobianInverseKinematics.h"
-#include "rl/mdl/Kinematic.h"
-#include "rl/mdl/Model.h"
 #include "sim/sim.h"
 
 namespace rcs {

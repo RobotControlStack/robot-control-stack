@@ -9,8 +9,6 @@
 #include <thread>
 
 #include "common/Pose.h"
-#include "rl/mdl/Model.h"
-#include "rl/mdl/UrdfFactory.h"
 #include "sim.h"
 #include "sim/FR3.h"
 

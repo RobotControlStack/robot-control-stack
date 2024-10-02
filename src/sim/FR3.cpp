@@ -18,8 +18,6 @@
 #include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
-#include "rl/mdl/JacobianInverseKinematics.h"
-#include "rl/mdl/UrdfFactory.h"
 
 const rcs::common::Vector7d q_home((rcs::common::Vector7d() << 0, -M_PI_4, 0,
                                     -3 * M_PI_4, 0, M_PI_2, M_PI_4)
