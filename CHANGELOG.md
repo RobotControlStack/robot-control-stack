@@ -1,3 +1,9 @@
+## v0.3.1 (2024-10-02)
+
+### Fix
+
+- **ik**: ik optional bug and fr3 example
+
 ## v0.3.0 (2024-10-02)
 
 ### Feat
