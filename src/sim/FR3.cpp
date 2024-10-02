@@ -154,11 +154,11 @@ std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
-  auto joints =
+  auto joint_vals =
       this->m_ik->ik(pose, this->get_joint_position(), this->cfg.tcp_offset);
-  if (!joints.has_value()) {
+  if (joint_vals.has_value()) {
     this->state.ik_success = true;
-    this->set_joint_position(joints.value());
+    this->set_joint_position(joint_vals.value());
   } else {
     this->state.ik_success = false;
   }

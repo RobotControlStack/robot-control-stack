@@ -1,5 +1,6 @@
 import logging
 import sys
+from time import sleep
 
 import numpy as np
 import rcsss
@@ -11,9 +12,12 @@ from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import RobotInstance
+from rcsss.envs.factories import get_urdf_path
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotInstance.SIMULATION
+# replace this with a path to a robot urdf file if you dont have the utn models
+URDF_PATH = None
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -46,10 +50,11 @@ def main():
     with resource_manger:
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
-            robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
+            ik = rcsss.common.IK(urdf_path)
+            robot = rcsss.sim.FR3(simulation, "0", ik)
             cfg = sim.FR3Config()
             cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-            cfg.ik_duration_in_milliseconds = 300
             cfg.realtime = False
             robot.set_parameters(cfg)
 

@@ -56,6 +56,19 @@ def default_realsense(name2id: dict[str, str]):
     return RealSenseCameraSet(cam_cfg)
 
 
+def get_urdf_path(urdf_path: str | None, allow_none_if_not_found: bool = False) -> str | None:
+    if urdf_path is None and "lab" in rcsss.scenes:
+        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        logger.info("Using automatic found urdf.")
+    elif urdf_path is None and not allow_none_if_not_found:
+        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path."
+        raise ValueError(msg)
+    elif urdf_path is not None:
+        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
+    return urdf_path
+
+
 def fr3_hw_env(
     ip: str,
     control_mode: ControlMode,
@@ -66,12 +79,7 @@ def fr3_hw_env(
     max_relative_movement: float | None = None,
     urdf_path: str | None = None,
 ) -> gym.Env:
-    if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
-        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None:
-        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
+    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=True)
 
     ik = rcsss.common.IK(urdf_path) if urdf_path is not None else None
     robot = rcsss.hw.FR3(ip, ik)
@@ -121,6 +129,7 @@ def default_mujoco_cameraset_cfg():
     cameras = {
         "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
+        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
     }
     return SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=10)
 
@@ -134,20 +143,13 @@ def fr3_sim_env(
     urdf_path: str | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
-
-    if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
-        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None:
-        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path."
-        raise ValueError(msg)
+    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
 
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
     simulation = sim.Sim(rcsss.scenes.get(mjcf, mjcf))  # type: ignore
-    ik = rcsss.common.IK(urdf_path)
+    ik = rcsss.common.IK(urdf_path) # type: ignore
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
