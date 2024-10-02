@@ -1,3 +1,23 @@
+## v0.3.0 (2024-10-02)
+
+### Feat
+
+- **sim**: Interactive sim viewer in separate process
+- **gui**: refactor with base class
+- **gui**: GuiServer & GuiClient class skeletons
+- **gui**: add mujoco ui library
+
+### Fix
+
+- **camera env**: missing depth data when depth enabled
+- remove doubly registered collision callback
+
+### Refactor
+
+- **vive**: using factory functions to create envs
+- **sim**: simulation to use refactored ik
+- **ik**: moved rl ik into common, removed rl deps in hw
+
 ## v0.2.2 (2024-10-01)
 
 ### Feat

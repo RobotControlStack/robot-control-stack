@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 project(
     rcs
     LANGUAGES C CXX
-    VERSION 0.2.2
+    VERSION 0.3.0
     DESCRIPTION "UTNs Robot Control Stack Library"
 )
 
