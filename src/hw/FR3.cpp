@@ -175,6 +175,7 @@ double quintic_polynomial_speed_profile(double time, double start_time,
 std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose &x) {
+  // pose is assumed to be in the robots coordinate frame
   common::Pose nominal_end_effector_frame_value;
   if (this->cfg.nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value =

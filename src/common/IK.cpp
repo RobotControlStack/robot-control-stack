@@ -15,7 +15,7 @@
 namespace rcs {
 namespace common {
 
-IK::IK(const std::string& urdf_path) : rl() {
+IK::IK(const std::string& urdf_path, size_t max_duration_ms) : rl() {
   this->rl = RL();
 
   this->rl.mdl = rl::mdl::UrdfFactory().create(urdf_path);
@@ -24,10 +24,12 @@ IK::IK(const std::string& urdf_path) : rl() {
       std::make_shared<rl::mdl::JacobianInverseKinematics>(this->rl.kin.get());
   this->rl.ik->setRandomRestarts(0);
   this->rl.ik->setEpsilon(1e-3);
+  this->rl.ik->setDuration(std::chrono::milliseconds(max_duration_ms));
 }
 
 std::optional<Vector7d> IK::ik(const Pose& pose, const Vector7d& q0,
                                const Pose& tcp_offset) {
+  // pose is assumed to be in the robots coordinate frame
   this->rl.kin->setPosition(q0);
   this->rl.kin->forwardPosition();
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();

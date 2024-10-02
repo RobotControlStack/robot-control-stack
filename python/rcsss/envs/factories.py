@@ -1,5 +1,6 @@
 import logging
-import sys
+import os
+from os import PathLike
 
 import gymnasium as gym
 import rcsss
@@ -63,12 +64,17 @@ def fr3_hw_env(
     gripper_cfg: rcsss.hw.FHConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
     max_relative_movement: float | None = None,
+    urdf_path: str | None = None,
 ) -> gym.Env:
-    if "lab" not in rcsss.scenes:
-        # TODO: mujoco xml and urdf as arguments
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        sys.exit()
-    robot = rcsss.hw.FR3(ip, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+    if urdf_path is None and "lab" in rcsss.scenes:
+        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        logger.info("Using automatic found urdf.")
+    elif urdf_path is None:
+        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
+
+    ik = rcsss.common.IK(urdf_path) if urdf_path is not None else None
+    robot = rcsss.hw.FR3(ip, ik)
     robot.set_parameters(robot_cfg)
 
     env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard else control_mode)
@@ -102,7 +108,6 @@ def fr3_hw_env(
 def default_fr3_sim_robot_cfg():
     cfg = sim.FR3Config()
     cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    cfg.ik_duration_in_milliseconds = 300
     cfg.realtime = False
     return cfg
 
@@ -126,12 +131,24 @@ def fr3_sim_env(
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
+    urdf_path: str | None = None,
+    mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
-    if "lab" not in rcsss.scenes:
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        sys.exit()
-    simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
-    robot = rcsss.sim.FR3(simulation, "0", str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+
+    if urdf_path is None and "lab" in rcsss.scenes:
+        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        logger.info("Using automatic found urdf.")
+    elif urdf_path is None:
+        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path."
+        raise ValueError(msg)
+
+    if mjcf not in rcsss.scenes:
+        logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+
+    simulation = sim.Sim(rcsss.scenes.get(mjcf, mjcf))  # type: ignore
+    ik = rcsss.common.IK(urdf_path)
+    robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
     env = FR3Sim(env, simulation)

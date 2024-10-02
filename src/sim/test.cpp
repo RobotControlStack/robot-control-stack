@@ -119,18 +119,17 @@ auto create_mj_datastructures() {
   return std::pair(m, d);
 }
 
-auto create_rl_datastructures() { return rl::mdl::UrdfFactory().create(urdf); }
-
 int test_sim() {
   auto [m, d] = create_mj_datastructures();
-  auto rlmdl = create_rl_datastructures();
   auto sim = std::make_shared<rcs::sim::Sim>(m, d);
   auto cfg = sim->get_config();
   cfg.realtime = true;
   cfg.async = false;
   sim->set_config(cfg);
   std::string id = "0";
-  auto fr3 = rcs::sim::FR3(sim, id, rlmdl);
+
+  auto ik = std::make_shared<rcs::common::IK>(urdf);
+  auto fr3 = rcs::sim::FR3(sim, id, ik);
   auto tcp_offset = rcs::common::Pose(rcs::common::FrankaHandTCPOffset());
   rcs::sim::FR3Config fr3_config = *fr3.get_parameters();
   fr3_config.tcp_offset = tcp_offset;

@@ -4,7 +4,7 @@ from time import sleep
 from typing import cast
 
 import numpy as np
-from rcsss import hw
+from rcsss import common, hw
 
 np.set_printoptions(precision=27)
 
@@ -194,7 +194,8 @@ class PoseList:
         poses: list[Pose] | None = None,
         urdf_path: str | None = None,
     ):
-        self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, urdf_path) for key, ip in name2ip.items()}
+        self.ik = common.IK(urdf_path) if urdf_path else None
+        self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, self.ik) for key, ip in name2ip.items()}
         # TODO: this config should be given to the constructor
         cfg = hw.FHConfig()
         cfg.epsilon_inner = 0.1

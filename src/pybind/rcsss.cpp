@@ -206,7 +206,8 @@ PYBIND11_MODULE(_core, m) {
           }));
 
   py::class_<rcs::common::IK, std::shared_ptr<rcs::common::IK>>(common, "IK")
-      .def(py::init<const std::string &>(), py::arg("urdf_path"))
+      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
+           py::arg("max_duration_ms") = 300)
       .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
 
@@ -404,8 +405,6 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::FR3Config::joint_rotational_tolerance)
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::FR3Config::seconds_between_callbacks)
-      .def_readwrite("ik_duration_in_milliseconds",
-                     &rcs::sim::FR3Config::ik_duration_in_milliseconds)
       .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::FR3Config::trajectory_trace);
@@ -459,8 +458,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    const std::string &>(),
-           py::arg("sim"), py::arg("id"), py::arg("rlmdl"))
+                    std::shared_ptr<rcs::common::IK>>(),
+           py::arg("sim"), py::arg("id"), py::arg("ik"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("get_state", &rcs::sim::FR3::get_state);

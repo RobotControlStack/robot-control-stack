@@ -45,27 +45,8 @@ namespace sim {
 
 // TODO: use C++11 feature to call one constructor from another
 FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
-         std::shared_ptr<rl::mdl::Model> rlmdl)
-    : sim{sim}, id{id}, rl{.mdl = rlmdl}, cfg{}, state{} {
-  construct();
-}
-FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
-         const std::string& rlmdl)
-    : sim{sim}, id{id}, cfg{}, state{} {
-  this->rl.mdl = rl::mdl::UrdfFactory().create(rlmdl);
-  construct();
-}
-
-FR3::~FR3() {}
-
-void FR3::construct() {
-  this->rl.kin = std::dynamic_pointer_cast<rl::mdl::Kinematic>(this->rl.mdl);
-  this->rl.ik =
-      std::make_shared<rl::mdl::JacobianInverseKinematics>(this->rl.kin.get());
-  this->rl.ik->setDuration(
-      std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
-  this->rl.ik->setRandomRestarts(0);
-  this->rl.ik->setEpsilon(1e-3);
+         std::shared_ptr<common::IK> ik)
+    : sim{sim}, id{id}, cfg{}, state{}, m_ik(ik) {
   this->init_ids();
   this->sim->register_cb(std::bind(&FR3::collision_callback, this),
                          this->cfg.seconds_between_callbacks);
@@ -79,6 +60,8 @@ void FR3::construct() {
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
 }
+
+FR3::~FR3() {}
 
 void FR3::move_home() { this->set_joint_position(q_home); }
 
@@ -128,8 +111,6 @@ void FR3::init_ids() {
 
 bool FR3::set_parameters(const FR3Config& cfg) {
   this->cfg = cfg;
-  this->rl.ik->setDuration(
-      std::chrono::milliseconds(this->cfg.ik_duration_in_milliseconds));
   this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
   return true;
 }
@@ -173,22 +154,15 @@ common::Vector7d FR3::get_joint_position() {
   return q;
 }
 
-std::optional<std::shared_ptr<common::IK>> FR3::get_ik() {
-  return std::nullopt;
-}
+std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
-  this->rl.kin->setPosition(this->get_joint_position());
-  this->rl.kin->forwardPosition();
-  rcs::common::Pose new_pose = pose * this->cfg.tcp_offset.inverse();
-  this->rl.ik->addGoal(new_pose.affine_matrix(), 0);
-  if (this->rl.ik->solve()) {
+  auto joints =
+      this->m_ik->ik(pose, this->get_joint_position(), this->cfg.tcp_offset);
+  if (!joints.has_value()) {
     this->state.ik_success = true;
-    this->rl.kin->forwardPosition();
-    this->set_joint_position(this->rl.kin->getPosition());
-    // forward kinematics can be accessed by
-    // this->rl.kin->getOperationalPosition(0);
+    this->set_joint_position(joints.value());
   } else {
     this->state.ik_success = false;
   }
