@@ -64,12 +64,13 @@ bool Sim::invoke_condition_callbacks() {
   return false;
 }
 
-void Sim::invoke_rendering_callbacks() {
+void Sim::invoke_rendering_callbacks(bool force) {
   // bool scene_updated = false;
   for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
     RenderingCallback& cb = this->rendering_callbacks[i];
     mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
+    // if (dt > cb.seconds_between_calls) {
+    if (force) {
       // if (!scene_updated) {
       //   // update scene once for all cameras
       //   mjv_updateScene(this->m, this->d, &this->renderer.opt, NULL, NULL,

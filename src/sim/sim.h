@@ -64,7 +64,6 @@ class Sim {
   std::vector<RenderingCallback> rendering_callbacks;
   void invoke_callbacks();
   bool invoke_condition_callbacks();
-  void invoke_rendering_callbacks();
   size_t convergence_steps = 0;
   bool converged = true;
   std::optional<GuiServer> gui;
@@ -79,6 +78,7 @@ class Sim {
   Config get_config();
   bool is_converged();
   void step_until_convergence();
+  void invoke_rendering_callbacks(bool froce = false);
   void step(size_t k);
   void reset();
   /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the

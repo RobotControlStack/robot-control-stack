@@ -55,6 +55,7 @@ void SimCameraSet::clear_buffer() {
 }
 
 std::optional<FrameSet> SimCameraSet::get_latest_frameset() {
+  this->sim->invoke_rendering_callbacks(true);
   if (buffer.empty()) {
     return std::nullopt;
   }
