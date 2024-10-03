@@ -194,6 +194,8 @@ PYBIND11_MODULE(_core, m) {
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
+      .def("total_angle", &rcs::common::Pose::total_angle)
+      .def("set_angle", &rcs::common::Pose::set_angle, py::arg("angle"))
       .def("is_close", &rcs::common::Pose::is_close, py::arg("other"),
            py::arg("eps_r") = 1e-8, py::arg("eps_t") = 1e-8)
       .def("__str__", &rcs::common::Pose::str)

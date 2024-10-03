@@ -301,6 +301,22 @@ class Pose {
   Pose inverse() const;
 
   /**
+   * @brief Returns the total rotation angle of the Pose.
+   *
+   * @return angle in radians
+   */
+  double total_angle() const;
+
+  /**
+   * @brief Returns a new pose with same translation and rotation,
+   * but only rotated by the given angle.
+   * @param angle Angle to rotate by
+   *
+   * @return new Pose with change rotation
+   */
+  Pose set_angle(double angle) const;
+
+  /**
    * @brief Checks if two Poses are equal within a certain epsilon
    *
    * @param other Pose to compare
