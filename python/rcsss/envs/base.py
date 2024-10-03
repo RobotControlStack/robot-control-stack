@@ -1,6 +1,7 @@
 """Gym API."""
 
 import copy
+import logging
 from enum import Enum, auto
 from typing import Annotated, Any, TypeAlias, cast
 
@@ -16,6 +17,8 @@ from rcsss.envs.space_utils import (
     get_space,
     get_space_keys,
 )
+
+_logger = logging.getLogger()
 
 
 class TRPYDictType(RCSpaceType):
@@ -258,9 +261,15 @@ class RelativeTo(Enum):
 
 class RelativeActionSpace(gym.ActionWrapper):
     DEFAULT_MAX_CART_MOV = 0.5
+    DEFAULT_MAX_CART_ROT = np.deg2rad(90)
     DEFAULT_MAX_JOINT_MOV = np.deg2rad(5)
 
-    def __init__(self, env, relative_to: RelativeTo = RelativeTo.LAST_STEP, max_mov: float | None = None):
+    def __init__(
+        self,
+        env,
+        relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
+        max_mov: float | tuple[float, float] | None = None,
+    ):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.action_space: gym.spaces.Dict
@@ -270,19 +279,33 @@ class RelativeActionSpace(gym.ActionWrapper):
             or self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart
         ):
             if max_mov is None:
-                max_mov = self.DEFAULT_MAX_CART_MOV
-            else:
-                assert (
-                    max_mov <= 1
-                ), "maximal movement is set to a value higher than 1m, which is really high, consider setting it lower"
+                max_mov = (self.DEFAULT_MAX_CART_MOV, self.DEFAULT_MAX_CART_ROT)
+            elif isinstance(max_mov, float):
+                _logger.info("No rotation maximum given, using default of %s rad", self.DEFAULT_MAX_CART_ROT)
+                max_mov = (max_mov, self.DEFAULT_MAX_CART_ROT)
+            assert (
+                isinstance(max_mov, tuple) and len(max_mov) == 2
+            ), "in cartesian control max_mov must be a tuple of maximum translation (in m) and maximum rotation in (rad)"
+            if max_mov[0] > 1:
+                _logger.warning(
+                    "maximal translation movement is set to a value higher than 1m, which is really high, consider setting it lower"
+                )
+            if max_mov[1] > np.deg2rad(180):
+                _logger.warning(
+                    "maximal rotation movement is set to a value higher than 180 degree, which is really high, consider setting it lower"
+                )
         else:
+            # control mode is in joint space
             if max_mov is None:
                 max_mov = self.DEFAULT_MAX_JOINT_MOV
-            else:
-                assert max_mov <= np.deg2rad(
-                    180
-                ), "maximal movement is set higher to a value higher than 180 degree, which is really high, consider setting it lower"
-        self.max_mov: float = max_mov
+            assert isinstance(
+                max_mov, float
+            ), "in cartesian control max_mov must be a float representing the maximum allowed rotation (in rad)."
+            if max_mov > np.deg2rad(180):
+                _logger.warning(
+                    "maximal movement is set higher to a value higher than 180 degree, which is really high, consider setting it lower"
+                )
+        self.max_mov: float | tuple[float, float] = max_mov
 
         if self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY:
             self.action_space.spaces.update(
@@ -336,6 +359,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         action = copy.deepcopy(action)
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS and self.joints_key in action:
             assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
+            assert isinstance(self.max_mov, float)
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
             action.update(
@@ -344,13 +368,23 @@ class RelativeActionSpace(gym.ActionWrapper):
 
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
+            assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
-            clipped_translation = np.clip(action[self.trpy_key][:3], -self.max_mov, self.max_mov)
 
-            unclipped_pose_offset = common.Pose(translation=clipped_translation, rpy_vector=action[self.trpy_key][3:])
+            # clip translation
+            translation = action[self.trpy_key][:3]
+            if np.linalg.norm(translation) > self.max_mov[0]:
+                translation = translation / np.linalg.norm(translation) * self.max_mov[0]
+
+            # clip rotation
+            rotation = common.Pose(rpy=action[self.trpy_key][3:])
+            if rotation.total_angle() > self.max_mov[1]:
+                rotation = rotation.set_angle(self.max_mov[1])
+
+            clipped_pose_offset = common.Pose(translation=translation, quaternion=rotation.rotation_q())
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + unclipped_pose_offset.translation(),
-                rpy_vector=(unclipped_pose_offset * self._origin).rotation_rpy().as_vector(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
             )
             action.update(
                 TRPYDictType(
@@ -364,13 +398,23 @@ class RelativeActionSpace(gym.ActionWrapper):
             )
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
+            assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
-            clipped_translation = np.clip(action[self.tquart_key][:3], -self.max_mov, self.max_mov)
 
-            unclipped_pose_offset = common.Pose(translation=clipped_translation, quaternion=action[self.tquart_key][3:])
+            # clip translation
+            translation = action[self.trpy_key][:3]
+            if np.linalg.norm(translation) > self.max_mov[0]:
+                translation = translation / np.linalg.norm(translation) * self.max_mov[0]
+
+            # clip rotation
+            rotation = common.Pose(rpy=action[self.trpy_key][3:])
+            if rotation.total_angle() > self.max_mov[1]:
+                rotation = rotation.set_angle(self.max_mov[1])
+
+            clipped_pose_offset = common.Pose(translation=translation, quaternion=rotation.rotation_q())
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + unclipped_pose_offset.translation(),
-                quaternion=(unclipped_pose_offset * self._origin).rotation_q(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                quaternion=(clipped_pose_offset * self._origin).rotation_q(),
             )
 
             action.update(
