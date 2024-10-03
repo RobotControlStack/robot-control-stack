@@ -177,6 +177,16 @@ Pose Pose::operator*(const Pose &pose_b) const {
   return Pose(rot, trans);
 }
 
+double Pose::total_angle() const {
+  return this->m_rotation.angularDistance(IdentityRotQuart());
+}
+
+Pose Pose::set_angle(double angle) const {
+  Eigen::Quaterniond rot = this->m_rotation;
+  rot.coeffs()[3] = cos(angle / 2);
+  return Pose(rot, this->m_translation);
+}
+
 Pose Pose::inverse() const {
   auto new_rot = this->m_rotation.conjugate();
   return Pose(new_rot, -(new_rot * this->m_translation));
