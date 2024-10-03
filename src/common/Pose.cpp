@@ -181,10 +181,23 @@ double Pose::total_angle() const {
   return this->m_rotation.angularDistance(IdentityRotQuart());
 }
 
-Pose Pose::set_angle(double angle) const {
-  Eigen::Quaterniond rot = this->m_rotation;
-  rot.coeffs()[3] = cos(angle / 2);
-  return Pose(rot, this->m_translation);
+Pose Pose::limit_rotation_angle(double max_angle) const {
+  auto curr_angle = this->total_angle();
+  if (curr_angle > max_angle && max_angle >= 0) {
+    auto new_rot =
+        IdentityRotQuart().slerp(max_angle / curr_angle, this->m_rotation);
+    return Pose(new_rot, this->m_translation);
+  }
+  return *this;
+}
+Pose Pose::limit_translation_length(double max_length) const {
+  auto curr_translation = this->translation();
+  if (curr_translation.norm() > max_length && max_length >= 0) {
+    auto trans_norm = curr_translation.normalized();
+    auto new_translation = trans_norm * max_length;
+    return Pose(this->m_rotation, new_translation);
+  }
+  return *this;
 }
 
 Pose Pose::inverse() const {

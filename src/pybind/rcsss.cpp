@@ -195,7 +195,10 @@ PYBIND11_MODULE(_core, m) {
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)
       .def("total_angle", &rcs::common::Pose::total_angle)
-      .def("set_angle", &rcs::common::Pose::set_angle, py::arg("angle"))
+      .def("limit_rotation_angle", &rcs::common::Pose::limit_rotation_angle,
+           py::arg("max_angle"))
+      .def("limit_translation_length",
+           &rcs::common::Pose::limit_translation_length, py::arg("max_length"))
       .def("is_close", &rcs::common::Pose::is_close, py::arg("other"),
            py::arg("eps_r") = 1e-8, py::arg("eps_t") = 1e-8)
       .def("__str__", &rcs::common::Pose::str)

@@ -307,14 +307,9 @@ class Pose {
    */
   double total_angle() const;
 
-  /**
-   * @brief Returns a new pose with same translation and rotation,
-   * but only rotated by the given angle.
-   * @param angle Angle to rotate by
-   *
-   * @return new Pose with change rotation
-   */
-  Pose set_angle(double angle) const;
+  Pose limit_rotation_angle(double max_angle) const;
+
+  Pose limit_translation_length(double max_length) const;
 
   /**
    * @brief Checks if two Poses are equal within a certain epsilon

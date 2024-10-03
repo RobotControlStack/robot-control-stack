@@ -308,16 +308,18 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.max_mov: float | tuple[float, float] = max_mov
 
         if self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY:
+            assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
-                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov}}).spaces
+                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self.action_space.spaces.update(
                 get_space(LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.max_mov}}).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart:
+            assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
-                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov}}).spaces
+                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
             )
         else:
             msg = "Control mode not recognized!"
@@ -361,6 +363,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             assert isinstance(self.max_mov, float)
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
+            # TODO: should we also clip euqally for all joints?
             limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
             action.update(
                 JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
@@ -371,17 +374,15 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
 
-            # clip translation
-            translation = action[self.trpy_key][:3]
-            if np.linalg.norm(translation) > self.max_mov[0]:
-                translation = translation / np.linalg.norm(translation) * self.max_mov[0]
+            clipped_pose_offset = (
+                common.Pose(
+                    translation=action[self.trpy_key][:3],
+                    rpy_vector=action[self.trpy_key][3:],
+                )
+                .limit_translation_length(self.max_mov[0])
+                .limit_rotation_angle(self.max_mov[1])
+            )
 
-            # clip rotation
-            rotation = common.Pose(rpy=action[self.trpy_key][3:])
-            if rotation.total_angle() > self.max_mov[1]:
-                rotation = rotation.set_angle(self.max_mov[1])
-
-            clipped_pose_offset = common.Pose(translation=translation, quaternion=rotation.rotation_q())
             unclipped_pose = common.Pose(
                 translation=self._origin.translation() + clipped_pose_offset.translation(),
                 rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
@@ -401,17 +402,15 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
 
-            # clip translation
-            translation = action[self.trpy_key][:3]
-            if np.linalg.norm(translation) > self.max_mov[0]:
-                translation = translation / np.linalg.norm(translation) * self.max_mov[0]
+            clipped_pose_offset = (
+                common.Pose(
+                    translation=action[self.trpy_key][:3],
+                    rpy_vector=action[self.trpy_key][3:],
+                )
+                .limit_translation_length(self.max_mov[0])
+                .limit_rotation_angle(self.max_mov[1])
+            )
 
-            # clip rotation
-            rotation = common.Pose(rpy=action[self.trpy_key][3:])
-            if rotation.total_angle() > self.max_mov[1]:
-                rotation = rotation.set_angle(self.max_mov[1])
-
-            clipped_pose_offset = common.Pose(translation=translation, quaternion=rotation.rotation_q())
             unclipped_pose = common.Pose(
                 translation=self._origin.translation() + clipped_pose_offset.translation(),
                 quaternion=(clipped_pose_offset * self._origin).rotation_q(),
@@ -560,6 +559,6 @@ class GripperWrapper(ActObsInfoWrapper):
             if self.binary:
                 self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
             else:
-                self._gripper.set_normalized_width(action["gripper"])
+                self._gripper.set_normalized_width(max(min(action["gripper"], 1.0), 0.0))
         del action[self.gripper_key]
         return action
