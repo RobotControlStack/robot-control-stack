@@ -6,7 +6,7 @@ import rcsss
 from dotenv import dotenv_values
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.envs.base import ControlMode, RobotInstance
+from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
 from rcsss.envs.factories import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -28,6 +28,22 @@ ROBOT_INSTANCE = RobotInstance.SIMULATION
 Create a .env file in the same directory as this file with the following content:
 FR3_USERNAME=<username on franka desk>
 FR3_PASSWORD=<password on franka desk>
+
+When you use a real FR3 you first need to unlock its joints using the following cli script:
+
+python -m rcsss fr3 unlock <ip>
+
+or put it into guiding mode using:
+
+python -m rcsss fr3 guiding-mode <ip>
+
+When you are done you lock it again using:
+
+python -m rcsss fr3 lock <ip>
+
+or even shut it down using:
+
+python -m rcsss fr3 shutdown <ip>
 """
 
 

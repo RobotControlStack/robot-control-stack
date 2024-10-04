@@ -12,6 +12,8 @@ from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.control.record import PoseList
+from rcsss.control.utils import load_creds_fr3_desk
+from rcsss.envs.factories import get_urdf_path
 
 logger = logging.getLogger(__name__)
 
@@ -109,113 +111,102 @@ main_app.add_typer(
 @fr3_app.command()
 def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
     shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
+    unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
 ):
     """Moves the FR3 to home position"""
-    cfg = read_config_yaml(path)
-    rcsss.control.fr3_desk.home(ip, cfg.hw.username, cfg.hw.password, shut)
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.home(ip, user, pw, shut, unlock)
 
 
 @fr3_app.command()
 def lock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Locks the robot."""
-    cfg = read_config_yaml(path)
-    rcsss.control.fr3_desk.lock(ip, cfg.hw.username, cfg.hw.password)
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.lock(ip, user, pw)
 
 
 @fr3_app.command()
 def unlock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
-    cfg = read_config_yaml(path)
-    rcsss.control.fr3_desk.unlock(ip, cfg.hw.username, cfg.hw.password)
-    with rcsss.control.fr3_desk.Desk(ip, cfg.hw.username, cfg.hw.password) as d:
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.unlock(ip, user, pw)
+    with rcsss.control.fr3_desk.Desk(ip, user, pw) as d:
         d.activate_fci()
 
 
 @fr3_app.command()
 def fci(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
     unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
     shutdown: Annotated[bool, typer.Option("-s", help="After ctrl+c shuts the robot down")] = False,
 ):
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
-    cfg = read_config_yaml(path)
+    user, pw = load_creds_fr3_desk()
     try:
-        with rcsss.control.fr3_desk.FCI(
-            rcsss.control.fr3_desk.Desk(ip, cfg.hw.username, cfg.hw.password), unlock=unlock
-        ):
+        with rcsss.control.fr3_desk.FCI(rcsss.control.fr3_desk.Desk(ip, user, pw), unlock=unlock):
             while True:
                 sleep(1)
     except KeyboardInterrupt:
         if shutdown:
-            rcsss.control.fr3_desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
+            rcsss.control.fr3_desk.shutdown(ip, user, pw)
 
 
 @fr3_app.command()
 def guiding_mode(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
     disable: Annotated[bool, typer.Option("-d", help="Disable guiding mode")] = False,
+    unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
 ):
     """Enables or disables guiding mode."""
-    cfg = read_config_yaml(path)
-    rcsss.control.fr3_desk.guiding_mode(ip, cfg.hw.username, cfg.hw.password, disable)
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.guiding_mode(ip, user, pw, disable, unlock)
 
 
 @fr3_app.command()
 def shutdown(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
 ):
     """Shuts the robot down"""
-    cfg = read_config_yaml(path)
-    rcsss.control.fr3_desk.shutdown(ip, cfg.hw.username, cfg.hw.password)
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.shutdown(ip, user, pw)
 
 
 @fr3_app.command()
 def record(
     ip_str: Annotated[str, typer.Argument(help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")],
-    path: Annotated[str, typer.Argument(help="Path to the config file")],
+    urdf_path: Annotated[Optional[str], typer.Option(help="Path to the urdf file")] = None,
     lpaths: Annotated[Optional[list[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
     spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
     buttons: Annotated[bool, typer.Option("-b", help="Use the robots buttons instead of the keyboard")] = False,
 ):
     """Tool to record poses with multiple FR3 robots."""
-    cfg = read_config_yaml(path)
+    user, pw = load_creds_fr3_desk()
+    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)  # type: ignore
 
     name2ip: dict[str, str] = eval(ip_str)
 
     if lpaths is not None and len(lpaths) > 0:
         with ExitStack() as stack:
             for r_ip in name2ip.values():
-                stack.enter_context(
-                    rcsss.control.fr3_desk.Desk.fci(
-                        r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
-                    )
-                )
+                stack.enter_context(rcsss.control.fr3_desk.Desk.fci(r_ip, username=user, password=pw, unlock=True))
 
-            p = PoseList.load(name2ip, lpaths, cfg.hw.urdf_model_path)
+            p = PoseList.load(name2ip, lpaths, urdf_path=urdf_path)
             input("Press any key to replay")
             p.replay()
     else:
         with ExitStack() as stack:
             gms = [
-                rcsss.control.fr3_desk.Desk.guiding_mode(
-                    r_ip, username=cfg.hw.username, password=cfg.hw.password, unlock=True
-                )
+                rcsss.control.fr3_desk.Desk.guiding_mode(r_ip, username=user, password=pw, unlock=True)
                 for r_ip in name2ip.values()
             ]
             for gm in gms:
                 stack.enter_context(gm)
-            p = PoseList(name2ip, urdf_path=cfg.hw.urdf_model_path)
+            p = PoseList(name2ip, urdf_path=urdf_path)
             if not buttons:
                 p.record()
             else:
