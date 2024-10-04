@@ -19,6 +19,7 @@ from rcsss.envs.base import (
     LimitedJointsRelDictType,
     ObsArmsGrCam,
     RelativeActionSpace,
+    RelativeTo,
 )
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import CollisionGuard, FR3Sim
@@ -77,6 +78,7 @@ def fr3_hw_env(
     gripper_cfg: rcsss.hw.FHConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
     max_relative_movement: float | None = None,
+    relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
     urdf_path: str | None = None,
 ) -> gym.Env:
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=True)
@@ -108,7 +110,7 @@ def fr3_hw_env(
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
         )
     if max_relative_movement is not None:
-        env = RelativeActionSpace(env, max_mov=max_relative_movement)
+        env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
     return env
 
@@ -140,6 +142,7 @@ def fr3_sim_env(
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
+    relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
     urdf_path: str | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
@@ -164,6 +167,6 @@ def fr3_sim_env(
         env = GripperWrapper(env, gripper, binary=False)
 
     if max_relative_movement is not None:
-        env = RelativeActionSpace(env, max_mov=max_relative_movement)
+        env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
     return env

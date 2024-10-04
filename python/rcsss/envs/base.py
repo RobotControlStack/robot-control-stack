@@ -404,8 +404,8 @@ class RelativeActionSpace(gym.ActionWrapper):
 
             clipped_pose_offset = (
                 common.Pose(
-                    translation=action[self.trpy_key][:3],
-                    rpy_vector=action[self.trpy_key][3:],
+                    translation=action[self.tquart_key][:3],
+                    quaternion=action[self.tquart_key][3:],
                 )
                 .limit_translation_length(self.max_mov[0])
                 .limit_rotation_angle(self.max_mov[1])
