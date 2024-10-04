@@ -5,7 +5,7 @@ from os import PathLike
 import gymnasium as gym
 import rcsss
 from rcsss import sim
-from rcsss._core.hw import FR3Config
+from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
 from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.interface import BaseCameraConfig
@@ -32,6 +32,7 @@ def default_fr3_hw_robot_cfg():
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.2
+    robot_cfg.controller = IKController.robotics_library
     return robot_cfg
 
 
@@ -133,7 +134,8 @@ def default_mujoco_cameraset_cfg():
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
         # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
     }
-    return SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=10)
+    # 256x256 needed for VLAs
+    return SimCameraSetConfig(cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10)
 
 
 def fr3_sim_env(

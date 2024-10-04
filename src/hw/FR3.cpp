@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
@@ -204,11 +205,12 @@ void FR3::set_cartesian_position_ik(const common::Pose &pose) {
   auto joints = this->m_ik.value()->ik(pose, this->get_joint_position(),
                                        this->cfg.tcp_offset);
 
-  if (!joints.has_value()) {
+  if (joints.has_value()) {
     this->set_joint_position(joints.value());
   } else {
     // throw error
-    throw std::runtime_error("IK failed");
+    // throw std::runtime_error("IK failed");
+    std::cerr << "IK failed";
   }
 }
 

@@ -25,8 +25,8 @@ in this file under the unit's IP address or hostname.
 """
 
 
-def home(ip: str, username: str, password: str, shut: bool):
-    with Desk.fci(ip, username, password, unlock=True):
+def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
+    with Desk.fci(ip, username, password, unlock=unlock):
         f = rcsss.hw.FR3(ip)
         config = rcsss.hw.FR3Config()
         config.speed_factor = 0.7
@@ -52,11 +52,15 @@ def unlock(ip: str, username: str, password: str):
         d.unlock()
 
 
-def guiding_mode(ip: str, username: str, password: str, disable: bool = False):
+def guiding_mode(ip: str, username: str, password: str, disable: bool = False, unlock=False):
     with Desk(ip, username, password) as d:
         if disable:
             d.disable_guiding_mode()
+            if unlock:
+                d.lock()
         else:
+            if unlock:
+                d.unlock()
             d.enable_guiding_mode()
 
 
@@ -457,10 +461,13 @@ class FCI:
     Can be used as a context manager to activate the Franka Control Interface (FCI).
     """
 
-    def __init__(self, desk: Desk, unlock: bool = False, lock_when_done: bool = True):
+    def __init__(
+        self, desk: Desk, unlock: bool = False, lock_when_done: bool = True, guiding_mode_when_done: bool = True
+    ):
         self.desk = desk
         self.unlock = unlock
         self.lock_when_done = lock_when_done
+        self.guiding_mode_when_done = guiding_mode_when_done
 
     def __enter__(self) -> Desk:
         self.desk.__enter__()
@@ -474,6 +481,9 @@ class FCI:
         self.desk.deactivate_fci()
         if self.lock_when_done:
             self.desk.lock()
+        if self.guiding_mode_when_done:
+            self.desk.enable_guiding_mode()
+
         self.desk.__exit__()
 
 
