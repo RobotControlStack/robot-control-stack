@@ -267,7 +267,7 @@ class RelativeActionSpace(gym.ActionWrapper):
     def __init__(
         self,
         env,
-        relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
         max_mov: float | tuple[float, float] | None = None,
     ):
         super().__init__(env)
@@ -529,9 +529,11 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self._gripper = gripper
         self.binary = binary
+        self._last_gripper_cmd = None
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         self._gripper.reset()
+        self._last_gripper_cmd = None
         return super().reset(**kwargs)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -548,17 +550,18 @@ class GripperWrapper(ActObsInfoWrapper):
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
+
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
 
-        gripper_action = np.round(action["gripper"])
-        width = self._gripper.get_normalized_width()
-        if self.binary:
-            width = np.round(width)
-        if gripper_action != width:
+        gripper_action = np.round(action[self.gripper_key]) if self.binary else action[self.gripper_key]
+        gripper_action = np.clip(gripper_action, 0.0, 1.0)
+
+        if self._last_gripper_cmd is None or self._last_gripper_cmd != gripper_action:
             if self.binary:
                 self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
             else:
-                self._gripper.set_normalized_width(max(min(action["gripper"], 1.0), 0.0))
+                self._gripper.set_normalized_width(gripper_action)
+        self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
         return action
