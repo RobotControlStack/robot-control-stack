@@ -198,7 +198,7 @@ class FR3Env(gym.Env):
 
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
-            tquart=np.concat(
+            tquart=np.concatenate(
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
             ),
             joints=self.robot.get_joint_position(),
@@ -389,7 +389,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             )
             action.update(
                 TRPYDictType(
-                    xyzrpy=np.concat(
+                    xyzrpy=np.concatenate(
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_rpy().as_vector(),
@@ -418,7 +418,7 @@ class RelativeActionSpace(gym.ActionWrapper):
 
             action.update(
                 TQuartDictType(
-                    tquart=np.concat(
+                    tquart=np.concatenate(
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_q(),

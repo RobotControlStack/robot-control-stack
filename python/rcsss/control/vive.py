@@ -193,7 +193,7 @@ class UDPViveActionServer(threading.Thread):
             with self._resource_lock:
                 displacement = self.next_action()
             action = dict(
-                LimitedTQuartRelDictType(tquart=np.concat([displacement.translation(), displacement.rotation_q()]))
+                LimitedTQuartRelDictType(tquart=np.concatenate([displacement.translation(), displacement.rotation_q()]))
             )
             action.update(GripperDictType(gripper=self._grp_pos))
             with self._env_lock:
