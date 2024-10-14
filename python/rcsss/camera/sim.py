@@ -80,10 +80,9 @@ class SimCameraSet(_SimCameraSet):
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
             color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
-                ::-1 # convert from row-major to column-major
+                ::-1  # convert from row-major to column-major
             ]
             depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
-
                 ::-1
             ]
             if self._cfg.physical_units:
