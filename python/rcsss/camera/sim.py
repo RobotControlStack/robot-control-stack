@@ -25,6 +25,7 @@ class SimCameraConfig(BaseCameraConfig):
 class SimCameraSetConfig(BaseCameraSetConfig):
     cameras: dict[str, SimCameraConfig] = Field(default={})
     max_buffer_frames: int = 1000
+    physical_units: bool = False
 
 
 class SimCameraSet(_SimCameraSet):
@@ -36,6 +37,7 @@ class SimCameraSet(_SimCameraSet):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
         cameras: dict[str, _SimCameraConfig] = {}
+        self._sim = sim
 
         def get_type(t):
             if t == CameraType.fixed:
@@ -78,9 +80,19 @@ class SimCameraSet(_SimCameraSet):
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
             color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
+                ::-1 # convert from row-major to column-major
+            ]
+            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
+
                 ::-1
             ]
-            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)
+            if self._cfg.physical_units:
+                # Convert from [0 1] to depth in meters, see links below:
+                # http://stackoverflow.com/a/6657284/1461210
+                # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
+                near = self._sim.model.vis.map.znear
+                far = self._sim.model.vis.map.zfar
+                depth_np_frame = near / (1 - depth_np_frame * (1 - near / far))
             cameraframe = CameraFrame(
                 color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
                 depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp),

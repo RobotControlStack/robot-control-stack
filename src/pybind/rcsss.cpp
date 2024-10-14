@@ -503,6 +503,7 @@ PYBIND11_MODULE(_core, m) {
       .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
       .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
       .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
+      .def_readonly("sim", &rcs::sim::SimCameraSet::sim)
       .def("get_timestamp_frameset",
            &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
   sim.def("open_gui_window", &rcs::sim::open_gui_window, py::arg("uuid"));

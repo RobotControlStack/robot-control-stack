@@ -56,10 +56,10 @@ class SimCameraSet {
 
   void frame_callback(const std::string& id, mjrContext& ctx, mjvScene& scene,
                       mjvOption& opt);
+  std::shared_ptr<Sim> sim;
 
  private:
   const SimCameraSetConfig cfg;
-  std::shared_ptr<Sim> sim;
   std::vector<FrameSet> buffer;
   std::unordered_map<std::string, mjvCamera> cameras;
   std::mutex buffer_lock;
