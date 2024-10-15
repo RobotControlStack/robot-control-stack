@@ -517,7 +517,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
         return observation, info
 
     def close(self):
-        self.camera_set.stop()
+        self.camera_set.close()
         super().close()
 
 

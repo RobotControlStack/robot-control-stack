@@ -103,6 +103,10 @@ class SimCameraSet(_SimCameraSet):
             frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
+    def close(self):
+        # TODO: this could deregister camera callbacks in simulation
+        pass
+
     @property
     def config(self) -> SimCameraSetConfig:
         return self._cfg

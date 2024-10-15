@@ -1,10 +1,8 @@
 import logging
-import pickle
 import threading
 import typing
 from abc import ABC, abstractmethod
 from datetime import datetime
-from pathlib import Path
 from time import sleep
 
 import numpy as np
@@ -25,6 +23,7 @@ class HWCameraSetConfig(BaseCameraSetConfig):
 
 
 # TODO(juelg): refactor camera thread into their own class, to avoid a base hardware camera set class
+# TODO(juelg): add video recording
 class BaseHardwareCameraSet(ABC):
     """This base class should have the ability to poll in a separate thread for all cameras and store them in a buffer.
     Implements BaseCameraSet
@@ -73,7 +72,11 @@ class BaseHardwareCameraSet(ABC):
         self.running = False
         assert self._thread is not None
         self._thread.join()
-        # self._save_frames()
+        self._thread = None
+
+    def close(self):
+        if self.running and self._thread is not None:
+            self.stop()
 
     def start(self, warm_up: bool = True):
         """Should start the polling of the cameras."""
@@ -110,18 +113,6 @@ class BaseHardwareCameraSet(ABC):
         # filter none
         timestamps: list[float] = [frame.avg_timestamp for frame in frames.values() if frame.avg_timestamp is not None]
         return FrameSet(frames=frames, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
-
-    # TODO(juelg): we probably want to record through the gym env
-    # we also probably want to prune the buffer at some point
-    def _save_frames(self):
-        """Saves all frames from the buffer in python pickle format and clears the buffer."""
-        with (
-            self._buffer_lock,
-            open(Path(self.config.record_path) / f"frames_{int(datetime.now().timestamp())}.pk", "wb") as f,
-        ):
-            pickle.dump(self._buffer, f)
-            self._logger.debug("Saved %i frames.", len(self._buffer))
-            self._buffer = []
 
     def clear_buffer(self):
         """Deletes all frames from the buffer."""
