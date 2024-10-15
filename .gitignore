@@ -16,3 +16,4 @@ python/mujoco
 config.h
 wheels
 .env
+settings.json

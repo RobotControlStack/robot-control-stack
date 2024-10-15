@@ -120,6 +120,16 @@ def home(
 
 
 @fr3_app.command()
+def info(
+    ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    include_gripper: Annotated[bool, typer.Option("-g", help="includes gripper")] = False,
+):
+    """Prints info about the robots current joint position and end effector pose, optionally also the gripper."""
+    user, pw = load_creds_fr3_desk()
+    rcsss.control.fr3_desk.info(ip, user, pw, include_gripper)
+
+
+@fr3_app.command()
 def lock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
 ):
@@ -148,7 +158,7 @@ def fci(
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
     user, pw = load_creds_fr3_desk()
     try:
-        with rcsss.control.fr3_desk.FCI(rcsss.control.fr3_desk.Desk(ip, user, pw), unlock=unlock):
+        with rcsss.control.fr3_desk.FCI(rcsss.control.fr3_desk.Desk(ip, user, pw), unlock=unlock, lock_when_done=False):
             while True:
                 sleep(1)
     except KeyboardInterrupt:

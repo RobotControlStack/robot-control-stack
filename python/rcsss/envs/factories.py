@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 def default_fr3_hw_robot_cfg():
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    robot_cfg.speed_factor = 0.2
+    robot_cfg.speed_factor = 0.1
     robot_cfg.controller = IKController.robotics_library
     return robot_cfg
 
@@ -51,7 +51,7 @@ def default_realsense(name2id: dict[str, str]):
         resolution_width=1280,
         resolution_height=720,
         frame_rate=15,
-        enable_imu=False,
+        enable_imu=False,  # does not work with imu, why?
         enable_ir=True,
         enable_ir_emitter=False,
     )
@@ -97,6 +97,8 @@ def fr3_hw_env(
 
     if camera_set is not None:
         camera_set.start()
+        camera_set.wait_for_frames()
+        logger.info("CameraSet started")
         env = CameraSetWrapper(env, camera_set)
 
     if collision_guard:
