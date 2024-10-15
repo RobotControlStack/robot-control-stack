@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 import numpy as np
+import rcsss
 from pydantic import Field
 from rcsss._core.sim import CameraType
 from rcsss._core.sim import FrameSet as _FrameSet
@@ -25,6 +26,7 @@ class SimCameraConfig(BaseCameraConfig):
 class SimCameraSetConfig(BaseCameraSetConfig):
     cameras: dict[str, SimCameraConfig] = Field(default={})
     max_buffer_frames: int = 1000
+    physical_units: bool = False
 
 
 class SimCameraSet(_SimCameraSet):
@@ -32,7 +34,7 @@ class SimCameraSet(_SimCameraSet):
     Implements BaseCameraSet
     """
 
-    def __init__(self, sim, cfg: SimCameraSetConfig):
+    def __init__(self, sim: rcsss.sim.Sim, cfg: SimCameraSetConfig):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
         cameras: dict[str, _SimCameraConfig] = {}
@@ -60,6 +62,7 @@ class SimCameraSet(_SimCameraSet):
         cpp_set_cfg.max_buffer_frames = cfg.max_buffer_frames
 
         super().__init__(sim, cpp_set_cfg)
+        self._sim: rcsss.sim.Sim
 
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
@@ -78,9 +81,20 @@ class SimCameraSet(_SimCameraSet):
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
             color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
+                # convert from column-major (c++ eigen) to row-major (python numpy)
                 ::-1
             ]
-            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)
+            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
+                # convert from column-major (c++ eigen) to row-major (python numpy)
+                ::-1
+            ]
+            if self._cfg.physical_units:
+                # Convert from [0 1] to depth in meters, see links below:
+                # http://stackoverflow.com/a/6657284/1461210
+                # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
+                near = self._sim.model.vis.map.znear
+                far = self._sim.model.vis.map.zfar
+                depth_np_frame = near / (1 - depth_np_frame * (1 - near / far))
             cameraframe = CameraFrame(
                 color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
                 depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp),
