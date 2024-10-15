@@ -37,7 +37,6 @@ class SimCameraSet(_SimCameraSet):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
         cameras: dict[str, _SimCameraConfig] = {}
-        self._sim = sim
 
         def get_type(t):
             if t == CameraType.fixed:
@@ -80,9 +79,11 @@ class SimCameraSet(_SimCameraSet):
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
             color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
-                ::-1  # convert from row-major to column-major
+                # convert from column-major (c++ eigen) to row-major (python numpy)
+                ::-1
             ]
             depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
+                # convert from column-major (c++ eigen) to row-major (python numpy)
                 ::-1
             ]
             if self._cfg.physical_units:
