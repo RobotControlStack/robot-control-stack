@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 import numpy as np
+import rcsss
 from pydantic import Field
 from rcsss._core.sim import CameraType
 from rcsss._core.sim import FrameSet as _FrameSet
@@ -33,7 +34,7 @@ class SimCameraSet(_SimCameraSet):
     Implements BaseCameraSet
     """
 
-    def __init__(self, sim, cfg: SimCameraSetConfig):
+    def __init__(self, sim: rcsss.sim.Sim, cfg: SimCameraSetConfig):
         self._logger = logging.getLogger(__name__)
         self._cfg = cfg
         cameras: dict[str, _SimCameraConfig] = {}
@@ -61,6 +62,7 @@ class SimCameraSet(_SimCameraSet):
         cpp_set_cfg.max_buffer_frames = cfg.max_buffer_frames
 
         super().__init__(sim, cpp_set_cfg)
+        self._sim: rcsss.sim.Sim
 
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
