@@ -11,6 +11,7 @@ from urllib import parse
 
 import rcsss
 import requests
+from rcsss.envs.factories import default_fr3_hw_gripper_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
@@ -31,7 +32,7 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         config = rcsss.hw.FR3Config()
         config.speed_factor = 0.7
         config.controller = rcsss.hw.IKController.internal
-        config.guiding_mode_enabled = False
+        config.guiding_mode_enabled = True
         f.set_parameters(config)
         config_hand = rcsss.hw.FHConfig()
         g = rcsss.hw.FrankaHand(ip, config_hand)
@@ -40,6 +41,24 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         else:
             g.open()
         f.move_home()
+
+
+def info(ip: str, username: str, password: str, include_hand: bool = False):
+    with Desk.fci(ip, username, password):
+        f = rcsss.hw.FR3(ip)
+        config = rcsss.hw.FR3Config()
+        f.set_parameters(config)
+        print("Robot info:")
+        print("Current cartesian position:")
+        print(f.get_cartesian_position())
+        print("Current joint position:")
+        print(f.get_joint_position())
+        if include_hand:
+            config_hand = default_fr3_hw_gripper_cfg()
+            g = rcsss.hw.FrankaHand(ip, config_hand)
+            print("Gripper info:")
+            print("Current normalized width:")
+            print(g.get_normalized_width())
 
 
 def lock(ip: str, username: str, password: str):
@@ -153,8 +172,21 @@ class Desk:
         self.release_control()
 
     @classmethod
-    def fci(cls, hostname: str, username: str, password: str, unlock: bool = False) -> "FCI":
-        return FCI(cls(hostname, username, password), unlock)
+    def fci(
+        cls,
+        hostname: str,
+        username: str,
+        password: str,
+        unlock: bool = False,
+        lock_when_done=False,
+        guiding_mode_when_done=True,
+    ) -> "FCI":
+        return FCI(
+            cls(hostname, username, password),
+            unlock,
+            lock_when_done=lock_when_done,
+            guiding_mode_when_done=guiding_mode_when_done,
+        )
 
     @classmethod
     def guiding_mode(cls, hostname: str, username: str, password: str, unlock: bool = False) -> "GuidingMode":
