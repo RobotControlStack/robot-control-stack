@@ -42,6 +42,14 @@ class BaseHardwareCameraSet(ABC):
     def buffer_size(self) -> int:
         return len(self._buffer) - self._buffer.count(None)
 
+    def wait_for_frames(self, timeout: float = 10.0):
+        while self.buffer_size() == 0:
+            sleep(0.1)
+            timeout -= 0.1
+            if timeout < 0:
+                self._logger.error("Timeout waiting for frames")
+                raise
+
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
         with self._buffer_lock:
