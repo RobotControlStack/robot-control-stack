@@ -516,6 +516,10 @@ class CameraSetWrapper(ActObsInfoWrapper):
             info["frame_timestamp"] = frameset.avg_timestamp
         return observation, info
 
+    def close(self):
+        self.camera_set.close()
+        super().close()
+
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
@@ -538,15 +542,16 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
-        observation[self.gripper_key] = self._gripper.get_normalized_width()
+        if self.binary:
+            observation[self.gripper_key] = self._last_gripper_cmd if self._last_gripper_cmd is not None else 1
+        else:
+            observation[self.gripper_key] = self._gripper.get_normalized_width()
 
         # TODO: a cleaner solution would be to put this code into env/sim.py
         # similar to sim fr3 has also a sim specific wrapper
         if isinstance(self._gripper, sim.FrankaHand):
             state = self._gripper.get_state()
             info["collision"] = state.collision
-        if self.binary:
-            observation[self.gripper_key] = round(observation[self.gripper_key])
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:

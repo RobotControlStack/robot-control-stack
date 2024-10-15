@@ -70,6 +70,9 @@ class BaseCameraSet(Protocol):
     def clear_buffer(self):
         """Deletes all frames from the buffer."""
 
+    def close(self):
+        """Stops any running threads e.g. for exitting."""
+
     @property
     def config(self) -> BaseCameraSetConfig:
         """Return the configuration object of the cameras."""
