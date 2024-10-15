@@ -516,6 +516,10 @@ class CameraSetWrapper(ActObsInfoWrapper):
             info["frame_timestamp"] = frameset.avg_timestamp
         return observation, info
 
+    def close(self):
+        self.camera_set.stop()
+        super().close()
+
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
