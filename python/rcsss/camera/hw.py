@@ -1,10 +1,12 @@
 import logging
+from pathlib import Path
 import threading
 import typing
 from abc import ABC, abstractmethod
 from datetime import datetime
 from time import sleep
 
+import cv2
 import numpy as np
 from pydantic import Field
 from rcsss.camera.interface import (
@@ -37,6 +39,7 @@ class BaseHardwareCameraSet(ABC):
         self._logger = logging.getLogger(__name__)
         self._next_ring_index = 0
         self._buffer_len = 0
+        self.writer: dict[str, cv2.VideoWriter] = {}
 
     def buffer_size(self) -> int:
         return len(self._buffer) - self._buffer.count(None)
@@ -77,6 +80,7 @@ class BaseHardwareCameraSet(ABC):
     def close(self):
         if self.running and self._thread is not None:
             self.stop()
+        self.stop_video()
 
     def start(self, warm_up: bool = True):
         """Should start the polling of the cameras."""
@@ -86,6 +90,23 @@ class BaseHardwareCameraSet(ABC):
         self.running = True
         self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
         self._thread.start()
+
+    def record_video(self, path: Path, episode: int):
+        for camera in self.camera_names:
+            self.writer[camera] = cv2.VideoWriter(str(path / f"episode_{episode}_{camera}.mp4"),
+                                                  cv2.VideoWriter_fourcc(*"mp4v"),
+                                                  self.config.frame_rate,
+                                                  (self.config.resolution_width,
+                                                   self.config.resolution_height))
+    
+    def stop_video(self):
+        if len(self.writer) > 0:
+            for camera_key, writer in self.writer.items():
+                for i in range(self._next_ring_index):
+                    writer.write(self._buffer[i].frames[camera_key].camera.color.data[:,:,::-1])
+            for camera in self.camera_names:
+                self.writer[camera].release()
+            self.writer = {}
 
     def warm_up(self):
         for _ in range(self.config.warm_up_disposal_frames):
@@ -102,7 +123,13 @@ class BaseHardwareCameraSet(ABC):
                 self._buffer[self._next_ring_index] = frame_set
                 self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
                 self._buffer_len = max(self._buffer_len + 1, self.config.max_buffer_frames)
+                if self._next_ring_index == 0:
+                    # copy the buffer to the record path
+                    for camera_key, writer in self.writer.items():
+                        for i in range(self.config.max_buffer_frames):
+                            writer.write(self._buffer[i].frames[camera_key].camera.color.data[:,:,::-1])
             sleep(1 / self.config.frame_rate)
+
 
     def poll_frame_set(self) -> FrameSet:
         """Gather frames over all available cameras."""
