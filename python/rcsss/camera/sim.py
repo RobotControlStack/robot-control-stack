@@ -94,17 +94,14 @@ class SimCameraSet(_SimCameraSet):
                 # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
                 # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
                 extent = self._sim.model.stat.extent
-                near = self._sim.model.vis.map.znear*extent
-                far = self._sim.model.vis.map.zfar*extent
+                near = self._sim.model.vis.map.znear * extent
+                far = self._sim.model.vis.map.zfar * extent
                 depth_np_frame = near / (1 - depth_np_frame * (1 - near / far))
             cameraframe = CameraFrame(
-                color=DataFrame(data=color_np_frame,
-                                timestamp=cpp_frameset.timestamp),
-                depth=DataFrame(data=depth_np_frame,
-                                timestamp=cpp_frameset.timestamp),
+                color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
+                depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp),
             )
-            frame = Frame(camera=cameraframe,
-                          avg_timestamp=cpp_frameset.timestamp)
+            frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
             frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
