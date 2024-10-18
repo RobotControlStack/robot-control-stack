@@ -2,7 +2,6 @@ from collections import OrderedDict
 import numpy as np
 import pytest
 import rcsss
-from rcsss._core import common  # noqa
 from rcsss.envs.factories import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
@@ -43,10 +42,10 @@ class TestSimEnvs:
     def assert_no_pose_change(info: dict, initial_obs: dict, final_obs: dict):
         assert info["ik_success"]
         assert info["is_sim_converged"]
-        out_pose = common.Pose(
+        out_pose = rcsss.common.Pose(
             translation=np.array(final_obs["tquart"][:3]), quaternion=np.array(final_obs["tquart"][3:])
         )
-        expected_pose = common.Pose(
+        expected_pose = rcsss.common.Pose(
             translation=np.array(initial_obs["tquart"][:3]), quaternion=np.array(initial_obs["tquart"][3:])
         )
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
@@ -65,7 +64,7 @@ class TestSimEnvsTRPY:
         obs_initial, _ = env.reset()
         t = obs_initial["tquart"][:3]
         q = obs_initial["tquart"][3:]
-        initial_pose = common.Pose(translation=np.array(t), quaternion=np.array(q))
+        initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
         xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
         zero_action = OrderedDict([("xyzrpy", xyzrpy)])
         obs, _, _, _, info = env.step(zero_action)
@@ -80,14 +79,14 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
-        # action to be performed`
+        # action to be performed
         x_pos_change = 0.2
         initial_tquart = obs_initial["tquart"].copy()
         t = initial_tquart[:3]
         # shift the translation in x
         t[0] += x_pos_change
         q = initial_tquart[3:]
-        initial_pose = common.Pose(translation=np.array(t), quaternion=np.array(q))
+        initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
         xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
         non_zero_action = OrderedDict([("xyzrpy", np.array(xyzrpy)), ("gripper", 0)])
         expected_obs = obs_initial.copy()
