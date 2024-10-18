@@ -92,7 +92,9 @@ def main():
             simulation.open_gui()
 
         else:
-            robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"))
+            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
+            ik = rcsss.common.IK(urdf_path)
+            robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"), ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
             robot_cfg.controller = IKController.robotics_library
