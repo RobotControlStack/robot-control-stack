@@ -95,7 +95,8 @@ class BaseHardwareCameraSet(ABC):
         for camera in self.camera_names:
             self.writer[camera] = cv2.VideoWriter(
                 str(path / f"episode_{episode}_{camera}.mp4"),
-                cv2.VideoWriter_fourcc(*"mp4v"),
+                # migh require to install ffmpeg
+                cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
                 self.config.frame_rate,
                 (self.config.resolution_width, self.config.resolution_height),
             )
@@ -104,7 +105,10 @@ class BaseHardwareCameraSet(ABC):
         if len(self.writer) > 0:
             for camera_key, writer in self.writer.items():
                 for i in range(self._next_ring_index):
-                    writer.write(self._buffer[i].frames[camera_key].camera.color.data[:, :, ::-1])
+                    frameset = self._buffer[i]
+                    assert frameset is not None
+                    # rgb to bgr as expected by opencv
+                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
             for camera in self.camera_names:
                 self.writer[camera].release()
             self.writer = {}
@@ -128,7 +132,9 @@ class BaseHardwareCameraSet(ABC):
                     # copy the buffer to the record path
                     for camera_key, writer in self.writer.items():
                         for i in range(self.config.max_buffer_frames):
-                            writer.write(self._buffer[i].frames[camera_key].camera.color.data[:, :, ::-1])
+                            frameset = self._buffer[i]
+                            assert frameset is not None
+                            writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
             sleep(1 / self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
