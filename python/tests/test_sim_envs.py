@@ -130,7 +130,6 @@ class TestSimEnvsTRPY:
         obs, _, _, _, info = env.step(non_zero_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, expected_obs)
 
-    # TODO: collision test still randomly fails
     def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
@@ -201,12 +200,12 @@ class TestSimEnvsTquart:
 
     def test_relative_zero_action_tquart(self, cfg, gripper_cfg, cam_cfg):
         # env creation
-        env = fr3_sim_env(ControlMode.CARTESIAN_TQuart,
+        env_rel = fr3_sim_env(ControlMode.CARTESIAN_TQuart,
                           cfg,
                           gripper_cfg=gripper_cfg,
                           camera_set_cfg=cam_cfg,
-                          max_relative_movement=None)
-        obs_initial, _ = env.reset()
+                          max_relative_movement=0.5)
+        obs_initial, _ = env_rel.reset()
         print(f"{obs_initial = }")
         zero_rel_action = OrderedDict(
             [
@@ -214,10 +213,9 @@ class TestSimEnvsTquart:
                 ("gripper", 0),
             ]
         )
-        obs, _, _, _, info = env.step(zero_rel_action)
+        obs, _, _, _, info = env_rel.step(zero_rel_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
-    # TODO: collision test still randomly fails
     def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
@@ -228,18 +226,16 @@ class TestSimEnvsTquart:
                           gripper_cfg=gripper_cfg,
                           camera_set_cfg=cam_cfg,
                           max_relative_movement=None)
-        env.reset()
-        # this is a pose with an obvious collision (below the floor)
-        act = OrderedDict(
+        obs, _ = env.reset()
+        # an obvious below ground collision action
+        obs["tquart"][2] = -0.2
+        collision_action = OrderedDict(
             [
-                (
-                    "tquart",
-                    np.array([0.3, 0, -0.01, 9.23879533e-01, -3.82683432e-01, -7.25288143e-17, -3.00424186e-17]),
-                ),
+                ("tquart", obs["tquart"]),
                 ("gripper", 0),
             ]
         )
-        _, _, _, _, info = env.step(act)
+        _, _, _, _, info = env.step(collision_action)
         assert info["ik_success"]
         assert info["is_sim_converged"]
         assert info["collision"]

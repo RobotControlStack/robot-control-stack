@@ -31,8 +31,9 @@ class FR3Sim(gym.Wrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        obs, info = super().reset(seed=seed, options=options)
+        _, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
+        obs = cast(dict, self.unwrapped.get_obs())
         return obs, info
 
 
