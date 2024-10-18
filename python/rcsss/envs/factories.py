@@ -137,12 +137,15 @@ def default_mujoco_cameraset_cfg():
         # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
-    return SimCameraSetConfig(cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10)
+    return SimCameraSetConfig(
+        cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
+    )
 
 
 def fr3_sim_env(
     control_mode: ControlMode,
     robot_cfg: rcsss.sim.FR3Config,
+    collision_guard: bool = False,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
@@ -170,6 +173,17 @@ def fr3_sim_env(
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=False)
 
+    if collision_guard:
+        env = CollisionGuard.env_from_xml_paths(
+            env,
+            str(rcsss.scenes["fr3_empty_world"]),
+            str(rcsss.scenes["lab"].parent / "fr3.urdf"),
+            gripper=gripper_cfg is not None,
+            check_home_collision=False,
+            camera=False,
+            control_mode=control_mode,
+            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+        )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 

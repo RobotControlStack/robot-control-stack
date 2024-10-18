@@ -130,9 +130,9 @@ class TestSimEnvsTRPY:
         obs, _, _, _, info = env.step(non_zero_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, expected_obs)
 
-    def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
-        Check that an obvious collision is detected by the CollisionGuard
+        Check that an obvious collision is detected by sim
         """
         # env creation
         env = fr3_sim_env(ControlMode.CARTESIAN_TRPY,
@@ -150,12 +150,38 @@ class TestSimEnvsTRPY:
             ]
         )
         _, _, _, _, info = env.step(collision_action)
-        # This is a scenario of the tcp below the ground which is an obvious collision, however the info.collision
-        # property is not populated correctly
+        # This is a scenario of the tcp below the ground which is an obvious collision
         assert info["ik_success"]
         assert info["is_sim_converged"]
         assert info["collision"]
 
+    def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Check that an obvious collision is detected by the CollisionGuard
+        """
+        # env creation
+        env = fr3_sim_env(ControlMode.CARTESIAN_TRPY,
+                          cfg,
+                          gripper_cfg=gripper_cfg,
+                          collision_guard=True,
+                          camera_set_cfg=cam_cfg,
+                          max_relative_movement=0.5)
+        obs, _ = env.reset()
+        p1 = env.unwrapped.robot.get_joint_position()
+        # an obvious below ground collision action
+        obs["xyzrpy"][2] = -0.2
+        collision_action = OrderedDict(
+            [
+                ("xyzrpy", obs["xyzrpy"]),
+                ("gripper", 0),
+            ]
+        )
+        _, _, _, truncated, info = env.step(collision_action)
+        p2 = env.unwrapped.robot.get_joint_position()
+        assert truncated
+        assert info["collision"]
+        # assure that the robot did not move
+        assert np.allclose(p1, p2)
 
 class TestSimEnvsTquart:
     """This class is for testing Tquart sim env functionalities"""
@@ -216,9 +242,9 @@ class TestSimEnvsTquart:
         obs, _, _, _, info = env_rel.step(zero_rel_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
-    def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
-        Check that an obvious collision is detected by the CollisionGuard
+        Check that an obvious collision is detected by sim
         """
         # env creation
         env = fr3_sim_env(ControlMode.CARTESIAN_TQuart,
@@ -239,6 +265,34 @@ class TestSimEnvsTquart:
         assert info["ik_success"]
         assert info["is_sim_converged"]
         assert info["collision"]
+
+    def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Check that an obvious collision is detected by the CollisionGuard
+        """
+        # env creation
+        env = fr3_sim_env(ControlMode.CARTESIAN_TQuart,
+                          cfg,
+                          gripper_cfg=gripper_cfg,
+                          collision_guard=True,
+                          camera_set_cfg=cam_cfg,
+                          max_relative_movement=None)
+        obs, _ = env.reset()
+        p1 = env.unwrapped.robot.get_joint_position()
+        # an obvious below ground collision action
+        obs["tquart"][2] = -0.2
+        collision_action = OrderedDict(
+            [
+                ("tquart", obs["tquart"]),
+                ("gripper", 0),
+            ]
+        )
+        _, _, _, truncated, info = env.step(collision_action)
+        p2 = env.unwrapped.robot.get_joint_position()
+        assert truncated
+        assert info["collision"]
+        # assure that the robot did not move
+        assert np.allclose(p1, p2)
 
 
 class TestSimEnvsJoints:
@@ -281,7 +335,7 @@ class TestSimEnvsJoints:
         assert info["is_sim_converged"]
         assert np.allclose(obs["joints"], non_zero_action["joints"], atol=0.01, rtol=0)
 
-    def test_collision_guard_joints(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_joints(self, cfg, gripper_cfg, cam_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
         """
@@ -303,6 +357,34 @@ class TestSimEnvsJoints:
         assert info["ik_success"]
         assert info["is_sim_converged"]
         assert info["collision"]
+
+    def test_collision_guard_joints(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Check that an obvious collision is detected by sim
+        """
+        # env creation
+        env = fr3_sim_env(ControlMode.JOINTS,
+                          cfg,
+                          gripper_cfg=gripper_cfg,
+                          collision_guard=True,
+                          camera_set_cfg=cam_cfg,
+                          max_relative_movement=None)
+        env.reset()
+        p1 = env.unwrapped.robot.get_joint_position()
+        # the below action is a test_case where there is an obvious collision regardless of the gripper action
+        act = OrderedDict(
+            [
+                ("joints", np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32)),
+                ("gripper", 1),
+            ]
+        )
+        _, _, _, truncated, info = env.step(act)
+        p2 = env.unwrapped.robot.get_joint_position()
+
+        assert truncated
+        assert info["collision"]
+        # assure that the robot did not move
+        assert np.allclose(p1, p2)
 
     def test_relative_zero_action_joints(self, cfg, gripper_cfg, cam_cfg):
         """
