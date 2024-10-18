@@ -47,7 +47,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         self,
         env: gym.Env,
         simulation: sim.Sim,
-        collision_env: FR3Sim,
+        collision_env: gym.Env,
         check_home_collision: bool = True,
         to_joint_control: bool = False,
     ):
@@ -70,7 +70,9 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         # TODO: we should set the state of the sim to the state of the real robot
         _, _, _, _, info = self.collision_env.step(action)
         if self.to_joint_control:
-            action[self.unwrapped.joints_key] = self.collision_env.unwrapped.robot.get_joint_position()
+            fr3_env = self.collision_env.unwrapped
+            assert isinstance(fr3_env, FR3Env), "Collision env must be an FR3Env instance."
+            action[self.unwrapped.joints_key] = fr3_env.robot.get_joint_position()
 
         # modify action to be joint angles down stream
         if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
@@ -92,14 +94,14 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         # check if move to home is collision free
         if self.check_home_collision:
-            self.collision_env.sim_robot.move_home()
-            self.collision_env.sim.step_until_convergence()
-            state = self.collision_env.sim_robot.get_state()
+            self.collision_env.get_wrapper_attr("sim_robot").move_home()
+            self.collision_env.get_wrapper_attr("sim").step_until_convergence()
+            state = self.collision_env.get_wrapper_attr("sim_robot").get_state()
             if state.collision or not state.ik_success:
                 msg = "Collision detected while moving to home position!"
                 raise RuntimeError(msg)
         else:
-            self.collision_env.sim_robot.reset()
+            self.collision_env.get_wrapper_attr("sim_robot").reset()
         obs, info = super().reset(seed=seed, options=options)
         self.last_obs = obs, info
         return obs, info
@@ -111,7 +113,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         mjmld: str,
         urdf: str,
         id="0",
-        gripper=False,
+        gripper=True,
         check_home_collision=True,
         tcp_offset=None,
         control_mode: ControlMode | None = None,
@@ -137,6 +139,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         else:
             control_mode = env.unwrapped.get_control_mode()
         c_env: gym.Env = FR3Env(robot, control_mode)
+        c_env = FR3Sim(c_env, simulation)
         if gripper:
             gripper_cfg = sim.FHConfig()
             gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
@@ -149,4 +152,4 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=5)
             camera_set = SimCameraSet(simulation, cam_cfg)
             c_env = CameraSetWrapper(c_env, camera_set)
-        return cls(env, simulation, FR3Sim(c_env, simulation), check_home_collision, to_joint_control)
+        return cls(env, simulation, c_env, check_home_collision, to_joint_control)
