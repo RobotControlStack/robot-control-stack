@@ -316,6 +316,12 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
     def disable_streams(self):
         self.D400_config.disable_all_streams()
 
+    def close(self):
+        super().close()
+        for device in self._enabled_devices.values():
+            device.pipeline.stop()
+        self.disable_streams()
+
     def enable_emitter(self, enable_ir_emitter=True):
         """
         Enable/Disable the emitter of the intel realsense device

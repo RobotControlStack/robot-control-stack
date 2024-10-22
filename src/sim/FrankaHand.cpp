@@ -52,8 +52,6 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
   this->add_collision_geoms(gripper_names.collision_geoms_fingers, this->cfgeom,
                             false);
 
-  this->sim->register_cb(std::bind(&FrankaHand::is_moving_callback, this),
-                         this->cfg.seconds_between_callbacks);
   this->sim->register_all_cb(std::bind(&FrankaHand::convergence_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->sim->register_any_cb(std::bind(&FrankaHand::collision_callback, this),
@@ -158,14 +156,13 @@ bool FrankaHand::is_grasped() {
   return false;
 }
 
-void FrankaHand::is_moving_callback() {
+bool FrankaHand::convergence_callback() {
   double w = get_normalized_width();
-  this->state.is_moving = std::abs(this->state.last_width - w) <
+  this->state.is_moving = std::abs(this->state.last_width - w) >
                           0.001 / this->MAX_WIDTH;  // 1mm tolerance
   this->state.last_width = w;
+  return not this->state.is_moving;
 }
-
-bool FrankaHand::convergence_callback() { return this->state.is_moving; }
 
 void FrankaHand::grasp() { this->shut(); }
 
