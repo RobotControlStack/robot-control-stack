@@ -10,7 +10,7 @@ from rcsss.envs.factories import (
     fr3_sim_env,
 )
 
-from rcsss.envs.base import ControlMode, ObsArmsGrCam, LimitedJointsRelDictType, LimitedTRPYRelDictType
+from rcsss.envs.base import ControlMode
 
 
 @pytest.fixture
@@ -139,6 +139,7 @@ class TestSimEnvsTRPY:
         env = fr3_sim_env(ControlMode.CARTESIAN_TRPY,
                           cfg,
                           gripper_cfg=gripper_cfg,
+                          collision_guard=False,
                           camera_set_cfg=cam_cfg,
                           max_relative_movement=0.5)
         obs, _ = env.reset()
@@ -292,6 +293,7 @@ class TestSimEnvsJoints:
         # env creation
         env = fr3_sim_env(ControlMode.JOINTS,
                           cfg,
+                          collision_guard=True,
                           gripper_cfg=gripper_cfg,
                           camera_set_cfg=cam_cfg,
                           max_relative_movement=None)
