@@ -9,7 +9,7 @@ from rcsss.envs.factories import (
     fr3_sim_env,
 )
 
-from rcsss.envs.base import ControlMode, ObsArmsGrCam, LimitedJointsRelDictType, LimitedTRPYRelDictType
+from rcsss.envs.base import ControlMode
 
 
 @pytest.fixture
@@ -136,10 +136,11 @@ class TestSimEnvsTRPY:
         """
         # env creation
         env = fr3_sim_env(
-            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=0.5
+            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
         )
         obs, _ = env.reset()
         # an obvious below ground collision action
+        obs["xyzrpy"][0] = 0.3
         obs["xyzrpy"][2] = -0.2
         collision_action = OrderedDict(
             [
@@ -160,7 +161,7 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard=False,
+            collision_guard=True,
             camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
@@ -199,7 +200,7 @@ class TestSimEnvsTquart:
         t = obs_initial["tquart"][:3].tolist()
         q = obs_initial["tquart"][3:].tolist()
         x_pos_change = 0.3
-        # updating the x action by 20cm
+        # updating the x action by 30cm
         t[0] += x_pos_change
         non_zero_action = OrderedDict([("tquart", np.array(t + q, dtype=np.float32))])
         expected_obs = obs_initial.copy()
@@ -227,7 +228,7 @@ class TestSimEnvsTquart:
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
@@ -256,7 +257,7 @@ class TestSimEnvsTquart:
         obs, _ = env.reset()
         # an obvious below ground collision action
         obs["tquart"][0] = 0.3
-        obs["tquart"][2] = -0.1
+        obs["tquart"][2] = -0.2
         collision_action = OrderedDict(
             [
                 ("tquart", obs["tquart"]),
@@ -282,6 +283,7 @@ class TestSimEnvsTquart:
         obs, _ = env.reset()
         p1 = env.unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
+        obs["tquart"][0] = 0.3
         obs["tquart"][2] = -0.2
         collision_action = OrderedDict(
             [

@@ -58,17 +58,18 @@ def default_realsense(name2id: dict[str, str]):
     return RealSenseCameraSet(cam_cfg)
 
 
-def get_urdf_path(urdf_path: str | None, allow_none_if_not_found: bool = False) -> str | None:
+def get_urdf_path(urdf_path: str | None, allow_none_if_not_found: bool = False) -> str:
+    urdf_path_str = ""
     if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
-        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        urdf_path_str = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+        assert os.path.exists(urdf_path_str), "Automatic deduced urdf path does not exist. Corrupted models directory."
         logger.info("Using automatic found urdf.")
     elif urdf_path is None and not allow_none_if_not_found:
         msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path."
         raise ValueError(msg)
     elif urdf_path is not None:
         logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return urdf_path
+    return urdf_path_str
 
 
 def fr3_hw_env(
