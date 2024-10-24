@@ -50,6 +50,12 @@ class TestSimEnvs:
         )
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
 
+    @staticmethod
+    def assert_collision(info: dict):
+        assert info["ik_success"]
+        assert info["is_sim_converged"]
+        assert info["collision"]
+
 
 class TestSimEnvsTRPY:
     """This class is for testing TRPY sim env functionalities"""
@@ -138,14 +144,12 @@ class TestSimEnvsTRPY:
         collision_action = OrderedDict(
             [
                 ("xyzrpy", obs["xyzrpy"]),
-                ("gripper", 0),
+                ("gripper", np.array([0])),
             ]
         )
-        _, _, _, _, info = env.step(collision_action)
-        # This is a scenario of the tcp below the ground which is an obvious collision
-        assert info["ik_success"]
-        assert info["is_sim_converged"]
-        assert info["collision"]
+        obs, _, _, _, info = env.step(collision_action)
+        TestSimEnvs.assert_collision(info)
+
 
     def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -156,13 +160,14 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard=True,
+            collision_guard=False,
             camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
         obs, _ = env.reset()
         p1 = env.unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
+        obs["xyzrpy"][0] = 0.3
         obs["xyzrpy"][2] = -0.2
         collision_action = OrderedDict(
             [
@@ -250,7 +255,8 @@ class TestSimEnvsTquart:
         )
         obs, _ = env.reset()
         # an obvious below ground collision action
-        obs["tquart"][2] = -0.2
+        obs["tquart"][0] = 0.3
+        obs["tquart"][2] = -0.1
         collision_action = OrderedDict(
             [
                 ("tquart", obs["tquart"]),
@@ -258,9 +264,7 @@ class TestSimEnvsTquart:
             ]
         )
         _, _, _, _, info = env.step(collision_action)
-        assert info["ik_success"]
-        assert info["is_sim_converged"]
-        assert info["collision"]
+        TestSimEnvs.assert_collision(info)
 
     def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
         """

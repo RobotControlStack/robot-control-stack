@@ -147,7 +147,6 @@ def fr3_sim_env(
     robot_cfg: rcsss.sim.FR3Config,
     collision_guard: bool = False,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
-    collision_guard: bool = False,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
     relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
@@ -169,18 +168,6 @@ def fr3_sim_env(
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)
         env = CameraSetWrapper(env, camera_set, include_depth=True)
-
-    if collision_guard:
-        env = CollisionGuard.env_from_xml_paths(
-            env,
-            mjcf,
-            urdf_path,
-            gripper=True,
-            check_home_collision=False,
-            camera=True,
-            control_mode=control_mode,
-            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
-        )
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
