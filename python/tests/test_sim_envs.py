@@ -6,10 +6,10 @@ from rcsss.envs.factories import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_sim_env,
+    fr3_sim_env, get_urdf_path,
 )
 
-from rcsss.envs.base import ControlMode
+from rcsss.envs.base import ControlMode, TRPYDictType, GripperDictType, TQuartDictType, JointsDictType
 
 
 @pytest.fixture
@@ -31,7 +31,8 @@ class TestSimEnvs:
     """This class is for testing common sim env functionalities"""
 
     mjcf_path = str(rcsss.scenes["fr3_empty_world"])
-    urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+    URDF_PATH = None
+    urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
 
     def test_model_availability(self):
         assert (
@@ -68,11 +69,7 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
-        t = obs_initial["tquart"][:3]
-        q = obs_initial["tquart"][3:]
-        initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
-        xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
-        zero_action = OrderedDict([("xyzrpy", xyzrpy)])
+        zero_action = TRPYDictType(xyzrpy=obs_initial['xyzrpy'])
         obs, _, _, _, info = env.step(zero_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
@@ -94,7 +91,8 @@ class TestSimEnvsTRPY:
         q = initial_tquart[3:]
         initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
         xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
-        non_zero_action = OrderedDict([("xyzrpy", np.array(xyzrpy)), ("gripper", 0)])
+        non_zero_action = TRPYDictType(xyzrpy=np.array(xyzrpy))
+        non_zero_action.update(GripperDictType(gripper=0))
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
@@ -107,7 +105,8 @@ class TestSimEnvsTRPY:
         )
         obs_initial, _ = env.reset()
         # action to be performed
-        zero_action = OrderedDict([("xyzrpy", np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)), ("gripper", 0)])
+        zero_action = TRPYDictType(xyzrpy=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32))
+        zero_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(zero_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
@@ -119,12 +118,8 @@ class TestSimEnvsTRPY:
         obs_initial, _ = env.reset()
         # action to be performed
         x_pos_change = 0.2
-        non_zero_action = OrderedDict(
-            [
-                ("xyzrpy", np.array([x_pos_change, 0, 0, 0, 0, 0], dtype=np.float32)),
-                ("gripper", 0),
-            ]
-        )
+        non_zero_action = TRPYDictType(xyzrpy=np.array([x_pos_change, 0, 0, 0, 0, 0]))
+        non_zero_action.update(GripperDictType(gripper=0))
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
@@ -142,12 +137,8 @@ class TestSimEnvsTRPY:
         # an obvious below ground collision action
         obs["xyzrpy"][0] = 0.3
         obs["xyzrpy"][2] = -0.2
-        collision_action = OrderedDict(
-            [
-                ("xyzrpy", obs["xyzrpy"]),
-                ("gripper", np.array([0])),
-            ]
-        )
+        collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
+        collision_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(collision_action)
         TestSimEnvs.assert_collision(info)
 
@@ -170,12 +161,8 @@ class TestSimEnvsTRPY:
         # an obvious below ground collision action
         obs["xyzrpy"][0] = 0.3
         obs["xyzrpy"][2] = -0.2
-        collision_action = OrderedDict(
-            [
-                ("xyzrpy", obs["xyzrpy"]),
-                ("gripper", 0),
-            ]
-        )
+        collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
+        collision_action.update(GripperDictType(gripper=0))
         _, _, _, truncated, info = env.step(collision_action)
         p2 = env.unwrapped.robot.get_joint_position()
         assert truncated
@@ -202,7 +189,7 @@ class TestSimEnvsTquart:
         x_pos_change = 0.3
         # updating the x action by 30cm
         t[0] += x_pos_change
-        non_zero_action = OrderedDict([("tquart", np.array(t + q, dtype=np.float32))])
+        non_zero_action = TQuartDictType(tquart = np.array(t + q, dtype=np.float32))
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
@@ -218,7 +205,7 @@ class TestSimEnvsTquart:
         )
         obs_initial, info_ = env.reset()
         home_action_vec = obs_initial["tquart"]
-        zero_action = OrderedDict([("tquart", home_action_vec)])
+        zero_action = TQuartDictType(tquart=home_action_vec)
         obs, _, _, _, info = env.step(zero_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
@@ -232,13 +219,8 @@ class TestSimEnvsTquart:
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
-        print(f"{obs_initial = }")
-        zero_rel_action = OrderedDict(
-            [
-                ("tquart", np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32)),
-                ("gripper", 0),
-            ]
-        )
+        zero_rel_action = TQuartDictType(tquart=np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32))
+        zero_rel_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env_rel.step(zero_rel_action)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
 
@@ -258,12 +240,8 @@ class TestSimEnvsTquart:
         # an obvious below ground collision action
         obs["tquart"][0] = 0.3
         obs["tquart"][2] = -0.2
-        collision_action = OrderedDict(
-            [
-                ("tquart", obs["tquart"]),
-                ("gripper", 0),
-            ]
-        )
+        collision_action = TQuartDictType(tquart=obs["tquart"])
+        collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
         TestSimEnvs.assert_collision(info)
 
@@ -285,12 +263,8 @@ class TestSimEnvsTquart:
         # an obvious below ground collision action
         obs["tquart"][0] = 0.3
         obs["tquart"][2] = -0.2
-        collision_action = OrderedDict(
-            [
-                ("tquart", obs["tquart"]),
-                ("gripper", 0),
-            ]
-        )
+        collision_action = TQuartDictType(tquart=obs["tquart"])
+        collision_action.update(GripperDictType(gripper=0))
         _, _, _, truncated, info = env.step(collision_action)
         p2 = env.unwrapped.robot.get_joint_position()
         assert truncated
@@ -310,7 +284,7 @@ class TestSimEnvsJoints:
         env = fr3_sim_env(ControlMode.JOINTS, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None)
         obs_initial, _ = env.reset()
         # action to be performed
-        zero_action = OrderedDict([("joints", np.array(obs_initial["joints"]))])
+        zero_action = JointsDictType(joints=np.array(obs_initial["joints"]))
         obs, _, _, _, info = env.step(zero_action)
         assert info["ik_success"]
         assert info["is_sim_converged"]
@@ -323,10 +297,9 @@ class TestSimEnvsJoints:
         # env creation
         env = fr3_sim_env(ControlMode.JOINTS, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None)
         obs_initial, _ = env.reset()
+        new_joint_vals = obs_initial["joints"] + np.array([0.1, 0.1, 0.1, 0.1, -0.1, -0.1, 0.1], dtype=np.float32)
         # action to be performed
-        non_zero_action = OrderedDict(
-            [("joints", obs_initial["joints"] + np.array([0.1, 0.1, 0.1, 0.1, -0.1, -0.1, 0.1]))]
-        )
+        non_zero_action = JointsDictType(joints=new_joint_vals)
         obs, _, _, _, info = env.step(non_zero_action)
         assert info["ik_success"]
         assert info["is_sim_converged"]
@@ -342,16 +315,10 @@ class TestSimEnvsJoints:
         )
         env.reset()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
-        act = OrderedDict(
-            [
-                ("joints", np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32)),
-                ("gripper", 1),
-            ]
-        )
-        _, _, _, _, info = env.step(act)
-        assert info["ik_success"]
-        assert info["is_sim_converged"]
-        assert info["collision"]
+        collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
+        collision_act.update(GripperDictType(gripper=1))
+        _, _, _, _, info = env.step(collision_act)
+        TestSimEnvs.assert_collision(info)
 
     def test_collision_guard_joints(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -369,13 +336,9 @@ class TestSimEnvsJoints:
         env.reset()
         p1 = env.unwrapped.robot.get_joint_position()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
-        act = OrderedDict(
-            [
-                ("joints", np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32)),
-                ("gripper", 1),
-            ]
-        )
-        _, _, _, truncated, info = env.step(act)
+        collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
+        collision_act.update(GripperDictType(gripper=1))
+        _, _, _, truncated, info = env.step(collision_act)
         p2 = env.unwrapped.robot.get_joint_position()
 
         assert truncated
@@ -392,11 +355,7 @@ class TestSimEnvsJoints:
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
-        act = OrderedDict(
-            [
-                ("joints", np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32)),
-                ("gripper", 0),
-            ]
-        )
+        act = JointsDictType(joints=np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32))
+        act.update(GripperDictType(gripper=1))
         obs, _, _, _, info = env.step(act)
         TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
