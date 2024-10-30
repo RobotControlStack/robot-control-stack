@@ -33,8 +33,8 @@ def main():
     # cameras = {"wrist":"244222071045", "bird-eye":"243522070364"}
     # camera_set = default_realsense({"wrist":"244222071045",
     #                                 "bird-eye":"243522070364"})
-    cameras = {"wrist":"244222071045"}
-    camera_set = default_realsense({"wrist":"244222071045"})
+    cameras = {"wrist":"244222071045","wrist_2":"243522070385"}
+    camera_set = default_realsense(cameras)
     camera_set.start()
     # print(camera_set.camera_names)
     # print(camera_set.get_depth_shape())
