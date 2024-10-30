@@ -131,10 +131,24 @@ def default_fr3_sim_gripper_cfg():
 
 def default_mujoco_cameraset_cfg():
 
+    # cameras = {
+    #     "eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+    #     "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
+    #     "bird-eye-cam": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+    #     "front-cam": SimCameraConfig(identifier="front-cam", type=int(CameraType.fixed)),
+    #     "side-cam": SimCameraConfig(identifier="side-cam", type=int(CameraType.fixed)),
+    #     "rside-cam": SimCameraConfig(identifier="rside-cam", type=int(CameraType.fixed)),
+    #     "back-cam": SimCameraConfig(identifier="back-cam", type=int(CameraType.fixed)),
+    # }
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        "wrist_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        # "wrist_1": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        "bird-eye-cam": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        "front-cam": SimCameraConfig(identifier="front-cam", type=int(CameraType.fixed)),
+        "side-cam": SimCameraConfig(identifier="side-cam", type=int(CameraType.fixed)),
+        "rside-cam": SimCameraConfig(identifier="rside-cam", type=int(CameraType.fixed)),
+        "back-cam": SimCameraConfig(identifier="back-cam", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
     return SimCameraSetConfig(cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10)
@@ -155,7 +169,8 @@ def fr3_sim_env(
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
-    simulation = sim.Sim(rcsss.scenes.get(mjcf, mjcf))  # type: ignore
+    simulation = sim.Sim("/home/ayad/ontouch/robot-control-stack/build/_deps/scenes-src/scenes/fr3_empty_world/scene.xml")  # type: ignore
+    # simulation = sim.Sim("/home/ayad/ontouch/robot-control-stack/build/_deps/scenes-src/scenes/lab/scene.xml")
     ik = rcsss.common.IK(urdf_path)  # type: ignore
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)

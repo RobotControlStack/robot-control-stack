@@ -79,7 +79,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 rs.format.motion_xyz32f,
                 200,
             )
-
+        self._align = None
         self._context = rs.context()
         self._available_devices: dict[str, RealSenseDeviceInfo] = {}
         self.update_available_devices()
@@ -213,6 +213,9 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
 
         timestamps = []
         for stream in streams:
+            align_to = rs.stream.color
+            self._align = rs.align(align_to)
+            frameset = self._align.process(frameset)
             if rs.stream.infrared == stream.stream_type():
                 frame = frameset.get_infrared_frame(stream.stream_index())
                 ir = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
@@ -221,7 +224,12 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 color = DataFrame(data=to_numpy(frame)[:, :, ::-1], timestamp=to_ts(frame))
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
-                depth = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
+                hole_filling = rs.hole_filling_filter()
+                frame = hole_filling.process(frame)
+                frame_numpy = (
+                    to_numpy(frame) * device.pipeline_profile.get_device().first_depth_sensor().get_depth_scale()
+                )
+                depth = DataFrame(data=frame_numpy, timestamp=to_ts(frame))
             elif rs.stream.accel == stream.stream_type():
                 frame = frameset.first(stream.stream_index())
                 md = frame.as_motion_frame().get_motion_data()
@@ -259,16 +267,14 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                     height = stream.as_video_stream_profile().height()
         return width, height
 
-    def get_device_intrinsics(
-        self, frames: dict[str, dict[rs.stream, rs.frame]]
-    ) -> dict[str, dict[rs.stream, rs.intrinsics]]:
+    def get_device_intrinsics(self, names_to_serials: dict[str, str]) -> dict[str, dict[any, any]]:
         """
         Get the intrinsics of the imager using its frame delivered by the realsense device
 
         Parameters:
         -----------
-        frames : rs::frame
-                 The frame grabbed from the imager inside the Intel RealSense for which the intrinsic is needed
+        names_to_serials : dict[str, str]
+                           A dictionary mapping readable names to serial numbers
 
         Return:
         -----------
@@ -279,12 +285,52 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 Intrinsics of the corresponding device
         """
         device_intrinsics: dict[str, dict[rs.stream, rs.intrinsics]] = {}
-        for device_name, frameset in frames.items():
-            device_intrinsics[device_name] = {}
-            for key, value in frameset.items():
-                device_intrinsics[device_name][key] = value.get_profile().as_video_stream_profile().get_intrinsics()
+        for name, serial in names_to_serials.items():
+            device = self._enabled_devices[serial]
+            frames = {
+                # mysterious 7 is to remove the prefix "stream."
+                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames() 
+                for stream in device.pipeline_profile.get_streams()
+            }
+            device_intrinsics[name] = {}
+            for key, value in frames.items():
+                intrinsics = value.get_profile().as_video_stream_profile().get_intrinsics()
+                device_intrinsics[name][key] = np.array(
+                    [[intrinsics.fx, 0, intrinsics.ppx], [0, intrinsics.fy, intrinsics.ppy], [0, 0, 1]]
+                )
         return device_intrinsics
+    
+    def get_device_resolutions(self, names_to_serials: dict[str, str]):
+        """
+        Get the intrinsics of the imager using its frame delivered by the realsense device
 
+        Parameters:
+        -----------
+        names_to_serials : dict[str, str]
+                           A dictionary mapping readable names to serial numbers
+
+        Return:
+        -----------
+        device_intrinsics : dict
+        keys  : serial
+                Serial number of the device
+        values: [key]
+                Intrinsics of the corresponding device
+        """
+        device_resolutions = {}
+        for name, serial in names_to_serials.items():
+            device = self._enabled_devices[serial]
+            frames = {
+                # mysterious 7 is to remove the prefix "stream."
+                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames() 
+                for stream in device.pipeline_profile.get_streams()
+            }
+            device_resolutions[name] = {}
+            for key, value in frames.items():
+                intrinsics = value.get_profile().as_video_stream_profile().get_intrinsics()
+                resolution = [intrinsics.width, intrinsics.height]
+                device_resolutions[name][key] = resolution
+        return device_resolutions
     def get_depth_to_color_extrinsics(self, frames):
         """
         Get the extrinsics between the depth imager 1 and the color imager using its frame delivered by the realsense device

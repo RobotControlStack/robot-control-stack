@@ -80,14 +80,8 @@ class SimCameraSet(_SimCameraSet):
         d_frames_iter = cpp_frameset.depth_frames.items()
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
-            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
-                # convert from column-major (c++ eigen) to row-major (python numpy)
-                ::-1
-            ]
-            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
-                # convert from column-major (c++ eigen) to row-major (python numpy)
-                ::-1
-            ]
+            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)
+            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)
             if self._cfg.physical_units:
                 # Convert from [0 1] to depth in meters, see links below:
                 # http://stackoverflow.com/a/6657284/1461210
