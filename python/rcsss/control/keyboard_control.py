@@ -114,7 +114,7 @@ def main():
             ROBOT_IP,
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfg=default_fr3_hw_robot_cfg(),
-            collision_guard=True,
+            collision_guard=None,
             gripper_cfg=default_fr3_hw_gripper_cfg(),
             max_relative_movement=0.2,
         )

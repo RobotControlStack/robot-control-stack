@@ -58,38 +58,37 @@ def default_realsense(name2id: dict[str, str]):
     return RealSenseCameraSet(cam_cfg)
 
 
-def get_urdf_path(urdf_path: str | None, allow_none_if_not_found: bool = False) -> str:
-    urdf_path_str = ""
+def get_urdf_path(urdf_path: str | None, allow_none_if_not_found: bool = False) -> str | None:
     if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path_str = str(rcsss.scenes["lab"].parent / "fr3.urdf")
-        assert os.path.exists(urdf_path_str), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        urdf_path = str(rcsss.scenes["lab"].parent / "fr3.urdf")
+        assert os.path.exists(urdf_path), "Automatic deduced urdf path does not exist. Corrupted models directory."
         logger.info("Using automatic found urdf.")
     elif urdf_path is None and not allow_none_if_not_found:
         msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path."
         raise ValueError(msg)
-    elif urdf_path is not None:
+    elif urdf_path is None:
         logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return urdf_path_str
+    return urdf_path
 
 
 def fr3_hw_env(
     ip: str,
     control_mode: ControlMode,
     robot_cfg: rcsss.hw.FR3Config,
-    collision_guard: bool = True,
+    collision_guard: str | None = None,
     gripper_cfg: rcsss.hw.FHConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
     max_relative_movement: float | None = None,
     relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
     urdf_path: str | None = None,
 ) -> gym.Env:
-    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=True)
-
+    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
+    assert isinstance(urdf_path, str)
     ik = rcsss.common.IK(urdf_path) if urdf_path is not None else None
     robot = rcsss.hw.FR3(ip, ik)
     robot.set_parameters(robot_cfg)
 
-    env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard else control_mode)
+    env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
     env = FR3HW(env)
     if gripper_cfg is not None:
@@ -102,10 +101,10 @@ def fr3_hw_env(
         logger.info("CameraSet started")
         env = CameraSetWrapper(env, camera_set)
 
-    if collision_guard:
+    if collision_guard is not None:
         env = CollisionGuard.env_from_xml_paths(
             env,
-            str(rcsss.scenes["fr3_empty_world"]),
+            str(rcsss.scenes.get(collision_guard, collision_guard)),
             urdf_path,
             gripper=True,
             check_home_collision=False,
@@ -146,7 +145,7 @@ def default_mujoco_cameraset_cfg():
 def fr3_sim_env(
     control_mode: ControlMode,
     robot_cfg: rcsss.sim.FR3Config,
-    collision_guard: bool = False,
+    collision_guard: str | None = None,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | None = None,
@@ -155,7 +154,7 @@ def fr3_sim_env(
     mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-
+    assert urdf_path is not None
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
@@ -174,11 +173,11 @@ def fr3_sim_env(
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=False)
 
-    if collision_guard:
+    if collision_guard is not None:
         env = CollisionGuard.env_from_xml_paths(
             env,
-            str(rcsss.scenes["fr3_empty_world"]),
-            str(rcsss.scenes["lab"].parent / "fr3.urdf"),
+            str(rcsss.scenes.get(collision_guard, collision_guard)),
+            urdf_path,
             gripper=gripper_cfg is not None,
             check_home_collision=False,
             camera=False,

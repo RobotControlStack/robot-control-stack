@@ -90,13 +90,13 @@ class TestSimEnvsTRPY:
         t[0] += x_pos_change
         q = initial_tquart[3:]
         initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
-        xyzrpy = t.tolist() + initial_pose.rotation_rpy().as_vector().tolist()
+        xyzrpy = np.concatenate([t, initial_pose.rotation_rpy().as_vector()], axis=0)
         non_zero_action = TRPYDictType(xyzrpy=np.array(xyzrpy))
         non_zero_action.update(GripperDictType(gripper=0))
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
-        TestSimEnvs.assert_no_pose_change(info, expected_obs, expected_obs)
+        TestSimEnvs.assert_no_pose_change(info, expected_obs, obs)
 
     def test_relative_zero_action_trpy(self, cfg, gripper_cfg, cam_cfg):
         # env creation
@@ -152,7 +152,7 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard=True,
+            collision_guard="fr3_empty_world",
             camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
@@ -184,12 +184,12 @@ class TestSimEnvsTquart:
         )
         obs_initial, _ = env.reset()
         # action to be performed
-        t = obs_initial["tquart"][:3].tolist()
-        q = obs_initial["tquart"][3:].tolist()
+        t = obs_initial["tquart"][:3]
+        q = obs_initial["tquart"][3:]
         x_pos_change = 0.3
         # updating the x action by 30cm
         t[0] += x_pos_change
-        non_zero_action = TQuartDictType(tquart = np.array(t + q, dtype=np.float32))
+        non_zero_action = TQuartDictType(tquart=np.concatenate([t, q], axis=0))
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
@@ -254,7 +254,7 @@ class TestSimEnvsTquart:
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard=True,
+            collision_guard="fr3_empty_world",
             camera_set_cfg=cam_cfg,
             max_relative_movement=None,
         )
@@ -329,7 +329,7 @@ class TestSimEnvsJoints:
             ControlMode.JOINTS,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard=True,
+            collision_guard="fr3_empty_world",
             camera_set_cfg=cam_cfg,
             max_relative_movement=None,
         )
