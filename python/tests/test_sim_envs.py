@@ -6,7 +6,8 @@ from rcsss.envs.factories import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_sim_env, get_urdf_path,
+    fr3_sim_env,
+    get_urdf_path,
 )
 
 from rcsss.envs.base import ControlMode, TRPYDictType, GripperDictType, TQuartDictType, JointsDictType
@@ -30,17 +31,7 @@ def cam_cfg():
 class TestSimEnvs:
     """This class is for testing common sim env functionalities"""
 
-    mjcf_path = str(rcsss.scenes["fr3_empty_world"])
-    URDF_PATH = None
-    urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
-
-    def test_model_availability(self):
-        assert (
-            "lab" in rcsss.scenes
-        ), "This pip package was not built with the UTN lab models which is needed for these tests, aborting."
-
-    @staticmethod
-    def assert_no_pose_change(info: dict, initial_obs: dict, final_obs: dict):
+    def assert_no_pose_change(self, info: dict, initial_obs: dict, final_obs: dict):
         assert info["ik_success"]
         assert info["is_sim_converged"]
         out_pose = rcsss.common.Pose(
@@ -51,14 +42,13 @@ class TestSimEnvs:
         )
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
 
-    @staticmethod
-    def assert_collision(info: dict):
+    def assert_collision(self, info: dict):
         assert info["ik_success"]
         assert info["is_sim_converged"]
         assert info["collision"]
 
 
-class TestSimEnvsTRPY:
+class TestSimEnvsTRPY(TestSimEnvs):
     """This class is for testing TRPY sim env functionalities"""
 
     def test_zero_action_trpy(self, cfg):
@@ -69,9 +59,9 @@ class TestSimEnvsTRPY:
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
-        zero_action = TRPYDictType(xyzrpy=obs_initial['xyzrpy'])
+        zero_action = TRPYDictType(xyzrpy=obs_initial["xyzrpy"])
         obs, _, _, _, info = env.step(zero_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
+        self.assert_no_pose_change(info, obs_initial, obs)
 
     def test_non_zero_action_trpy(self, cfg):
         """
@@ -96,7 +86,7 @@ class TestSimEnvsTRPY:
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
-        TestSimEnvs.assert_no_pose_change(info, expected_obs, obs)
+        self.assert_no_pose_change(info, expected_obs, obs)
 
     def test_relative_zero_action_trpy(self, cfg, gripper_cfg, cam_cfg):
         # env creation
@@ -108,7 +98,7 @@ class TestSimEnvsTRPY:
         zero_action = TRPYDictType(xyzrpy=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32))
         zero_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(zero_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
+        self.assert_no_pose_change(info, obs_initial, obs)
 
     def test_relative_non_zero_action(self, cfg, gripper_cfg, cam_cfg):
         # env creation
@@ -123,7 +113,7 @@ class TestSimEnvsTRPY:
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, expected_obs)
+        self.assert_no_pose_change(info, obs_initial, expected_obs)
 
     def test_collision_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -140,8 +130,7 @@ class TestSimEnvsTRPY:
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(collision_action)
-        TestSimEnvs.assert_collision(info)
-
+        self.assert_collision(info)
 
     def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -171,7 +160,7 @@ class TestSimEnvsTRPY:
         assert np.allclose(p1, p2)
 
 
-class TestSimEnvsTquart:
+class TestSimEnvsTquart(TestSimEnvs):
     """This class is for testing Tquart sim env functionalities"""
 
     def test_non_zero_action_tquart(self, cfg):
@@ -193,7 +182,7 @@ class TestSimEnvsTquart:
         expected_obs = obs_initial.copy()
         expected_obs["tquart"][0] += x_pos_change
         obs, _, _, _, info = env.step(non_zero_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, expected_obs)
+        self.assert_no_pose_change(info, obs_initial, expected_obs)
 
     def test_zero_action_tquart(self, cfg):
         """
@@ -207,7 +196,7 @@ class TestSimEnvsTquart:
         home_action_vec = obs_initial["tquart"]
         zero_action = TQuartDictType(tquart=home_action_vec)
         obs, _, _, _, info = env.step(zero_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
+        self.assert_no_pose_change(info, obs_initial, obs)
 
     def test_relative_zero_action_tquart(self, cfg, gripper_cfg, cam_cfg):
         # env creation
@@ -222,7 +211,7 @@ class TestSimEnvsTquart:
         zero_rel_action = TQuartDictType(tquart=np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32))
         zero_rel_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env_rel.step(zero_rel_action)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
+        self.assert_no_pose_change(info, obs_initial, obs)
 
     def test_collision_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -243,7 +232,7 @@ class TestSimEnvsTquart:
         collision_action = TQuartDictType(tquart=obs["tquart"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
-        TestSimEnvs.assert_collision(info)
+        self.assert_collision(info)
 
     def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -273,7 +262,7 @@ class TestSimEnvsTquart:
         assert np.allclose(p1, p2)
 
 
-class TestSimEnvsJoints:
+class TestSimEnvsJoints(TestSimEnvs):
     """This class is for testing Joints sim env functionalities"""
 
     def test_zero_action_joints(self, cfg):
@@ -318,7 +307,7 @@ class TestSimEnvsJoints:
         collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
         collision_act.update(GripperDictType(gripper=1))
         _, _, _, _, info = env.step(collision_act)
-        TestSimEnvs.assert_collision(info)
+        self.assert_collision(info)
 
     def test_collision_guard_joints(self, cfg, gripper_cfg, cam_cfg):
         """
@@ -358,4 +347,4 @@ class TestSimEnvsJoints:
         act = JointsDictType(joints=np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32))
         act.update(GripperDictType(gripper=1))
         obs, _, _, _, info = env.step(act)
-        TestSimEnvs.assert_no_pose_change(info, obs_initial, obs)
+        self.assert_no_pose_change(info, obs_initial, obs)
