@@ -60,7 +60,7 @@ def main():
                 ip=ROBOT_IP,
                 control_mode=ControlMode.JOINTS,
                 robot_cfg=default_fr3_hw_robot_cfg(),
-                collision_guard=True,
+                collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=np.deg2rad(5),
                 relative_to=RelativeTo.LAST_STEP,
@@ -68,6 +68,7 @@ def main():
         else:
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.JOINTS,
+                collision_guard=None,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),

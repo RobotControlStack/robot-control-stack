@@ -6,7 +6,7 @@ import numpy as np
 from pynput import keyboard
 from rcsss.control.fr3_desk import FCI, Desk
 from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.envs.base import ControlMode
+from rcsss.envs.base import ControlMode, RelativeTo
 from rcsss.envs.factories import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -114,9 +114,10 @@ def main():
             ROBOT_IP,
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfg=default_fr3_hw_robot_cfg(),
-            collision_guard=True,
+            collision_guard="lab",
             gripper_cfg=default_fr3_hw_gripper_cfg(),
             max_relative_movement=0.2,
+            relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
         controller = RobotControl(env)
         listener = keyboard.Listener(on_press=controller.on_press, on_release=controller.on_release)
