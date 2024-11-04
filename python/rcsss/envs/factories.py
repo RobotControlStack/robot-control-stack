@@ -77,8 +77,8 @@ def fr3_hw_env(
     collision_guard: str | PathLike | None = None,
     gripper_cfg: rcsss.hw.FHConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
-    max_relative_movement: float | None = None,
-    relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
+    max_relative_movement: float | tuple[float, float] | None = None,
+    relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
 ) -> gym.Env:
     # if collision_guard is used urdf is needed
@@ -148,8 +148,8 @@ def fr3_sim_env(
     collision_guard: str | PathLike | None = None,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
-    max_relative_movement: float | None = None,
-    relative_to: RelativeTo = RelativeTo.CONFIGURED_ORIGIN,
+    max_relative_movement: float | tuple[float, float] | None = None,
+    relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
