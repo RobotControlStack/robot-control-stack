@@ -81,7 +81,28 @@ def fr3_hw_env(
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
 ) -> gym.Env:
-    # if collision_guard is used urdf is needed
+    """
+    Creates a hardware environment for the FR3 robot.
+
+    Args:
+        ip (str): IP address of the robot.
+        control_mode (ControlMode): Control mode for the robot.
+        robot_cfg (rcsss.hw.FR3Config): Configuration for the FR3 robot.
+        collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
+            or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
+        gripper_cfg (rcsss.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+        camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
+        max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
+            translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
+            (in radians) movements. If None, no restriction is applied.
+        relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
+        urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
+            which requires a UTN compatible lab scene to be present. If no URDF file is found, the environment will
+            still work but set_cartesian methods might throw an error. A URDF file is needed for collision guarding.
+
+    Returns:
+        gym.Env: The configured hardware environment for the FR3 robot.
+    """
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
     ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
     robot = rcsss.hw.FR3(ip, ik)
@@ -153,6 +174,27 @@ def fr3_sim_env(
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
+    """
+    Creates a simulation environment for the FR3 robot.
+
+    Args:
+        control_mode (ControlMode): Control mode for the robot.
+        robot_cfg (rcsss.sim.FR3Config): Configuration for the FR3 robot.
+        collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
+            or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
+        gripper_cfg (rcsss.sim.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+        camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
+        max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
+            translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
+            (in radians) movements. If None, no restriction is applied.
+        relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
+        urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
+            which requires a UTN compatible lab scene to be present.
+        mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
+
+    Returns:
+        gym.Env: The configured simulation environment for the FR3 robot.
+    """
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
     assert urdf_path is not None
     if mjcf not in rcsss.scenes:
