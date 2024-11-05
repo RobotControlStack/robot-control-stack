@@ -66,7 +66,7 @@ def main():
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
-                collision_guard=None,
+                collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,

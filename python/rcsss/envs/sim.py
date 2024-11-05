@@ -78,7 +78,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         # modify action to be joint angles down stream
         if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
             # return old obs, with truncated and print warning
-            self._logger.warning("Collision detected! Truncating episode.")
+            self._logger.warning("Collision detected! Truncating episode: %s", info)
             if self.last_obs is None:
                 msg = "Collisions detected and no old observation."
                 raise RuntimeError(msg)
