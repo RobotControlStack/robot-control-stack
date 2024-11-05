@@ -551,7 +551,8 @@ class GripperWrapper(ActObsInfoWrapper):
         # similar to sim fr3 has also a sim specific wrapper
         if isinstance(self._gripper, sim.FrankaHand):
             state = self._gripper.get_state()
-            info["collision"] = state.collision
+            if "collision" not in info or not info["collision"]:
+                info["collision"] = state.collision
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:

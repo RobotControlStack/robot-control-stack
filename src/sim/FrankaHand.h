@@ -39,7 +39,6 @@ class FrankaHand : public common::Gripper {
   int joint_id_2;
   FHState state;
   std::string id;
-  void is_moving_callback();
   bool convergence_callback();
   bool collision_callback();
   std::set<size_t> cgeom;

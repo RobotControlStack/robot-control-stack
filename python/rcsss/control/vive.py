@@ -12,6 +12,7 @@ from rcsss.envs.base import (
     GripperDictType,
     LimitedTQuartRelDictType,
     RelativeActionSpace,
+    RelativeTo,
     RobotInstance,
 )
 from rcsss.envs.factories import (
@@ -214,9 +215,10 @@ def main():
             ip=ROBOT_IP,
             control_mode=ControlMode.CARTESIAN_TQuart,
             robot_cfg=default_fr3_hw_robot_cfg(),
-            collision_guard=False,
+            collision_guard="lab",
             gripper_cfg=default_fr3_hw_gripper_cfg(),
             max_relative_movement=0.5,
+            relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
     else:
         env_rel = fr3_sim_env(
@@ -226,6 +228,7 @@ def main():
             gripper_cfg=default_fr3_sim_gripper_cfg(),
             camera_set_cfg=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.5,
+            relative_to=RelativeTo.CONFIGURED_ORIGIN,
         )
 
     env_rel.reset()
