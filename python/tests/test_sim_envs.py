@@ -141,7 +141,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard="fr3_empty_world",
+            collision_guard=True,
             camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
@@ -243,7 +243,7 @@ class TestSimEnvsTquart(TestSimEnvs):
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard="fr3_empty_world",
+            collision_guard=True,
             camera_set_cfg=cam_cfg,
             max_relative_movement=None,
         )
@@ -318,7 +318,7 @@ class TestSimEnvsJoints(TestSimEnvs):
             ControlMode.JOINTS,
             cfg,
             gripper_cfg=gripper_cfg,
-            collision_guard="fr3_empty_world",
+            collision_guard=True,
             camera_set_cfg=cam_cfg,
             max_relative_movement=None,
         )

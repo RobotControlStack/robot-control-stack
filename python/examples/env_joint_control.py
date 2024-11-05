@@ -68,7 +68,7 @@ def main():
         else:
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.JOINTS,
-                collision_guard=None,
+                collision_guard=False,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
