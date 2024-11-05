@@ -16,13 +16,13 @@ pip install -r requirements_dev.txt
 ```
 3. Build and install RCS:
 ```shell
-pip install .
+pip install -ve .
 ```
 
 ### UTN Models
 If you have a token to download the UTN models, you can add them to the pip package using:
 ```shell
-pip install --config-settings=cmake.define.INCLUDE_UTN_MODELS=ON --config-settings=cmake.define.GITLAB_MODELS_TOKEN=<token> .
+pip install --config-settings=cmake.define.INCLUDE_UTN_MODELS=ON --config-settings=cmake.define.GITLAB_MODELS_TOKEN=<token> -ve .
 ```
 
 ## Usage
