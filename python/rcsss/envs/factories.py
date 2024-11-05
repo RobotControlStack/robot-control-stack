@@ -129,9 +129,9 @@ def fr3_hw_env(
             urdf_path,
             gripper=True,
             check_home_collision=False,
-            camera=True,
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+            sim_gui=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
@@ -222,9 +222,9 @@ def fr3_sim_env(
             urdf_path,
             gripper=gripper_cfg is not None,
             check_home_collision=False,
-            camera=False,
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+            sim_gui=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
