@@ -50,6 +50,7 @@ class FR3 : public common::Robot {
   common::Pose get_base_pose_in_world_coordinates() override;
   std::optional<std::shared_ptr<common::IK>> get_ik() override;
   void reset() override;
+  void set_joints_hard(const common::Vector7d &q);
 
  private:
   FR3Config cfg;

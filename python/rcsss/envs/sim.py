@@ -68,23 +68,18 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             self.sim.open_gui()
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
-        # TODO: we should set the state of the sim to the state of the real robot
+
+        self.collision_env.get_wrapper_attr("robot").set_joints_hard(self.unwrapped.robot.get_joint_position())
         _, _, _, _, info = self.collision_env.step(action)
+
         if self.to_joint_control:
             fr3_env = self.collision_env.unwrapped
             assert isinstance(fr3_env, FR3Env), "Collision env must be an FR3Env instance."
             action[self.unwrapped.joints_key] = fr3_env.robot.get_joint_position()
 
-        # modify action to be joint angles down stream
-        if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
-            # return old obs, with truncated and print warning
-            self._logger.warning("Collision detected! Truncating episode: %s", info)
-            if self.last_obs is None:
-                msg = "Collisions detected and no old observation."
-                raise RuntimeError(msg)
-            old_obs, old_info = self.last_obs
-            old_info.update(info)
-            return old_obs, 0, False, True, old_info
+        if info["collision"]:
+            self._logger.warning("Collision detected! %s", info)
+            action[self.unwrapped.joints_key] = self.unwrapped.robot.get_joint_position()
 
         obs, reward, done, truncated, info = super().step(action)
         self.last_obs = obs, info
