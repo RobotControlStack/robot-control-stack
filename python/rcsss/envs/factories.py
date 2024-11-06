@@ -129,9 +129,9 @@ def fr3_hw_env(
             urdf_path,
             gripper=True,
             check_home_collision=False,
-            camera=True,
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+            sim_gui=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
@@ -166,7 +166,7 @@ def default_mujoco_cameraset_cfg():
 def fr3_sim_env(
     control_mode: ControlMode,
     robot_cfg: rcsss.sim.FR3Config,
-    collision_guard: str | PathLike | None = None,
+    collision_guard: bool = False,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
     max_relative_movement: float | tuple[float, float] | None = None,
@@ -180,8 +180,7 @@ def fr3_sim_env(
     Args:
         control_mode (ControlMode): Control mode for the robot.
         robot_cfg (rcsss.sim.FR3Config): Configuration for the FR3 robot.
-        collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
-            or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
+        collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
         gripper_cfg (rcsss.sim.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
         camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
         max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
@@ -215,16 +214,16 @@ def fr3_sim_env(
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=False)
 
-    if collision_guard is not None:
+    if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
             env,
-            str(rcsss.scenes.get(str(collision_guard), collision_guard)),
+            str(rcsss.scenes.get(str(mjcf), mjcf)),
             urdf_path,
             gripper=gripper_cfg is not None,
             check_home_collision=False,
-            camera=False,
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+            sim_gui=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)

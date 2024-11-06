@@ -4,9 +4,7 @@ from typing import Any, SupportsFloat, cast
 import gymnasium as gym
 import rcsss
 from rcsss import sim
-from rcsss._core.sim import CameraType
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.envs.base import CameraSetWrapper, ControlMode, FR3Env, GripperWrapper
+from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
 
 
 class FR3Sim(gym.Wrapper):
@@ -50,6 +48,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         collision_env: gym.Env,
         check_home_collision: bool = True,
         to_joint_control: bool = False,
+        sim_gui: bool = True,
     ):
         super().__init__(env)
         self.unwrapped: FR3Env
@@ -65,6 +64,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             ), "Previous control mode must be joints"
             # change action space
             self.action_space = self.collision_env.action_space
+        if sim_gui:
+            self.sim.open_gui()
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
         # TODO: we should set the state of the sim to the state of the real robot
@@ -77,7 +78,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         # modify action to be joint angles down stream
         if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
             # return old obs, with truncated and print warning
-            self._logger.warning("Collision detected! Truncating episode.")
+            self._logger.warning("Collision detected! Truncating episode: %s", info)
             if self.last_obs is None:
                 msg = "Collisions detected and no old observation."
                 raise RuntimeError(msg)
@@ -112,12 +113,12 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         env: gym.Env,
         mjmld: str,
         urdf: str,
-        id="0",
-        gripper=True,
-        check_home_collision=True,
-        tcp_offset=None,
+        id: str = "0",
+        gripper: bool = True,
+        check_home_collision: bool = True,
+        tcp_offset: rcsss.common.Pose | None = None,
         control_mode: ControlMode | None = None,
-        camera=False,
+        sim_gui: bool = True,
     ) -> "CollisionGuard":
         # assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
@@ -142,14 +143,6 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         c_env = FR3Sim(c_env, simulation)
         if gripper:
             gripper_cfg = sim.FHConfig()
-            gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-            c_env = GripperWrapper(c_env, gripper)
-        if camera:
-            cameras = {
-                "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-                "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-            }
-            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=640, resolution_height=480, frame_rate=5)
-            camera_set = SimCameraSet(simulation, cam_cfg)
-            c_env = CameraSetWrapper(c_env, camera_set)
-        return cls(env, simulation, c_env, check_home_collision, to_joint_control)
+            fh = sim.FrankaHand(simulation, id, gripper_cfg)
+            c_env = GripperWrapper(c_env, fh)
+        return cls(env, simulation, c_env, check_home_collision, to_joint_control, sim_gui)
