@@ -125,9 +125,9 @@ def fr3_hw_env(
         assert urdf_path is not None
         env = CollisionGuard.env_from_xml_paths(
             env,
-            (
+            str(
                 rcsss.scenes[collision_guard]["mjb"]
-                if collision_guard in scenes
+                if isinstance(collision_guard, str) and collision_guard in rcsss.scenes
                 else collision_guard
             ),
             urdf_path,
@@ -200,10 +200,10 @@ def fr3_sim_env(
     """
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
     assert urdf_path is not None
-    if mjcf not in rcsss.scenes:
-        logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-    else:
+    if isinstance(mjcf, str) and mjcf in rcsss.scenes:
         mjcf = rcsss.scenes[mjcf]["mjb"]
+    else:
+        logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
     simulation = sim.Sim(mjcf)
     ik = rcsss.common.IK(urdf_path)
@@ -223,11 +223,7 @@ def fr3_sim_env(
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
             env,
-            (
-                rcsss.scenes[collision_guard]["mjb"]
-                if collision_guard in scenes
-                else collision_guard
-            ),
+            str(rcsss.scenes[mjcf]["mjb"] if isinstance(mjcf, str) and mjcf in rcsss.scenes else mjcf),
             urdf_path,
             gripper=gripper_cfg is not None,
             check_home_collision=False,
