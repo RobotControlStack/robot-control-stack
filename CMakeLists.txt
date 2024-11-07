@@ -67,6 +67,18 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
+
+
+add_library(relaxed_ik_core SHARED IMPORTED)
+target_include_directories(relaxed_ik_core INTERFACE "${PROJECT_SOURCE_DIR}/relaxed_ik_core/include")
+set_target_properties(
+    relaxed_ik_core
+    PROPERTIES
+    IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/relaxed_ik_core/target/release/librelaxed_ik_lib.so"
+)
+add_executable(test main.cpp)
+target_link_libraries(test PUBLIC relaxed_ik_core)
+
 set(MuJoCo_UI_URL https://raw.githubusercontent.com/google-deepmind/mujoco/${MuJoCo_VERSION}/simulate/)
 set(MuJoCo_UI_FILES platform_ui_adapter.cc platform_ui_adapter.h glfw_adapter.cc glfw_adapter.h glfw_adapter.cc glfw_corevideo.h glfw_corevideo.mm glfw_dispatch.cc glfw_dispatch.h)
 # Set the destination directory for the downloaded files

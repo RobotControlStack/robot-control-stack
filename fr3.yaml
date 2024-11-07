@@ -1,0 +1,8 @@
+urdf: fr3.urdf
+link_radius: 0.05 
+base_links:
+  - fr3_link0
+ee_links:
+  - fr3_link8
+starting_config: [ 0.0, -0.78539816339744830962, 0.0, -2.356194490192345, 0.0, 1.5707963267948966, 0.7853981633974483 ]
+obstacles:

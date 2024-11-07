@@ -1,0 +1,276 @@
+<?xml version="1.0" ?>
+<robot name="fr3">
+  <link name="fr3_link0">
+    <collision>
+      <origin rpy="0 1.5707963267948966 0" xyz="-0.075 0 0.06"/>
+      <geometry>
+        <cylinder length="0.03" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.06 0 0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="-0.09 0 0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="fr3_link1">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.1915"/>
+      <geometry>
+        <cylinder length="0.2830" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.333"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.05"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint1" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.333"/>
+    <parent link="fr3_link0"/>
+    <child link="fr3_link1"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="87" lower="-2.7437" upper="2.7437" velocity="2.62"/>
+      Restricted angles:-->
+    <limit effort="87" lower="-2.3093" upper="2.3093" velocity="2"/>
+  </joint>
+  <link name="fr3_link2">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.12" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint2" type="revolute">
+    <origin rpy="-1.5707963267948966 0 0" xyz="0 0 0"/>
+    <parent link="fr3_link1"/>
+    <child link="fr3_link2"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="87" lower="-1.7837" upper="1.7837" velocity="2.62"/>
+      Restricted angles:-->
+    <limit effort="87" lower="-1.5133" upper="1.5133" velocity="1"/>
+  </joint>
+  <link name="fr3_link3">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.145"/>
+      <geometry>
+        <cylinder length="0.15" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.22"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.07"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint3" type="revolute">
+    <origin rpy="1.5707963267948966 0 0" xyz="0 -0.316 0"/>
+    <parent link="fr3_link2"/>
+    <child link="fr3_link3"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="87" lower="-2.9007" upper="2.9007" velocity="2.62"/>
+      Restricted angles:-->
+    <limit effort="87" lower="-2.4937" upper="2.4937" velocity="1.5"/>
+  </joint>
+  <link name="fr3_link4">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.12" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.06"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint4" type="revolute">
+    <origin rpy="1.5707963267948966 0 0" xyz="0.0825 0 0"/>
+    <parent link="fr3_link3"/>
+    <child link="fr3_link4"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="87" lower="-3.0421" upper="-0.1518" velocity="2.62"/>
+      Restricted angles:-->
+    <limit effort="87" lower="-2.7478" upper="-0.4461" velocity="1.25"/>
+  </joint>
+  <link name="fr3_link5">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.26"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.31"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.21"/>
+      <geometry>
+        <sphere radius="0.09"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0.08 -0.13"/>
+      <geometry>
+        <cylinder length="0.14" radius="0.055"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0.08 -0.06"/>
+      <geometry>
+        <sphere radius="0.055"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0.08 -0.20"/>
+      <geometry>
+        <sphere radius="0.055"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint5" type="revolute">
+    <origin rpy="-1.5707963267948966 0 0" xyz="-0.0825 0.384 0"/>
+    <parent link="fr3_link4"/>
+    <child link="fr3_link5"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="12" lower="-2.8065" upper="2.8065" velocity="5.26"/>
+      Restricted angles:-->
+    <limit effort="12" lower="-2.4800" upper="2.4800" velocity="3"/>
+  </joint>
+  <link name="fr3_link6">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.03"/>
+      <geometry>
+        <cylinder length="0.08" radius="0.08"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.01"/>
+      <geometry>
+        <sphere radius="0.08"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.07"/>
+      <geometry>
+        <sphere radius="0.08"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint6" type="revolute">
+    <origin rpy="1.5707963267948966 0 0" xyz="0 0 0"/>
+    <parent link="fr3_link5"/>
+    <child link="fr3_link6"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="12" lower="0.5445" upper="4.5169" velocity="4.18"/>
+      Restricted angles:-->
+    <limit effort="12" lower="0.8521" upper="4.2094" velocity="1.5"/>
+  </joint>
+  <link name="fr3_link7">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.01"/>
+      <geometry>
+        <cylinder length="0.14" radius="0.07"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.08"/>
+      <geometry>
+        <sphere radius="0.07"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 -0.06"/>
+      <geometry>
+        <sphere radius="0.07"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint7" type="revolute">
+    <origin rpy="1.5707963267948966 0 0" xyz="0.088 0 0"/>
+    <parent link="fr3_link6"/>
+    <child link="fr3_link7"/>
+    <axis xyz="0 0 1"/>
+ <!-- Max angles:
+    <limit effort="12" lower="-3.0159" upper="3.0159" velocity="5.26"/>
+      Restricted angles:-->
+    <limit effort="12" lower="-2.6895" upper="2.6895" velocity="3"/>
+  </joint>
+  <link name="fr3_link8">
+    <collision>
+      <origin rpy="3.141592653589793 1.5707963267948966 1.5707963267948966" xyz="0.0424 0.0424 -0.0250"/>
+      <geometry>
+        <cylinder length="0.01" radius="0.06"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.0424 0.0424 -0.02"/>
+      <geometry>
+        <sphere radius="0.06"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.0424 0.0424 -0.03"/>
+      <geometry>
+        <sphere radius="0.06"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="fr3_joint8" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.107"/>
+    <parent link="fr3_link7"/>
+    <child link="fr3_link8"/>
+  </joint>
+</robot>
