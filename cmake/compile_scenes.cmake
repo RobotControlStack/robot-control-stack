@@ -40,6 +40,16 @@ foreach(scene_dir ${scene_dirs})
     foreach(urdf ${urdfs})
         install(FILES ${urdf} DESTINATION rcsss/scenes/${scene_name} COMPONENT python_package)
     endforeach()
+
+    # Install xml files
+    foreach(xml ${xml_files})
+        install(FILES ${xml} DESTINATION rcsss/scenes/${scene_name} COMPONENT python_package)
+    endforeach()
+
+    # Install assets
+    foreach(asset ${asset_files})
+        install(FILES ${asset} DESTINATION rcsss/scenes/${scene_name}/assets COMPONENT python_package)
+    endforeach()
 endforeach()
 
 # Create a custom target that depends on all generated .mjb files

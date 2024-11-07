@@ -65,7 +65,7 @@ def main():
 
     with resource_manger:
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
-            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
+            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"]["mjb"])
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             ik = rcsss.common.IK(urdf_path)
             robot = rcsss.sim.FR3(simulation, "0", ik)

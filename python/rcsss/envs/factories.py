@@ -59,7 +59,7 @@ def default_realsense(name2id: dict[str, str]):
 
 def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
     if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
+        urdf_path = rcsss.scenes["lab"]["urdfs"]["fr3"]
         assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
         logger.info("Using automatic found urdf.")
     elif urdf_path is None and not allow_none_if_not_found:
@@ -125,7 +125,11 @@ def fr3_hw_env(
         assert urdf_path is not None
         env = CollisionGuard.env_from_xml_paths(
             env,
-            str(rcsss.scenes.get(str(collision_guard), collision_guard)),
+            (
+                rcsss.scenes[collision_guard]["mjb"]
+                if collision_guard in scenes
+                else collision_guard
+            ),
             urdf_path,
             gripper=True,
             check_home_collision=False,
@@ -198,8 +202,10 @@ def fr3_sim_env(
     assert urdf_path is not None
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+    else:
+        mjcf = rcsss.scenes[mjcf]["mjb"]
 
-    simulation = sim.Sim(rcsss.scenes.get(str(mjcf), mjcf))
+    simulation = sim.Sim(mjcf)
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
@@ -217,7 +223,11 @@ def fr3_sim_env(
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
             env,
-            str(rcsss.scenes.get(str(mjcf), mjcf)),
+            (
+                rcsss.scenes[collision_guard]["mjb"]
+                if collision_guard in scenes
+                else collision_guard
+            ),
             urdf_path,
             gripper=gripper_cfg is not None,
             check_home_collision=False,
