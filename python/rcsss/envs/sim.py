@@ -49,6 +49,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         check_home_collision: bool = True,
         to_joint_control: bool = False,
         sim_gui: bool = True,
+        truncate_on_collision: bool = True,
     ):
         super().__init__(env)
         self.unwrapped: FR3Env
@@ -58,6 +59,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         self._logger = logging.getLogger(__name__)
         self.check_home_collision = check_home_collision
         self.to_joint_control = to_joint_control
+        self.truncate_on_collision = truncate_on_collision
         if to_joint_control:
             assert (
                 self.unwrapped.get_unwrapped_control_mode(-2) == ControlMode.JOINTS
@@ -68,23 +70,23 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             self.sim.open_gui()
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict[str, Any]]:
-        # TODO: we should set the state of the sim to the state of the real robot
+
+        self.collision_env.get_wrapper_attr("robot").set_joints_hard(self.unwrapped.robot.get_joint_position())
         _, _, _, _, info = self.collision_env.step(action)
+
         if self.to_joint_control:
             fr3_env = self.collision_env.unwrapped
             assert isinstance(fr3_env, FR3Env), "Collision env must be an FR3Env instance."
             action[self.unwrapped.joints_key] = fr3_env.robot.get_joint_position()
 
-        # modify action to be joint angles down stream
-        if info["collision"] or not info["ik_success"] or not info["is_sim_converged"]:
-            # return old obs, with truncated and print warning
-            self._logger.warning("Collision detected! Truncating episode: %s", info)
-            if self.last_obs is None:
-                msg = "Collisions detected and no old observation."
-                raise RuntimeError(msg)
-            old_obs, old_info = self.last_obs
-            old_info.update(info)
-            return old_obs, 0, False, True, old_info
+        if info["collision"]:
+            self._logger.warning("Collision detected! %s", info)
+            action[self.unwrapped.joints_key] = self.unwrapped.robot.get_joint_position()
+            if self.truncate_on_collision:
+                if self.last_obs is None:
+                    msg = "Collision detected in the first step!"
+                    raise RuntimeError(msg)
+                return self.last_obs[0], 0, True, True, info
 
         obs, reward, done, truncated, info = super().step(action)
         self.last_obs = obs, info
@@ -119,6 +121,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         tcp_offset: rcsss.common.Pose | None = None,
         control_mode: ControlMode | None = None,
         sim_gui: bool = True,
+        truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
@@ -145,4 +148,12 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             gripper_cfg = sim.FHConfig()
             fh = sim.FrankaHand(simulation, id, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
-        return cls(env, simulation, c_env, check_home_collision, to_joint_control, sim_gui)
+        return cls(
+            env=env,
+            simulation=simulation,
+            collision_env=c_env,
+            check_home_collision=check_home_collision,
+            to_joint_control=to_joint_control,
+            sim_gui=sim_gui,
+            truncate_on_collision=truncate_on_collision,
+        )

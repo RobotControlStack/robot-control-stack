@@ -208,6 +208,14 @@ void FR3::m_reset() {
   }
 }
 
+void FR3::set_joints_hard(const common::Vector7d& q) {
+  for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
+    size_t jnt_id = this->ids.joints[i];
+    size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
+    this->sim->d->qpos[jnt_qposadr] = q[i];
+  }
+}
+
 common::Pose FR3::get_base_pose_in_world_coordinates() {
   auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
                        (std::string("base_") + this->id).c_str());
