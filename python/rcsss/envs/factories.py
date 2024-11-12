@@ -213,7 +213,7 @@ def fr3_sim_env(
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=False)
+        env = GripperWrapper(env, gripper, binary=True)
 
     if collision_guard is not None:
         env = CollisionGuard.env_from_xml_paths(
