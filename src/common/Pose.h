@@ -276,6 +276,12 @@ class Pose {
   Vector6d xyzrpy() const;
 
   /**
+   * @brief Returns the XYZ + Quaternion representation of the Pose
+   * For python bindings.
+   */
+  Vector7d xyzquart() const;
+
+  /**
    * @brief Converts a Pose to a String
    * For python bindings.
    *
