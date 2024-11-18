@@ -58,23 +58,23 @@ python -m rcsss fr3 shutdown <ip>
 
 
 def main():
-    cameras = {"wrist":"244222071045", "bird-eye":"243522070364"}
-    camera_set = default_realsense({"wrist":"244222071045",
-                                    "bird-eye":"243522070364"})
-    camera_set.start()
-    print(camera_set.camera_names)
-    print(camera_set.get_depth_shape())
-    camera_set.wait_for_frames()
-    frameset=camera_set.get_latest_frames()
-    print(frameset.frames["wrist"].camera.depth.data)
-    depth = frameset.frames["wrist"].camera.depth.data
-    color = frameset.frames["wrist"].camera.color.data
-    # depth and color of the bird-eye camera
-    depth_be = frameset.frames["bird-eye"].camera.depth.data
-    color_be = frameset.frames["bird-eye"].camera.color.data
-    camera_set.get_device_intrinsics(cameras)
-    reconstruct_3d_hardware(cameras,camera_set, logger, display=True)
-    camera_set.stop()
+    # cameras = {"wrist":"244222071045", "bird-eye":"243522070364"}
+    # camera_set = default_realsense({"wrist":"244222071045",
+    #                                 "bird-eye":"243522070364"})
+    # camera_set.start()
+    # print(camera_set.camera_names)
+    # print(camera_set.get_depth_shape())
+    # camera_set.wait_for_frames()
+    # frameset=camera_set.get_latest_frames()
+    # print(frameset.frames["wrist"].camera.depth.data)
+    # depth = frameset.frames["wrist"].camera.depth.data
+    # color = frameset.frames["wrist"].camera.color.data
+    # # depth and color of the bird-eye camera
+    # depth_be = frameset.frames["bird-eye"].camera.depth.data
+    # color_be = frameset.frames["bird-eye"].camera.color.data
+    # camera_set.get_device_intrinsics(cameras)
+    # reconstruct_3d_hardware(cameras,camera_set, logger, display=True)
+    # camera_set.stop()
     # # get depth statistics
     # print(f"depth min: {np.min(depth)}")
     # print(f"depth max: {np.max(depth)}")
@@ -100,7 +100,7 @@ def main():
     # cv2.waitKey()
     # camera_set.stop()
 
-    sys.exit()
+    # sys.exit()
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
@@ -145,7 +145,7 @@ def main():
             robot = rcsss.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-            robot_cfg.controller = IKController.robotics_library
+            # robot_cfg.controller = IKController.robotics_library
             robot.set_parameters(robot_cfg)
             gripper_cfg = rcsss.hw.FHConfig()
             gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
@@ -154,9 +154,9 @@ def main():
             gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
             input("the robot is going to move, press enter whenever you are ready")
 
+        current_translation = robot.get_cartesian_position().translation()
         current_pose = robot.get_cartesian_position()
         
-
         # # # move to home position and open gripper
         # robot.move_home()
         # gripper.grasp()
@@ -166,9 +166,15 @@ def main():
 
         # # 5cm in x direction
         # for i in range(5):
-        #     robot.set_cartesian_position(
-        #         robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0.07, 0, 0]))
-        #     )
+        # print(robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0, current_translation[2]-0.15])))
+        current_translation = robot.get_cartesian_position().translation()
+
+        robot.set_cartesian_position(
+            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0, current_translation[2]-0.025]))
+        )
+        print(robot.get_cartesian_position(),"current pose")
+        # print(robot.get_cartesian_position(),"current pose") # robot to ee
+
         #     # if ROBOT_INSTANCE == RobotInstance.SIMULATION:
         #     #     simulation.step_until_convergence()
         #     #     logger.debug(f"IK success: {robot.get_state().ik_success}")
