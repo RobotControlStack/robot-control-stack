@@ -53,10 +53,10 @@ class PickUpDemo:
 
         
     def step(self, action: np.ndarray) -> dict:
-        print("Executing command")
+        # print("Executing command")
         re = self.env.step(action)
         s: FR3State = self.env.unwrapped.robot.get_state()
-        print(f"ik success {s.ik_success}")
+        # print(f"ik success {s.ik_success}")
         return re[0]
     
 
@@ -80,10 +80,6 @@ class PickUpDemo:
         return obs
     
     def approach(self, geom_name: str):
-        self.env.reset()
-        print("Initializing")
-        sleep(3)
-
         waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=5)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
@@ -94,7 +90,7 @@ class PickUpDemo:
 
         self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=15)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=20)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def move_home(self):
@@ -106,10 +102,9 @@ class PickUpDemo:
         self.approach(geom_name)
         self.grasp(geom_name)
         self.move_home()
-        sleep(10)
 
 
-def main():
+def main(storage_env: gym.Wrapper):
 
     # Load and parse the XML file
     xml_file = "models/scenes/fr3_empty_world/scene_openvla.xml"
@@ -151,19 +146,20 @@ def main():
             mjcf=scene_file
         )
 
-        env.get_wrapper_attr("sim").open_gui()
+        # env.get_wrapper_attr("sim").open_gui()
         env = RHCWrapper(env, exec_horizon=1)
         # env = StorageWrapper(env, path="/home/tobi/coding/frankcsy/experiments_sim_grasping")
+        storage_env.env = env
 
-        env.reset()
+        storage_env.reset()
+        controller = PickUpDemo(storage_env)
 
-        controller = PickUpDemo(env)
-
-
-        
-        with env:
-            controller.pickup(geom_name)
+        controller.pickup(geom_name)
 
 
 if __name__ == "__main__":
-    main()
+    dummy_env = gym.Env()
+    storage_env = StorageWrapper(dummy_env, path="/home/tobi/coding/frankcsy/experiments_sim_grasping")
+    with storage_env:
+        for i in range(100):
+            main(storage_env)

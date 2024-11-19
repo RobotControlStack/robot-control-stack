@@ -154,8 +154,14 @@ def default_mujoco_cameraset_cfg():
 
     cameras = {
         "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        # "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
+        "openvla_view": SimCameraConfig(identifier="openvla_view", type=int(CameraType.fixed)),
+
+        "side": SimCameraConfig(identifier="side_view", type=int(CameraType.fixed)),
+        "right_side": SimCameraConfig(identifier="right_side", type=int(CameraType.fixed)),
+        "left_side": SimCameraConfig(identifier="left_side", type=int(CameraType.fixed)),
+        "front": SimCameraConfig(identifier="front", type=int(CameraType.fixed)),
+        "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
     return SimCameraSetConfig(
