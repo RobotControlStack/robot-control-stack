@@ -84,22 +84,22 @@ class PickUpDemo:
         print("Initializing")
         sleep(3)
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=5)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
     def grasp(self, geom_name: str):
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0, num_waypoints=15)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
         self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=15)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def move_home(self):
         end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
-        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=20)
+        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=5)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def pickup(self, geom_name: str):
@@ -152,9 +152,9 @@ def main():
         )
 
         env.get_wrapper_attr("sim").open_gui()
-        
-        # env = StorageWrapper(env, path="/home/tobi/coding/frankcsy/experiments_sim")
         env = RHCWrapper(env, exec_horizon=1)
+        # env = StorageWrapper(env, path="/home/tobi/coding/frankcsy/experiments_sim_grasping")
+
         env.reset()
 
         controller = PickUpDemo(env)
