@@ -8,6 +8,7 @@
 #include <eigen3/Eigen/Geometry>
 #include <memory>
 #include <optional>
+#include "mylib.h"
 
 #include "Pose.h"
 #include "utils.h"
@@ -24,6 +25,7 @@ struct RL {
 class IK {
  private:
   RL rl;
+  RelaxedIK* relaxed_ik;
 
  public:
   IK(const std::string& urdf_path, size_t max_duration_ms = 300);
