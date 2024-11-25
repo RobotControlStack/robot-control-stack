@@ -95,7 +95,7 @@ class PickUpDemo:
 
     def move_home(self):
         end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
-        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=5)
+        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=10)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def pickup(self, geom_name: str):
@@ -113,8 +113,9 @@ def main(storage_env: gym.Wrapper):
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
-    pos_x = np.random.randint(30, 65) / 100.0
-    pos_y = np.random.randint(-19, 20) / 100.0
+    iso_cube = [0.498, 0.0, 0.226]
+    pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
+    pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
     pos_z = 0.03
 
     new_position = f"{pos_x} {pos_y} {pos_z}"
