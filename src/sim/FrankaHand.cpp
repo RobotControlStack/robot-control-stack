@@ -54,7 +54,7 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
 
   this->sim->register_all_cb(std::bind(&FrankaHand::convergence_callback, this),
                              this->cfg.seconds_between_callbacks);
-  this->sim->register_any_cb(std::bind(&FrankaHand::collision_callback, this),
+  this->sim->register_cb(std::bind(&FrankaHand::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
 }

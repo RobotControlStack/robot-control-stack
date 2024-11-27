@@ -52,7 +52,7 @@ FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
                          this->cfg.seconds_between_callbacks);
   this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
                              this->cfg.seconds_between_callbacks);
-  this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
+  this->sim->register_cb(std::bind(&FR3::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
 }

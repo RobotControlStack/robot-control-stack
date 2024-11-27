@@ -191,6 +191,7 @@ PYBIND11_MODULE(_core, m) {
       .def("pose_matrix", &rcs::common::Pose::pose_matrix)
       .def("rotation_rpy", &rcs::common::Pose::rotation_rpy)
       .def("xyzrpy", &rcs::common::Pose::xyzrpy)
+      .def("xyzquart", &rcs::common::Pose::xyzquart)
       .def("interpolate", &rcs::common::Pose::interpolate, py::arg("dest_pose"),
            py::arg("progress"))
       .def("inverse", &rcs::common::Pose::inverse)

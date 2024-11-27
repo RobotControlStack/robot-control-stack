@@ -159,6 +159,13 @@ Vector6d Pose::xyzrpy() const {
   return xyzrpy;
 }
 
+Vector7d Pose::xyzquart() const {
+  Vector7d xyzquart;
+  xyzquart.head(3) = this->translation();
+  xyzquart.tail(4) = this->rotation_q();
+  return xyzquart;
+}
+
 std::string Pose::str() const {
   std::stringstream ss;
 
@@ -177,6 +184,7 @@ Pose Pose::operator*(const Pose &pose_b) const {
   return Pose(rot, trans);
 }
 
+// todo: independent multiplication operation
 double Pose::total_angle() const {
   return this->m_rotation.angularDistance(IdentityRotQuart());
 }

@@ -523,6 +523,9 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
+
+    BINARY_GRIPPER_CLOSED = 0
+    BINARY_GRIPPER_OPEN = 1
     def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
         self.unwrapped: FR3Env
@@ -543,7 +546,7 @@ class GripperWrapper(ActObsInfoWrapper):
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         if self.binary:
-            observation[self.gripper_key] = self._last_gripper_cmd if self._last_gripper_cmd is not None else 1
+            observation[self.gripper_key] = self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
         else:
             observation[self.gripper_key] = self._gripper.get_normalized_width()
 
@@ -565,7 +568,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
         if self._last_gripper_cmd is None or self._last_gripper_cmd != gripper_action:
             if self.binary:
-                self._gripper.grasp() if gripper_action == 0 else self._gripper.open()
+                self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
             else:
                 self._gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
