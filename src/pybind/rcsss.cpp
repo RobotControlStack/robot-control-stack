@@ -471,6 +471,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("id"), py::arg("ik"))
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
+      .def("set_joints_hard", &rcs::sim::FR3::set_joints_hard, py::arg("q"))
       .def("get_state", &rcs::sim::FR3::get_state);
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
