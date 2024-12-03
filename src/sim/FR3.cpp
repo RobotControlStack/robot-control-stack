@@ -200,19 +200,16 @@ bool FR3::convergence_callback() {
   return this->state.is_arrived and not this->state.is_moving;
 }
 
-void FR3::m_reset() {
-  for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
-    size_t jnt_id = this->ids.joints[i];
-    size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
-    this->sim->d->qpos[jnt_qposadr] = q_home[i];
-  }
-}
+void FR3::m_reset() { this->set_joints_hard(q_home); }
 
 void FR3::set_joints_hard(const common::Vector7d& q) {
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
     this->sim->d->qpos[jnt_qposadr] = q[i];
+  }
+  for (size_t i = 0; i < std::size(this->ids.actuators); ++i) {
+    this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
   }
 }
 
