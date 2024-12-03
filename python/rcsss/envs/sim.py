@@ -7,6 +7,7 @@ import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
 
+
 class SimWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, simulation: sim.Sim):
         super().__init__(env)
@@ -168,3 +169,21 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             sim_gui=sim_gui,
             truncate_on_collision=truncate_on_collision,
         )
+
+
+class RandomCubePos(SimWrapper):
+    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+
+        iso_cube = [0.498, 0.0, 0.226]
+        pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
+        pos_z = 0.03
+
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+
+        return obs, info

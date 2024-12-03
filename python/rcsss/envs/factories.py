@@ -1,10 +1,11 @@
 import logging
 from os import PathLike
+from typing import Type
 
 import gymnasium as gym
-from gymnasium.envs import EnvCreator
 import numpy as np
 import rcsss
+from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
@@ -23,7 +24,7 @@ from rcsss.envs.base import (
     RelativeTo,
 )
 from rcsss.envs.hw import FR3HW
-from rcsss.envs.sim import CollisionGuard, FR3Sim
+from rcsss.envs.sim import CollisionGuard, FR3Sim, RandomCubePos, SimWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -136,6 +137,7 @@ def fr3_hw_env(
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
             sim_gui=True,
+            truncate_on_collision=False,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
@@ -231,6 +233,7 @@ def fr3_sim_env(
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
             sim_gui=True,
+            truncate_on_collision=False,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
@@ -307,12 +310,12 @@ class FR3SimplePickUpSim(EnvCreator):
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
             mjcf="fr3_simple_pick_up",
+            sim_wrapper=RandomCubePos,
         )
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
 
         # TODO:
-        # - randomize location of the yellow cube
         # - wrapper for success/failure and reward
 
         return env_rel
