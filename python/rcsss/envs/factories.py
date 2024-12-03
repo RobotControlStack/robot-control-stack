@@ -24,7 +24,7 @@ from rcsss.envs.base import (
     RelativeTo,
 )
 from rcsss.envs.hw import FR3HW
-from rcsss.envs.sim import CollisionGuard, FR3Sim, RandomCubePos, SimWrapper
+from rcsss.envs.sim import CollisionGuard, FR3Sim, FR3SimplePickUpSimSuccessWrapper, RandomCubePos, SimWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -221,7 +221,7 @@ def fr3_sim_env(
 
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=False)
+        env = GripperWrapper(env, gripper, binary=True)
 
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
@@ -242,7 +242,7 @@ def fr3_sim_env(
 
 
 class FR3Real(EnvCreator):
-    def __call__(
+    def __call__(  # type: ignore
         self,
         robot_ip: str,
         control_mode: str = "xyzrpy",
@@ -251,7 +251,7 @@ class FR3Real(EnvCreator):
         gripper: bool = True,
     ) -> gym.Env:
         camera_set = default_realsense(camera_config)
-        env_rel = fr3_hw_env(
+        return fr3_hw_env(
             ip=robot_ip,
             camera_set=camera_set,
             control_mode=(
@@ -266,11 +266,9 @@ class FR3Real(EnvCreator):
             relative_to=RelativeTo.LAST_STEP,
         )
 
-        return env_rel
-
 
 class FR3SimplePickUpSim(EnvCreator):
-    def __call__(
+    def __call__(  # type: ignore
         self,
         render_mode: str = "human",
         control_mode: str = "xyzrpy",
@@ -312,10 +310,8 @@ class FR3SimplePickUpSim(EnvCreator):
             mjcf="fr3_simple_pick_up",
             sim_wrapper=RandomCubePos,
         )
+        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
-
-        # TODO:
-        # - wrapper for success/failure and reward
 
         return env_rel
