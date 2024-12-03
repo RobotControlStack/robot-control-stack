@@ -177,6 +177,7 @@ def fr3_sim_env(
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
+    sim_wrapper: Type[SimWrapper] | None = None,
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
     """
     Creates a simulation environment for the FR3 robot.
@@ -194,6 +195,8 @@ def fr3_sim_env(
         urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
             which requires a UTN compatible lab scene to be present.
         mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
+        sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
+            for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
 
     Returns:
         gym.Env: The configured simulation environment for the FR3 robot.
@@ -208,7 +211,7 @@ def fr3_sim_env(
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
-    env = FR3Sim(env, simulation)
+    env = FR3Sim(env, simulation, sim_wrapper)
 
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)

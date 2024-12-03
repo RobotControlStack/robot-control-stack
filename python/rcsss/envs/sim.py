@@ -1,14 +1,24 @@
 import logging
-from typing import Any, SupportsFloat, cast
+from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
+import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
 
+class SimWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env, simulation: sim.Sim):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = simulation
+
 
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env, simulation: sim.Sim):
+    def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
+        if sim_wrapper is not None:
+            env = sim_wrapper(env, simulation)
         super().__init__(env)
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
@@ -29,6 +39,7 @@ class FR3Sim(gym.Wrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
