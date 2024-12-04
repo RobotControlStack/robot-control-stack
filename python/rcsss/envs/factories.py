@@ -239,7 +239,7 @@ def fr3_sim_env(
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
             sim_gui=True,
-            truncate_on_collision=False,
+            truncate_on_collision=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)

@@ -208,9 +208,6 @@ void FR3::set_joints_hard(const common::Vector7d& q) {
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
     this->sim->d->qpos[jnt_qposadr] = q[i];
   }
-  for (size_t i = 0; i < std::size(this->ids.actuators); ++i) {
-    this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
-  }
 }
 
 common::Pose FR3::get_base_pose_in_world_coordinates() {
