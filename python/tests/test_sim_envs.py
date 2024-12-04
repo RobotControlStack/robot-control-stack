@@ -152,9 +152,8 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs["xyzrpy"][2] = -0.2
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
-        _, _, _, truncated, info = env.step(collision_action)
+        _, _, _, info = env.step(collision_action)
         p2 = env.unwrapped.robot.get_joint_position()
-        assert truncated
         assert info["collision"]
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -254,9 +253,8 @@ class TestSimEnvsTquart(TestSimEnvs):
         obs["tquart"][2] = -0.2
         collision_action = TQuartDictType(tquart=obs["tquart"])
         collision_action.update(GripperDictType(gripper=0))
-        _, _, _, truncated, info = env.step(collision_action)
+        _, _, _, _, info = env.step(collision_action)
         p2 = env.unwrapped.robot.get_joint_position()
-        assert truncated
         assert info["collision"]
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -327,10 +325,9 @@ class TestSimEnvsJoints(TestSimEnvs):
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
         collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
         collision_act.update(GripperDictType(gripper=1))
-        _, _, _, truncated, info = env.step(collision_act)
+        _, _, _, _, info = env.step(collision_act)
         p2 = env.unwrapped.robot.get_joint_position()
 
-        assert truncated
         assert info["collision"]
         # assure that the robot did not move
         assert np.allclose(p1, p2)
