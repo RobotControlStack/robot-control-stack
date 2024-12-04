@@ -50,13 +50,13 @@ find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
 
-FetchContent_Declare(pinocchio
-    OVERRIDE_FIND_PACKAGE
-    GIT_REPOSITORY https://github.com/stack-of-tasks/pinocchio.git
-    GIT_TAG v3.3.0
-    GIT_PROGRESS TRUE
-    EXCLUDE_FROM_ALL
-)
+#FetchContent_Declare(pinocchio
+#    OVERRIDE_FIND_PACKAGE
+#    GIT_REPOSITORY https://github.com/stack-of-tasks/pinocchio.git
+#    GIT_TAG v3.3.0
+#    GIT_PROGRESS TRUE
+#    EXCLUDE_FROM_ALL
+#)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
@@ -100,9 +100,9 @@ add_library(mujoco_ui_lib ${MuJoCo_UI_DIR}/glfw_adapter.cc ${MuJoCo_UI_DIR}/plat
 target_link_libraries(mujoco_ui_lib MuJoCo::MuJoCo glfw)
 target_include_directories(mujoco_ui_lib INTERFACE ${MuJoCo_UI_DIR})
 
-FetchContent_MakeAvailable(pinocchio)
-install(TARGETS pinocchio_parsers DESTINATION rcsss COMPONENT python_package)
-install(TARGETS pinocchio_default DESTINATION rcsss COMPONENT python_package)
+#FetchContent_MakeAvailable(pinocchio)
+#install(TARGETS pinocchio_parsers DESTINATION rcsss COMPONENT python_package)
+#install(TARGETS pinocchio_default DESTINATION rcsss COMPONENT python_package)
 
 # Set the rpath to include the path where the libraries are installed
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
