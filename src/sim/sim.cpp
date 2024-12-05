@@ -121,7 +121,28 @@ void Sim::step(size_t k) {
   }
 }
 
-void Sim::reset() { mj_resetData(this->m, this->d); }
+void Sim::reset() {
+  mj_resetData(this->m, this->d);
+  this->reset_callbacks();
+}
+
+void Sim::reset_callbacks() {
+  for (size_t i = 0; i < std::size(this->callbacks); ++i) {
+    this->callbacks[i].last_call_timestamp = 0;
+  }
+  for (size_t i = 0; i < std::size(this->any_callbacks); ++i) {
+    this->any_callbacks[i].last_call_timestamp = 0;
+  }
+  for (size_t i = 0; i < std::size(this->all_callbacks); ++i) {
+    this->all_callbacks[i].last_call_timestamp = 0;
+  }
+  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
+    // this is negative so that we will directly render the cameras
+    // in the first step
+    this->rendering_callbacks[i].last_call_timestamp =
+        -this->rendering_callbacks[i].seconds_between_calls;
+  }
+}
 
 void Sim::register_cb(std::function<void(void)> cb,
                       mjtNum seconds_between_calls) {
@@ -151,7 +172,9 @@ void Sim::register_rendering_callback(
       RenderingCallback{.cb = cb,
                         .id = id,
                         .seconds_between_calls = seconds_between_calls,
-                        .last_call_timestamp = 0});
+                        // this is negative so that we will directly render the
+                        // cameras in the first step
+                        .last_call_timestamp = -seconds_between_calls});
 }
 
 void Sim::start_gui_server(const std::string& id) {

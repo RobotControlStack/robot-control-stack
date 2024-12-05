@@ -1,14 +1,25 @@
 import logging
-from typing import Any, SupportsFloat, cast
+from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
+import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
 
 
+class SimWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env, simulation: sim.Sim):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = simulation
+
+
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env, simulation: sim.Sim):
+    def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
+        if sim_wrapper is not None:
+            env = sim_wrapper(env, simulation)
         super().__init__(env)
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
@@ -29,6 +40,7 @@ class FR3Sim(gym.Wrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
@@ -157,3 +169,48 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             sim_gui=sim_gui,
             truncate_on_collision=truncate_on_collision,
         )
+
+
+class RandomCubePos(SimWrapper):
+    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+
+        iso_cube = [0.498, 0.0, 0.226]
+        pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
+        pos_z = 0.03
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+
+        return obs, info
+
+
+class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
+    """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
+
+    EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+
+    def step(self, action: dict[str, Any]):
+        obs, reward, done, truncated, info = super().step(action)
+
+        success = (
+            self.sim.data.joint("yellow-box-joint").qpos[2] > 0.3
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
+        )
+        diff_ee_cube = np.linalg.norm(
+            self.sim.data.joint("yellow-box-joint").qpos[:3]
+            - self.unwrapped.robot.get_cartesian_position().translation()
+        )
+        diff_cube_home = np.linalg.norm(self.sim.data.joint("yellow-box-joint").qpos[:3] - self.EE_HOME)
+        reward = -diff_cube_home - diff_ee_cube
+
+        return obs, reward, success, truncated, info
