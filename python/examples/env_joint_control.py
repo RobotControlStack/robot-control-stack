@@ -49,44 +49,37 @@ python -m rcsss fr3 shutdown <ip>
 
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-        user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        env_rel = fr3_hw_env(
+            ip=ROBOT_IP,
+            control_mode=ControlMode.JOINTS,
+            robot_cfg=default_fr3_hw_robot_cfg(),
+            collision_guard="lab",
+            gripper_cfg=default_fr3_hw_gripper_cfg(),
+            max_relative_movement=np.deg2rad(5),
+            relative_to=RelativeTo.LAST_STEP,
+        )
     else:
-        resource_manger = DummyResourceManager()
-    with resource_manger:
+        env_rel = fr3_sim_env(
+            control_mode=ControlMode.JOINTS,
+            collision_guard=False,
+            robot_cfg=default_fr3_sim_robot_cfg(),
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=default_mujoco_cameraset_cfg(),
+            max_relative_movement=np.deg2rad(5),
+            relative_to=RelativeTo.LAST_STEP,
+        )
+        env_rel.get_wrapper_attr("sim").open_gui()
 
-        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            env_rel = fr3_hw_env(
-                ip=ROBOT_IP,
-                control_mode=ControlMode.JOINTS,
-                robot_cfg=default_fr3_hw_robot_cfg(),
-                collision_guard="lab",
-                gripper_cfg=default_fr3_hw_gripper_cfg(),
-                max_relative_movement=np.deg2rad(5),
-                relative_to=RelativeTo.LAST_STEP,
-            )
-        else:
-            env_rel = fr3_sim_env(
-                control_mode=ControlMode.JOINTS,
-                collision_guard=False,
-                robot_cfg=default_fr3_sim_robot_cfg(),
-                gripper_cfg=default_fr3_sim_gripper_cfg(),
-                camera_set_cfg=default_mujoco_cameraset_cfg(),
-                max_relative_movement=np.deg2rad(5),
-                relative_to=RelativeTo.LAST_STEP,
-            )
-            env_rel.get_wrapper_attr("sim").open_gui()
-
-        for _ in range(10):
-            obs, info = env_rel.reset()
-            for _ in range(3):
-                # sample random relative action and execute it
-                act = env_rel.action_space.sample()
-                obs, reward, terminated, truncated, info = env_rel.step(act)
-                if truncated or terminated:
-                    logger.info("Truncated or terminated!")
-                    return
-                logger.info(act["gripper"], obs["gripper"])
+    for _ in range(10):
+        obs, info = env_rel.reset()
+        for _ in range(3):
+            # sample random relative action and execute it
+            act = env_rel.action_space.sample()
+            obs, reward, terminated, truncated, info = env_rel.step(act)
+            if truncated or terminated:
+                logger.info("Truncated or terminated!")
+                return
+            logger.info(act["gripper"], obs["gripper"])
 
 
 if __name__ == "__main__":
