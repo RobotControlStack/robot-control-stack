@@ -13,9 +13,28 @@ from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.control.record import PoseList
 from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.envs.factories import get_urdf_path
+from rcsss.envs.factories import default_fr3_hw_gripper_cfg, get_urdf_path
 
 logger = logging.getLogger(__name__)
+
+
+def info(ip: str, username: str, password: str, include_hand: bool = False):
+    with rcsss.control.fr3_desk.Desk.fci(ip, username, password):
+        f = rcsss.hw.FR3(ip)
+        config = rcsss.hw.FR3Config()
+        f.set_parameters(config)
+        print("Robot info:")
+        print("Current cartesian position:")
+        print(f.get_cartesian_position())
+        print("Current joint position:")
+        print(f.get_joint_position())
+        if include_hand:
+            config_hand = default_fr3_hw_gripper_cfg()
+            g = rcsss.hw.FrankaHand(ip, config_hand)
+            print("Gripper info:")
+            print("Current normalized width:")
+            print(g.get_normalized_width())
+
 
 # MAIN CLI
 main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")

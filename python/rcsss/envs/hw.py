@@ -3,6 +3,8 @@ from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
 from rcsss import hw
+from rcsss.control.fr3_desk import FCI, Desk
+from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import FR3Env
 
 _logger = logging.getLogger(__name__)
@@ -14,6 +16,12 @@ class FR3HW(gym.Wrapper):
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
         self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
+        user, pw = load_creds_fr3_desk()
+        self.fci = FCI(Desk(self.hw_robot.get_ip(), user, pw), unlock=False, lock_when_done=False)
+        self.fci.__enter__()
+
+    def close(self):
+        self.fci.__exit__()
 
     def step(self, action: Any) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict]:
         try:

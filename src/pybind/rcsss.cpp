@@ -357,6 +357,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_parameters", &rcs::hw::FR3::set_parameters, py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FR3::get_parameters)
       .def("get_state", &rcs::hw::FR3::get_state)
+      .def("get_ip", &rcs::hw::FR3::get_ip)
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,

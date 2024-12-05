@@ -46,12 +46,15 @@ class FR3 : public common::Robot {
   franka::Robot robot;
   FR3Config cfg;
   std::optional<std::shared_ptr<common::IK>> m_ik;
+  std::string m_ip;
 
  public:
   FR3(const std::string &ip,
       std::optional<std::shared_ptr<common::IK>> ik = std::nullopt,
       const std::optional<FR3Config> &cfg = std::nullopt);
   ~FR3() override;
+
+  std::string get_ip();
 
   bool set_parameters(const FR3Config &cfg);
 

@@ -17,7 +17,7 @@ namespace rcs {
 namespace hw {
 FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
          const std::optional<FR3Config> &cfg)
-    : robot(ip), m_ik(ik) {
+    : robot(ip), m_ik(ik), m_ip(ip) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true);
@@ -28,6 +28,8 @@ FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
 }
 
 FR3::~FR3() {}
+
+std::string FR3::get_ip() { return this->m_ip; }
 
 /**
  * @brief Set the parameters for the robot
