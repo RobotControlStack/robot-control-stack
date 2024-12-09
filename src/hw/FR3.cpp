@@ -84,6 +84,9 @@ void FR3::set_default_robot_behavior() {
 common::Pose FR3::get_cartesian_position() {
   franka::RobotState state = this->robot.readOnce();
   common::Pose x(state.O_T_EE);
+  // remove FrankaHandTCPOffset from the pose
+  x = x * common::Pose(common::FrankaHandTCPOffset()).inverse();
+  x = x * this->cfg.tcp_offset;
   return x;
 }
 
@@ -209,8 +212,8 @@ void FR3::set_cartesian_position_ik(const common::Pose &pose) {
     this->set_joint_position(joints.value());
   } else {
     // throw error
-    // throw std::runtime_error("IK failed");
-    std::cerr << "IK failed";
+    throw std::runtime_error("IK failed");
+    //std::cout << "IK failed";
   }
 }
 
