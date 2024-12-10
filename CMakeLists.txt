@@ -105,7 +105,7 @@ target_include_directories(mujoco_ui_lib INTERFACE ${MuJoCo_UI_DIR})
 #install(TARGETS pinocchio_default DESTINATION rcsss COMPONENT python_package)
 
 # Set the rpath to include the path where the libraries are installed
-set(CMAKE_INSTALL_RPATH "$ORIGIN")
+# set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
 FetchContent_MakeAvailable(libfranka rl pybind11)
 

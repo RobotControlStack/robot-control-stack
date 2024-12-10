@@ -6,4 +6,8 @@ set_target_properties(_core PROPERTIES
     INSTALL_RPATH "$ORIGIN;$ORIGIN/../mujoco"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
+set_target_properties(franka PROPERTIES
+    INSTALL_RPATH "$ORIGIN/../cmeel.prefix/lib"
+    INTERPROCEDURAL_OPTIMIZATION TRUE
+)
 install(TARGETS _core franka DESTINATION rcsss COMPONENT python_package)
