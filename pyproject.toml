@@ -23,7 +23,9 @@ dependencies = ["websockets>=11.0",
     "python-dotenv==1.0.1",
     "opencv-python~=4.10.0.84",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
-    "mujoco==3.2.6"
+    "mujoco==3.2.6",
+    # NOTE: Same for pinocchio (pin)
+    "pin==2.7.0"
 ]
 readme = "README.md"
 maintainers = [
