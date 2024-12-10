@@ -9,6 +9,6 @@ pytest==8.1.1
 commitizen~=3.28.0
 scikit-build-core>=0.3.3
 pybind11
-mujoco==3.1.5
+mujoco==3.2.6
 pin==2.7.0
 wheel
