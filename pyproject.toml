@@ -8,7 +8,7 @@ version = "0.3.1"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
     "requests~=2.31",
-    "numpy==2.0",
+    "numpy",
     "typer~=0.9",
     "pydantic~=2.6",
     "gymnasium~=0.29.1",
@@ -23,7 +23,9 @@ dependencies = ["websockets>=11.0",
     "python-dotenv==1.0.1",
     "opencv-python~=4.10.0.84",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
-    "mujoco==3.1.5"
+    "mujoco==3.2.6",
+    # NOTE: Same for pinocchio (pin)
+    "pin==2.7.0"
 ]
 readme = "README.md"
 maintainers = [
@@ -98,6 +100,7 @@ ignore = [
   "T201",    # print() used
   "PLR5501", # elif to reduce indentation
   "PT018",   # assertion should be broken down into multiple parts
+  "NPY002",
 ]
 
 [tool.pylint.format]

@@ -38,6 +38,8 @@ set(RL_BUILD_DEMOS OFF)
 set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
 set(RL_BUILD_EXTRAS OFF)
+set(BUILD_PYTHON_INTERFACE OFF)
+set(BUILD_DOCUMENTATION OFF)
 
 option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires GITLAB_MODELS_TOKEN to be set to a valid token wit read_api permissions" OFF)
 
@@ -48,10 +50,17 @@ find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
 
+#FetchContent_Declare(pinocchio
+#    OVERRIDE_FIND_PACKAGE
+#    GIT_REPOSITORY https://github.com/stack-of-tasks/pinocchio.git
+#    GIT_TAG v3.3.0
+#    GIT_PROGRESS TRUE
+#    EXCLUDE_FROM_ALL
+#)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.13.3
+    GIT_TAG 0.14.2
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
@@ -91,12 +100,19 @@ add_library(mujoco_ui_lib ${MuJoCo_UI_DIR}/glfw_adapter.cc ${MuJoCo_UI_DIR}/plat
 target_link_libraries(mujoco_ui_lib MuJoCo::MuJoCo glfw)
 target_include_directories(mujoco_ui_lib INTERFACE ${MuJoCo_UI_DIR})
 
+#FetchContent_MakeAvailable(pinocchio)
+#install(TARGETS pinocchio_parsers DESTINATION rcsss COMPONENT python_package)
+#install(TARGETS pinocchio_default DESTINATION rcsss COMPONENT python_package)
+
+# Set the rpath to include the path where the libraries are installed
+# set(CMAKE_INSTALL_RPATH "$ORIGIN")
+
 FetchContent_MakeAvailable(libfranka rl pybind11)
 
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
         include(download_scenes)
-        set(ref 77e8782a3488cbf01361d2322f02e75c0d820644)
+        set(ref b8234983a5e35e222c955f9145ac4cd129827a8e)
         FetchContent_Declare(
             scenes
             URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"

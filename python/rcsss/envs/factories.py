@@ -1,8 +1,11 @@
 import logging
 from os import PathLike
+from typing import Type
 
 import gymnasium as gym
+import numpy as np
 import rcsss
+from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
@@ -21,7 +24,13 @@ from rcsss.envs.base import (
     RelativeTo,
 )
 from rcsss.envs.hw import FR3HW
-from rcsss.envs.sim import CollisionGuard, FR3Sim
+from rcsss.envs.sim import (
+    CollisionGuard,
+    FR3Sim,
+    FR3SimplePickUpSimSuccessWrapper,
+    RandomCubePos,
+    SimWrapper,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,7 +52,9 @@ def default_fr3_hw_gripper_cfg():
     return gripper_cfg
 
 
-def default_realsense(name2id: dict[str, str]):
+def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
+    if name2id is None:
+        return None
     cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
     cam_cfg = RealSenseSetConfig(
         cameras=cameras,
@@ -132,6 +143,7 @@ def fr3_hw_env(
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
             sim_gui=True,
+            truncate_on_collision=False,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
@@ -179,6 +191,7 @@ def fr3_sim_env(
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
+    sim_wrapper: Type[SimWrapper] | None = None,
 ) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
     """
     Creates a simulation environment for the FR3 robot.
@@ -196,6 +209,8 @@ def fr3_sim_env(
         urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
             which requires a UTN compatible lab scene to be present.
         mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
+        sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
+            for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
 
     Returns:
         gym.Env: The configured simulation environment for the FR3 robot.
@@ -210,7 +225,7 @@ def fr3_sim_env(
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
-    env = FR3Sim(env, simulation)
+    env = FR3Sim(env, simulation, sim_wrapper)
 
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)
@@ -230,8 +245,85 @@ def fr3_sim_env(
             control_mode=control_mode,
             tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
             sim_gui=True,
+            truncate_on_collision=True,
         )
     if max_relative_movement is not None:
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
     return env
+
+
+class FR3Real(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        robot_ip: str,
+        control_mode: str = "xyzrpy",
+        delta_actions: bool = True,
+        camera_config: dict[str, str] | None = None,
+        gripper: bool = True,
+    ) -> gym.Env:
+        camera_set = default_realsense(camera_config)
+        return fr3_hw_env(
+            ip=robot_ip,
+            camera_set=camera_set,
+            control_mode=(
+                ControlMode.CARTESIAN_TRPY
+                if control_mode == "xyzrpy"
+                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
+            ),
+            robot_cfg=default_fr3_hw_robot_cfg(),
+            collision_guard=None,
+            gripper_cfg=default_fr3_hw_gripper_cfg() if gripper else None,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+        )
+
+
+class FR3SimplePickUpSim(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        render_mode: str = "human",
+        control_mode: str = "xyzrpy",
+        resolution: tuple[int, int] | None = None,
+        frame_rate: int = 10,
+        delta_actions: bool = True,
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {
+            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+            "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+            "side": SimCameraConfig(identifier="side_view", type=int(CameraType.fixed)),
+            "right_side": SimCameraConfig(identifier="right_side", type=int(CameraType.fixed)),
+            "left_side": SimCameraConfig(identifier="left_side", type=int(CameraType.fixed)),
+            "front": SimCameraConfig(identifier="front", type=int(CameraType.fixed)),
+        }
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+        env_rel = fr3_sim_env(
+            control_mode=(
+                ControlMode.CARTESIAN_TRPY
+                if control_mode == "xyzrpy"
+                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
+            ),
+            robot_cfg=default_fr3_sim_robot_cfg(),
+            collision_guard=False,
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=camera_cfg,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+            mjcf="fr3_simple_pick_up",
+            sim_wrapper=RandomCubePos,
+        )
+        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
+        if render_mode == "human":
+            env_rel.get_wrapper_attr("sim").open_gui()
+
+        return env_rel
