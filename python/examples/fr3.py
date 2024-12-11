@@ -1,10 +1,8 @@
 import logging
 import sys
-from time import sleep
 
 import numpy as np
 import rcsss
-from dotenv import dotenv_values
 from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
@@ -83,7 +81,7 @@ def main():
                 "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
             }
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
-            camera_set = SimCameraSet(simulation, cam_cfg)
+            camera_set = SimCameraSet(simulation, cam_cfg) # noqa: F841
             simulation.open_gui()
 
         else:

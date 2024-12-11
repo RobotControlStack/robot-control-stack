@@ -4,7 +4,6 @@ import gymnasium as gym
 import mujoco
 import numpy as np
 from rcsss._core.common import Pose
-from rcsss._core.sim import FR3State
 from rcsss.envs.base import GripperWrapper
 
 logger = logging.getLogger(__name__)
@@ -34,9 +33,7 @@ class PickUpDemo:
         return waypoints
 
     def step(self, action: np.ndarray) -> dict:
-        re = self.env.step(action)
-        s: FR3State = self.env.unwrapped.robot.get_state()
-        return re[0]
+        return self.env.step(action)[0]
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
         end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
@@ -47,8 +44,7 @@ class PickUpDemo:
         # this does not work if the object is flipped
         goal_pose *= Pose(translation=[0, 0, delta_up], quaternion=[1, 0, 0, 0])
 
-        waypoints = self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
-        return waypoints
+        return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(1, len(waypoints)):

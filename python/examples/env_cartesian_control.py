@@ -1,6 +1,5 @@
 import logging
 
-from dotenv import dotenv_values
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance

@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import numpy as np
 import pytest
 import rcsss
@@ -7,23 +6,22 @@ from rcsss.envs.factories import (
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     fr3_sim_env,
-    get_urdf_path,
 )
 
 from rcsss.envs.base import ControlMode, TRPYDictType, GripperDictType, TQuartDictType, JointsDictType
 
 
-@pytest.fixture
+@pytest.fixture()
 def cfg():
     return default_fr3_sim_robot_cfg()
 
 
-@pytest.fixture
+@pytest.fixture()
 def gripper_cfg():
     return default_fr3_sim_gripper_cfg()
 
 
-@pytest.fixture
+@pytest.fixture()
 def cam_cfg():
     return default_mujoco_cameraset_cfg()
 
@@ -203,7 +201,7 @@ class TestSimEnvsTquart(TestSimEnvs):
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            camera_set_cfg=None,
+            camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
