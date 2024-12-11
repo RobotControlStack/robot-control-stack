@@ -130,7 +130,7 @@ class UDPViveActionServer(threading.Thread):
                             )
 
                             # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
-                            rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
+                            rot_z = np.arctan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.arctan2(
                                 x_axis.translation()[1], x_axis.translation()[0]
                             )
                             rot_z -= np.pi / 2
