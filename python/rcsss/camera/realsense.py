@@ -285,6 +285,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 Intrinsics of the corresponding device
         """
         device_intrinsics: dict[str, dict[rs.stream, rs.intrinsics]] = {}
+        device_intrinsics_coeff: dict[str, rs.distortion] = {}
         for name, serial in names_to_serials.items():
             device = self._enabled_devices[serial]
             frames = {
@@ -293,12 +294,14 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 for stream in device.pipeline_profile.get_streams()
             }
             device_intrinsics[name] = {}
+            device_intrinsics_coeff[name] = {}
             for key, value in frames.items():
                 intrinsics = value.get_profile().as_video_stream_profile().get_intrinsics()
                 device_intrinsics[name][key] = np.array(
                     [[intrinsics.fx, 0, intrinsics.ppx], [0, intrinsics.fy, intrinsics.ppy], [0, 0, 1]]
                 )
-        return device_intrinsics
+                device_intrinsics_coeff[name][key] = np.array(intrinsics.coeffs)
+        return device_intrinsics, device_intrinsics_coeff
     
     def get_device_resolutions(self, names_to_serials: dict[str, str]):
         """
