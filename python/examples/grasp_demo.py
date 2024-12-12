@@ -83,7 +83,8 @@ class PickUpDemo:
 
 
 def main():
-    env = gym.make("rcs/SimplePickUpSim-v0", render_mode="human", delta_actions=True)
+    # env = gym.make("rcs/SimplePickUpSim-v0", render_mode="human", delta_actions=True)
+    env = gym.make("rcs/SimplePickUpSimDigitHand-v0", render_mode="human", delta_actions=True)
     env.reset()
     controller = PickUpDemo(env)
     controller.pickup("yellow_box_geom")
