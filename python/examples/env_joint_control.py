@@ -45,6 +45,7 @@ python -m rcsss fr3 shutdown <ip>
 
 
 def main():
+    resource_manger: FCI | DummyResourceManager
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)

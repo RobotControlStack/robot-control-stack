@@ -1,10 +1,11 @@
 import logging
+from typing import Any, cast
 
 import gymnasium as gym
 import mujoco
 import numpy as np
 from rcsss._core.common import Pose
-from rcsss.envs.base import GripperWrapper
+from rcsss.envs.base import FR3Env, GripperWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -13,9 +14,10 @@ logger.setLevel(logging.INFO)
 class PickUpDemo:
     def __init__(self, env: gym.Env):
         self.env = env
-        self.home_pose = self.env.unwrapped.robot.get_cartesian_position()
+        self.unwrapped: FR3Env = cast(FR3Env, self.env.unwrapped)
+        self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
-    def _action(self, pose: Pose, gripper: float) -> np.ndarray:
+    def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
         return {"xyzrpy": pose.xyzrpy(), "gripper": gripper}
 
     def get_object_pose(self, geom_name) -> Pose:
@@ -32,17 +34,17 @@ class PickUpDemo:
             waypoints.append(start_pose.interpolate(end_pose, t))
         return waypoints
 
-    def step(self, action: np.ndarray) -> dict:
+    def step(self, action: dict) -> dict:
         return self.env.step(action)[0]
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
-        end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
+        end_eff_pose = self.unwrapped.robot.get_cartesian_position()
 
         goal_pose = self.get_object_pose(geom_name=geom_name)
         # goal pose is above the object and gripper coordinate must flip z-axis (end effector base rotation is [1, 0, 0, 0])
         # be careful we define identity quaternion as as [0, 0, 0, 1]
         # this does not work if the object is flipped
-        goal_pose *= Pose(translation=[0, 0, delta_up], quaternion=[1, 0, 0, 0])
+        goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))
 
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
@@ -68,7 +70,7 @@ class PickUpDemo:
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def move_home(self):
-        end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
+        end_eff_pose = self.unwrapped.robot.get_cartesian_position()
         waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=10)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 

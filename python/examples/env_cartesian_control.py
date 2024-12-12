@@ -44,6 +44,7 @@ python -m rcsss fr3 shutdown <ip>
 
 
 def main():
+    resource_manger: FCI | DummyResourceManager
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
@@ -59,7 +60,7 @@ def main():
                 collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=0.5,
-                relative_to=RelativeTo.LAST_STEP
+                relative_to=RelativeTo.LAST_STEP,
             )
         else:
             env_rel = fr3_sim_env(
@@ -69,12 +70,12 @@ def main():
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
-                relative_to=RelativeTo.LAST_STEP
+                relative_to=RelativeTo.LAST_STEP,
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
         env_rel.reset()
-        print(env_rel.unwrapped.robot.get_cartesian_position())
+        print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
 
         for _ in range(10):
             for _ in range(10):
