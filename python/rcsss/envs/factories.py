@@ -18,8 +18,6 @@ from rcsss.envs.base import (
     ControlMode,
     FR3Env,
     GripperWrapper,
-    LimitedJointsRelDictType,
-    ObsArmsGrCam,
     RelativeActionSpace,
     RelativeTo,
 )
@@ -186,7 +184,7 @@ def fr3_sim_env(
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
     sim_wrapper: Type[SimWrapper] | None = None,
-) -> gym.Env[ObsArmsGrCam, LimitedJointsRelDictType]:
+) -> gym.Env:
     """
     Creates a simulation environment for the FR3 robot.
 

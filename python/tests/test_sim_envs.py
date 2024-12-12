@@ -1,29 +1,35 @@
-from collections import OrderedDict
+from typing import cast
+
 import numpy as np
 import pytest
 import rcsss
+from rcsss.envs.base import (
+    ControlMode,
+    FR3Env,
+    GripperDictType,
+    JointsDictType,
+    TQuartDictType,
+    TRPYDictType,
+)
 from rcsss.envs.factories import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     fr3_sim_env,
-    get_urdf_path,
 )
 
-from rcsss.envs.base import ControlMode, TRPYDictType, GripperDictType, TQuartDictType, JointsDictType
 
-
-@pytest.fixture
+@pytest.fixture()
 def cfg():
     return default_fr3_sim_robot_cfg()
 
 
-@pytest.fixture
+@pytest.fixture()
 def gripper_cfg():
     return default_fr3_sim_gripper_cfg()
 
 
-@pytest.fixture
+@pytest.fixture()
 def cam_cfg():
     return default_mujoco_cameraset_cfg()
 
@@ -146,14 +152,15 @@ class TestSimEnvsTRPY(TestSimEnvs):
             max_relative_movement=0.5,
         )
         obs, _ = env.reset()
-        p1 = env.unwrapped.robot.get_joint_position()
+        unwrapped = cast(FR3Env, env.unwrapped)
+        p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["xyzrpy"][0] = 0.3
         obs["xyzrpy"][2] = -0.2
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
-        p2 = env.unwrapped.robot.get_joint_position()
+        p2 = unwrapped.robot.get_joint_position()
         self.assert_collision(info)
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -203,7 +210,7 @@ class TestSimEnvsTquart(TestSimEnvs):
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            camera_set_cfg=None,
+            camera_set_cfg=cam_cfg,
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
@@ -247,14 +254,15 @@ class TestSimEnvsTquart(TestSimEnvs):
             max_relative_movement=None,
         )
         obs, _ = env.reset()
-        p1 = env.unwrapped.robot.get_joint_position()
+        unwrapped = cast(FR3Env, env.unwrapped)
+        p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["tquart"][0] = 0.3
         obs["tquart"][2] = -0.2
         collision_action = TQuartDictType(tquart=obs["tquart"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
-        p2 = env.unwrapped.robot.get_joint_position()
+        p2 = unwrapped.robot.get_joint_position()
         self.assert_collision(info)
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -321,12 +329,13 @@ class TestSimEnvsJoints(TestSimEnvs):
             max_relative_movement=None,
         )
         env.reset()
-        p1 = env.unwrapped.robot.get_joint_position()
+        unwrapped = cast(FR3Env, env.unwrapped)
+        p1 = unwrapped.robot.get_joint_position()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
         collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
         collision_act.update(GripperDictType(gripper=1))
         _, _, _, _, info = env.step(collision_act)
-        p2 = env.unwrapped.robot.get_joint_position()
+        p2 = unwrapped.robot.get_joint_position()
 
         self.assert_collision(info)
         # assure that the robot did not move

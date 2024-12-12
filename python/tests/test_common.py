@@ -10,7 +10,7 @@ class TestPose:
     This class tests the methods of the Pose class and its multiple constructors.
     """
 
-    @pytest.fixture
+    @pytest.fixture()
     def identity_pose(self):
         """This fixture can be reused wherever if no transformation pose is needed"""
         return common.Pose()

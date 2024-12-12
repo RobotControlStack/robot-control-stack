@@ -1,4 +1,4 @@
-PYSRC = python/rcsss
+PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
 
