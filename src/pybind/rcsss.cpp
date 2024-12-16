@@ -61,6 +61,11 @@ class PyRobot : public rcs::common::Robot {
                            get_joint_position, );
   }
 
+  rcs::common::Vector7d get_joint_velocity() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
+                           get_joint_velocity, );
+  }
+
   void move_home() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
@@ -233,6 +238,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_joint_position", &rcs::common::Robot::set_joint_position,
            py::arg("q"), py::call_guard<py::gil_scoped_release>())
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)
+      .def("get_joint_velocity", &rcs::common::Robot::get_joint_velocity)
       .def("move_home", &rcs::common::Robot::move_home,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Robot::reset)

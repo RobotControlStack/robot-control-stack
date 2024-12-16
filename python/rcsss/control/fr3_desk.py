@@ -44,11 +44,13 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
-    #TODO:: add offset to the robot pose
+    # TODO:: add offset to the robot pose
     with Desk.fci(ip, username, password):
         f = rcsss.hw.FR3(ip)
         config = rcsss.hw.FR3Config()
-        config.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * rcsss.common.Pose(translation=[0, 0, 0.068])
+        config.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * rcsss.common.Pose(
+            translation=[0, 0, 0.068]
+        )
         f.set_parameters(config)
         print("Robot info:")
         print("Current cartesian position:")

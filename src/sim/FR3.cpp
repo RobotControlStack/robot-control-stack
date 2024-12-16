@@ -150,6 +150,14 @@ common::Vector7d FR3::get_joint_position() {
   return q;
 }
 
+common::Vector7d FR3::get_joint_velocity() {
+  common::Vector7d q;
+  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
+    q[i] = this->sim->d->qvel[this->sim->m->jnt_dofadr[this->ids.joints[i]]];
+  }
+  return q;
+}
+
 std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose& pose) {

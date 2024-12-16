@@ -290,7 +290,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
             device = self._enabled_devices[serial]
             frames = {
                 # mysterious 7 is to remove the prefix "stream."
-                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames() 
+                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames()
                 for stream in device.pipeline_profile.get_streams()
             }
             device_intrinsics[name] = {}
@@ -302,7 +302,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 )
                 device_intrinsics_coeff[name][key] = np.array(intrinsics.coeffs)
         return device_intrinsics, device_intrinsics_coeff
-    
+
     def get_device_resolutions(self, names_to_serials: dict[str, str]):
         """
         Get the intrinsics of the imager using its frame delivered by the realsense device
@@ -325,7 +325,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
             device = self._enabled_devices[serial]
             frames = {
                 # mysterious 7 is to remove the prefix "stream."
-                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames() 
+                str(stream.stream_type())[7:]: device.pipeline.wait_for_frames()
                 for stream in device.pipeline_profile.get_streams()
             }
             device_resolutions[name] = {}
@@ -334,6 +334,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 resolution = [intrinsics.width, intrinsics.height]
                 device_resolutions[name][key] = resolution
         return device_resolutions
+
     def get_depth_to_color_extrinsics(self, frames):
         """
         Get the extrinsics between the depth imager 1 and the color imager using its frame delivered by the realsense device
