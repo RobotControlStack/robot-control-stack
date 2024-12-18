@@ -6,7 +6,7 @@ import site
 from gymnasium import register
 from rcsss import camera, control, envs, sim
 from rcsss._core import __version__, common, hw
-from rcsss.envs.factories import FR3Real, FR3SimplePickUpSim, FR3SimplePickUpSimDigitHand
+from rcsss.envs.factories import FR3Real, FR3SimplePickUpSim, FR3SimplePickUpSimDigitHand, FR3LabPickUpSimDigitHand
 
 # available mujoco scenes
 scenes = {
@@ -25,6 +25,10 @@ register(
 register(
     id="rcs/SimplePickUpSimDigitHand-v0",
     entry_point=FR3SimplePickUpSimDigitHand(),
+)
+register(
+    id="rcs/FR3LabPickUpSimDigitHand-v0",
+    entry_point=FR3LabPickUpSimDigitHand(),
 )
 
 register(

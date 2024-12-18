@@ -29,7 +29,7 @@ from rcsss.envs.sim import (
     FR3Sim,
     FR3SimplePickUpSimSuccessWrapper,
     RandomCubePos,
-    SimWrapper,
+    SimWrapper, RandomCubePosLab,
 )
 import numpy as np
 logger = logging.getLogger(__name__)
@@ -371,6 +371,51 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
             relative_to=RelativeTo.LAST_STEP,
             mjcf="fr3_simple_pick_up_digit_hand",
             sim_wrapper=RandomCubePos,
+        )
+        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
+        if render_mode == "human":
+            env_rel.get_wrapper_attr("sim").open_gui()
+
+        return env_rel
+
+
+class FR3LabPickUpSimDigitHand(EnvCreator):
+    def __call__(  # type: ignore
+            self,
+            render_mode: str = "human",
+            control_mode: str = "xyzrpy",
+            resolution: tuple[int, int] | None = None,
+            frame_rate: int = 10,
+            delta_actions: bool = True,
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {"eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+                   "eye-in-hand_1": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed))}
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+
+        env_rel = fr3_sim_env(
+            control_mode=(
+                ControlMode.CARTESIAN_TRPY
+                if control_mode == "xyzrpy"
+                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
+            ),
+            robot_cfg=digit_fr3_sim_robot_cfg(),
+            collision_guard=False,
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=camera_cfg,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+            mjcf="lab_simple_pick_up_digit_hand",
+            sim_wrapper=RandomCubePosLab,
         )
         env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
         if render_mode == "human":

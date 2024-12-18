@@ -40,7 +40,7 @@ class PickUpDemo:
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
         end_eff_pose = self.env.unwrapped.robot.get_cartesian_position()
-
+        # @todo goal_pose is with respective to the robot base which is different in empty world scene and lab scene?
         goal_pose = self.get_object_pose(geom_name=geom_name)
         # goal pose is above the object and gripper coordinate must flip z-axis (end effector base rotation is [1, 0, 0, 0])
         # be careful we define identity quaternion as as [0, 0, 0, 1]
@@ -83,8 +83,8 @@ class PickUpDemo:
 
 
 def main():
-    # env = gym.make("rcs/SimplePickUpSim-v0", render_mode="human", delta_actions=True)
-    env = gym.make("rcs/SimplePickUpSimDigitHand-v0", render_mode="human", delta_actions=True)
+    # available envs: "rcs/SimplePickUpSim-v0", "rcs/FR3LabPickUpSimDigitHand-v0", "SimplePickUpSimDigitHand-v0"
+    env = gym.make("rcs/FR3LabPickUpSimDigitHand-v0", render_mode="human", delta_actions=True)
     env.reset()
     controller = PickUpDemo(env)
     controller.pickup("yellow_box_geom")

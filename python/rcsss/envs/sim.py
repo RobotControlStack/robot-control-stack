@@ -188,6 +188,23 @@ class RandomCubePos(SimWrapper):
         return obs, info
 
 
+class RandomCubePosLab(SimWrapper):
+    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+
+        iso_cube = [0.0, 0.0, 0.826]
+        pos_x = iso_cube[0] + np.random.random() * 0.2 + 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 + 0.1
+        pos_z = 0.826
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+
+        return obs, info
+
+
 class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
     """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
 
