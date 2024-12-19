@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 import pyrealsense2 as rs
 import rcsss
 import rcsss.control.fr3_desk
+import rcsss.control.server
 import typer
 from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
@@ -184,6 +185,15 @@ def shutdown(
     """Shuts the robot down"""
     user, pw = load_creds_fr3_desk()
     rcsss.control.fr3_desk.shutdown(ip, user, pw)
+
+
+@fr3_app.command()
+def serve(
+    port: Annotated[int, typer.Option(help="Port of the server")] = "18861",
+    botip: Annotated[str, typer.Option(help="IP of the robot")] = "192.168.103.1",
+):
+    """Starts the server for remote control."""
+    rcsss.control.server.Server(server_port=port, robot_ip=botip).start()
 
 
 @fr3_app.command()

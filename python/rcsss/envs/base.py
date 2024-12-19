@@ -146,6 +146,7 @@ class ControlMode(Enum):
 class RobotInstance(Enum):
     HARDWARE = auto()
     SIMULATION = auto()
+    REMOTE = auto()
 
 
 class FR3Env(gym.Env):
