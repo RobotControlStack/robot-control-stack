@@ -134,6 +134,9 @@ testpaths = [
     "python/tests",
 ]
 
+[project.scripts]
+rcs = "rcsss.cli.main:main"
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 tag_format = "v$version"
