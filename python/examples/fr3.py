@@ -1,10 +1,8 @@
 import logging
 import sys
-from time import sleep
 
 import numpy as np
 import rcsss
-from dotenv import dotenv_values
 from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
@@ -57,6 +55,7 @@ def main():
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
+    resource_manger: FCI | DummyResourceManager
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
@@ -64,9 +63,12 @@ def main():
         resource_manger = DummyResourceManager()
 
     with resource_manger:
+        robot: rcsss.common.Robot
+        gripper: rcsss.common.Gripper
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
+            assert urdf_path is not None
             ik = rcsss.common.IK(urdf_path)
             robot = rcsss.sim.FR3(simulation, "0", ik)
             cfg = sim.FR3Config()
@@ -74,8 +76,8 @@ def main():
             cfg.realtime = False
             robot.set_parameters(cfg)
 
-            gripper_cfg = sim.FHConfig()
-            gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+            gripper_cfg_sim = sim.FHConfig()
+            gripper = sim.FrankaHand(simulation, "0", gripper_cfg_sim)
 
             # add camera to have a rendering gui
             cameras = {
@@ -83,23 +85,24 @@ def main():
                 "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
             }
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
-            camera_set = SimCameraSet(simulation, cam_cfg)
+            camera_set = SimCameraSet(simulation, cam_cfg)  # noqa: F841
             simulation.open_gui()
 
         else:
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
+            assert urdf_path is not None
             ik = rcsss.common.IK(urdf_path)
-            robot = rcsss.hw.FR3(ROBOT_IP, str(rcsss.scenes["lab"].parent / "fr3.urdf"), ik)
+            robot = rcsss.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
             robot_cfg.controller = IKController.robotics_library
             robot.set_parameters(robot_cfg)
 
-            gripper_cfg = rcsss.hw.FHConfig()
-            gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-            gripper_cfg.speed = 0.1
-            gripper_cfg.force = 30
-            gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg)
+            gripper_cfg_hw = rcsss.hw.FHConfig()
+            gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
+            gripper_cfg_hw.speed = 0.1
+            gripper_cfg_hw.force = 30
+            gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
             input("the robot is going to move, press enter whenever you are ready")
 
         # move to home position and open gripper
@@ -115,7 +118,7 @@ def main():
         )
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         # 5cm in y direction
@@ -124,7 +127,7 @@ def main():
         )
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         # 5cm in z direction
@@ -133,7 +136,7 @@ def main():
         )
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         # rotate the arm 90 degrees around the inverted y and z axis
@@ -143,7 +146,7 @@ def main():
         robot.set_cartesian_position(new_pose)
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
@@ -157,7 +160,7 @@ def main():
         )
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         # grasp the object
@@ -172,7 +175,7 @@ def main():
         )
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
             simulation.step_until_convergence()
-            logger.debug(f"IK success: {robot.get_state().ik_success}")
+            logger.debug(f"IK success: {robot.get_state().ik_success}")  # type: ignore
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:

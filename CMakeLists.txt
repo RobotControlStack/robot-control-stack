@@ -38,6 +38,8 @@ set(RL_BUILD_DEMOS OFF)
 set(RL_BUILD_RL_SG OFF)
 set(RL_BUILD_TESTS OFF)
 set(RL_BUILD_EXTRAS OFF)
+set(BUILD_PYTHON_INTERFACE OFF)
+set(BUILD_DOCUMENTATION OFF)
 
 option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires GITLAB_MODELS_TOKEN to be set to a valid token wit read_api permissions" OFF)
 
@@ -51,7 +53,7 @@ find_package(MuJoCo REQUIRED)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.13.3
+    GIT_TAG 0.14.2
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )

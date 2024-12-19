@@ -77,7 +77,7 @@ class Composed(AdvancedNestedSpaceWithLambda, SimpleSpace): ...
 class TestGetSpace:
 
     def test_simple_space(self):
-        get_space(SimpleSpace) == gym.spaces.Dict(
+        assert get_space(SimpleSpace) == gym.spaces.Dict(
             {
                 "my_int": gym.spaces.Discrete(1),
                 "my_float": gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
@@ -196,4 +196,4 @@ class TestGetSpace:
         )
 
     def test_get_space_keys(self):
-        get_space_keys(SimpleSpace) == {"my_int", "my_float"}
+        assert set(get_space_keys(SimpleSpace)) == {"my_int", "my_float"}
