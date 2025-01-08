@@ -129,6 +129,11 @@ def info(
     user, pw = load_creds_fr3_desk()
     rcsss.control.fr3_desk.info(ip, user, pw, include_gripper)
 
+@fr3_app.command()
+def run_server():
+    """Starts the server for remote control."""
+    from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
+    rcsss.control.server.Server(robot_instance=RobotInstance.SIMULATION).start()
 
 @fr3_app.command()
 def lock(
