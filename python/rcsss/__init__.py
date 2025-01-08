@@ -3,6 +3,7 @@
 import pathlib
 import site
 from typing import TypedDict
+from warnings import warn
 
 from gymnasium import register
 from rcsss import camera, control, envs, sim
@@ -24,12 +25,15 @@ scenes: dict[str, SceneData] = {
     }
     for path in (pathlib.Path(site.getsitepackages()[0]) / "rcsss" / "scenes").glob("*")
 }
-# available mujoco scenes
-for scene in scenes.values():
-    assert scene["xml"].exists()
-    assert scene["mjb"].exists()
-    for urdf in scene["urdfs"].values():
-        assert urdf.exists()
+
+for _ in scenes.values():
+    if not _["xml"].exists():
+        warn(f"Missing XML scene file {str(_['xml'])}")
+    if not _["mjb"].exists():
+        warn(f"Missing mjb scene file {str(_['mjb'])}")
+    for urdf in _["urdfs"].values():
+        if not urdf.exists():
+            warn(f"Missing urdf file {str(urdf)}")
 
 # make submodules available
 __all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs"]

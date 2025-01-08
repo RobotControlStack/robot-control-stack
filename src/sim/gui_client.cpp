@@ -1,5 +1,4 @@
 #include <mujoco/mjui.h>
-#include <mujoco/mujoco.h>
 
 #include <functional>
 #include <iostream>
@@ -73,28 +72,14 @@ void GuiClient::render_loop() {
   this->platform_ui->state().userdata = this;
   this->platform_ui->state().nrect = 1;
   this->platform_ui->SetEventCallback(event_callback);
-  auto last_cam_distance = this->cam.distance;
   while (!this->platform_ui->ShouldCloseWindow()) {
     this->platform_ui->PollEvents();
-    if (this->cam.distance != last_cam_distance) {
-      std::cout << "cam.distance after PollEvents: " << this->cam.distance
-                << std::endl;
-    }
     this->shm.state_lock.lock_sharable();
     mj_setState(this->m, this->d, this->shm.state.ptr, MJ_PHYSICS_SPEC);
     this->shm.state_lock.unlock_sharable();
     mj_step(this->m, this->d);
-    if (this->cam.distance != last_cam_distance) {
-      std::cout << "cam.distance after step: " << this->cam.distance
-                << std::endl;
-    }
     mjv_updateScene(this->m, this->d, &this->opt, NULL, &this->cam, mjCAT_ALL,
                     &this->scn);
-    if (this->cam.distance != last_cam_distance) {
-      std::cout << "cam.distance after update_scene: " << this->cam.distance
-                << std::endl;
-    }
-    last_cam_distance = this->cam.distance;
     std::tie(viewport.width, viewport.height) =
         this->platform_ui->GetFramebufferSize();
     mjr_render(viewport, &this->scn, &this->platform_ui->mjr_context());
@@ -114,20 +99,10 @@ void event_callback(mjuiState* state) {
   mjrRect viewport = {0, 0, 0, 0};
   std::tie(viewport.width, viewport.height) =
       client->platform_ui->GetFramebufferSize();
-  auto reldy = -0.02 * state->sy;
   switch (state->type) {
     case mjEVENT_SCROLL:
-      std::cout << "cam.distance: " << client->cam.distance << std::endl;
-      std::cout << "m->stat.extent: " << client->m->stat.extent << std::endl;
-      std::cout << "reldy: " << reldy << std::endl;
-      std::cout << mju_log(1 +
-                           client->cam.distance / client->m->stat.extent / 3) *
-                       reldy * 9 * client->m->stat.extent
-                << std::endl;
       mjv_moveCamera(client->m, mjMOUSE_ZOOM, 0, -0.02 * state->sy,
                      &client->scn, &client->cam);
-      std::cout << "cam.distance after cam move: " << client->cam.distance
-                << std::endl;
     case mjEVENT_MOVE:
       // determine action based on mouse button
       mjtMouse action;
