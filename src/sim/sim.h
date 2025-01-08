@@ -80,6 +80,7 @@ class Sim {
   bool is_converged();
   void step_until_convergence();
   void step(size_t k);
+  void reset_callbacks();
   void reset();
   /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the
    * the requested interval. We invoke a callback if the elapsed simulation time
