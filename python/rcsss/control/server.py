@@ -19,7 +19,7 @@ from tqdm import tqdm
 from rpyc.utils.classic import obtain
 import copy
 
-from rpyc.utils.server import ThreadedServer
+from rpyc.utils.server import ThreadedServer, OneShotServer
 from bagbuddy.bagbuddy.utils import get_calib_dir
 from bagbuddy.robot.robot_base import BaseRobot
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
@@ -90,16 +90,14 @@ class Server(rpyc.Service):
         return self.obs
 
     def start(self):
-        t = ThreadedServer(self, port=18861)
+        t = OneShotServer(self, port=18861)
         t.start()
 
 
 if __name__ == "__main__":
-    from rpyc.utils.server import ThreadedServer
-
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting demo")
-    t = ThreadedServer(Server, port=18861, protocol_config = rpyc.core.protocol.DEFAULT_CONFIG)
+    t = OneShotServer(Server, port=18861, protocol_config = rpyc.core.protocol.DEFAULT_CONFIG)
     t.start()
     logger.info("Server started")
     t.close()
