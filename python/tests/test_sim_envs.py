@@ -57,6 +57,20 @@ class TestSimEnvs:
 class TestSimEnvsTRPY(TestSimEnvs):
     """This class is for testing TRPY sim env functionalities"""
 
+    def test_reset(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Test reset functionality.
+        """
+        # TODO:
+        # - test initial pose after reset.
+        # - test initial gripper config.
+        env = fr3_sim_env(
+            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
+        )
+        # Test double reset. Regression test. A lot can go wrong when resetting.
+        env.reset()
+        env.reset()
+
     def test_zero_action_trpy(self, cfg):
         """
         Test that a zero action does not change the state significantly
@@ -169,6 +183,24 @@ class TestSimEnvsTRPY(TestSimEnvs):
 class TestSimEnvsTquart(TestSimEnvs):
     """This class is for testing Tquart sim env functionalities"""
 
+    def test_reset(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Test reset functionality.
+        """
+        # TODO:
+        # - test initial pose after reset.
+        # - test initial gripper config.
+        env = fr3_sim_env(
+            ControlMode.CARTESIAN_TQuart,
+            cfg,
+            gripper_cfg=gripper_cfg,
+            camera_set_cfg=cam_cfg,
+            max_relative_movement=None,
+        )
+        # Test double reset. Regression test. A lot can go wrong when resetting.
+        env.reset()
+        env.reset()
+
     def test_non_zero_action_tquart(self, cfg):
         """
         Test that a zero action does not change the state significantly in the tquart configuration
@@ -270,6 +302,20 @@ class TestSimEnvsTquart(TestSimEnvs):
 
 class TestSimEnvsJoints(TestSimEnvs):
     """This class is for testing Joints sim env functionalities"""
+
+    def test_reset(self, cfg, gripper_cfg, cam_cfg):
+        """
+        Test reset functionality.
+        """
+        # TODO:
+        # - test initial pose after reset.
+        # - test initial gripper config.
+        env = fr3_sim_env(
+            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
+        )
+        # Test double reset. Regression test. A lot can go wrong when resetting.
+        env.reset()
+        env.reset()
 
     def test_zero_action_joints(self, cfg):
         """
