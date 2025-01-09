@@ -12,8 +12,8 @@ from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import RobotInstance
 from rcsss.envs.factories import get_urdf_path
 
-ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_IP = "192.168.100.1"
+ROBOT_INSTANCE = RobotInstance.HARDWARE
 # replace this with a path to a robot urdf file if you dont have the utn models
 URDF_PATH = None
 

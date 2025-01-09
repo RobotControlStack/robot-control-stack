@@ -130,12 +130,6 @@ def info(
     rcsss.control.fr3_desk.info(ip, user, pw, include_gripper)
 
 @fr3_app.command()
-def run_server():
-    """Starts the server for remote control."""
-    from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-    rcsss.control.server.Server(robot_instance=RobotInstance.SIMULATION).start()
-
-@fr3_app.command()
 def lock(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
 ):
@@ -195,7 +189,7 @@ def shutdown(
 @fr3_app.command()
 def serve(
     port: Annotated[int, typer.Option(help="Port of the server")] = "18861",
-    botip: Annotated[str, typer.Option(help="IP of the robot")] = "192.168.103.1",
+    botip: Annotated[str, typer.Option(help="IP of the robot")] = "192.168.100.1",
 ):
     """Starts the server for remote control."""
     rcsss.control.server.Server(server_port=port, robot_ip=botip).start()

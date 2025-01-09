@@ -17,8 +17,8 @@ from rcsss.envs.factories import (
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_IP = "192.168.100.1"
+ROBOT_INSTANCE = RobotInstance.HARDWARE
 
 
 """
