@@ -57,7 +57,18 @@ class Server(rpyc.Service):
             
         self.env_rel = env_rel
         
-        self.obs, self.info = env_rel.reset()
+        utn_gripper_offset = -0.068 # length of the fingers in meters
+        
+        # transformation: 0.2 in x direction, no rotation
+        self.fingertip_T_tcp = np.array([
+            [1,0,0,utn_gripper_offset],
+            [0,1,0,0],
+            [0,0,1,0],
+            [0,0,0,1],
+        ])
+        logger.warning("utn finger dimensions hard coded in pyhton code!")
+
+        self.reset()
         print("Server started")
         print("Waiting for commands ...")
 
@@ -66,7 +77,25 @@ class Server(rpyc.Service):
         print("Executing step.")
         action = obtain(action)
         
+        xyzrpy = action["xyzrpy"]
+        
+        requested_pose = Pose(rpy_vector=xyzrpy[3:], translation=xyzrpy[:3])
+        world_T_fingertip = requested_pose.pose_matrix() # we want fingertips here
+        world_T_tcp = world_T_fingertip @ self.fingertip_T_tcp # thus tcp needs to be here
+        
+        action["xyzrpy"] = Pose(pose_matrix=world_T_tcp).xyzrpy()
+        
+        # execute the action
         self.obs, reward, terminated, truncated, info = self.env_rel.step(action)
+        
+        # get the new pose and correct it to be in the fingertip frame
+        new_xyzrpy = self.env_rel.get_obs()["xyzrpy"]
+        new_pose = Pose(rpy_vector=new_xyzrpy[3:], translation=new_xyzrpy[:3])
+        new_world_T_tcp = new_pose.pose_matrix() # we want fingertips here
+        new_world_T_fingertip = new_world_T_tcp @ np.linalg.inv(self.fingertip_T_tcp) # thus tcp needs to be here
+        
+        new_xyzrpy = Pose(pose_matrix=new_world_T_fingertip).xyzrpy()
+        self.obs["xyzrpy"] = new_xyzrpy
         
         return self.obs, reward, terminated, truncated, info
 
@@ -78,7 +107,7 @@ class Server(rpyc.Service):
         #return None, None
         
     @rpyc.exposed
-    def get_obs(self):
+    def get_obs(self):        
         return self.obs
 
     def start(self):

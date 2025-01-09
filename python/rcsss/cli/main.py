@@ -190,9 +190,17 @@ def shutdown(
 def serve(
     port: Annotated[int, typer.Option(help="Port of the server")] = "18861",
     botip: Annotated[str, typer.Option(help="IP of the robot")] = "192.168.100.1",
+    robot_instance: Annotated[str, typer.Option(help="Mode of the robot: hardware or software")] = "hardware",
 ):
     """Starts the server for remote control."""
-    rcsss.control.server.Server(server_port=port, robot_ip=botip).start()
+    if robot_instance == "hardware":
+        robot_instance = rcsss.envs.base.RobotInstance.HARDWARE
+    elif robot_instance == "software":
+        robot_instance = rcsss.envs.base.RobotInstance.SIMULATION
+    else:
+        raise ValueError(f"Unknown mode: {robot_instance}")    
+    
+    rcsss.control.server.Server(server_port=port, robot_ip=botip, robot_instance=robot_instance).start()
 
 
 @fr3_app.command()
