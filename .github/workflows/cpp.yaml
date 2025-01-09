@@ -26,7 +26,7 @@ jobs:
       - name: Clang build
         run: make clangcompile
       - name: Clang Tidy
-        run: clang-tidy-15 -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
+        run: clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
 
   build_gcc:
     runs-on: ubuntu-latest

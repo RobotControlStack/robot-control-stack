@@ -51,6 +51,8 @@ int SimCameraSet::buffer_size() {
 }
 void SimCameraSet::clear_buffer() {
   std::lock_guard<std::mutex> lock(buffer_lock);
+  // when we clear the buffer, there is no last image timestep
+  this->last_ts = 0;
   buffer.clear();
 }
 
