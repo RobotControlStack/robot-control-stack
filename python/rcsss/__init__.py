@@ -28,12 +28,12 @@ scenes: dict[str, SceneData] = {
 
 for _ in scenes.values():
     if not _["xml"].exists():
-        warn(f"Missing XML scene file {str(_['xml'])}")
+        warn(f"Missing XML scene file {_['xml']}", stacklevel=2)
     if not _["mjb"].exists():
-        warn(f"Missing mjb scene file {str(_['mjb'])}")
-    for urdf in _["urdfs"].values():
-        if not urdf.exists():
-            warn(f"Missing urdf file {str(urdf)}")
+        warn(f"Missing mjb scene file {_['mjb']}", stacklevel=2)
+    for __ in _["urdfs"].values():
+        if not __.exists():
+            warn(f"Missing urdf file {__}", stacklevel=2)
 
 # make submodules available
 __all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs"]
