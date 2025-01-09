@@ -28,8 +28,8 @@ jobs:
   pythonpackage:
     runs-on: ubuntu-latest
     env:
-      CC: clang-15
-      CXX: clang++-15
+      CC: clang
+      CXX: clang++
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
