@@ -17,6 +17,7 @@ logger.setLevel(logging.INFO)
  need to find a separate place to put this function into
 """
 
+
 def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
     if urdf_path is None and "lab" in rcsss.scenes:
         urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
@@ -32,7 +33,8 @@ def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: boo
 
 def digit_fr3_sim_robot_cfg(tcp_path: str = "../models/scenes/fr3_simple_pick_up_digit_hand/tcp_offset.json"):
     if tcp_path is None:
-        raise ValueError("No tcp_path was provided.")
+        msg = "No tcp_path was provided."
+        raise Exception(msg)
     with open(tcp_path, "r") as f:
         data = json.load(f)
     tcp_offset = data["offset_translation"]
@@ -245,7 +247,7 @@ class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
 
     EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
 
-    def __init__(self, env, robot2_cam_pose:list[int] | None = None):
+    def __init__(self, env, robot2_cam_pose: list[int] | None = None):
         super().__init__(env)
         self.robot2_cam_pose = robot2_cam_pose
         self.unwrapped: FR3Env
