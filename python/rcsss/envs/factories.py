@@ -1,3 +1,4 @@
+import json
 import logging
 from os import PathLike
 from typing import Type
@@ -27,7 +28,7 @@ from rcsss.envs.sim import (
     FR3Sim,
     FR3SimplePickUpSimSuccessWrapper,
     RandomCubePos,
-    SimWrapper,
+    SimWrapper, RandomCubePosLab,
 )
 
 logger = logging.getLogger(__name__)
@@ -155,6 +156,17 @@ def default_fr3_sim_robot_cfg():
     cfg.realtime = False
     return cfg
 
+def digit_fr3_sim_robot_cfg(tcp_path: str = "../models/scenes/fr3_simple_pick_up_digit_hand/tcp_offset.json"):
+    if tcp_path is None:
+        raise ValueError("No tcp_path was provided.")
+    with open(tcp_path, "r") as f:
+        data = json.load(f)
+    tcp_offset = data["offset_translation"]
+    cfg = sim.FR3Config()
+    pose_offset = rcsss.common.Pose(translation=np.array(tcp_offset))
+    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
+    cfg.realtime = False
+    return cfg
 
 def default_fr3_sim_gripper_cfg():
     return sim.FHConfig()
@@ -317,5 +329,96 @@ class FR3SimplePickUpSim(EnvCreator):
         env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
+
+        return env_rel
+
+
+class FR3SimplePickUpSimDigitHand(EnvCreator):
+    def __call__(  # type: ignore
+            self,
+            render_mode: str = "human",
+            control_mode: str = "xyzrpy",
+            resolution: tuple[int, int] | None = None,
+            frame_rate: int = 10,
+            delta_actions: bool = True,
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {"eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed))}
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+
+        env_rel = fr3_sim_env(
+            control_mode=(
+                ControlMode.CARTESIAN_TRPY
+                if control_mode == "xyzrpy"
+                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
+            ),
+            robot_cfg=digit_fr3_sim_robot_cfg(),
+            collision_guard=False,
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=camera_cfg,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+            mjcf="fr3_simple_pick_up_digit_hand",
+            sim_wrapper=RandomCubePos,
+        )
+        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
+        if render_mode == "human":
+            env_rel.get_wrapper_attr("sim").open_gui()
+
+        return env_rel
+
+
+class FR3LabPickUpSimDigitHand(EnvCreator):
+    def __call__(  # type: ignore
+            self,
+            render_mode: str = "human",
+            control_mode: str = "xyzrpy",
+            resolution: tuple[int, int] | None = None,
+            frame_rate: int = 10,
+            delta_actions: bool = True,
+            robot2_cam_pose: list[int] | None = None
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {"eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+                   "eye-in-hand_1": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed))}
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+
+        env_rel = fr3_sim_env(
+            control_mode=(
+                ControlMode.CARTESIAN_TRPY
+                if control_mode == "xyzrpy"
+                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
+            ),
+            robot_cfg=digit_fr3_sim_robot_cfg(),
+            collision_guard=False,
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=camera_cfg,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+            mjcf="lab_simple_pick_up_digit_hand",
+            sim_wrapper=RandomCubePosLab,
+        )
+        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel, robot2_cam_pose=robot2_cam_pose)
+        sim = env_rel.get_wrapper_attr("sim")
+        if render_mode == "human":
+            sim.open_gui()
 
         return env_rel
