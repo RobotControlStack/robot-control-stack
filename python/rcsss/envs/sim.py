@@ -1,4 +1,6 @@
+import json
 import logging
+from os import PathLike
 from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
@@ -6,6 +8,39 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+"""
+ @todo there is a cyclic import issue when getting the below two functions from factories, currently I am duplicating this, but 
+ need to find a separate place to put this function into
+"""
+
+def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
+    if urdf_path is None and "lab" in rcsss.scenes:
+        urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
+        assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
+        logger.info("Using automatic found urdf.")
+    elif urdf_path is None and not allow_none_if_not_found:
+        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path to use simulation or collision guard."
+        raise ValueError(msg)
+    elif urdf_path is None:
+        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
+    return str(urdf_path) if urdf_path is not None else None
+
+
+def digit_fr3_sim_robot_cfg(tcp_path: str = "../models/scenes/fr3_simple_pick_up_digit_hand/tcp_offset.json"):
+    if tcp_path is None:
+        raise ValueError("No tcp_path was provided.")
+    with open(tcp_path, "r") as f:
+        data = json.load(f)
+    tcp_offset = data["offset_translation"]
+    cfg = sim.FR3Config()
+    pose_offset = rcsss.common.Pose(translation=np.array(tcp_offset))
+    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
+    cfg.realtime = False
+    return cfg
 
 
 class SimWrapper(gym.Wrapper):
@@ -188,13 +223,31 @@ class RandomCubePos(SimWrapper):
         return obs, info
 
 
+class RandomCubePosLab(SimWrapper):
+    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+
+        iso_cube = [0.0, 0.0, 0.826]
+        pos_x = iso_cube[0] + np.random.random() * 0.2 + 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 + 0.1
+        pos_z = 0.826
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+
+        return obs, info
+
+
 class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
     """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
 
     EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
 
-    def __init__(self, env):
+    def __init__(self, env, robot2_cam_pose:list[int] | None = None):
         super().__init__(env)
+        self.robot2_cam_pose = robot2_cam_pose
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
         self.sim = env.get_wrapper_attr("sim")
@@ -214,3 +267,18 @@ class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
         reward = -diff_cube_home - diff_ee_cube
 
         return obs, reward, success, truncated, info
+
+    def reset(self):
+        out = super().reset()
+        if self.robot2_cam_pose is not None:
+            urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
+            assert urdf_path is not None
+            # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
+            ik2 = rcsss.common.IK(urdf_path)
+            robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
+            cfg2 = digit_fr3_sim_robot_cfg()
+            cfg2.realtime = False
+            robot2.set_parameters(cfg2)
+            robot2.set_joint_position(np.array(self.robot2_cam_pose))
+            self.sim.step_until_convergence()
+        return out
