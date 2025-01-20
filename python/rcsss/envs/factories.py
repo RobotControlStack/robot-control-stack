@@ -1,4 +1,3 @@
-import json
 import logging
 from os import PathLike
 from typing import Type
@@ -31,6 +30,7 @@ from rcsss.envs.sim import (
     RandomCubePosLab,
     SimWrapper,
 )
+from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -66,19 +66,6 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
         enable_ir_emitter=False,
     )
     return RealSenseCameraSet(cam_cfg)
-
-
-def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
-    if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
-        assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None and not allow_none_if_not_found:
-        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path to use simulation or collision guard."
-        raise ValueError(msg)
-    elif urdf_path is None:
-        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return str(urdf_path) if urdf_path is not None else None
 
 
 def fr3_hw_env(
@@ -151,27 +138,6 @@ def fr3_hw_env(
     return env
 
 
-def default_fr3_sim_robot_cfg():
-    cfg = sim.FR3Config()
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    cfg.realtime = False
-    return cfg
-
-
-def digit_fr3_sim_robot_cfg(tcp_path: str | None = "../models/scenes/fr3_simple_pick_up_digit_hand/tcp_offset.json"):
-    if tcp_path is None:
-        msg = "No tcp_path was provided."
-        raise Exception(msg)
-    with open(tcp_path, "r") as f:
-        data = json.load(f)
-    tcp_offset = data["offset_translation"]
-    cfg = sim.FR3Config()
-    pose_offset = rcsss.common.Pose(translation=np.array(tcp_offset))
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
-    cfg.realtime = False
-    return cfg
-
-
 def default_fr3_sim_gripper_cfg():
     return sim.FHConfig()
 
@@ -227,8 +193,10 @@ def fr3_sim_env(
     assert urdf_path is not None
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-
-    simulation = sim.Sim(rcsss.scenes.get(str(mjcf), mjcf))
+    mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
+    simulation = sim.Sim(mjb_file)
+    # setting the tcp offset
+    set_tcp_offset(robot_cfg, simulation)
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
@@ -365,7 +333,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
                 if control_mode == "xyzrpy"
                 else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
             ),
-            robot_cfg=digit_fr3_sim_robot_cfg(),
+            robot_cfg=default_fr3_sim_robot_cfg(),
             collision_guard=False,
             gripper_cfg=default_fr3_sim_gripper_cfg(),
             camera_set_cfg=camera_cfg,
@@ -413,7 +381,7 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
                 if control_mode == "xyzrpy"
                 else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
             ),
-            robot_cfg=digit_fr3_sim_robot_cfg(),
+            robot_cfg=default_fr3_sim_robot_cfg(),
             collision_guard=False,
             gripper_cfg=default_fr3_sim_gripper_cfg(),
             camera_set_cfg=camera_cfg,

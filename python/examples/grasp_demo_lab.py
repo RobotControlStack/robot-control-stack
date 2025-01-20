@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import Any, cast
 
 import gymnasium as gym
@@ -25,7 +26,10 @@ class PickUpDemo:
         data = self.env.get_wrapper_attr("sim").data
 
         geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
-        return Pose(translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3))
+        obj_pose_world_coordinates = Pose(
+            translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
+        )
+        return self.env.unwrapped.robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:
         waypoints = []
@@ -34,10 +38,10 @@ class PickUpDemo:
             waypoints.append(start_pose.interpolate(end_pose, t))
         return waypoints
 
-    def step(self, action: dict) -> dict:
-        return self.env.step(action)[0]
+    def step(self, action: np.ndarray) -> dict:
+        return self.env.step(action)
 
-    def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
+    def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
 
         goal_pose = self.get_object_pose(geom_name=geom_name)
@@ -53,6 +57,13 @@ class PickUpDemo:
             # calculate delta action
             delta_action = waypoints[i] * waypoints[i - 1].inverse()
             obs = self.step(self._action(delta_action, gripper))
+            ik_success = obs[-1]["ik_success"]
+            if not obs[-1]["ik_success"]:
+                trans_source, rot_source = waypoints[i - 1].translation(), waypoints[i - 1].rotation_rpy().as_vector()
+                trans_dest, rot_des = waypoints[i].translation(), waypoints[i].rotation_rpy().as_vector()
+                msg = (f"ik success: {ik_success} when attempting to move from trans: {trans_source}, rot: {rot_source}\n "
+                       f"to trans: {trans_dest} rot: {rot_des}!")
+                logger.warning(msg)
         return obs
 
     def approach(self, geom_name: str):
@@ -81,7 +92,18 @@ class PickUpDemo:
 
 
 def main():
-    env = gym.make("rcs/SimplePickUpSim-v0", render_mode="human", delta_actions=True)
+    # env = gym.make(
+    #     "rcs/SimplePickUpSimDigitHand-v0",
+    #     render_mode="human",
+    #     delta_actions=True
+    # )
+
+    env = gym.make(
+        "rcs/FR3LabPickUpSimDigitHand-v0",
+        render_mode="human",
+        delta_actions=True,
+        robot2_cam_pose=[0.1243549, -1.4711298, 1.2246249, -1.9944441, 0.0872650, 1.3396115, 2.1275465],
+    )
     env.reset()
     controller = PickUpDemo(env)
     controller.pickup("yellow_box_geom")

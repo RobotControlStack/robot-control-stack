@@ -1,6 +1,4 @@
-import json
 import logging
-from os import PathLike
 from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
@@ -8,6 +6,7 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
+from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -18,31 +17,7 @@ logger.setLevel(logging.INFO)
 """
 
 
-def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
-    if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
-        assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None and not allow_none_if_not_found:
-        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path to use simulation or collision guard."
-        raise ValueError(msg)
-    elif urdf_path is None:
-        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return str(urdf_path) if urdf_path is not None else None
 
-
-def digit_fr3_sim_robot_cfg(tcp_path: str = "../models/scenes/fr3_simple_pick_up_digit_hand/tcp_offset.json"):
-    if tcp_path is None:
-        msg = "No tcp_path was provided."
-        raise Exception(msg)
-    with open(tcp_path, "r") as f:
-        data = json.load(f)
-    tcp_offset = data["offset_translation"]
-    cfg = sim.FR3Config()
-    pose_offset = rcsss.common.Pose(translation=np.array(tcp_offset))
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
-    cfg.realtime = False
-    return cfg
 
 
 class SimWrapper(gym.Wrapper):
@@ -278,9 +253,10 @@ class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
             # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
             ik2 = rcsss.common.IK(urdf_path)
             robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
-            cfg2 = digit_fr3_sim_robot_cfg()
-            cfg2.realtime = False
-            robot2.set_parameters(cfg2)
+            # setting the tcp offset
+            robot_cfg = default_fr3_sim_robot_cfg()
+            set_tcp_offset(robot_cfg, self.sim)
+            robot2.set_parameters(robot_cfg)
             robot2.set_joint_position(np.array(self.robot2_cam_pose))
             self.sim.step_until_convergence()
         return out
