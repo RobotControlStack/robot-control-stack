@@ -6,6 +6,7 @@ import gymnasium as gym
 import mujoco
 import numpy as np
 from rcsss._core.common import Pose
+import rcsss.envs.base
 from rcsss.envs.base import FR3Env, GripperWrapper
 
 logger = logging.getLogger(__name__)
@@ -43,20 +44,21 @@ class PickUpDemo:
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
-
         goal_pose = self.get_object_pose(geom_name=geom_name)
-        # goal pose is above the object and gripper coordinate must flip z-axis (end effector base rotation is [1, 0, 0, 0])
-        # be careful we define identity quaternion as as [0, 0, 0, 1]
-        # this does not work if the object is flipped
         goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))
-
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(1, len(waypoints)):
             # calculate delta action
-            delta_action = waypoints[i] * waypoints[i - 1].inverse()
-            obs = self.step(self._action(delta_action, gripper))
+            # delta_action = waypoints[i] * waypoints[i - 1].inverse()
+            pose = rcsss.common.Pose(translation=waypoints[i].translation(),
+                                     rpy_vector=np.array([-3.14159265e+00,  1.57009246e-16, 0]))
+
+            # act = self._action(delta_action, gripper)
+            act = self._action(pose, gripper)
+
+            obs = self.step(act)
             ik_success = obs[-1]["ik_success"]
             if not obs[-1]["ik_success"]:
                 trans_source, rot_source = waypoints[i - 1].translation(), waypoints[i - 1].rotation_rpy().as_vector()
@@ -64,20 +66,21 @@ class PickUpDemo:
                 msg = (f"ik success: {ik_success} when attempting to move from trans: {trans_source}, rot: {rot_source}\n "
                        f"to trans: {trans_dest} rot: {rot_des}!")
                 logger.warning(msg)
+                assert False, msg
         return obs
 
     def approach(self, geom_name: str):
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=5)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
     def grasp(self, geom_name: str):
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0, num_waypoints=15)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
         self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=20)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def move_home(self):
@@ -101,7 +104,7 @@ def main():
     env = gym.make(
         "rcs/FR3LabPickUpSimDigitHand-v0",
         render_mode="human",
-        delta_actions=True,
+        delta_actions=False,
         robot2_cam_pose=[0.1243549, -1.4711298, 1.2246249, -1.9944441, 0.0872650, 1.3396115, 2.1275465],
     )
     env.reset()

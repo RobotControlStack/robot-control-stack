@@ -245,18 +245,50 @@ class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
 
         return obs, reward, success, truncated, info
 
+
+class FR3LabPickUpSimSuccessWrapper(gym.Wrapper):
+    """
+    Wrapper to check if the cube is successfully picked up in the LabPickupSim environments.
+    This is also used to handle the reset of the second robot.
+    """
+
+    EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
+
+    def __init__(self, env, robot2_cam_pose: list[int] | None = None):
+        super().__init__(env)
+        self.robot2_cam_pose = robot2_cam_pose
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+
+    def step(self, action: dict[str, Any]):
+        obs, reward, done, truncated, info = super().step(action)
+
+        success = (
+            self.sim.data.joint("yellow-box-joint").qpos[2] > 0.3
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
+        )
+        diff_ee_cube = np.linalg.norm(
+            self.sim.data.joint("yellow-box-joint").qpos[:3]
+            - self.unwrapped.robot.get_cartesian_position().translation()
+        )
+        diff_cube_home = np.linalg.norm(self.sim.data.joint("yellow-box-joint").qpos[:3] - self.EE_HOME)
+        reward = -diff_cube_home - diff_ee_cube
+
+        return obs, reward, success, truncated, info
+
     def reset(self):
         out = super().reset()
-        if self.robot2_cam_pose is not None:
-            urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
-            ik2 = rcsss.common.IK(urdf_path)
-            robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
-            # setting the tcp offset
-            robot_cfg = default_fr3_sim_robot_cfg()
-            set_tcp_offset(robot_cfg, self.sim)
-            robot2.set_parameters(robot_cfg)
-            robot2.set_joint_position(np.array(self.robot2_cam_pose))
-            self.sim.step_until_convergence()
+        # if self.robot2_cam_pose is not None:
+        #     urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
+        #     assert urdf_path is not None
+        #     # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
+        #     ik2 = rcsss.common.IK(urdf_path)
+        #     robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
+        #     # setting the tcp offset
+        #     robot_cfg = default_fr3_sim_robot_cfg()
+        #     set_tcp_offset(robot_cfg, self.sim)
+        #     robot2.set_parameters(robot_cfg)
+        #     robot2.set_joint_position(np.array(self.robot2_cam_pose))
+        #     self.sim.step_until_convergence()
         return out
