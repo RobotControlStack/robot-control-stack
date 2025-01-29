@@ -27,8 +27,7 @@ from rcsss.envs.sim import (
     FR3Sim,
     FR3SimplePickUpSimSuccessWrapper,
     RandomCubePos,
-    RandomCubePosLab,
-    SimWrapper, FR3LabPickUpSimSuccessWrapper,
+    SimWrapper, FR3LabPickUpSimSuccessWrapper, Robot2Wrapper
 )
 from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
 
@@ -388,9 +387,10 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
             mjcf="lab_simple_pick_up_digit_hand",
-            sim_wrapper=RandomCubePosLab,
+            sim_wrapper=RandomCubePos,
         )
-        env_rel = FR3LabPickUpSimSuccessWrapper(env_rel, robot2_cam_pose=robot2_cam_pose)
+        env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
+        env_rel = Robot2Wrapper(env_rel, robot2_cam_pose)
         sim = env_rel.get_wrapper_attr("sim")
         if render_mode == "human":
             sim.open_gui()

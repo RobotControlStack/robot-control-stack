@@ -85,7 +85,7 @@ class PickUpDemo:
 
     def move_home(self):
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
-        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=10)
+        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def pickup(self, geom_name: str):
