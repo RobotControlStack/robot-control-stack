@@ -27,7 +27,7 @@ from rcsss.envs.sim import (
     FR3Sim,
     FR3SimplePickUpSimSuccessWrapper,
     RandomCubePos,
-    SimWrapper, FR3LabPickUpSimSuccessWrapper, Robot2Wrapper
+    SimWrapper, FR3LabPickUpSimSuccessWrapper, CamRobotWrapper
 )
 from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
 
@@ -194,6 +194,11 @@ def fr3_sim_env(
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
     mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
     simulation = sim.Sim(mjb_file)
+    """
+    todo, without a simulation step, sim->d is not populated with the correct values in the robot. 
+    check robot base without this to confirm.
+    """
+    simulation.step(1)
     # setting the tcp offset
     set_tcp_offset(robot_cfg, simulation)
     ik = rcsss.common.IK(urdf_path)
@@ -387,10 +392,10 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
             mjcf="lab_simple_pick_up_digit_hand",
-            sim_wrapper=RandomCubePos,
+            sim_wrapper=RandomCubePos
         )
         env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
-        env_rel = Robot2Wrapper(env_rel, robot2_cam_pose)
+        env_rel = CamRobotWrapper(env_rel, robot2_cam_pose)
         sim = env_rel.get_wrapper_attr("sim")
         if render_mode == "human":
             sim.open_gui()

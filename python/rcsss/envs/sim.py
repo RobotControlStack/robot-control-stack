@@ -20,6 +20,34 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
+class CamRobotWrapper(gym.Wrapper):
+    def __init__(self, env, cam_robot_pose: list[int] | None = None):
+        super().__init__(env)
+        self.cam_robot_pose = cam_robot_pose
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+        # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
+        urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
+        assert urdf_path is not None
+        ik2 = rcsss.common.IK(urdf_path)
+        self.robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
+        # setting the tcp offset
+        robot_cfg = default_fr3_sim_robot_cfg()
+        set_tcp_offset(robot_cfg, self.sim)
+        self.robot2.set_parameters(robot_cfg)
+        self.robot2.reset()
+
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
+        # self.robot2.set_joint_position(np.array(self.cam_robot_pose))
+        obs, info = super().reset(seed=seed, options=options)
+
+        if self.cam_robot_pose is not None:
+            self.robot2.set_joint_position(np.array(self.cam_robot_pose))
+            self.sim.step_until_convergence()
+        return obs, info
+
+
 class FR3Sim(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         if sim_wrapper is not None:
@@ -181,55 +209,35 @@ class RandomCubePos(SimWrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
-        iso_cube = [0.498, 0.0, 0.226]
+        self.sim.step(1)
+
         scene_type = self.get_scene_type()
+        iso_cube = [0.498, 0.0, 0.226]
         if scene_type == "empty_world":
             pos_z = 0.03
         elif scene_type == "lab":
-            # iso_cube = [0.498, 0.0, 0.226]
+            iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+            iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
             pos_z = 0.826
-        pos_x = iso_cube[0] + 0.2 #np.random.random() * 2 - 0.1
-        pos_y = iso_cube[1] + 0.2 #np.random.random() * 2 - 0.1
 
-        self.sim.data.joint("yellow-box-joint").qpos[:3] = [0, 0, 0]
+        pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
+
+
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
 
         return obs, info
 
     def get_scene_type(self):
         # @todo this gives me [0, 0, 0]
-        # robot_base_z = self.unwrapped.robot.get_base_pose_in_world_coordinates().translation()[2]
-        # if robot_base_z >= 0.8:
-        #     scene_type = "lab"
-        # elif 0 < robot_base_z < 0.8:
-        #     scene_type = "empty_world"
-        # else:
-        #     raise Exception(f"Invalid robot base z {robot_base_z}!")
-        scene_type = "lab"
+        robot_base_z = self.unwrapped.robot.get_base_pose_in_world_coordinates().translation()[2]
+        if robot_base_z >= 0.8:
+            scene_type = "lab"
+        elif 0 < robot_base_z < 0.8:
+            scene_type = "empty_world"
+        else:
+            raise Exception(f"Invalid robot base z {robot_base_z}!")
         return scene_type
-
-
-class Robot2Wrapper(gym.Wrapper):
-    def __init__(self, env, robot2_pose: list[int] | None = None):
-        super().__init__(env)
-        self.robot2_pose = robot2_pose
-        self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim = env.get_wrapper_attr("sim")
-
-    def reset(self):
-        out = super().reset()
-        if self.robot2_pose is not None:
-            urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
-            ik2 = rcsss.common.IK(urdf_path)
-            robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
-            # setting the tcp offset
-            robot_cfg = default_fr3_sim_robot_cfg()
-            set_tcp_offset(robot_cfg, self.sim)
-            robot2.set_parameters(robot_cfg)
-            robot2.set_joint_position(np.array(self.robot2_pose))
-            self.sim.step_until_convergence()
 
 
 class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
