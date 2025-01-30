@@ -20,13 +20,12 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
-class CamRobotWrapper(gym.Wrapper):
-    def __init__(self, env, cam_robot_pose: list[int] | None = None):
-        super().__init__(env)
+class CamRobotWrapper(SimWrapper):
+    def __init__(self, env: gym.Env, simulation: sim.Sim, cam_robot_pose: list[int] | None = None):
+        super().__init__(env, simulation)
         self.cam_robot_pose = cam_robot_pose
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim = env.get_wrapper_attr("sim")
         # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
         urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
         assert urdf_path is not None
@@ -34,24 +33,57 @@ class CamRobotWrapper(gym.Wrapper):
         self.robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
         # setting the tcp offset
         robot_cfg = default_fr3_sim_robot_cfg()
-        set_tcp_offset(robot_cfg, self.sim)
+        # set_tcp_offset(cfg, self.sim)
         self.robot2.set_parameters(robot_cfg)
-        self.robot2.reset()
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
-        # self.robot2.set_joint_position(np.array(self.cam_robot_pose))
-        obs, info = super().reset(seed=seed, options=options)
+        # ik = rcsss.common.IK(urdf_path)
+        # robot = rcsss.sim.FR3(simulation, "0", ik)
+        # cfg = sim.FR3Config()
+        # cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+        # cfg.realtime = False
+        # robot.set_parameters(cfg)
 
-        if self.cam_robot_pose is not None:
-            self.robot2.set_joint_position(np.array(self.cam_robot_pose))
-            self.sim.step_until_convergence()
-        return obs, info
+        # self.robot2.reset()
+        # self.set_pose()
+
+    def set_pose(self):
+        # to_state = np.array(self.cam_robot_pose)
+        # from_state = np.array(self.robot2.get_joint_position())
+        # angle_step = 0.01
+        # max_dist = np.max(np.abs(to_state - from_state))
+        # num_steps = math.ceil(max_dist / angle_step)
+        # timesteps = np.array([0, 1])
+        # if num_steps > 1:
+        #     timesteps = np.linspace(0, 1, num_steps)
+        # traj = [to_state * t + from_state * (1 - t) for t in timesteps]
+        # for joint_pos in traj:
+        #     self.robot2.set_joint_position(np.array(joint_pos))
+        #     self.sim.step_until_convergence()
+        self.robot2.set_joint_position(np.array(self.cam_robot_pose))
+        self.sim.step_until_convergence()
+        print(f"{self.robot2.get_joint_position() = }")
+
+    # def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
+    #     # self.robot2.set_joint_position(np.array(self.cam_robot_pose))
+    #     obs, info = super().reset(seed=seed, options=options)
+    #
+    #     if self.cam_robot_pose is not None:
+    #         self.robot2.set_joint_position(np.array(self.cam_robot_pose))
+    #         self.sim.step_until_convergence()
+    #         print(f"joint angles: {self.robot2.get_joint_position()}")
+    #         print(f"IK success: {self.robot2.get_state().ik_success}")  # type: ignore
+    #         print(f"sim converged: {self.sim.is_converged()}")
+    #         print(f"collision: {self.robot2.get_state().collision}")
+    #         print(f"{self.robot2.get_joint_position() = }")
+    #     return obs, info
 
 
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
+    def __init__(self, env, simulation: sim.Sim, sim_wrapper: list[Type[SimWrapper]] | None = None):
+        self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
-            env = sim_wrapper(env, simulation)
+            for wrapper_i in sim_wrapper:
+                env = wrapper_i(env, simulation)
         super().__init__(env)
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
@@ -74,6 +106,9 @@ class FR3Sim(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
+        # reset robot 2 here
+        self.sim_wrapper[1](self.env, self.sim).set_pose()
+        # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
         return obs, info

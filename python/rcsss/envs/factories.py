@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from os import PathLike
 from typing import Type
 
@@ -164,7 +165,7 @@ def fr3_sim_env(
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
-    sim_wrapper: Type[SimWrapper] | None = None,
+    sim_wrapper: list[Type[SimWrapper]] | None = None,
 ) -> gym.Env:
     """
     Creates a simulation environment for the FR3 robot.
@@ -196,7 +197,7 @@ def fr3_sim_env(
     simulation = sim.Sim(mjb_file)
     """
     todo, without a simulation step, sim->d is not populated with the correct values in the robot. 
-    check robot base without this to confirm.
+    check robot base world coordinates without this line to confirm.
     """
     simulation.step(1)
     # setting the tcp offset
@@ -391,11 +392,10 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             camera_set_cfg=camera_cfg,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf="lab_simple_pick_up_digit_hand",
-            sim_wrapper=RandomCubePos
+            mjcf="lab",
+            sim_wrapper=[RandomCubePos, partial(CamRobotWrapper, cam_robot_pose=robot2_cam_pose)],
         )
         env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
-        env_rel = CamRobotWrapper(env_rel, robot2_cam_pose)
         sim = env_rel.get_wrapper_attr("sim")
         if render_mode == "human":
             sim.open_gui()
