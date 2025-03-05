@@ -29,3 +29,9 @@ composition of environment wrappers for adding features.
 For example, the collision checker depicted in the above figure is
 implemented as a wrapper that checks motion commands
 in simulation and filters them to prevent collisions.
+
+```{toctree}
+:maxdepth: 1
+
+wrappers.md
+```
