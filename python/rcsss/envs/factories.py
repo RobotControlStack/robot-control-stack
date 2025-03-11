@@ -200,7 +200,7 @@ def fr3_sim_env(
         relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
         urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
             which requires a UTN compatible lab scene to be present.
-        mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
+        mjcf (str | PathLike): Path to the MuJoCo scene XML file. Defaults to "fr3_empty_world".
         sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
             for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
 

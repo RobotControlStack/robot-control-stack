@@ -1,7 +1,7 @@
 # Wrappers
 
 ```
-Warning: 
+Note: 
 This content has not yet been proof read!
 ```
 

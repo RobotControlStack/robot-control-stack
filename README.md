@@ -66,8 +66,10 @@ If the python bindings in the C++ code have changed you might need to regenerate
 make stubgen
 ```
 
-### TO build the documentation locally
+### To build the documentation locally
 ```
 cd docs
 sphinx-build -M html ./source/ ./build
 ```
+
+docs/build/html/index.html will the final document

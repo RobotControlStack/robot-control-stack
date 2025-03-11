@@ -12,5 +12,3 @@ pybind11
 mujoco==3.2.6
 pin==2.7.0
 wheel
-pydata-sphinx-theme==0.16.1
-myst-parser==4.0.1

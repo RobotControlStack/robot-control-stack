@@ -26,8 +26,7 @@ real-world robot control.
 ```{toctree}
 :maxdepth: 1
 
-getting_started/getting_started.md
-architecture/rcs_architecture.md
+user_guide/user_guide.md
 ```
 
    
