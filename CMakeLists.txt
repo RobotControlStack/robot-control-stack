@@ -53,7 +53,7 @@ find_package(MuJoCo REQUIRED)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.14.2
+    GIT_TAG 0.15.0
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
