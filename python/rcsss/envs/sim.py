@@ -6,7 +6,6 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
-from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -20,70 +19,11 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
-class CamRobotWrapper(SimWrapper):
-    def __init__(self, env: gym.Env, simulation: sim.Sim, cam_robot_pose: list[int] | None = None):
-        super().__init__(env, simulation)
-        self.cam_robot_pose = cam_robot_pose
-        self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        # In this experiment, we use the second robot as a camera stand for the main robot performing the Pickup
-        urdf_path = get_urdf_path(None, allow_none_if_not_found=False)
-        assert urdf_path is not None
-        ik2 = rcsss.common.IK(urdf_path)
-        self.robot2 = rcsss.sim.FR3(self.sim, "1", ik2)
-        # setting the tcp offset
-        robot_cfg = default_fr3_sim_robot_cfg()
-        # set_tcp_offset(cfg, self.sim)
-        self.robot2.set_parameters(robot_cfg)
-
-        # ik = rcsss.common.IK(urdf_path)
-        # robot = rcsss.sim.FR3(simulation, "0", ik)
-        # cfg = sim.FR3Config()
-        # cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-        # cfg.realtime = False
-        # robot.set_parameters(cfg)
-
-        # self.robot2.reset()
-        # self.set_pose()
-
-    def set_pose(self):
-        # to_state = np.array(self.cam_robot_pose)
-        # from_state = np.array(self.robot2.get_joint_position())
-        # angle_step = 0.01
-        # max_dist = np.max(np.abs(to_state - from_state))
-        # num_steps = math.ceil(max_dist / angle_step)
-        # timesteps = np.array([0, 1])
-        # if num_steps > 1:
-        #     timesteps = np.linspace(0, 1, num_steps)
-        # traj = [to_state * t + from_state * (1 - t) for t in timesteps]
-        # for joint_pos in traj:
-        #     self.robot2.set_joint_position(np.array(joint_pos))
-        #     self.sim.step_until_convergence()
-        self.robot2.set_joint_position(np.array(self.cam_robot_pose))
-        self.sim.step_until_convergence()
-        print(f"{self.robot2.get_joint_position() = }")
-
-    # def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
-    #     # self.robot2.set_joint_position(np.array(self.cam_robot_pose))
-    #     obs, info = super().reset(seed=seed, options=options)
-    #
-    #     if self.cam_robot_pose is not None:
-    #         self.robot2.set_joint_position(np.array(self.cam_robot_pose))
-    #         self.sim.step_until_convergence()
-    #         print(f"joint angles: {self.robot2.get_joint_position()}")
-    #         print(f"IK success: {self.robot2.get_state().ik_success}")  # type: ignore
-    #         print(f"sim converged: {self.sim.is_converged()}")
-    #         print(f"collision: {self.robot2.get_state().collision}")
-    #         print(f"{self.robot2.get_joint_position() = }")
-    #     return obs, info
-
-
 class FR3Sim(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: list[Type[SimWrapper]] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
-            for wrapper_i in sim_wrapper:
-                env = wrapper_i(env, simulation)
+            env = sim_wrapper(env, simulation)
         super().__init__(env)
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
@@ -106,8 +46,6 @@ class FR3Sim(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
-        # reset robot 2 here
-        self.sim_wrapper[1](self.env, self.sim).set_pose()
         # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
@@ -238,41 +176,43 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         )
 
 
-class RandomCubePos(SimWrapper):
-    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+class RandomCubePosLab(SimWrapper):
+    """Wrapper to randomly place cube in the lab environments."""
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
 
-        scene_type = self.get_scene_type()
         iso_cube = [0.498, 0.0, 0.226]
-        if scene_type == "empty_world":
-            pos_z = 0.03
-        elif scene_type == "lab":
-            iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
-            iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
-            pos_z = 0.826
-
+        iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
+        pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
-
 
         self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
 
         return obs, info
 
-    def get_scene_type(self):
-        # @todo this gives me [0, 0, 0]
-        robot_base_z = self.unwrapped.robot.get_base_pose_in_world_coordinates().translation()[2]
-        if robot_base_z >= 0.8:
-            scene_type = "lab"
-        elif 0 < robot_base_z < 0.8:
-            scene_type = "empty_world"
-        else:
-            raise Exception(f"Invalid robot base z {robot_base_z}!")
-        return scene_type
+
+class RandomCubePos(SimWrapper):
+    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+        self.sim.step(1)
+        iso_cube = [0.498, 0.0, 0.226]
+        pos_z = 0.03
+        pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
+        pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
+
+        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+
+        return obs, info
 
 
 class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):

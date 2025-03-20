@@ -1,5 +1,4 @@
 import logging
-from functools import partial
 from os import PathLike
 from typing import Type
 
@@ -25,12 +24,14 @@ from rcsss.envs.base import (
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
     CollisionGuard,
+    FR3LabPickUpSimSuccessWrapper,
     FR3Sim,
     FR3SimplePickUpSimSuccessWrapper,
     RandomCubePos,
-    SimWrapper, FR3LabPickUpSimSuccessWrapper, CamRobotWrapper
+    RandomCubePosLab,
+    SimWrapper,
 )
-from rcsss.envs.utils import get_urdf_path, set_tcp_offset, default_fr3_sim_robot_cfg
+from rcsss.envs.utils import default_fr3_sim_robot_cfg, get_urdf_path, set_tcp_offset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -362,7 +363,6 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 10,
         delta_actions: bool = True,
-        robot2_cam_pose: list[int] | None = None,
     ) -> gym.Env:
         if resolution is None:
             resolution = (256, 256)
@@ -392,8 +392,8 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             camera_set_cfg=camera_cfg,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf="lab",
-            sim_wrapper=[RandomCubePos, partial(CamRobotWrapper, cam_robot_pose=robot2_cam_pose)],
+            mjcf="lab_simple_pick_up_digit_hand",
+            sim_wrapper=RandomCubePosLab,
         )
         env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
         sim = env_rel.get_wrapper_attr("sim")

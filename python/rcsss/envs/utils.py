@@ -1,8 +1,10 @@
-from os import PathLike
 import logging
+from os import PathLike
+
+import numpy as np
 import rcsss
 from rcsss import sim
-import numpy as np
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
