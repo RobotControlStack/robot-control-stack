@@ -19,7 +19,7 @@ def default_fr3_sim_robot_cfg():
 def set_tcp_offset(cfg: sim.FR3Config, sim: sim.Sim):
     tcp_offset = np.array([0, 0, 0])
     try:
-        tcp_offset = list(sim.model.numeric("tcp_offset").data)
+        tcp_offset = np.array(sim.model.numeric("tcp_offset").data)
     except KeyError:
         print("Using the default tcp offset")
     if tcp_offset is not None:

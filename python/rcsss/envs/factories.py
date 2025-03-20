@@ -166,7 +166,7 @@ def fr3_sim_env(
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
-    sim_wrapper: list[Type[SimWrapper]] | None = None,
+    sim_wrapper: Type[SimWrapper] | None = None,
 ) -> gym.Env:
     """
     Creates a simulation environment for the FR3 robot.

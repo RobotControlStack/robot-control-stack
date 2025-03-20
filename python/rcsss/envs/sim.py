@@ -20,7 +20,7 @@ class SimWrapper(gym.Wrapper):
 
 
 class FR3Sim(gym.Wrapper):
-    def __init__(self, env, simulation: sim.Sim, sim_wrapper: list[Type[SimWrapper]] | None = None):
+    def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
             env = sim_wrapper(env, simulation)
@@ -185,7 +185,7 @@ class RandomCubePosLab(SimWrapper):
         obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
 
-        iso_cube = [0.498, 0.0, 0.226]
+        iso_cube = np.array([0.498, 0.0, 0.226])
         iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
         pos_z = 0.826

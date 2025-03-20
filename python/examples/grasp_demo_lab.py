@@ -29,7 +29,7 @@ class PickUpDemo:
         obj_pose_world_coordinates = Pose(
             translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
         )
-        return self.env.unwrapped.robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
+        return self.unwrapped.robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:
         waypoints = []
@@ -38,8 +38,8 @@ class PickUpDemo:
             waypoints.append(start_pose.interpolate(end_pose, t))
         return waypoints
 
-    def step(self, action: np.ndarray) -> dict:
-        return self.env.step(action)
+    def step(self, action: dict) -> dict:
+        return self.env.step(action)[-1]
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
@@ -59,8 +59,8 @@ class PickUpDemo:
             act = self._action(pose, gripper)
 
             obs = self.step(act)
-            ik_success = obs[-1]["ik_success"]
-            if not obs[-1]["ik_success"]:
+            ik_success = obs["ik_success"]
+            if not obs["ik_success"]:
                 trans_source, rot_source = waypoints[i - 1].translation(), waypoints[i - 1].rotation_rpy().as_vector()
                 trans_dest, rot_des = waypoints[i].translation(), waypoints[i].rotation_rpy().as_vector()
                 msg = (
