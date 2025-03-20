@@ -361,6 +361,10 @@ PYBIND11_MODULE(_core, m) {
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
            py::arg("enabled"))
+      .def("zero_torque", &rcs::hw::FR3::zero_torque)
+      .def("osc_set_cartesian_position", &rcs::hw::FR3::osc_set_cartesian_position, py::arg("desired_pos_EE_in_base_frame"))
+      .def("osc2_set_cartesian_position", &rcs::hw::FR3::osc2_set_cartesian_position, py::arg("desired_pose_EE_in_base_frame"))
+      .def("stop_control_thread", &rcs::hw::FR3::stop_control_thread)
       .def("automatic_error_recovery", &rcs::hw::FR3::automatic_error_recovery)
       .def("double_tap_robot_to_continue",
            &rcs::hw::FR3::double_tap_robot_to_continue)

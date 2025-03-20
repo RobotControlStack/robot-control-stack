@@ -5,12 +5,15 @@
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
+#include <common/LinearPoseTrajInterpolator.h>
 #include <franka/robot.h>
 
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
+#include <mutex>
 
 namespace rcs {
 namespace hw {
@@ -46,6 +49,15 @@ class FR3 : public common::Robot {
   franka::Robot robot;
   FR3Config cfg;
   std::optional<std::shared_ptr<common::IK>> m_ik;
+  std::optional<std::thread> control_thread = std::nullopt;
+  // std::optional<Eigen::Vector3d> osc_desired_pos_EE_in_base_frame = std::nullopt;
+  // std::mutex osc_desired_pos_EE_in_base_frame_mutex;
+  common::LinearPoseTrajInterpolator traj_interpolator;
+  std::mutex traj_interpolator_mutex;
+  double controller_time = 0.0;
+  common::Pose curr_pose = common::Pose::Identity();
+
+  bool control_thread_running = false;
 
  public:
   FR3(const std::string &ip,
@@ -68,6 +80,16 @@ class FR3 : public common::Robot {
   common::Vector7d get_joint_position() override;
 
   void set_guiding_mode(bool enabled);
+
+  void osc_set_cartesian_position(const Eigen::Vector3d &desired_pos_EE_in_base_frame);
+  void osc2_set_cartesian_position(const common::Pose &desired_pose_EE_in_base_frame);
+
+  void stop_control_thread();
+
+  void osc();
+  void osc2();
+
+  void zero_torque();
 
   void move_home() override;
 

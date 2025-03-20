@@ -161,6 +161,11 @@ class Desk:
             "down": False,
             "up": False,
         }
+        # Create an SSLContext that doesn't verify certificates
+        self.ssl_context = ssl.create_default_context()
+        self.ssl_context.check_hostname = False  # Disable hostname verification
+        self.ssl_context.verify_mode = ssl.CERT_NONE  # Disable certificate verification
+
         self.login()
 
     def __enter__(self) -> "Desk":
@@ -322,6 +327,7 @@ class Desk:
                 f"wss://{self._hostname}/desk/api/navigation/events",
                 server_hostname="robot.franka.de",
                 additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
+                ssl_context=self.ssl_context,
             ) as websocket:
                 while True:
                     event: dict = json_module.loads(websocket.recv(timeout))

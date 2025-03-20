@@ -1,5 +1,9 @@
 #include "FR3.h"
 
+#include <franka/duration.h>
+#include <franka/exception.h>
+#include <franka/model.h>
+#include <franka/rate_limiting.h>
 #include <franka/robot.h>
 
 #include <Eigen/Core>
@@ -104,6 +108,577 @@ void FR3::set_guiding_mode(bool enabled) {
   activated.fill(enabled);
   this->robot.setGuidingMode(activated, enabled);
   this->cfg.guiding_mode_enabled = enabled;
+}
+
+void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
+              double epsilon = 0.00025) {
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+      M, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType singular_vals =
+      svd.singularValues();
+
+  Eigen::MatrixXd S_inv = M;
+  S_inv.setZero();
+  for (int i = 0; i < singular_vals.size(); i++) {
+    if (singular_vals(i) < epsilon) {
+      S_inv(i, i) = 0.;
+    } else {
+      S_inv(i, i) = 1. / singular_vals(i);
+    }
+  }
+  M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
+}
+
+void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
+                         double max_torque) {
+  for (size_t i = 0; i < tau_d_array.size(); i++) {
+    if (tau_d_array[i] < min_torque) {
+      tau_d_array[i] = min_torque;
+    } else if (tau_d_array[i] > max_torque) {
+      tau_d_array[i] = max_torque;
+    }
+  }
+}
+
+void FR3::osc2_set_cartesian_position(
+    const common::Pose &desired_pose_EE_in_base_frame) {
+
+  // auto pose = this->get_cartesian_position();
+
+  // from deoxys/config/osc-position-controller.yml
+  double traj_interpolation_time_fraction = 0.3;
+  // form deoxys/config/charmander.yml
+  int policy_rate = 20;
+  int traj_rate = 500;
+
+  if (!this->control_thread_running) {
+    this->controller_time = 0.0;
+    this->curr_pose = this->get_cartesian_position();
+  } else {
+    this->traj_interpolator_mutex.lock();
+  }
+
+  this->traj_interpolator.Reset(
+      this->controller_time, this->curr_pose.translation(), this->curr_pose.quaternion(),
+      desired_pose_EE_in_base_frame.translation(), desired_pose_EE_in_base_frame.quaternion(),
+      policy_rate, traj_rate, traj_interpolation_time_fraction);
+
+  // if not thread is running, then start
+  if (!this->control_thread_running) {
+    this->control_thread_running = true;
+    this->control_thread = std::thread(&FR3::osc2, this);
+  } else {
+    this->traj_interpolator_mutex.unlock();
+  }
+}
+
+void FR3::osc_set_cartesian_position(
+    const Eigen::Vector3d &desired_pos_EE_in_base_frame) {
+  // this->osc_desired_pos_EE_in_base_frame_mutex.lock();
+  // this->osc_desired_pos_EE_in_base_frame = desired_pos_EE_in_base_frame;
+  // this->osc_desired_pos_EE_in_base_frame_mutex.unlock();
+
+  Eigen::Quaterniond fixed_desired_quat_EE_in_base_frame(0., 1., 0., 0.);
+
+  // from deoxys/config/osc-position-controller.yml
+  double traj_interpolation_time_fraction = 0.3;
+  // form deoxys/config/charmander.yml
+  int policy_rate = 20;
+  int traj_rate = 500;
+
+  if (!this->control_thread_running) {
+    this->controller_time = 0.0;
+    // auto pose = this->get_cartesian_position();
+    this->curr_pose = this->get_cartesian_position();
+  } else {
+    this->traj_interpolator_mutex.lock();
+  }
+
+  this->traj_interpolator.Reset(
+      this->controller_time, this->curr_pose.translation(), this->curr_pose.quaternion(),
+      desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
+      policy_rate, traj_rate, traj_interpolation_time_fraction);
+
+  // if not thread is running, then start
+  if (!this->control_thread_running) {
+    this->control_thread_running = true;
+    this->control_thread = std::thread(&FR3::osc, this);
+  } else {
+    this->traj_interpolator_mutex.unlock();
+  }
+}
+
+// method to stop thread
+void FR3::stop_control_thread() {
+  if (this->control_thread.has_value() && this->control_thread_running) {
+    this->control_thread_running = false;
+    this->control_thread->join();
+    this->control_thread.reset();
+    // this->osc_desired_pos_EE_in_base_frame.reset();
+  }
+}
+
+void FR3::osc() {
+  franka::Model model = this->robot.loadModel();
+
+  this->controller_time = 0.0;
+
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+  // from bench mark
+  // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
+  // ([60.0, 150.0, 150.0], 250.0), // kd_translation, kd_rotation
+
+  // from config file
+  // Kp:
+  // translation: [150.0, 150.0, 150.0]
+  // rotation: 250.0
+
+  Eigen::Matrix<double, 3, 3> Kp_p, Kp_r, Kd_p, Kd_r;
+  Eigen::Matrix<double, 7, 1> static_q_task_;
+  // Eigen::Vector3d prev_goal_pos_EE_in_base_frame;
+  Eigen::Matrix<double, 7, 1> residual_mass_vec_;
+
+  // values from deoxys/config/osc-position-controller.yml
+  Kp_p.diagonal() << 150, 150, 150;
+  Kp_r.diagonal() << 250, 250, 250;
+
+  Kd_p << Kp_p.cwiseSqrt() * 2.0;
+  Kd_r << Kp_r.cwiseSqrt() * 2.0;
+
+  static_q_task_ << 0.09017809387254755, -0.9824203501652151,
+      0.030509718397568178, -2.694229634937343, 0.057700675144720104,
+      1.860298714876101, 0.8713759453244422;
+
+  // The manual residual mass matrix to add on the internal mass matrix
+  residual_mass_vec_ << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5;
+
+  this->robot.control([&](const franka::RobotState &robot_state,
+                          franka::Duration period) -> franka::Torques {
+    std::chrono::high_resolution_clock::time_point t1 =
+        std::chrono::high_resolution_clock::now();
+
+    // torques handler
+    if (!this->control_thread_running) {
+      franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+      return franka::MotionFinished(zero_torques);
+    }
+    // TO BE replaced
+    // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
+    //   return franka::MotionFinished(franka::Torques(tau_d_array));
+    // }
+
+    Eigen::Vector3d desired_pos_EE_in_base_frame;
+    Eigen::Quaterniond desired_quat_EE_in_base_frame;
+
+    common::Pose pose(robot_state.O_T_EE);
+    // auto pose = this->get_cartesian_position();
+    // from deoxys/config/osc-position-controller.yml
+    double traj_interpolation_time_fraction = 0.3;
+    // form deoxys/config/charmander.yml
+    int policy_rate = 20;
+    int traj_rate = 500;
+
+    // w, x, y, z
+    // TODO: change this non fixed?
+    Eigen::Quaterniond fixed_desired_quat_EE_in_base_frame(0., 1., 0., 0.);
+
+    this->traj_interpolator_mutex.lock();
+    // if (this->controller_time == 0) {
+    //   this->traj_interpolator.Reset(
+    //       0., pose.translation(), pose.quaternion(),
+    //       desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
+    //       policy_rate, traj_rate, traj_interpolation_time_fraction);
+    // }
+    this->curr_pose = common::Pose(robot_state.O_T_EE);
+    this->controller_time += period.toSec();
+    this->traj_interpolator.GetNextStep(this->controller_time,
+                                        desired_pos_EE_in_base_frame,
+                                        desired_quat_EE_in_base_frame);
+    this->traj_interpolator_mutex.unlock();
+
+    // end torques handler
+
+    Eigen::Matrix<double, 7, 1> tau_d;
+
+    std::array<double, 49> mass_array = model.mass(robot_state);
+
+    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+
+    M = M + Eigen::Matrix<double, 7, 7>(residual_mass_vec_.asDiagonal());
+
+    // coriolis and gravity
+    std::array<double, 7> coriolis_array = model.coriolis(robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
+        coriolis_array.data());
+
+    std::array<double, 7> gravity_array = model.gravity(robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(gravity_array.data());
+
+    std::array<double, 42> jacobian_array =
+        model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
+        jacobian_array.data());
+
+    Eigen::MatrixXd jacobian_pos(3, 7);
+    Eigen::MatrixXd jacobian_ori(3, 7);
+    jacobian_pos << jacobian.block(0, 0, 3, 7);
+    jacobian_ori << jacobian.block(3, 0, 3, 7);
+
+    // End effector pose in base frame
+    Eigen::Affine3d T_EE_in_base_frame(
+        Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+    Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
+    Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
+
+    // Joint velocity
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+
+    // Nullspace goal
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+
+    // Update the specified state estimator
+    // if (this->state_estimator_ptr_->IsFirstState()) {
+    //   this->state_estimator_ptr_->Initialize(q, dq, pos_EE_in_base_frame,
+    //                                          quat_EE_in_base_frame);
+    // } else {
+    //   this->state_estimator_ptr_->Update(q, dq, pos_EE_in_base_frame,
+    //                                      quat_EE_in_base_frame);
+    // }
+
+    Eigen::Matrix<double, 7, 1> current_q, current_dq;
+    // Get state from a specified state estimator
+    // current_q = this->state_estimator_ptr_->GetCurrentJointPos();
+    // current_dq = this->state_estimator_ptr_->GetCurrentJointVel();
+    current_q = q;    // this->state_estimator_ptr_->GetCurrentJointPos();
+    current_dq = dq;  // this->state_estimator_ptr_->GetCurrentJointVel();
+
+    // Get eef states from a specified state estimator
+    // pos_EE_in_base_frame = this->state_estimator_ptr_->GetCurrentEEFPos();
+    // quat_EE_in_base_frame = this->state_estimator_ptr_->GetCurrentEEFQuat();
+
+    if (fixed_desired_quat_EE_in_base_frame.coeffs().dot(
+            quat_EE_in_base_frame.coeffs()) < 0.0) {
+      quat_EE_in_base_frame.coeffs() << -quat_EE_in_base_frame.coeffs();
+    }
+
+    Eigen::Vector3d pos_error;
+
+    pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
+
+    Eigen::Quaterniond quat_error(
+        fixed_desired_quat_EE_in_base_frame.inverse() * quat_EE_in_base_frame);
+    Eigen::Vector3d ori_error;
+    ori_error << quat_error.x(), quat_error.y(), quat_error.z();
+    ori_error << -T_EE_in_base_frame.linear() * ori_error;
+
+    // Compute matrices
+    Eigen::Matrix<double, 7, 7> M_inv(M.inverse());
+    Eigen::MatrixXd Lambda_inv(6, 6);
+    Lambda_inv << jacobian * M_inv * jacobian.transpose();
+    Eigen::MatrixXd Lambda(6, 6);
+    PInverse(Lambda_inv, Lambda);
+
+    Eigen::Matrix<double, 7, 6> J_inv;
+    J_inv << M_inv * jacobian.transpose() * Lambda;
+    Eigen::Matrix<double, 7, 7> Nullspace;
+    Nullspace << Eigen::MatrixXd::Identity(7, 7) -
+                     jacobian.transpose() * J_inv.transpose();
+
+    // Decoupled mass matrices
+    Eigen::MatrixXd Lambda_pos_inv(3, 3);
+    Lambda_pos_inv << jacobian_pos * M_inv * jacobian_pos.transpose();
+    Eigen::MatrixXd Lambda_ori_inv(3, 3);
+    Lambda_ori_inv << jacobian_ori * M_inv * jacobian_ori.transpose();
+
+    Eigen::MatrixXd Lambda_pos(3, 3);
+    Eigen::MatrixXd Lambda_ori(3, 3);
+    PInverse(Lambda_pos_inv, Lambda_pos);
+    PInverse(Lambda_ori_inv, Lambda_ori);
+
+    pos_error =
+        pos_error.unaryExpr([](double x) { return (abs(x) < 1e-4) ? 0. : x; });
+    ori_error =
+        ori_error.unaryExpr([](double x) { return (abs(x) < 5e-3) ? 0. : x; });
+
+    tau_d << jacobian_pos.transpose() *
+                     (Lambda_pos *
+                      (Kp_p * pos_error - Kd_p * (jacobian_pos * current_dq))) +
+                 jacobian_ori.transpose() *
+                     (Lambda_ori *
+                      (Kp_r * ori_error - Kd_r * (jacobian_ori * current_dq)));
+
+    // compensation - Try low gain with compensation?
+    // tau_d << tau_d + coriolis;
+    // tau_d << tau_d + gravity;
+    // nullspace control
+    tau_d << tau_d + Nullspace * (static_q_task_ - current_q);
+    // std::cout << "Nullspace : " << (Nullspace * (static_q_task_ -
+    // q)).transpose() << std::endl;
+
+    std::array<double, 7> tau_d_array{};
+    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+
+    std::chrono::high_resolution_clock::time_point t2 =
+        std::chrono::high_resolution_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+    // std::cout << "OSC step took: " << time.count() << " ms"  << std::endl;
+
+    std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+        franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+
+    // deoxys/config/control_config.yml
+    double min_torque = -5;
+    double max_torque = 5;
+    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+
+    return tau_d_rate_limited;
+  });
+}
+
+void FR3::osc2() {
+  franka::Model model = this->robot.loadModel();
+
+  this->controller_time = 0.0;
+
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+  // from bench mark
+  // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
+  // ([60.0, 150.0, 150.0], 250.0), // kd_translation, kd_rotation
+
+  // from config file
+  // Kp:
+  // translation: [150.0, 150.0, 150.0]
+  // rotation: 250.0
+
+  Eigen::Matrix<double, 3, 3> Kp_p, Kp_r, Kd_p, Kd_r;
+  Eigen::Matrix<double, 7, 1> static_q_task_;
+  Eigen::Matrix<double, 7, 1> residual_mass_vec_;
+  Eigen::Array<double, 7, 1> joint_max_;
+  Eigen::Array<double, 7, 1> joint_min_;
+  Eigen::Array<double, 7, 1> avoidance_weights_;
+
+  // values from deoxys/config/osc-position-controller.yml
+  Kp_p.diagonal() << 150, 150, 150;
+  Kp_r.diagonal() << 250, 250, 250;
+
+  Kd_p << Kp_p.cwiseSqrt() * 2.0;
+  Kd_r << Kp_r.cwiseSqrt() * 2.0;
+
+  static_q_task_ << 0.09017809387254755, -0.9824203501652151,
+      0.030509718397568178, -2.694229634937343, 0.057700675144720104,
+      1.860298714876101, 0.8713759453244422;
+
+  // The manual residual mass matrix to add on the internal mass matrix
+  residual_mass_vec_ << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5;
+
+
+  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
+  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+  avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
+
+  this->robot.control([&](const franka::RobotState &robot_state,
+                          franka::Duration period) -> franka::Torques {
+    std::chrono::high_resolution_clock::time_point t1 =
+        std::chrono::high_resolution_clock::now();
+
+    // torques handler
+    if (!this->control_thread_running) {
+      franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+      return franka::MotionFinished(zero_torques);
+    }
+    // TO BE replaced
+    // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
+    //   return franka::MotionFinished(franka::Torques(tau_d_array));
+    // }
+
+    Eigen::Vector3d desired_pos_EE_in_base_frame;
+    Eigen::Quaterniond desired_quat_EE_in_base_frame;
+
+    common::Pose pose(robot_state.O_T_EE);
+    // auto pose = this->get_cartesian_position();
+    // from deoxys/config/osc-position-controller.yml
+    double traj_interpolation_time_fraction = 0.3;
+    // form deoxys/config/charmander.yml
+    int policy_rate = 20;
+    int traj_rate = 500;
+
+
+    this->traj_interpolator_mutex.lock();
+    // if (this->controller_time == 0) {
+    //   this->traj_interpolator.Reset(
+    //       0., pose.translation(), pose.quaternion(),
+    //       desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
+    //       policy_rate, traj_rate, traj_interpolation_time_fraction);
+    // }
+    this->controller_time += period.toSec();
+    this->traj_interpolator.GetNextStep(this->controller_time,
+                                        desired_pos_EE_in_base_frame,
+                                        desired_quat_EE_in_base_frame);
+    this->traj_interpolator_mutex.unlock();
+
+    // end torques handler
+
+    Eigen::Matrix<double, 7, 1> tau_d;
+
+    std::array<double, 49> mass_array = model.mass(robot_state);
+    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+
+    M = M + Eigen::Matrix<double, 7, 7>(residual_mass_vec_.asDiagonal());
+
+    // coriolis and gravity
+    std::array<double, 7> coriolis_array = model.coriolis(robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
+        coriolis_array.data());
+
+    std::array<double, 7> gravity_array = model.gravity(robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(gravity_array.data());
+
+    std::array<double, 42> jacobian_array =
+        model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
+        jacobian_array.data());
+
+    Eigen::MatrixXd jacobian_pos(3, 7);
+    Eigen::MatrixXd jacobian_ori(3, 7);
+    jacobian_pos << jacobian.block(0, 0, 3, 7);
+    jacobian_ori << jacobian.block(3, 0, 3, 7);
+
+    // End effector pose in base frame
+    Eigen::Affine3d T_EE_in_base_frame(
+        Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+    Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
+    Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
+
+    // Nullspace goal
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+
+    // Joint velocity
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+
+
+    if (desired_quat_EE_in_base_frame.coeffs().dot(
+            quat_EE_in_base_frame.coeffs()) < 0.0) {
+      quat_EE_in_base_frame.coeffs() << -quat_EE_in_base_frame.coeffs();
+    }
+
+    Eigen::Vector3d pos_error;
+
+    pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
+    Eigen::Quaterniond quat_error(desired_quat_EE_in_base_frame.inverse() *
+                                  quat_EE_in_base_frame);
+    Eigen::Vector3d ori_error;
+    ori_error << quat_error.x(), quat_error.y(), quat_error.z();
+    ori_error << -T_EE_in_base_frame.linear() * ori_error;
+
+    // Compute matrices
+    Eigen::Matrix<double, 7, 7> M_inv(M.inverse());
+    Eigen::MatrixXd Lambda_inv(6, 6);
+    Lambda_inv << jacobian * M_inv * jacobian.transpose();
+    Eigen::MatrixXd Lambda(6, 6);
+    PInverse(Lambda_inv, Lambda);
+
+    Eigen::Matrix<double, 7, 6> J_inv;
+    J_inv << M_inv * jacobian.transpose() * Lambda;
+    Eigen::Matrix<double, 7, 7> Nullspace;
+    Nullspace << Eigen::MatrixXd::Identity(7, 7) -
+                     jacobian.transpose() * J_inv.transpose();
+
+    // Decoupled mass matrices
+    Eigen::MatrixXd Lambda_pos_inv(3, 3);
+    Lambda_pos_inv << jacobian_pos * M_inv * jacobian_pos.transpose();
+    Eigen::MatrixXd Lambda_ori_inv(3, 3);
+    Lambda_ori_inv << jacobian_ori * M_inv * jacobian_ori.transpose();
+
+    Eigen::MatrixXd Lambda_pos(3, 3);
+    Eigen::MatrixXd Lambda_ori(3, 3);
+    PInverse(Lambda_pos_inv, Lambda_pos);
+    PInverse(Lambda_ori_inv, Lambda_ori);
+
+    pos_error =
+        pos_error.unaryExpr([](double x) { return (abs(x) < 1e-4) ? 0. : x; });
+    ori_error =
+        ori_error.unaryExpr([](double x) { return (abs(x) < 5e-3) ? 0. : x; });
+
+    tau_d << jacobian_pos.transpose() *
+                     (Lambda_pos *
+                      (Kp_p * pos_error - Kd_p * (jacobian_pos * dq))) +
+                 jacobian_ori.transpose() *
+                     (Lambda_ori *
+                      (Kp_r * ori_error - Kd_r * (jacobian_ori * dq)));
+
+    // nullspace control
+    tau_d << tau_d + Nullspace * (static_q_task_ - q);
+
+    // Add joint avoidance potential
+    Eigen::Matrix<double, 7, 1> avoidance_force;
+    avoidance_force.setZero();
+    Eigen::Matrix<double, 7, 1> dist2joint_max;
+    Eigen::Matrix<double, 7, 1> dist2joint_min;
+
+    dist2joint_max = joint_max_.matrix() - q;
+    dist2joint_min = q - joint_min_.matrix();
+
+    for (int i = 0; i < 7; i++) {
+      if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
+        avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
+      if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
+        avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
+    }
+    tau_d << tau_d + Nullspace * avoidance_force;
+    for (int i = 0; i < 7; i++) {
+      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
+      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+    }
+
+    std::array<double, 7> tau_d_array{};
+    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+
+    // end of controller
+    std::chrono::high_resolution_clock::time_point t2 =
+        std::chrono::high_resolution_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+
+    std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+        franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+
+    // deoxys/config/control_config.yml
+    double min_torque = -5;
+    double max_torque = 5;
+    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+
+    return tau_d_rate_limited;
+  });
+}
+
+void FR3::zero_torque() {
+  // start thread
+
+  robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+  double time = 0.0;
+  this->robot.control([&](const franka::RobotState &state,
+                          franka::Duration time_step) -> franka::Torques {
+    time += time_step.toSec();
+    if (time > 30) {
+      // stop
+      return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
+    }
+    return franka::Torques({0, 0, 0, 0, 0, 0, 0});
+  });
 }
 
 void FR3::move_home() { this->set_joint_position(q_home); }
