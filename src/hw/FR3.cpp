@@ -742,13 +742,6 @@ void FR3::joint_controller() {
 
     Eigen::Matrix<double, 7, 1> tau_d;
 
-    std::array<double, 49> mass_array = model.mass(robot_state);
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-
-    // coriolis and gravity
-    std::array<double, 7> coriolis_array = model.coriolis(robot_state);
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
-        coriolis_array.data());
 
     // Current joint velocity
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
@@ -758,17 +751,16 @@ void FR3::joint_controller() {
 
     Eigen::MatrixXd joint_pos_error(7, 1);
 
-    Eigen::Matrix<double, 7, 1> current_q, current_dq;
 
     joint_pos_error << desired_q - q;
 
-    tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(current_dq);
+    tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
 
     Eigen::Matrix<double, 7, 1> dist2joint_max;
     Eigen::Matrix<double, 7, 1> dist2joint_min;
 
-    dist2joint_max = joint_max_.matrix() - current_q;
-    dist2joint_min = current_q - joint_min_.matrix();
+    dist2joint_max = joint_max_.matrix() - q;
+    dist2joint_min = q - joint_min_.matrix();
 
     for (int i = 0; i < 7; i++) {
       if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
