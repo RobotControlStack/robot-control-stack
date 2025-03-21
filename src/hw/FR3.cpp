@@ -140,11 +140,41 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
   }
 }
 
+
+void FR3::controller_set_joint_position(
+    const common::Vector7d &desired_q) {
+
+  // from deoxys/config/osc-position-controller.yml
+  double traj_interpolation_time_fraction = 0.3; // in s
+  // form deoxys/config/charmander.yml
+  int policy_rate = 20;
+  int traj_rate = 500;
+
+  if (!this->control_thread_running) {
+    this->controller_time = 0.0;
+    this->curr_joint_position = this->get_joint_position();
+  } else {
+    this->joint_interpolator_mutex.lock();
+  }
+
+  this->joint_interpolator.Reset(
+      this->controller_time, this->curr_joint_position, desired_q, policy_rate, traj_rate,
+      traj_interpolation_time_fraction);
+
+  // if not thread is running, then start
+  if (!this->control_thread_running) {
+    this->control_thread_running = true;
+    this->control_thread = std::thread(&FR3::joint_controller, this);
+  } else {
+    this->joint_interpolator_mutex.unlock();
+  }
+}
+
+// todos
+// - controller type
+// - joint type
 void FR3::osc2_set_cartesian_position(
     const common::Pose &desired_pose_EE_in_base_frame) {
-
-  // auto pose = this->get_cartesian_position();
-
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 0.3;
   // form deoxys/config/charmander.yml
@@ -159,9 +189,10 @@ void FR3::osc2_set_cartesian_position(
   }
 
   this->traj_interpolator.Reset(
-      this->controller_time, this->curr_pose.translation(), this->curr_pose.quaternion(),
-      desired_pose_EE_in_base_frame.translation(), desired_pose_EE_in_base_frame.quaternion(),
-      policy_rate, traj_rate, traj_interpolation_time_fraction);
+      this->controller_time, this->curr_pose.translation(),
+      this->curr_pose.quaternion(), desired_pose_EE_in_base_frame.translation(),
+      desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
+      traj_interpolation_time_fraction);
 
   // if not thread is running, then start
   if (!this->control_thread_running) {
@@ -195,9 +226,10 @@ void FR3::osc_set_cartesian_position(
   }
 
   this->traj_interpolator.Reset(
-      this->controller_time, this->curr_pose.translation(), this->curr_pose.quaternion(),
-      desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
-      policy_rate, traj_rate, traj_interpolation_time_fraction);
+      this->controller_time, this->curr_pose.translation(),
+      this->curr_pose.quaternion(), desired_pos_EE_in_base_frame,
+      fixed_desired_quat_EE_in_base_frame, policy_rate, traj_rate,
+      traj_interpolation_time_fraction);
 
   // if not thread is running, then start
   if (!this->control_thread_running) {
@@ -481,7 +513,6 @@ void FR3::osc2() {
   // The manual residual mass matrix to add on the internal mass matrix
   residual_mass_vec_ << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5;
 
-
   joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
   avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
@@ -493,6 +524,7 @@ void FR3::osc2() {
 
     // torques handler
     if (!this->control_thread_running) {
+      // TODO: test if this also works when the robot is moving
       franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
       return franka::MotionFinished(zero_torques);
     }
@@ -511,7 +543,6 @@ void FR3::osc2() {
     // form deoxys/config/charmander.yml
     int policy_rate = 20;
     int traj_rate = 500;
-
 
     this->traj_interpolator_mutex.lock();
     // if (this->controller_time == 0) {
@@ -564,7 +595,6 @@ void FR3::osc2() {
 
     // Joint velocity
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
-
 
     if (desired_quat_EE_in_base_frame.coeffs().dot(
             quat_EE_in_base_frame.coeffs()) < 0.0) {
@@ -657,6 +687,98 @@ void FR3::osc2() {
     TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
     return tau_d_rate_limited;
+  });
+}
+
+void FR3::joint_controller() {
+  franka::Model model = this->robot.loadModel();
+  this->controller_time = 0.0;
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+
+  // deoxys/config/joint-impedance-controller.yml
+  common::Vector7d Kp;
+  Kp << 100., 100., 100., 100., 75., 150., 50.;
+
+  common::Vector7d Kd;
+  Kd << 20., 20., 20., 20., 7.5, 15.0, 5.0;
+ 
+
+  Eigen::Array<double, 7, 1> joint_max_;
+  Eigen::Array<double, 7, 1> joint_min_;
+
+
+  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
+  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+
+  this->robot.control([&](const franka::RobotState &robot_state,
+                          franka::Duration period) -> franka::Torques {
+    std::chrono::high_resolution_clock::time_point t1 =
+        std::chrono::high_resolution_clock::now();
+
+
+    // torques handler
+    if (!this->control_thread_running) {
+      // TODO: test if this also works when the robot is moving
+      franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+      return franka::MotionFinished(zero_torques);
+    }
+
+
+    common::Vector7d desired_q;
+
+    common::Pose pose(robot_state.O_T_EE);
+
+    this->joint_interpolator_mutex.lock();
+    this->controller_time += period.toSec();
+    this->joint_interpolator.GetNextStep(this->controller_time,
+                                        desired_q);
+    this->joint_interpolator_mutex.unlock();
+    // end torques handler
+
+    Eigen::Matrix<double, 7, 1> tau_d;
+
+    std::array<double, 49> mass_array = model.mass(robot_state);
+    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+
+    // coriolis and gravity
+    std::array<double, 7> coriolis_array = model.coriolis(robot_state);
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
+        coriolis_array.data());
+
+    // Current joint velocity
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+
+    // Current joint position
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+
+    Eigen::MatrixXd joint_pos_error(7, 1);
+
+    Eigen::Matrix<double, 7, 1> current_q, current_dq;
+
+    joint_pos_error << desired_q - q;
+
+    tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(current_dq);
+
+    Eigen::Matrix<double, 7, 1> dist2joint_max;
+    Eigen::Matrix<double, 7, 1> dist2joint_min;
+
+    dist2joint_max = joint_max_.matrix() - current_q;
+    dist2joint_min = current_q - joint_min_.matrix();
+
+    for (int i = 0; i < 7; i++) {
+      if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
+      if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
+    }
+
+    std::array<double, 7> tau_d_array{};
+    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
+
+    return tau_d_array;
   });
 }
 

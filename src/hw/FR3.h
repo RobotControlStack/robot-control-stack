@@ -55,7 +55,12 @@ class FR3 : public common::Robot {
   common::LinearPoseTrajInterpolator traj_interpolator;
   std::mutex traj_interpolator_mutex;
   double controller_time = 0.0;
-  common::Pose curr_pose = common::Pose::Identity();
+  common::Pose curr_pose;
+
+
+  common::LinearJointPositionTrajInterpolator joint_interpolator;
+  std::mutex joint_interpolator_mutex;
+  common::Vector7d curr_joint_position;
 
   bool control_thread_running = false;
 
@@ -81,6 +86,7 @@ class FR3 : public common::Robot {
 
   void set_guiding_mode(bool enabled);
 
+  void controller_set_joint_position(const common::Vector7d &desired_q);
   void osc_set_cartesian_position(const Eigen::Vector3d &desired_pos_EE_in_base_frame);
   void osc2_set_cartesian_position(const common::Pose &desired_pose_EE_in_base_frame);
 
@@ -88,6 +94,7 @@ class FR3 : public common::Robot {
 
   void osc();
   void osc2();
+  void joint_controller();
 
   void zero_torque();
 
