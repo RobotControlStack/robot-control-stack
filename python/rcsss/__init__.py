@@ -32,7 +32,7 @@ register(
     entry_point=FR3SimplePickUpSimDigitHand(),
 )
 register(
-    id="rcs/FR3LabPickUpSimDigitHand-v0",
+    id="rcs/LabPickUpSimDigitHand-v0",
     entry_point=FR3LabPickUpSimDigitHand(),
 )
 

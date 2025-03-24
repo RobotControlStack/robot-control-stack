@@ -97,7 +97,7 @@ class PickUpDemo:
 
 def main():
     env = gym.make(
-        "rcs/FR3LabPickUpSimDigitHand-v0",
+        "rcs/LabPickUpSimDigitHand-v0",
         render_mode="human",
         delta_actions=False,
     )
