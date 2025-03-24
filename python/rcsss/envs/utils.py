@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg():
+def default_fr3_sim_robot_cfg(mjcf: str | PathLike = "fr3_empty_world") -> sim.FR3Config:
     cfg = sim.FR3Config()
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+    cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
     return cfg
 
@@ -59,7 +59,6 @@ def default_fr3_sim_gripper_cfg():
 
 
 def default_mujoco_cameraset_cfg():
-
     cameras = {
         "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
@@ -69,9 +68,32 @@ def default_mujoco_cameraset_cfg():
     return SimCameraSetConfig(
         cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
     )
+
+
+def get_tcp_offset(mjcf: str | PathLike):
+    """Reads out tcp offset set in mjcf file.
+
+    Convention: The tcp offset is stored in the model as a numeric attribute named "tcp_offset".
+
+    Args:
+        mjcf (str | PathLike): Path to the mjcf file.
+
+    Returns:
+        rcsss.common.Pose: The tcp offset.
+    """
+    mjmdl = rcsss.scenes.get(str(mjcf), mjcf)
+    if mjmdl.suffix == ".xml":
+        model = mj.MjModel.from_xml_path(str(mjmdl))
+    elif mjmdl.suffix == ".mjb":
+        model = mj.MjModel.from_binary_path(str(mjmdl))
+    try:
+        tcp_offset = np.array(model.numeric("tcp_offset").data)
         pose_offset = rcsss.common.Pose(translation=tcp_offset)
-        cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
-    return cfg
+        return rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
+    except KeyError:
+        msg = "No tcp offset found in the model. Using the default tcp offset."
+        logging.warning(msg)
+    return rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
 
 
 def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:

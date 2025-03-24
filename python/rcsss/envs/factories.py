@@ -156,8 +156,7 @@ def fr3_sim_env(
     check robot base world coordinates without this line to confirm.
     """
     simulation.step(1)
-    # setting the tcp offset
-    set_tcp_offset(robot_cfg, simulation)
+
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
@@ -278,7 +277,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
         if resolution is None:
             resolution = (256, 256)
 
-        cameras = {"eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed))}
+        cameras = {"wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed))}
 
         camera_cfg = SimCameraSetConfig(
             cameras=cameras,
@@ -294,7 +293,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
                 if control_mode == "xyzrpy"
                 else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
             ),
-            robot_cfg=default_fr3_sim_robot_cfg(),
+            robot_cfg=default_fr3_sim_robot_cfg("fr3_simple_pick_up_digit_hand"),
             collision_guard=False,
             gripper_cfg=default_fr3_sim_gripper_cfg(),
             camera_set_cfg=camera_cfg,
@@ -341,7 +340,7 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
                 if control_mode == "xyzrpy"
                 else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
             ),
-            robot_cfg=default_fr3_sim_robot_cfg(),
+            robot_cfg=default_fr3_sim_robot_cfg("lab_simple_pick_up_digit_hand"),
             collision_guard=False,
             gripper_cfg=default_fr3_sim_gripper_cfg(),
             camera_set_cfg=camera_cfg,
