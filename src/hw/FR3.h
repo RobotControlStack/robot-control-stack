@@ -50,19 +50,16 @@ class FR3 : public common::Robot {
   FR3Config cfg;
   std::optional<std::shared_ptr<common::IK>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
-  // std::optional<Eigen::Vector3d> osc_desired_pos_EE_in_base_frame = std::nullopt;
-  // std::mutex osc_desired_pos_EE_in_base_frame_mutex;
   common::LinearPoseTrajInterpolator traj_interpolator;
-  std::mutex traj_interpolator_mutex;
   double controller_time = 0.0;
-  common::Pose curr_pose;
 
 
   common::LinearJointPositionTrajInterpolator joint_interpolator;
-  std::mutex joint_interpolator_mutex;
-  common::Vector7d curr_joint_position;
+
+  franka::RobotState curr_state;
 
   bool control_thread_running = false;
+  std::mutex interpolator_mutex;
 
  public:
   FR3(const std::string &ip,
@@ -87,13 +84,11 @@ class FR3 : public common::Robot {
   void set_guiding_mode(bool enabled);
 
   void controller_set_joint_position(const common::Vector7d &desired_q);
-  void osc_set_cartesian_position(const Eigen::Vector3d &desired_pos_EE_in_base_frame);
-  void osc2_set_cartesian_position(const common::Pose &desired_pose_EE_in_base_frame);
+  void osc_set_cartesian_position(const common::Pose &desired_pose_EE_in_base_frame);
 
   void stop_control_thread();
 
   void osc();
-  void osc2();
   void joint_controller();
 
   void zero_torque();
