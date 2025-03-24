@@ -28,6 +28,7 @@ from rcsss.envs.sim import (
     RandomCubePosLab,
     SimWrapper,
 )
+from rcsss.envs.space_utils import Vec7Type
 from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -306,18 +307,17 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
 
 class CamRobot(gym.Wrapper):
 
-    def __init__(self, env):
+    def __init__(self, env, cam_robot_joints: Vec7Type):
         super().__init__(env)
         self.unwrapped: FR3Env
         assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
         self.sim = env.get_wrapper_attr("sim")
         self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik())
         self.cam_robot.set_parameters(default_fr3_sim_robot_cfg("lab_simple_pick_up_digit_hand"))
+        self.cam_robot_joints = cam_robot_joints
 
     def step(self, action: dict):
-        self.cam_robot.set_joints_hard(
-            [-0.78452318, -1.18096017, 1.75158399, -1.0718541, -0.11207275, 1.01050546, 2.47343638]
-        )
+        self.cam_robot.set_joints_hard(self.cam_robot_joints)
         obs, reward, done, truncated, info = super().step(action)
         return obs, reward, done, truncated, info
 
@@ -330,6 +330,7 @@ class CamRobot(gym.Wrapper):
 class FR3LabPickUpSimDigitHand(EnvCreator):
     def __call__(  # type: ignore
         self,
+        cam_robot_joints: Vec7Type,
         render_mode: str = "human",
         control_mode: str = "xyzrpy",
         resolution: tuple[int, int] | None = None,
@@ -368,7 +369,7 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             sim_wrapper=RandomCubePosLab,
         )
         env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
-        env_rel = CamRobot(env_rel)
+        env_rel = CamRobot(env_rel, cam_robot_joints)
         if render_mode == "human":
             sim = env_rel.get_wrapper_attr("sim")
             sim.open_gui()

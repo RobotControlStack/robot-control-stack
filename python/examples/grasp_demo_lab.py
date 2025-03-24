@@ -85,6 +85,9 @@ def main():
         "rcs/LabPickUpSimDigitHand-v0",
         render_mode="human",
         delta_actions=True,
+        cam_robot_joints=np.array(
+            [-0.78452318, -1.18096017, 1.75158399, -1.0718541, -0.11207275, 1.01050546, 2.47343638]
+        ),
     )
     env.reset()
     controller = PickUpDemo(env)
