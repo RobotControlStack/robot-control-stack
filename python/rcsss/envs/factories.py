@@ -151,11 +151,6 @@ def fr3_sim_env(
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
     mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
     simulation = sim.Sim(mjb_file)
-    """
-    todo, without a simulation step, sim->d is not populated with the correct values in the robot. 
-    check robot base world coordinates without this line to confirm.
-    """
-    simulation.step(1)
 
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
@@ -309,6 +304,29 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
         return env_rel
 
 
+class CamRobot(gym.Wrapper):
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+        self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik())
+        self.cam_robot.set_parameters(default_fr3_sim_robot_cfg("lab_simple_pick_up_digit_hand"))
+
+    def step(self, action: dict):
+        self.cam_robot.set_joints_hard(
+            [-0.78452318, -1.18096017, 1.75158399, -1.0718541, -0.11207275, 1.01050546, 2.47343638]
+        )
+        obs, reward, done, truncated, info = super().step(action)
+        return obs, reward, done, truncated, info
+
+    def reset(self, *, seed=None, options=None):
+        re = super().reset(seed=seed, options=options)
+        self.cam_robot.reset()
+        return re
+
+
 class FR3LabPickUpSimDigitHand(EnvCreator):
     def __call__(  # type: ignore
         self,
@@ -322,8 +340,8 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             resolution = (256, 256)
 
         cameras = {
-            "eye-in-hand_0": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-            "eye-in-hand_1": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed)),
+            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+            "side": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed)),
         }
 
         camera_cfg = SimCameraSetConfig(
@@ -350,8 +368,8 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             sim_wrapper=RandomCubePosLab,
         )
         env_rel = FR3LabPickUpSimSuccessWrapper(env_rel)
-        sim = env_rel.get_wrapper_attr("sim")
+        env_rel = CamRobot(env_rel)
         if render_mode == "human":
+            sim = env_rel.get_wrapper_attr("sim")
             sim.open_gui()
-
         return env_rel

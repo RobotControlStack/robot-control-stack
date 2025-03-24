@@ -39,7 +39,7 @@ class PickUpDemo:
         return waypoints
 
     def step(self, action: dict) -> dict:
-        return self.env.step(action)[-1]
+        return self.env.step(action)[0]
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
@@ -50,25 +50,10 @@ class PickUpDemo:
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
         for i in range(1, len(waypoints)):
             # calculate delta action
-            # delta_action = waypoints[i] * waypoints[i - 1].inverse()
-            pose = rcsss.common.Pose(
-                translation=waypoints[i].translation(), rpy_vector=np.array([-3.14159265e00, 1.57009246e-16, 0])
-            )
+            delta_action = waypoints[i] * waypoints[i - 1].inverse()
 
-            # act = self._action(delta_action, gripper)
-            act = self._action(pose, gripper)
-
-            obs = self.step(act)
-            ik_success = obs["ik_success"]
-            if not obs["ik_success"]:
-                trans_source, rot_source = waypoints[i - 1].translation(), waypoints[i - 1].rotation_rpy().as_vector()
-                trans_dest, rot_des = waypoints[i].translation(), waypoints[i].rotation_rpy().as_vector()
-                msg = (
-                    f"ik success: {ik_success} when attempting to move from trans: {trans_source}, rot: {rot_source}\n "
-                    f"to trans: {trans_dest} rot: {rot_des}!"
-                )
-                logger.warning(msg)
-        return obs
+            act = self._action(delta_action, gripper)
+            self.step(act)
 
     def approach(self, geom_name: str):
         waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)
@@ -99,7 +84,7 @@ def main():
     env = gym.make(
         "rcs/LabPickUpSimDigitHand-v0",
         render_mode="human",
-        delta_actions=False,
+        delta_actions=True,
     )
     env.reset()
     controller = PickUpDemo(env)
