@@ -11,11 +11,11 @@ from rcsss.envs.base import (
     TQuartDictType,
     TRPYDictType,
 )
-from rcsss.envs.factories import (
+from rcsss.envs.factories import fr3_sim_env
+from rcsss.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_sim_env,
 )
 
 

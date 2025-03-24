@@ -7,11 +7,8 @@ import numpy as np
 import rcsss
 from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
 from rcsss.camera.hw import BaseHardwareCameraSet
-from rcsss.camera.interface import BaseCameraConfig
-from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.base import (
     CameraSetWrapper,
@@ -31,42 +28,17 @@ from rcsss.envs.sim import (
     RandomCubePosLab,
     SimWrapper,
 )
-from rcsss.envs.utils import default_fr3_sim_robot_cfg, get_urdf_path, set_tcp_offset
+from rcsss.envs.utils import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
+    default_fr3_sim_robot_cfg,
+    default_realsense,
+    get_urdf_path,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def default_fr3_hw_robot_cfg():
-    robot_cfg = FR3Config()
-    robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    robot_cfg.speed_factor = 0.1
-    robot_cfg.controller = IKController.robotics_library
-    return robot_cfg
-
-
-def default_fr3_hw_gripper_cfg():
-    gripper_cfg = rcsss.hw.FHConfig()
-    gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-    gripper_cfg.speed = 0.1
-    gripper_cfg.force = 30
-    return gripper_cfg
-
-
-def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
-    if name2id is None:
-        return None
-    cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
-    cam_cfg = RealSenseSetConfig(
-        cameras=cameras,
-        resolution_width=1280,
-        resolution_height=720,
-        frame_rate=15,
-        enable_imu=False,  # does not work with imu, why?
-        enable_ir=True,
-        enable_ir_emitter=False,
-    )
-    return RealSenseCameraSet(cam_cfg)
 
 
 def fr3_hw_env(
@@ -137,23 +109,6 @@ def fr3_hw_env(
         env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
     return env
-
-
-def default_fr3_sim_gripper_cfg():
-    return sim.FHConfig()
-
-
-def default_mujoco_cameraset_cfg():
-
-    cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
-    }
-    # 256x256 needed for VLAs
-    return SimCameraSetConfig(
-        cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
-    )
 
 
 def fr3_sim_env(
