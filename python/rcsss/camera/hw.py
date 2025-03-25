@@ -126,16 +126,14 @@ class BaseHardwareCameraSet(ABC):
             frame_set = self.poll_frame_set()
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
+                # copy the buffer to the record path
+                for camera_key, writer in self.writer.items():
+                    frameset = self._buffer[self._next_ring_index]
+                    assert frameset is not None
+                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
                 self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
                 self._buffer_len = max(self._buffer_len + 1, self.config.max_buffer_frames)
-                if self._next_ring_index == 0:
-                    # copy the buffer to the record path
-                    for camera_key, writer in self.writer.items():
-                        for i in range(self.config.max_buffer_frames):
-                            frameset = self._buffer[i]
-                            assert frameset is not None
-                            writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
-            sleep(1 / self.config.frame_rate)
+            self.rate(self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
         """Gather frames over all available cameras."""
