@@ -262,7 +262,8 @@ def main():
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=(0.5, np.deg2rad(90)),
                 # max_relative_movement=np.deg2rad(90),
-            relative_to=RelativeTo.CONFIGURED_ORIGIN,
+                relative_to=RelativeTo.CONFIGURED_ORIGIN,
+                async_control=True,
             )
         else:
             env_rel = fr3_sim_env(

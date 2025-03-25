@@ -160,7 +160,7 @@ class FR3Env(gym.Env):
     y
     """
 
-    def __init__(self, robot: hw.FR3, control_mode: ControlMode):
+    def __init__(self, robot: hw.FR3, control_mode: ControlMode, async_control: bool = False):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -179,6 +179,7 @@ class FR3Env(gym.Env):
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquart_key = get_space_keys(TQuartDictType)[0]
         self.prev_action: dict | None = None
+        self.async_control = async_control
 
     def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
         """Returns the unwrapped control mode at a certain index. 0 is the base control mode, -1 the last."""
@@ -224,25 +225,34 @@ class FR3Env(gym.Env):
             or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
         ):
             # cast is needed because typed dicts cannot be checked at runtime
-            # self.robot.set_joint_position(action_dict[self.joints_key])
-            self.robot.controller_set_joint_position(action_dict[self.joints_key])
+            if not self.async_control:
+                self.robot.set_joint_position(action_dict[self.joints_key])
+            else:
+                self.robot.controller_set_joint_position(action_dict[self.joints_key])
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
             self.prev_action is None
             or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key], atol=1e-03, rtol=0)
         ):
-            self.robot.set_cartesian_position(
-                common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
-            )
+            if not self.async_control:
+                self.robot.set_cartesian_position(
+                    common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
+                )
+            else:
+                self.robot.osc_set_cartesian_position(
+                    common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
+                )
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
             self.prev_action is None
             or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
         ):
-            # self.robot.set_cartesian_position(
-            #     common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
-            # )
-            self.robot.osc_set_cartesian_position(
-                common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
-            )
+            if not self.async_control:
+                self.robot.set_cartesian_position(
+                    common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
+                )
+            else:
+                self.robot.osc_set_cartesian_position(
+                    common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
+                )
         self.prev_action = copy.deepcopy(action_dict)
         return self.get_obs(), 0, False, False, {}
 
