@@ -254,8 +254,7 @@ def main():
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
                 # camera_set = camera_set,
-                # collision_guard="models/scenes/lab/teleop_scene.xml",
-                collision_guard="models/scenes/lab/scene.xml",
+                # collision_guard="lab",
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
