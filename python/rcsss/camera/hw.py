@@ -14,6 +14,7 @@ from rcsss.camera.interface import (
     BaseCameraSetConfig,
     Frame,
     FrameSet,
+    SimpleFrameRate,
 )
 
 
@@ -40,6 +41,7 @@ class BaseHardwareCameraSet(ABC):
         self._next_ring_index = 0
         self._buffer_len = 0
         self.writer: dict[str, cv2.VideoWriter] = {}
+        self.rate = SimpleFrameRate()
 
     def buffer_size(self) -> int:
         return len(self._buffer) - self._buffer.count(None)
@@ -117,7 +119,7 @@ class BaseHardwareCameraSet(ABC):
         for _ in range(self.config.warm_up_disposal_frames):
             for camera_name in self.camera_names:
                 self._poll_frame(camera_name)
-            sleep(1 / self.config.frame_rate)
+            self.rate(self.config.frame_rate)
 
     def polling_thread(self, warm_up: bool = True):
         if warm_up:

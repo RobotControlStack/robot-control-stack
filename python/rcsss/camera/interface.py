@@ -1,8 +1,26 @@
 from dataclasses import dataclass
 from datetime import datetime
+from time import time, sleep
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
+
+class SimpleFrameRate:
+    def __init__(self):
+        self.t = None
+
+    def reset(self):
+        self.t = None
+
+    def __call__(self, frame_rate: int):
+        if self.t is None:
+            self.t = time()
+            sleep(1 / frame_rate)
+            return
+        sleep_time = 1 / frame_rate - (time() - self.t)
+        if sleep_time > 0:
+            sleep(sleep_time)
+        self.t = time()
 
 
 class BaseCameraConfig(BaseModel):
