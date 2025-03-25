@@ -84,17 +84,18 @@ class UDPViveActionServer(threading.Thread):
         self._step_env = False
 
     def next_action(self) -> Pose:
-        transform = Pose(
-            translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
-            quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
-        )
-        return (
-            self._ego_transform
-            * UDPViveActionServer.transform_from_openxr
-            * transform
-            * UDPViveActionServer.transform_from_openxr.inverse()
-            * self._ego_transform.inverse()
-        )
+        with self._resource_lock:
+            transform = Pose(
+                translation=self._last_controller_pose.translation() - self._offset_pose.translation(),
+                quaternion=(self._last_controller_pose * self._offset_pose.inverse()).rotation_q(),
+            )
+            return (
+                self._ego_transform
+                * UDPViveActionServer.transform_from_openxr
+                * transform
+                * UDPViveActionServer.transform_from_openxr.inverse()
+                * self._ego_transform.inverse()
+            )
 
     def get_last_controller_pose(self) -> Pose:
         return self._last_controller_pose
@@ -116,60 +117,64 @@ class UDPViveActionServer(threading.Thread):
                         logger.warning("[UDP server] socket timeout (0.1s), waiting for packets")
                         warning_raised = True
                     continue
-                with self._resource_lock:
-                    last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
-                    last_controller_pose = Pose(
-                        translation=last_controller_pose_raw[4:],
-                        quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else np.array([0, 0, 0, 1]),
-                    )
-                    if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
-                        # trigger just pressed (first data sample with button pressed
+                last_controller_pose_raw = np.ctypeslib.as_array(unpacked[:7])
+                last_controller_pose = Pose(
+                    translation=last_controller_pose_raw[4:],
+                    quaternion=last_controller_pose_raw[:4] if INCLUDE_ROTATION else np.array([0, 0, 0, 1]),
+                )
+                if Button(int(unpacked[7])) & self._trg_btn and not Button(int(self._buttons)) & self._trg_btn:
+                    # trigger just pressed (first data sample with button pressed
 
-                        # set forward direction based on current controller pose
-                        if self._ego_lock:
-                            x_axis = Pose(translation=np.array([1, 0, 0]))
-                            x_axis_rot = (
-                                UDPViveActionServer.transform_from_openxr
-                                * Pose(quaternion=last_controller_pose.rotation_q())
-                                * UDPViveActionServer.transform_from_openxr.inverse()
-                                * x_axis
-                            )
+                    # set forward direction based on current controller pose
+                    if self._ego_lock:
+                        x_axis = Pose(translation=np.array([1, 0, 0]))
+                        x_axis_rot = (
+                            UDPViveActionServer.transform_from_openxr
+                            * Pose(quaternion=last_controller_pose.rotation_q())
+                            * UDPViveActionServer.transform_from_openxr.inverse()
+                            * x_axis
+                        )
 
-                            # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
-                            rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
-                                x_axis.translation()[1], x_axis.translation()[0]
-                            )
-                            rot_z -= np.pi / 2
+                        # Compute angle around z axis: https://stackoverflow.com/questions/21483999/using-atan2-to-find-angle-between-two-vectors
+                        rot_z = np.atan2(x_axis_rot.translation()[1], x_axis_rot.translation()[0]) - np.atan2(
+                            x_axis.translation()[1], x_axis.translation()[0]
+                        )
+                        rot_z -= np.pi / 2
 
-                            print(f"Angle: {rot_z*180/np.pi}")
+                        print(f"Angle: {rot_z*180/np.pi}")
+                        with self._resource_lock:
                             self._ego_transform = Pose(RPY(yaw=-rot_z))
-                        else:
+                    else:
+                        with self._resource_lock:
                             self._ego_transform = Pose()
 
+                    with self._resource_lock:
                         self._offset_pose = last_controller_pose
                         self._last_controller_pose = last_controller_pose
 
-                    elif not Button(int(unpacked[7])) & self._trg_btn and Button(int(self._buttons)) & self._trg_btn:
-                        # released
-                        with self._env_lock:
-                            self._last_controller_pose = Pose()
-                            self._offset_pose = Pose()
-                            self._ego_transform = Pose()
-                            self._env.set_origin_to_current()
+                elif not Button(int(unpacked[7])) & self._trg_btn and Button(int(self._buttons)) & self._trg_btn:
+                    # released
+                    with self._resource_lock:
+                        self._last_controller_pose = Pose()
+                        self._offset_pose = Pose()
+                        self._ego_transform = Pose()
+                    with self._env_lock:
+                        self._env.set_origin_to_current()
 
-                    elif Button(int(unpacked[7])) & self._trg_btn:
-                        # button is pressed
+                elif Button(int(unpacked[7])) & self._trg_btn:
+                    # button is pressed
+                    with self._resource_lock:
                         self._last_controller_pose = last_controller_pose
 
 
-                    if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
-                        # just pressed
-                        self._grp_pos = 0
-                    elif not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn:
-                        # just released
-                        self._grp_pos = 1
+                if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
+                    # just pressed
+                    self._grp_pos = 0
+                elif not Button(int(unpacked[7])) & self._grp_btn and Button(int(self._buttons)) & self._grp_btn:
+                    # just released
+                    self._grp_pos = 1
 
-                    self._buttons = unpacked[7]
+                self._buttons = unpacked[7]
 
     def stop(self):
         self._exit_requested = True
@@ -191,8 +196,7 @@ class UDPViveActionServer(threading.Thread):
             if self._exit_requested:
                 self._step_env = False
                 break
-            with self._resource_lock:
-                displacement = self.next_action()
+            displacement = self.next_action()
             action = dict(
                 LimitedTQuartRelDictType(tquart=np.concatenate([displacement.translation(), displacement.rotation_q()]))
             )
@@ -200,8 +204,9 @@ class UDPViveActionServer(threading.Thread):
             action.update(GripperDictType(gripper=self._grp_pos))
 
             with self._env_lock:
-                sleep(0.001)
                 self._env.step(action)
+            # rate limit
+            sleep(0.001)
 
 
 def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSenseCameraSet):
@@ -211,6 +216,7 @@ def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSens
             case "help":
                 print("You can use `quit` to stop the program, `episode` to start a new episode")
             case "quit":
+                # camera_set.stop()
                 sys.exit(0)
             case "episode":
                 # camera_set.clear_buffer()
@@ -260,6 +266,7 @@ def main():
                 # control_mode=ControlMode.JOINTS,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=(0.5, np.deg2rad(90)),
+                # TODO: max should be always according to the last step
                 # max_relative_movement=np.deg2rad(90),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
                 async_control=True,
@@ -270,7 +277,7 @@ def main():
                 # control_mode=ControlMode.JOINTS,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
-                # mjcf="models/scenes/lab/teleop_scene.xml",
+                mjcf="lab",
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 # camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
