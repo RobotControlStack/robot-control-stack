@@ -159,7 +159,7 @@ void FR3::controller_set_joint_position(
     const common::Vector7d &desired_q) {
 
   // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 0.3; // in s
+  double traj_interpolation_time_fraction = 1.0; // in s
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
@@ -190,7 +190,7 @@ void FR3::controller_set_joint_position(
 void FR3::osc_set_cartesian_position(
     const common::Pose &desired_pose_EE_in_base_frame) {
   // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 0.3;
+  double traj_interpolation_time_fraction = 1.0;
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
@@ -234,11 +234,11 @@ void FR3::osc() {
 
   this->controller_time = 0.0;
 
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  // this->robot.setCollisionBehavior(
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   // from bench mark
   // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
@@ -294,9 +294,6 @@ void FR3::osc() {
     Eigen::Quaterniond desired_quat_EE_in_base_frame;
 
     common::Pose pose(robot_state.O_T_EE);
-    // auto pose = this->get_cartesian_position();
-    // from deoxys/config/osc-position-controller.yml
-    double traj_interpolation_time_fraction = 0.3;
     // form deoxys/config/charmander.yml
     int policy_rate = 20;
     int traj_rate = 500;
@@ -451,11 +448,11 @@ void FR3::osc() {
 void FR3::joint_controller() {
   franka::Model model = this->robot.loadModel();
   this->controller_time = 0.0;
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  // this->robot.setCollisionBehavior(
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
 
   // deoxys/config/joint-impedance-controller.yml
