@@ -8,6 +8,7 @@ from typing import Annotated, Any, TypeAlias, cast
 import gymnasium as gym
 import numpy as np
 from rcsss import common, sim
+from rcsss._core import hw
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -159,7 +160,7 @@ class FR3Env(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode):
+    def __init__(self, robot: hw.FR3, control_mode: ControlMode):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -223,7 +224,8 @@ class FR3Env(gym.Env):
             or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
         ):
             # cast is needed because typed dicts cannot be checked at runtime
-            self.robot.set_joint_position(action_dict[self.joints_key])
+            # self.robot.set_joint_position(action_dict[self.joints_key])
+            self.robot.controller_set_joint_position(action_dict[self.joints_key])
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
             self.prev_action is None
             or not np.allclose(action_dict[self.trpy_key], self.prev_action[self.trpy_key], atol=1e-03, rtol=0)
@@ -235,7 +237,10 @@ class FR3Env(gym.Env):
             self.prev_action is None
             or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
         ):
-            self.robot.set_cartesian_position(
+            # self.robot.set_cartesian_position(
+            #     common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
+            # )
+            self.robot.osc_set_cartesian_position(
                 common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
             )
         self.prev_action = copy.deepcopy(action_dict)
@@ -252,6 +257,10 @@ class FR3Env(gym.Env):
             raise NotImplementedError(msg)
         self.robot.reset()
         return self.get_obs(), {}
+
+    def close(self):
+        self.robot.stop_control_thread()
+        super().close()
 
 
 class RelativeTo(Enum):
