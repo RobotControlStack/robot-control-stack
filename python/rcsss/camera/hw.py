@@ -94,6 +94,9 @@ class BaseHardwareCameraSet(ABC):
         self._thread.start()
 
     def record_video(self, path: Path, episode: int):
+        if self.recording_ongoing():
+            return
+        self.clear_buffer()
         for camera in self.camera_names:
             self.writer[camera] = cv2.VideoWriter(
                 str(path / f"episode_{episode}_{camera}.mp4"),
@@ -108,15 +111,16 @@ class BaseHardwareCameraSet(ABC):
 
     def stop_video(self):
         if len(self.writer) > 0:
-            for camera_key, writer in self.writer.items():
-                for i in range(self._next_ring_index):
-                    frameset = self._buffer[i]
-                    assert frameset is not None
-                    # rgb to bgr as expected by opencv
-                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
-            for camera in self.camera_names:
-                self.writer[camera].release()
-            self.writer = {}
+            with self._buffer_lock:
+                for camera_key, writer in self.writer.items():
+                    for i in range(self._next_ring_index):
+                        frameset = self._buffer[i]
+                        assert frameset is not None
+                        # rgb to bgr as expected by opencv
+                        writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
+                for camera in self.camera_names:
+                    self.writer[camera].release()
+                self.writer = {}
 
     def warm_up(self):
         for _ in range(self.config.warm_up_disposal_frames):
