@@ -388,6 +388,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             # TODO: should we also clip euqally for all joints?
             if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
                 limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
+                self._last_action = limited_joints
             else:
                 joints_diff = action[self.joints_key] - self._last_action
                 limited_joints_diff = np.clip(joints_diff, -self.max_mov, self.max_mov)
@@ -402,7 +403,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
 
-            if self.relative_to == RelativeTo.LAST_STEP:
+            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
                 clipped_pose_offset = (
                     common.Pose(
                         translation=action[self.trpy_key][:3],
@@ -411,15 +412,16 @@ class RelativeActionSpace(gym.ActionWrapper):
                     .limit_translation_length(self.max_mov[0])
                     .limit_rotation_angle(self.max_mov[1])
                 )
+                self._last_action = clipped_pose_offset
             else:
                 pose_diff = common.Pose(
                     translation=action[self.trpy_key][:3],
                     rpy_vector=action[self.trpy_key][3:],
-                ) * self._origin.inverse()
+                ) * self._last_action.inverse()
                 clipped_pose_diff = (
                     pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
                 )
-                clipped_pose_offset = clipped_pose_diff * self._origin
+                clipped_pose_offset = clipped_pose_diff * self._last_action
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
@@ -441,7 +443,7 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
 
-            if self.relative_to == RelativeTo.LAST_STEP:
+            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
                 clipped_pose_offset = (
                     common.Pose(
                         translation=action[self.tquart_key][:3],
@@ -450,15 +452,16 @@ class RelativeActionSpace(gym.ActionWrapper):
                     .limit_translation_length(self.max_mov[0])
                     .limit_rotation_angle(self.max_mov[1])
                 )
+                self._last_action = clipped_pose_offset
             else:
                 pose_diff = common.Pose(
                     translation=action[self.tquart_key][:3],
                     quaternion=action[self.tquart_key][3:],
-                ) * self._origin.inverse()
+                ) * self._last_action.inverse()
                 clipped_pose_diff = (
                     pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
                 )
-                clipped_pose_offset = clipped_pose_diff * self._origin # not sure if the order is correct
+                clipped_pose_offset = clipped_pose_diff * self._last_action
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
