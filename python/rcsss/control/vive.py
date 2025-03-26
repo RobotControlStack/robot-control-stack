@@ -224,7 +224,6 @@ def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSens
                 video_path = env_rel.path / "videos"
                 video_path.mkdir(parents=True, exist_ok=True)
                 print(f'{env_rel.episode_count = }')
-                # camera_set.record_video(video_path, env_rel.episode_count)
 
                 thread = threading.Thread(target=action_server.environment_step_loop)
                 thread.start()
@@ -232,8 +231,6 @@ def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSens
                 print("stopping")
                 action_server.stop_env_loop()
                 thread.join()
-                # save
-                # camera_set.stop_video()
                 env_rel.reset()
                 print("videos saved!")
 
@@ -265,9 +262,9 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                max_relative_movement=(0.5, np.deg2rad(90)),
+                max_relative_movement=(0.05, np.deg2rad(10)),
                 # TODO: max should be always according to the last step
-                # max_relative_movement=np.deg2rad(90),
+                # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
                 async_control=True,
             )
@@ -286,7 +283,7 @@ def main():
             env_rel.get_wrapper_attr("sim").open_gui()
 
         if not DEBUG:
-            env_rel = StorageWrapper(env_rel, path="/home/juelg/code/frankcsy/record_real_christmas")
+            env_rel = StorageWrapper(env_rel, path="/home/juelg/code/frankcsy/record_real_christmas", camera_set=camera_set)
             # ip_secondary = "192.168.102.1"
             # with Desk.fci(ip_secondary, user, pw):
             #     f = rcsss.hw.FR3(ip_secondary)
