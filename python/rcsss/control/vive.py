@@ -249,20 +249,20 @@ def main():
                 "wrist": "244222071045",
                 # "wrist": "218622278131", # new realsense
                 "bird_eye": "243522070364",
-                # "side": "243522070385",
-                "side": "244222071045",
+                "side": "243522070385",
             }
-            # camera_set = default_realsense(camera_dict)
+            camera_set = default_realsense(camera_dict)
             camera_set = None
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
-                # camera_set = camera_set,
+                camera_set = camera_set,
                 # collision_guard="lab",
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                max_relative_movement=(0.05, np.deg2rad(10)),
+                max_relative_movement=(0.01, np.deg2rad(5)),
+                # max_relative_movement=(0.5, np.deg2rad(90)),
                 # TODO: max should be always according to the last step
                 # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,

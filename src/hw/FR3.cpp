@@ -569,7 +569,6 @@ void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
 void FR3::reset() {
   this->automatic_error_recovery();
-  this->move_home();
 }
 
 void FR3::wait_milliseconds(int milliseconds) {
