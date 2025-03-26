@@ -61,6 +61,10 @@ class StorageWrapper(gym.Wrapper):
         # get git diff
         os.system(f'git diff --submodule=diff > {os.path.join(str(self.path), "git_diff.txt")}')
 
+        self.gif_path = Path(path) / "gifs"
+        if self.gif:
+            self.gif_path.mkdir(parents=True, exist_ok=True)
+
     def flush(self):
         """writes data to disk"""
         if len(self.data) == 0 or self.step_count == 0:
@@ -85,7 +89,7 @@ class StorageWrapper(gym.Wrapper):
                         previous_timestamp = self.data["timestamp"][idx]
                         imgs.append(Image.fromarray(img))
                     imgs[0].save(
-                        self.path / self.GIF.format(self.timestamp, self.episode_count, key),
+                        self.gif_path / self.GIF.format(self.timestamp, self.episode_count, key),
                         save_all=True,
                         append_images=imgs[1:],
                         duration=self.GIF_DURATION_S * 1000,
@@ -116,8 +120,6 @@ class StorageWrapper(gym.Wrapper):
         self.flush()
         self.step_count = 0
         re = super().reset(seed=seed, options=options)
-        if self.camera_set is not None:
-            self.camera_set.record_video(self.path, self.episode_count)
         return re
 
     def close(self):

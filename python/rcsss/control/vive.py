@@ -42,7 +42,17 @@ VIVE_PORT = 54321
 INCLUDE_ROTATION = True
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotInstance.HARDWARE
-DEBUG = True
+DEBUG = False
+STORAGE_PATH = "teleop_data"
+# set camera dict to none disable cameras
+CAMERA_DICT = {
+    "wrist": "244222071045",
+    # "wrist": "218622278131", # new realsense
+    "bird_eye": "243522070364",
+    "side": "243522070385",
+}
+PRODUCE_GIF = True
+
 
 
 class Button(IntFlag):
@@ -210,20 +220,20 @@ class UDPViveActionServer(threading.Thread):
             rate_limiter(0.001)
 
 
-def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSenseCameraSet):
+def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSenseCameraSet | None):
     while True:
         i = input("> ")
         match i:
             case "help":
                 print("You can use `quit` to stop the program, `episode` to start a new episode")
             case "quit":
-                # camera_set.stop()
                 sys.exit(0)
             case "episode":
-                # camera_set.clear_buffer()
                 # record videos
-                video_path = env_rel.path / "videos"
-                video_path.mkdir(parents=True, exist_ok=True)
+                if camera_set is not None:
+                    video_path = env_rel.path / "videos"
+                    video_path.mkdir(parents=True, exist_ok=True)
+                    camera_set.record_video(env_rel.path / "videos", env_rel.episode_count)
                 print(f'{env_rel.episode_count = }')
 
                 thread = threading.Thread(target=action_server.environment_step_loop)
@@ -246,14 +256,7 @@ def main():
     with resource_manger:
 
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            camera_dict = {
-                "wrist": "244222071045",
-                # "wrist": "218622278131", # new realsense
-                "bird_eye": "243522070364",
-                "side": "243522070385",
-            }
-            camera_set = default_realsense(camera_dict)
-            camera_set = None
+            camera_set = default_realsense(CAMERA_DICT)
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
                 camera_set = camera_set,
@@ -264,7 +267,6 @@ def main():
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=(0.01, np.deg2rad(5)),
                 # max_relative_movement=(0.5, np.deg2rad(90)),
-                # TODO: max should be always according to the last step
                 # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
                 async_control=True,
@@ -284,7 +286,7 @@ def main():
             env_rel.get_wrapper_attr("sim").open_gui()
 
         if not DEBUG:
-            env_rel = StorageWrapper(env_rel, path="/home/juelg/code/frankcsy/record_real_christmas", camera_set=camera_set)
+            env_rel = StorageWrapper(env_rel, path=STORAGE_PATH, camera_set=camera_set, gif=PRODUCE_GIF)
             # ip_secondary = "192.168.102.1"
             # with Desk.fci(ip_secondary, user, pw):
             #     f = rcsss.hw.FR3(ip_secondary)
@@ -300,8 +302,7 @@ def main():
         with env_rel:
             with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
                 if not DEBUG:
-                    input_loop(env_rel, action_server, None)
-
+                    input_loop(env_rel, action_server, camera_set)
                 else:
                     action_server.environment_step_loop()
 
