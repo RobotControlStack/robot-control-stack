@@ -103,6 +103,9 @@ class BaseHardwareCameraSet(ABC):
                 (self.config.resolution_width, self.config.resolution_height),
             )
 
+    def recording_ongoing(self) -> bool:
+        return len(self.writer) > 0
+
     def stop_video(self):
         if len(self.writer) > 0:
             for camera_key, writer in self.writer.items():

@@ -12,6 +12,8 @@ import gymnasium as gym
 import numpy as np
 from flatten_dict import flatten
 from PIL import Image
+from rcsss.camera.hw import BaseHardwareCameraSet
+
 
 class StorageWrapper(gym.Wrapper):
     # TODO: this should also record the instruction
@@ -20,7 +22,16 @@ class StorageWrapper(gym.Wrapper):
     FOLDER = "experiment_{}"
     GIF_DURATION_S = 0.5
 
-    def __init__(self, env: gym.Env, path: str, instruction: str | None = None, description: str | None = None, record_numpy: bool = True, gif: bool = True):
+    def __init__(
+        self,
+        env: gym.Env,
+        path: str,
+        instruction: str | None = None,
+        description: str | None = None,
+        record_numpy: bool = True,
+        gif: bool = True,
+        camera_set: BaseHardwareCameraSet | None = None,
+    ):
         super().__init__(env)
         self.episode_count = 0
         self.step_count = 0
@@ -28,6 +39,7 @@ class StorageWrapper(gym.Wrapper):
         self.timestamp = str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.record_numpy = record_numpy
         self.gif = gif
+        self.camera_set = camera_set
 
         # make folders
         self.path = Path(path) / self.FOLDER.format(self.timestamp)
@@ -56,6 +68,8 @@ class StorageWrapper(gym.Wrapper):
         print(self.data.keys())
         if self.record_numpy:
             np.savez(self.path / self.FILE.format(self.episode_count), **self.data)
+        if self.camera_set is not None and self.camera_set.recording_ongoing():
+            self.camera_set.stop_video()
 
         if self.gif:
             # for key in ["side", "wrist", "bird_eye", "openvla_view"]:
@@ -81,6 +95,7 @@ class StorageWrapper(gym.Wrapper):
         self.episode_count += 1
         self.data = {}
 
+    # TODO: fix recorder order
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
         # write obs and action into data
@@ -100,7 +115,10 @@ class StorageWrapper(gym.Wrapper):
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
         self.flush()
         self.step_count = 0
-        return super().reset(seed=seed, options=options)
+        re = super().reset(seed=seed, options=options)
+        if self.camera_set is not None:
+            self.camera_set.record_video(self.path, self.episode_count)
+        return re
 
     def close(self):
         self.flush()
