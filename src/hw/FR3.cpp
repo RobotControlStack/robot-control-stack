@@ -525,7 +525,20 @@ void FR3::joint_controller() {
     std::array<double, 7> tau_d_array{};
     Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
 
-    return tau_d_array;
+    // end of controller
+    std::chrono::high_resolution_clock::time_point t2 =
+        std::chrono::high_resolution_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+
+    std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+        franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+
+    // deoxys/config/control_config.yml
+    double min_torque = -5;
+    double max_torque = 5;
+    TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+
+    return tau_d_rate_limited;
   });
 }
 
