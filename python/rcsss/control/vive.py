@@ -5,6 +5,7 @@ from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
 from time import sleep
+from rcsss.camera.interface import SimpleFrameRate
 from rcsss.camera.realsense import RealSenseCameraSet
 
 import numpy as np
@@ -191,6 +192,7 @@ class UDPViveActionServer(threading.Thread):
         self._step_env = False
 
     def environment_step_loop(self):
+        rate_limiter = SimpleFrameRate()
         self._step_env = True
         while self._step_env:
             if self._exit_requested:
@@ -205,8 +207,7 @@ class UDPViveActionServer(threading.Thread):
 
             with self._env_lock:
                 self._env.step(action)
-            # rate limit
-            sleep(0.001)
+            rate_limiter(0.001)
 
 
 def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSenseCameraSet):
