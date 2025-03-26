@@ -568,6 +568,7 @@ void FR3::move_home() { this->set_joint_position(q_home); }
 void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
 void FR3::reset() {
+  this->stop_control_thread();
   this->automatic_error_recovery();
 }
 

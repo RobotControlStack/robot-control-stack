@@ -265,8 +265,6 @@ class FR3Env(gym.Env):
         if options is not None:
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
-        if self.async_control:
-            self.robot.stop_control_thread()
         self.robot.reset()
         self.robot.move_home()
         return self.get_obs(), {}
