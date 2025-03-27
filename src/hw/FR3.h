@@ -2,18 +2,18 @@
 #define RCS_FR3_H
 
 #include <common/IK.h>
+#include <common/LinearPoseTrajInterpolator.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
-#include <common/LinearPoseTrajInterpolator.h>
 #include <franka/robot.h>
 
 #include <cmath>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
-#include <mutex>
 
 namespace rcs {
 namespace hw {
@@ -29,6 +29,7 @@ struct FR3Load {
   std::optional<Eigen::Matrix3d> load_inertia;
 };
 enum IKController { internal = 0, robotics_library };
+enum Controller { none = 0, jsc, osc };
 struct FR3Config : common::RConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
@@ -40,6 +41,7 @@ struct FR3Config : common::RConfig {
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
   common::Pose tcp_offset = common::Pose::Identity();
+  bool async_control = false;
 };
 
 struct FR3State : common::RState {};
@@ -52,14 +54,10 @@ class FR3 : public common::Robot {
   std::optional<std::thread> control_thread = std::nullopt;
   common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
-
-
   common::LinearJointPositionTrajInterpolator joint_interpolator;
-
   franka::RobotState curr_state;
-
-  bool control_thread_running = false;
   std::mutex interpolator_mutex;
+  Controller running_controller = Controller::none;
 
  public:
   FR3(const std::string &ip,
@@ -84,7 +82,8 @@ class FR3 : public common::Robot {
   void set_guiding_mode(bool enabled);
 
   void controller_set_joint_position(const common::Vector7d &desired_q);
-  void osc_set_cartesian_position(const common::Pose &desired_pose_EE_in_base_frame);
+  void osc_set_cartesian_position(
+      const common::Pose &desired_pose_EE_in_base_frame);
 
   void stop_control_thread();
 

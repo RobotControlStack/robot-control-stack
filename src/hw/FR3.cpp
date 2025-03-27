@@ -87,7 +87,7 @@ void FR3::set_default_robot_behavior() {
 
 common::Pose FR3::get_cartesian_position() {
   common::Pose x;
-  if (!this->control_thread_running) {
+  if (this->running_controller == Controller::none){
     this->curr_state = this->robot.readOnce();
     x = common::Pose(this->curr_state.O_T_EE);
   } else {
@@ -99,14 +99,18 @@ common::Pose FR3::get_cartesian_position() {
 }
 
 void FR3::set_joint_position(const common::Vector7d &q) {
-  // TODO: max force?
+  if (this->cfg.async_control){
+    this->controller_set_joint_position(q);
+    return;
+  }
+  // sync control
   MotionGenerator motion_generator(this->cfg.speed_factor, q);
   this->robot.control(motion_generator);
 }
 
 common::Vector7d FR3::get_joint_position() {
   common::Vector7d joints;
-  if (!this->control_thread_running) {
+  if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
     joints = common::Vector7d(this->curr_state.q.data());
   } else {
@@ -154,39 +158,38 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
   }
 }
 
-
-void FR3::controller_set_joint_position(
-    const common::Vector7d &desired_q) {
-
+void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0; // in s
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (!this->control_thread_running) {
+  if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
+  } else if (this->running_controller != Controller::jsc) {
+    // runtime error
+    throw std::runtime_error("Controller type must but joint space but is " +
+                             std::to_string(this->running_controller) + ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
   }
 
   this->joint_interpolator.Reset(
-      this->controller_time, Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q, policy_rate, traj_rate,
-      traj_interpolation_time_fraction);
+      this->controller_time,
+      Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
+      policy_rate, traj_rate, traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (!this->control_thread_running) {
-    this->control_thread_running = true;
+  if (this->running_controller == Controller::none) {
+    this->running_controller= Controller::jsc;
     this->control_thread = std::thread(&FR3::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
   }
 }
 
-// todos
-// - controller type
-// - joint type
 void FR3::osc_set_cartesian_position(
     const common::Pose &desired_pose_EE_in_base_frame) {
   // from deoxys/config/osc-position-controller.yml
@@ -195,37 +198,38 @@ void FR3::osc_set_cartesian_position(
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (!this->control_thread_running) {
+  if (this->running_controller == Controller::none) {
     this->controller_time = 0.0;
     this->get_cartesian_position();
+  } else if (this->running_controller != Controller::osc) {
+    throw std::runtime_error("Controller type must but osc but is " +
+                             std::to_string(this->running_controller) + ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
   this->traj_interpolator.Reset(
-      this->controller_time, curr_pose.translation(),
-      curr_pose.quaternion(), desired_pose_EE_in_base_frame.translation(),
+      this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
+      desired_pose_EE_in_base_frame.translation(),
       desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
       traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (!this->control_thread_running) {
-    this->control_thread_running = true;
+  if (this->running_controller == Controller::none) {
+    this->running_controller= Controller::osc;
     this->control_thread = std::thread(&FR3::osc, this);
   } else {
     this->interpolator_mutex.unlock();
   }
 }
 
-
 // method to stop thread
 void FR3::stop_control_thread() {
-  if (this->control_thread.has_value() && this->control_thread_running) {
-    this->control_thread_running = false;
+  if (this->control_thread.has_value() && this->running_controller != Controller::none) {
+    this->running_controller = Controller::none;
     this->control_thread->join();
     this->control_thread.reset();
-    // this->osc_desired_pos_EE_in_base_frame.reset();
   }
 }
 
@@ -280,8 +284,7 @@ void FR3::osc() {
         std::chrono::high_resolution_clock::now();
 
     // torques handler
-    if (!this->control_thread_running) {
-      // TODO: test if this also works when the robot is moving
+    if (this->running_controller == Controller::none) {
       franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
       return franka::MotionFinished(zero_torques);
     }
@@ -454,18 +457,15 @@ void FR3::joint_controller() {
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
-
   // deoxys/config/joint-impedance-controller.yml
   common::Vector7d Kp;
   Kp << 100., 100., 100., 100., 75., 150., 50.;
 
   common::Vector7d Kd;
   Kd << 20., 20., 20., 20., 7.5, 15.0, 5.0;
- 
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
-
 
   joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
@@ -475,14 +475,12 @@ void FR3::joint_controller() {
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
 
-
     // torques handler
-    if (!this->control_thread_running) {
+    if (this->running_controller == Controller::none) {
       // TODO: test if this also works when the robot is moving
       franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
       return franka::MotionFinished(zero_torques);
     }
-
 
     common::Vector7d desired_q;
     common::Pose pose(robot_state.O_T_EE);
@@ -490,13 +488,11 @@ void FR3::joint_controller() {
     this->interpolator_mutex.lock();
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
-    this->joint_interpolator.GetNextStep(this->controller_time,
-                                        desired_q);
+    this->joint_interpolator.GetNextStep(this->controller_time, desired_q);
     this->interpolator_mutex.unlock();
     // end torques handler
 
     Eigen::Matrix<double, 7, 1> tau_d;
-
 
     // Current joint velocity
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
@@ -505,7 +501,6 @@ void FR3::joint_controller() {
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
 
     Eigen::MatrixXd joint_pos_error(7, 1);
-
 
     joint_pos_error << desired_q - q;
 
@@ -634,6 +629,11 @@ std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose &x) {
   // pose is assumed to be in the robots coordinate frame
+  if (this->cfg.async_control){
+    this->osc_set_cartesian_position(x);
+    return;
+  }
+  // TODO: this should handled with tcp offset config
   common::Pose nominal_end_effector_frame_value;
   if (this->cfg.nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value =
@@ -641,6 +641,10 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   } else {
     nominal_end_effector_frame_value = common::Pose::Identity();
   }
+  // nominal end effector frame should be on top of tcp offset as franka already takes care of
+  // the default franka hand offset
+  // lets add a franka hand offset
+
 
   if (this->cfg.controller == IKController::internal) {
     // if gripper is attached the tcp offset will automatically be applied

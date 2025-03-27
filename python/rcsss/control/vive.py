@@ -261,15 +261,14 @@ def main():
                 ip=ROBOT_IP,
                 camera_set = camera_set,
                 # collision_guard="lab",
-                robot_cfg=default_fr3_hw_robot_cfg(),
+                robot_cfg=default_fr3_hw_robot_cfg(async_control=True),
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
-                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                gripper_cfg=default_fr3_hw_gripper_cfg(async_control=True),
                 max_relative_movement=(0.01, np.deg2rad(5)),
                 # max_relative_movement=(0.5, np.deg2rad(90)),
                 # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
-                async_control=True,
             )
         else:
             env_rel = fr3_sim_env(

@@ -68,6 +68,7 @@ class FR3(rcsss._core.common.Robot):
     def zero_torque(self) -> None: ...
 
 class FR3Config(rcsss._core.common.RConfig):
+    async_control: bool
     controller: IKController
     guiding_mode_enabled: bool
     load_parameters: FR3Load | None

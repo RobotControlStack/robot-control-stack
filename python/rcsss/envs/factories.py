@@ -34,11 +34,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_hw_robot_cfg():
+def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
     robot_cfg.controller = IKController.robotics_library
+    robot_cfg.async_control = async_control
     return robot_cfg
 
 
@@ -90,7 +91,6 @@ def fr3_hw_env(
     max_relative_movement: float | tuple[float, float] | None = None,
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
-    async_control: bool = False,
 ) -> gym.Env:
     """
     Creates a hardware environment for the FR3 robot.
@@ -119,7 +119,7 @@ def fr3_hw_env(
     robot = rcsss.hw.FR3(ip, ik)
     robot.set_parameters(robot_cfg)
 
-    env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode, async_control=async_control)
+    env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
     env = FR3HW(env)
     if gripper_cfg is not None:
