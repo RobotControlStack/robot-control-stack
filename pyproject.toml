@@ -26,7 +26,6 @@ dependencies = ["websockets>=11.0",
     "mujoco==3.2.6",
     # NOTE: Same for pinocchio (pin)
     "pin==2.7.0",
-    "flatten-dict==0.4.2",
 ]
 readme = "README.md"
 maintainers = [

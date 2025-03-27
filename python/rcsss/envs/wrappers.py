@@ -10,7 +10,6 @@ import os
 
 import gymnasium as gym
 import numpy as np
-from flatten_dict import flatten
 from PIL import Image
 from rcsss.camera.hw import BaseHardwareCameraSet
 
@@ -103,12 +102,10 @@ class StorageWrapper(gym.Wrapper):
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
         # write obs and action into data
-        act_obs = {"action": action, "observation": obs}
-        flattened_act_obs = flatten(copy.deepcopy(act_obs), reducer="dot")
-        # add timestamp
-        flattened_act_obs["timestamp"] = datetime.now().timestamp()
+        act_obs = {"action": action, "observation": obs, "timestamp": datetime.now().timestamp()}
+        act_obs["timestamp"] = datetime.now().timestamp()
         self.data["language_instruction"] = self.language_instruction
-        for key, value in flattened_act_obs.items():
+        for key, value in act_obs.items():
             if key not in self.data:
                 self.data[key] = np.expand_dims(value, axis=0)
             else:
