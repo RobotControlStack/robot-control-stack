@@ -26,6 +26,7 @@ __all__ = [
 ]
 
 class FHConfig(rcsss._core.common.GConfig):
+    async_control: bool
     epsilon_inner: float
     epsilon_outer: float
     force: float

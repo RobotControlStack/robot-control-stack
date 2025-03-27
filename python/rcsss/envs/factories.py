@@ -42,11 +42,12 @@ def default_fr3_hw_robot_cfg():
     return robot_cfg
 
 
-def default_fr3_hw_gripper_cfg():
+def default_fr3_hw_gripper_cfg(async_control: bool = False):
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
     gripper_cfg.force = 30
+    gripper_cfg.async_control = async_control
     return gripper_cfg
 
 

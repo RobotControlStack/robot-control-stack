@@ -337,7 +337,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
       .def_readwrite("force", &rcs::hw::FHConfig::force)
       .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
-      .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer);
+      .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer)
+      .def_readwrite("async_control", &rcs::hw::FHConfig::async_control);
 
   py::class_<rcs::hw::FHState, rcs::common::GState>(hw, "FHState")
       .def(py::init<>())
@@ -362,8 +363,11 @@ PYBIND11_MODULE(_core, m) {
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
            py::arg("enabled"))
       .def("zero_torque", &rcs::hw::FR3::zero_torque)
-      .def("osc_set_cartesian_position", &rcs::hw::FR3::osc_set_cartesian_position, py::arg("desired_pos_EE_in_base_frame"))
-      .def("controller_set_joint_position", &rcs::hw::FR3::controller_set_joint_position, py::arg("desired_q"))
+      .def("osc_set_cartesian_position",
+           &rcs::hw::FR3::osc_set_cartesian_position,
+           py::arg("desired_pos_EE_in_base_frame"))
+      .def("controller_set_joint_position",
+           &rcs::hw::FR3::controller_set_joint_position, py::arg("desired_q"))
       .def("stop_control_thread", &rcs::hw::FR3::stop_control_thread)
       .def("automatic_error_recovery", &rcs::hw::FR3::automatic_error_recovery)
       .def("double_tap_robot_to_continue",
