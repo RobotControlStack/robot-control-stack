@@ -19,10 +19,10 @@ __all__ = [
     "FR3Load",
     "FR3State",
     "FrankaHand",
-    "IKController",
+    "IKSolver",
     "exceptions",
-    "internal",
-    "robotics_library",
+    "franka",
+    "rcs",
 ]
 
 class FHConfig(rcsss._core.common.GConfig):
@@ -69,8 +69,8 @@ class FR3(rcsss._core.common.Robot):
 
 class FR3Config(rcsss._core.common.RConfig):
     async_control: bool
-    controller: IKController
     guiding_mode_enabled: bool
+    ik_solver: IKSolver
     load_parameters: FR3Load | None
     nominal_end_effector_frame: rcsss._core.common.Pose | None
     speed_factor: float
@@ -95,20 +95,20 @@ class FrankaHand(rcsss._core.common.Gripper):
     def is_grasped(self) -> bool: ...
     def set_parameters(self, cfg: FHConfig) -> bool: ...
 
-class IKController:
+class IKSolver:
     """
     Members:
 
-      internal
+      franka
 
-      robotics_library
+      rcs
     """
 
     __members__: typing.ClassVar[
-        dict[str, IKController]
-    ]  # value = {'internal': <IKController.internal: 0>, 'robotics_library': <IKController.robotics_library: 1>}
-    internal: typing.ClassVar[IKController]  # value = <IKController.internal: 0>
-    robotics_library: typing.ClassVar[IKController]  # value = <IKController.robotics_library: 1>
+        dict[str, IKSolver]
+    ]  # value = {'franka': <IKSolver.franka: 0>, 'rcs': <IKSolver.rcs: 1>}
+    franka: typing.ClassVar[IKSolver]  # value = <IKSolver.franka: 0>
+    rcs: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs: 1>
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -124,5 +124,5 @@ class IKController:
     @property
     def value(self) -> int: ...
 
-internal: IKController  # value = <IKController.internal: 0>
-robotics_library: IKController  # value = <IKController.robotics_library: 1>
+franka: IKSolver  # value = <IKSolver.franka: 0>
+rcs: IKSolver  # value = <IKSolver.rcs: 1>

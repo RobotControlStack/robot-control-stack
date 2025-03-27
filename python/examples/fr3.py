@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import rcsss
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
+from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
@@ -95,7 +95,7 @@ def main():
             robot = rcsss.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-            robot_cfg.controller = IKController.robotics_library
+            robot_cfg.ik_solver = IKSolver.rcs
             robot.set_parameters(robot_cfg)
 
             gripper_cfg_hw = rcsss.hw.FHConfig()

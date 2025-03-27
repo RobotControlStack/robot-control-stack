@@ -646,13 +646,13 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   // lets add a franka hand offset
 
 
-  if (this->cfg.controller == IKController::internal) {
+  if (this->cfg.ik_solver == IKSolver::franka) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
 
-  } else if (this->cfg.controller == IKController::robotics_library) {
+  } else if (this->cfg.ik_solver == IKSolver::rcs) {
     this->set_cartesian_position_ik(x);
   }
 }

@@ -28,13 +28,13 @@ struct FR3Load {
   std::optional<Eigen::Vector3d> f_x_cload;
   std::optional<Eigen::Matrix3d> load_inertia;
 };
-enum IKController { internal = 0, robotics_library };
+enum IKSolver { franka = 0, rcs };
 enum Controller { none = 0, jsc, osc };
 struct FR3Config : common::RConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
-  IKController controller = IKController::internal;
+  IKSolver ik_solver = IKSolver::franka;
   bool guiding_mode_enabled = true;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;

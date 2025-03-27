@@ -7,7 +7,7 @@ import numpy as np
 import rcsss
 from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
+from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.interface import BaseCameraConfig
@@ -38,7 +38,7 @@ def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
-    robot_cfg.controller = IKController.robotics_library
+    robot_cfg.ik_solver = IKSolver.rcs
     robot_cfg.async_control = async_control
     return robot_cfg
 

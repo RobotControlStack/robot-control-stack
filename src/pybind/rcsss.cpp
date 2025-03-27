@@ -314,14 +314,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("f_x_cload", &rcs::hw::FR3Load::f_x_cload)
       .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
 
-  py::enum_<rcs::hw::IKController>(hw, "IKController")
-      .value("internal", rcs::hw::IKController::internal)
-      .value("robotics_library", rcs::hw::IKController::robotics_library)
+  py::enum_<rcs::hw::IKSolver>(hw, "IKSolver")
+      .value("franka", rcs::hw::IKSolver::franka)
+      .value("rcs", rcs::hw::IKSolver::rcs)
       .export_values();
 
   py::class_<rcs::hw::FR3Config, rcs::common::RConfig>(hw, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("controller", &rcs::hw::FR3Config::controller)
+      .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
       .def_readwrite("guiding_mode_enabled",
                      &rcs::hw::FR3Config::guiding_mode_enabled)

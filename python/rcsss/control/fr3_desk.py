@@ -31,7 +31,7 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         f = rcsss.hw.FR3(ip)
         config = rcsss.hw.FR3Config()
         config.speed_factor = 0.7
-        config.controller = rcsss.hw.IKController.internal
+        config.ik_solver = rcsss.hw.IKSolver.franka
         config.guiding_mode_enabled = True
         f.set_parameters(config)
         config_hand = rcsss.hw.FHConfig()
