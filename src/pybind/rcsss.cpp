@@ -343,6 +343,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
+      .def_readonly("is_moving", &rcs::hw::FHState::is_moving)
+      .def_readonly("bool_state", &rcs::hw::FHState::bool_state)
       .def_readonly("last_commanded_width",
                     &rcs::hw::FHState::last_commanded_width)
       .def_readonly("max_unnormalized_width",

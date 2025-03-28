@@ -45,6 +45,8 @@ FHState *FrankaHand::get_state() {
   state->temperature = gripper_state.temperature;
   state->max_unnormalized_width = this->max_width;
   state->last_commanded_width = this->last_commanded_width;
+  state->bool_state = this->last_commanded_width > 0;
+  state->is_moving = this->is_moving;
   return state;
 }
 
@@ -74,7 +76,7 @@ void FrankaHand::m_stop(){
     this->control_thread->join();
     this->control_thread.reset();
   }
-
+  this->is_moving = false;
 }
 
 void FrankaHand::m_reset() {
@@ -83,7 +85,9 @@ void FrankaHand::m_reset() {
   franka::GripperState gripper_state = this->gripper.readOnce();
   this->max_width = gripper_state.max_width - 0.001;
   this->last_commanded_width = this->max_width;
+  this->is_moving = true;
   this->gripper.move(this->max_width, this->cfg.speed);
+  this->is_moving = false;
 }
 void FrankaHand::reset() { this->m_reset(); }
 
@@ -95,36 +99,57 @@ bool FrankaHand::is_grasped() {
 bool FrankaHand::homing() {
   // Do a homing in order to estimate the maximum
   // grasping width with the current fingers.
-  return this->gripper.homing();
+  this->is_moving = true;
+  bool success =  this->gripper.homing();
+  this->is_moving = false;
+  return success;
 }
 
 void FrankaHand::grasp() {
   this->last_commanded_width = 0;
   if (!this->cfg.async_control) {
+    this->is_moving = true;
     this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
+    this->is_moving = false;
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);});
+  this->control_thread = std::thread([&](){
+    this->is_moving = true;
+    this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
+    this->is_moving = false;
+  });
 }
 
 void FrankaHand::open() {
   this->last_commanded_width = this->max_width;
   if (!this->cfg.async_control) {
+    this->is_moving = true;
     this->gripper.move(this->max_width, this->cfg.speed);
+    this->is_moving = false;
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){this->gripper.move(this->max_width, this->cfg.speed);});
+  this->control_thread = std::thread([&](){
+    this->is_moving = true;
+    this->gripper.move(this->max_width, this->cfg.speed);
+    this->is_moving = false;
+  });
 }
 void FrankaHand::shut() {
   this->last_commanded_width = 0;
   if (!this->cfg.async_control) {
+    this->is_moving = true;
     this->gripper.move(0, this->cfg.speed);
+    this->is_moving = false;
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){this->gripper.move(0, this->cfg.speed);});
+  this->control_thread = std::thread([&](){
+    this->is_moving = true;
+    this->gripper.move(0, this->cfg.speed);
+    this->is_moving = false;
+  });
 }
 }  // namespace hw
 }  // namespace rcs

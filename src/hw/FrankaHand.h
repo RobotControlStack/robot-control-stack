@@ -30,10 +30,13 @@ struct FHConfig : common::GConfig {
 
 struct FHState : common::GState {
   double width;
+  // true is open
+  bool bool_state;
   bool is_grasped;
   uint16_t temperature;
   double last_commanded_width;
   double max_unnormalized_width;
+  bool is_moving;
 };
 
 class FrankaHand : public common::Gripper {
@@ -42,6 +45,7 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
   double max_width;
   double last_commanded_width;
+  bool is_moving = false;
   std::optional<std::thread> control_thread = std::nullopt;
   void m_reset();
   void m_stop();
