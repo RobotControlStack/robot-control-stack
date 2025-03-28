@@ -194,7 +194,7 @@ class PoseList:
         poses: list[Pose] | None = None,
         urdf_path: str | None = None,
     ):
-        self.ik = common.IK(urdf_path) if urdf_path else None
+        self.ik = common.RL(urdf_path) if urdf_path else None
         self.r: dict[str, hw.FR3] = {key: hw.FR3(ip, self.ik) for key, ip in name2ip.items()}
         # TODO: this config should be given to the constructor
         cfg = hw.FHConfig()

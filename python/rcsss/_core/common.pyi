@@ -21,6 +21,7 @@ __all__ = [
     "NRobotsWithGripper",
     "Pose",
     "RConfig",
+    "RL",
     "RPY",
     "RState",
     "Robot",
@@ -45,7 +46,6 @@ class Gripper:
     def shut(self) -> None: ...
 
 class IK:
-    def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...
     def ik(
         self, pose: Pose, q0: numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]] | None: ...
@@ -127,6 +127,9 @@ class Pose:
 
 class RConfig:
     pass
+
+class RL(IK):
+    def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...
 
 class RPY:
     pitch: float

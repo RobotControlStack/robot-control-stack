@@ -69,7 +69,7 @@ def main():
             simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
+            ik = rcsss.common.RL(urdf_path)
             robot = rcsss.sim.FR3(simulation, "0", ik)
             cfg = sim.FR3Config()
             cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
@@ -91,7 +91,7 @@ def main():
         else:
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
+            ik = rcsss.common.RL(urdf_path)
             robot = rcsss.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())

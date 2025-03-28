@@ -137,7 +137,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
-        ik = rcsss.common.IK(urdf, max_duration_ms=300)
+        ik = rcsss.common.RL(urdf, max_duration_ms=300)
         robot = rcsss.sim.FR3(simulation, id, ik)
         cfg = sim.FR3Config()
         cfg.realtime = False

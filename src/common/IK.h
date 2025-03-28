@@ -15,22 +15,29 @@
 namespace rcs {
 namespace common {
 
-struct RL {
-  std::shared_ptr<rl::mdl::Model> mdl;
-  std::shared_ptr<rl::mdl::Kinematic> kin;
-  std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
+class IK {
+ public:
+  virtual ~IK(){};
+  virtual std::optional<Vector7d> ik(
+      const Pose& pose, const Vector7d& q0,
+      const Pose& tcp_offset = Pose::Identity()) = 0;
 };
 
-class IK {
+class RL : public IK {
  private:
-  RL rl;
+  struct RLData {
+    std::shared_ptr<rl::mdl::Model> mdl;
+    std::shared_ptr<rl::mdl::Kinematic> kin;
+    std::shared_ptr<rl::mdl::JacobianInverseKinematics> ik;
+  };
+  RLData rl_data;
 
  public:
-  IK(const std::string& urdf_path, size_t max_duration_ms = 300);
-  std::optional<Vector7d> ik(const Pose& pose, const Vector7d& q0,
-                             const Pose& tcp_offset = Pose::Identity());
-
-  // TODO: set max time
+  RL(const std::string& urdf_path, size_t max_duration_ms = 300);
+  ~RL() override = default;
+  std::optional<Vector7d> ik(
+      const Pose& pose, const Vector7d& q0,
+      const Pose& tcp_offset = Pose::Identity()) override;
 };
 }  // namespace common
 }  // namespace rcs

@@ -113,7 +113,7 @@ def fr3_hw_env(
         gym.Env: The configured hardware environment for the FR3 robot.
     """
     urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
-    ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
+    ik = rcsss.common.RL(str(urdf_path)) if urdf_path is not None else None
     robot = rcsss.hw.FR3(ip, ik)
     robot.set_parameters(robot_cfg)
 
@@ -213,7 +213,7 @@ def fr3_sim_env(
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
 
     simulation = sim.Sim(rcsss.scenes.get(str(mjcf), mjcf))
-    ik = rcsss.common.IK(urdf_path)
+    ik = rcsss.common.RL(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
