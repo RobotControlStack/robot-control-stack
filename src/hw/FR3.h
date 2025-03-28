@@ -35,7 +35,6 @@ struct FR3Config : common::RConfig {
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
   IKSolver ik_solver = IKSolver::franka;
-  bool guiding_mode_enabled = true;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
@@ -79,7 +78,9 @@ class FR3 : public common::Robot {
 
   common::Vector7d get_joint_position() override;
 
-  void set_guiding_mode(bool enabled);
+  void set_guiding_mode(bool x, bool y, bool z,
+                           bool roll, bool pitch, bool yaw,
+                           bool elbow);
 
   void controller_set_joint_position(const common::Vector7d &desired_q);
   void osc_set_cartesian_position(

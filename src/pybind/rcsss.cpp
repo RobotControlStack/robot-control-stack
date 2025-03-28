@@ -323,8 +323,6 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<>())
       .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
-      .def_readwrite("guiding_mode_enabled",
-                     &rcs::hw::FR3Config::guiding_mode_enabled)
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame)
@@ -362,7 +360,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
-           py::arg("enabled"))
+           py::arg("x") = true, py::arg("y") = true, py::arg("z") = true, py::arg("roll") = true, py::arg("pitch") = true, py::arg("yaw") = true, py::arg("elbow") = true)
       .def("zero_torque", &rcs::hw::FR3::zero_torque)
       .def("osc_set_cartesian_position",
            &rcs::hw::FR3::osc_set_cartesian_position,

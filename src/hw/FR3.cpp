@@ -24,7 +24,7 @@ FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
     : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
-  this->set_guiding_mode(true);
+  this->set_guiding_mode(true, true, true, true, true, true, true);
 
   if (cfg.has_value()) {
     this->cfg = cfg.value();
@@ -121,11 +121,11 @@ common::Vector7d FR3::get_joint_position() {
   return joints;
 }
 
-void FR3::set_guiding_mode(bool enabled) {
-  std::array<bool, 6> activated;
-  activated.fill(enabled);
-  this->robot.setGuidingMode(activated, enabled);
-  this->cfg.guiding_mode_enabled = enabled;
+void FR3::set_guiding_mode(bool x, bool y, bool z,
+                           bool roll, bool pitch, bool yaw,
+                           bool elbow) {
+  std::array<bool, 6> activated = {x, y, z, roll, pitch, yaw};
+  this->robot.setGuidingMode(activated, elbow);
 }
 
 void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
