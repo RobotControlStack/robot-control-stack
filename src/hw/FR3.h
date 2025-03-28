@@ -29,7 +29,9 @@ struct FR3Load {
   std::optional<Eigen::Matrix3d> load_inertia;
 };
 enum IKSolver { franka = 0, rcs };
-enum Controller { none = 0, jsc, osc };
+// modes: joint-space control, operational-space control, zero-torque
+// control
+enum Controller { none = 0, jsc, osc, ztc };
 struct FR3Config : common::RConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
@@ -57,6 +59,9 @@ class FR3 : public common::Robot {
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
   Controller running_controller = Controller::none;
+  void osc();
+  void joint_controller();
+  void zero_torque_controller();
 
  public:
   FR3(const std::string &ip,
@@ -85,13 +90,9 @@ class FR3 : public common::Robot {
   void controller_set_joint_position(const common::Vector7d &desired_q);
   void osc_set_cartesian_position(
       const common::Pose &desired_pose_EE_in_base_frame);
+  void zero_torque_guiding();
 
   void stop_control_thread();
-
-  void osc();
-  void joint_controller();
-
-  void zero_torque();
 
   void move_home() override;
 

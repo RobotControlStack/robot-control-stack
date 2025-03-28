@@ -238,6 +238,10 @@ void FR3::osc() {
 
   this->controller_time = 0.0;
 
+  // conservative collision and impedance behavior
+  this->set_default_robot_behavior();
+
+  // high collision threshold values for high impedance
   // this->robot.setCollisionBehavior(
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -451,6 +455,11 @@ void FR3::osc() {
 void FR3::joint_controller() {
   franka::Model model = this->robot.loadModel();
   this->controller_time = 0.0;
+
+  // conservative collision and impedance behavior
+  this->set_default_robot_behavior();
+
+  // high collision threshold values for high impedance
   // this->robot.setCollisionBehavior(
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
   //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -537,20 +546,33 @@ void FR3::joint_controller() {
   });
 }
 
-void FR3::zero_torque() {
-  // start thread
+void FR3::zero_torque_guiding(){
 
+  if (this->running_controller != Controller::none) {
+    throw std::runtime_error("A controller is currently running. Please stop it first.");
+  }
+    this->controller_time = 0.0;
+    this->running_controller= Controller::ztc;
+    this->control_thread = std::thread(&FR3::zero_torque_controller, this);
+}
+
+void FR3::zero_torque_controller() {
+
+  // high collision threshold values for high impedance
   robot.setCollisionBehavior(
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
-  double time = 0.0;
-  this->robot.control([&](const franka::RobotState &state,
-                          franka::Duration time_step) -> franka::Torques {
-    time += time_step.toSec();
-    if (time > 30) {
+  this->controller_time = 0.0;
+  this->robot.control([&](const franka::RobotState &robot_state,
+                          franka::Duration period) -> franka::Torques {
+    this->interpolator_mutex.lock();
+    this->curr_state = robot_state;
+    this->controller_time += period.toSec();
+    this->interpolator_mutex.unlock();
+    if (this->running_controller == Controller::none) {
       // stop
       return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
     }
