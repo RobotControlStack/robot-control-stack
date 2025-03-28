@@ -19,6 +19,7 @@ __all__ = [
     "IdentityRotQuartVec",
     "IdentityTranslation",
     "NRobotsWithGripper",
+    "Pin",
     "Pose",
     "RConfig",
     "RL",
@@ -68,6 +69,9 @@ class NRobotsWithGripper:
         self, idxs: list[int], q: list[numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]]]
     ) -> None: ...
     def shut(self, idxs: list[int]) -> None: ...
+
+class Pin(IK):
+    def __init__(self, urdf_path: str) -> None: ...
 
 class Pose:
     def __getstate__(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(16)]: ...

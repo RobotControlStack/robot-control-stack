@@ -220,6 +220,10 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
            py::arg("max_duration_ms") = 300);
 
+  py::class_<rcs::common::Pin, rcs::common::IK,
+             std::shared_ptr<rcs::common::Pin>>(common, "Pin")
+      .def(py::init<const std::string &>(), py::arg("urdf_path"));
+
   py::class_<rcs::common::RConfig>(common, "RConfig");
   py::class_<rcs::common::RState>(common, "RState");
   py::class_<rcs::common::GConfig>(common, "GConfig");
