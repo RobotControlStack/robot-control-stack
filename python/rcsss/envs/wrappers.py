@@ -238,7 +238,7 @@ class StorageWrapperHDF5(gym.Wrapper):
                     initial_shape = (index + 1,) + shape
                     maxshape = (None,) + shape
                     dataset = group.create_dataset(
-                        dataset_name, shape=initial_shape, maxshape=maxshape, chunks=True, dtype=dtype
+                        dataset_name, shape=initial_shape, maxshape=maxshape, chunks=True, dtype=dtype , compression="gzip"
                     )
                     self.datasets[full_dataset_path] = dataset
                 else:
