@@ -1,14 +1,18 @@
 from dataclasses import dataclass
 from datetime import datetime
+import logging
 from time import time, sleep
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class SimpleFrameRate:
     def __init__(self):
         self.t = None
+        self._last_print = None
 
     def reset(self):
         self.t = None
@@ -16,6 +20,7 @@ class SimpleFrameRate:
     def __call__(self, frame_rate: int | float):
         if self.t is None:
             self.t = time()
+            self._last_print = self.t
             sleep(1 / frame_rate if isinstance(frame_rate, int) else frame_rate)
             return
         sleep_time = (
@@ -23,6 +28,10 @@ class SimpleFrameRate:
         )
         if sleep_time > 0:
             sleep(sleep_time)
+        if self._last_print is None or time() - self._last_print > 30:
+            self._last_print = time()
+            logger.info(f"FPS: {1 / (time() - self.t)}")
+
         self.t = time()
 
 
