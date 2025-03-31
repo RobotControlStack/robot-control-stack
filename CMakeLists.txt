@@ -49,7 +49,7 @@ find_package(Eigen3 REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
-
+find_package(pinocchio REQUIRED)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git

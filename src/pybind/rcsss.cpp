@@ -222,7 +222,8 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pin, rcs::common::IK,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
-      .def(py::init<const std::string &>(), py::arg("urdf_path"));
+      .def(py::init<const std::string &, const std::string &>(),
+           py::arg("urdf_path"), py::arg("frame_id") = "fr3_link8");
 
   py::class_<rcs::common::RConfig>(common, "RConfig");
   py::class_<rcs::common::RState>(common, "RState");

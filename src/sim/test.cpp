@@ -15,7 +15,7 @@
 // const std::string mjcf = MODEL_DIR "/mjcf/fr3_modular/scene.xml";
 // const std::string urdf = MODEL_DIR "/fr3/urdf/fr3_from_panda.urdf";
 const std::string mjcf = "build/_deps/scenes-src/scenes/lab/scene.xml";
-const std::string urdf = "build/_deps/scenes-src/scenes/lab/assets/fr3.urdf";
+const std::string urdf_path = "build/_deps/scenes-src/scenes/lab/assets/fr3.urdf";
 static const Eigen::Matrix<double, 1, 3, Eigen::RowMajor> iso_cube_center(
     0.498, 0.0, 0.226);
 static const float iso_cube_size = 0.4;
@@ -126,7 +126,7 @@ int test_sim() {
   sim->set_config(cfg);
   std::string id = "0";
 
-  auto ik = std::make_shared<rcs::common::RL>(urdf);
+  auto ik = std::make_shared<rcs::common::RL>(urdf_path);
   auto fr3 = rcs::sim::FR3(sim, id, ik);
   auto tcp_offset = rcs::common::Pose(rcs::common::FrankaHandTCPOffset());
   rcs::sim::FR3Config fr3_config = *fr3.get_parameters();

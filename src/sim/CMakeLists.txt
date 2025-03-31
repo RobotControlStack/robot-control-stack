@@ -4,5 +4,5 @@ target_sources(sim
 )
 target_link_libraries(sim PUBLIC glfw common MuJoCo::MuJoCo mujoco_ui_lib)
 
-add_executable(test_sim test.cpp sim.cpp)
-target_link_libraries(test_sim PRIVATE sim MuJoCo::MuJoCo common glfw)
+# add_executable(test_sim test.cpp sim.cpp)
+# target_link_libraries(test_sim PRIVATE sim MuJoCo::MuJoCo common glfw pinocchio::pinocchio)

@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <pinocchio/parsers/urdf.hpp>
+#include <string>
 
 #include "Pose.h"
 #include "pinocchio/algorithm/jacobian.hpp"
@@ -50,13 +51,13 @@ class Pin : public IK {
   const int IT_MAX = 1000;
   const double DT = 1e-1;
   const double damp = 1e-6;
-  const int JOINT_ID = 7;
+  int FRAME_ID;
 
   pinocchio::Model model;
   pinocchio::Data data;
 
  public:
-  Pin(const std::string& urdf_path);
+  Pin(const std::string& urdf_path, const std::string& frame_id);
   std::optional<Vector7d> ik(
       const Pose& pose, const Vector7d& q0,
       const Pose& tcp_offset = Pose::Identity()) override;

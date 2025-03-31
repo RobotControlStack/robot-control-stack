@@ -12,11 +12,11 @@
 #include <rl/mdl/Kinematic.h>
 #include <rl/mdl/UrdfFactory.h>
 
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/jacobian.hpp>
+#include <pinocchio/algorithm/joint-configuration.hpp>
+#include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/parsers/urdf.hpp>
-
-#include "pinocchio/algorithm/jacobian.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/kinematics.hpp"
 
 namespace rcs {
 namespace common {
@@ -51,9 +51,14 @@ std::optional<Vector7d> RL::ik(const Pose& pose, const Vector7d& q0,
   }
 }
 
-Pin::Pin(const std::string& urdf_path) : model() {
+Pin::Pin(const std::string& urdf_path, const std::string& frame_id) : model() {
   pinocchio::urdf::buildModel(urdf_path, this->model);
   this->data = pinocchio::Data(this->model);
+  this->FRAME_ID = model.getFrameId(frame_id);
+  if (FRAME_ID == -1) {
+    throw std::runtime_error(
+        frame_id + " frame id could not be found in the provided URDF");
+  }
 }
 
 std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
@@ -68,8 +73,9 @@ std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
   Eigen::VectorXd v(model.nv);
   for (int i = 0;; i++) {
     pinocchio::forwardKinematics(model, data, q);
-    const pinocchio::SE3 iMd = data.oMi[this->JOINT_ID].actInv(oMdes);
-    err = pinocchio::log6(iMd).toVector();  // in joint frame
+    pinocchio::updateFramePlacements(model, data);
+    const pinocchio::SE3 iMd = data.oMf[this->FRAME_ID].actInv(oMdes);
+    err = pinocchio::log6(iMd).toVector();
     if (err.norm() < this->eps) {
       success = true;
       break;
@@ -78,8 +84,7 @@ std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
       success = false;
       break;
     }
-    pinocchio::computeJointJacobian(model, data, q, this->JOINT_ID,
-                                    J);  // J in joint frame
+    pinocchio::computeFrameJacobian(model, data, q, this->FRAME_ID, J);
     pinocchio::Data::Matrix6 Jlog;
     pinocchio::Jlog6(iMd.inverse(), Jlog);
     J = -Jlog * J;
@@ -88,16 +93,10 @@ std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
     JJt.diagonal().array() += this->damp;
     v.noalias() = -J.transpose() * JJt.ldlt().solve(err);
     q = pinocchio::integrate(model, q, v * this->DT);
-    if (!(i % 10))
-      std::cout << i << ": error = " << err.transpose() << std::endl;
   }
   if (success) {
-    // print amount of iterations
-    std::cout << "IK success after " << std::to_string(IT_MAX) << " iterations"
-              << std::endl;
     return q;
   } else {
-    std::cout << "IK failed" << std::endl;
     return std::nullopt;
   }
 }
