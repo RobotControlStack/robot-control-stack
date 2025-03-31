@@ -19,9 +19,7 @@ import h5py
 class StorageWrapperNumpy(gym.Wrapper):
     # TODO: this should also record the instruction
     FILE = "episode_{}.npz"
-    GIF = "{}_episode_{}_{}.gif"
     FOLDER = "experiment_{}"
-    GIF_DURATION_S = 0.5
 
     def __init__(
         self,
@@ -74,31 +72,44 @@ class StorageWrapperNumpy(gym.Wrapper):
         if self.camera_set is not None and self.camera_set.recording_ongoing():
             self.camera_set.stop_video()
 
-        if self.gif:
-            # for key in ["side", "wrist", "bird_eye", "openvla_view"]:
-            for key in ["side", "right_side", "bird_eye", "left_side", "front"]:
-                if f"observation.frames.{key}.rgb" in self.data:
-                    imgs = []
-                    previous_timestamp = 0
-                    for idx in range(min(len(self.data[f"observation.frames.{key}.rgb"]), len(self.data["timestamp"]))):
-                        # skip images that have timestamps closer together than 0.5s
-                        img = self.data[f"observation.frames.{key}.rgb"][idx]
-                        if self.data["timestamp"][idx] - previous_timestamp < self.GIF_DURATION_S:
-                            continue
-                        previous_timestamp = self.data["timestamp"][idx]
-                        imgs.append(Image.fromarray(img))
-                    imgs[0].save(
-                        self.gif_path / self.GIF.format(self.timestamp, self.episode_count, key),
-                        save_all=True,
-                        append_images=imgs[1:],
-                        duration=self.GIF_DURATION_S * 1000,
-                        loop=0,
-                    )
-
         self.episode_count += 1
         self.data = {}
 
-    # TODO: fix recorder order
+    @staticmethod
+    def create_gif(path: str, episode: int, key: str, frame_interval_s: float = 0.5):
+        data = np.load(path)
+        gif_path = Path(path) / "gifs"
+        gif_path.mkdir(parents=True, exist_ok=True)
+
+        if (
+            "observation" in data
+            and "frames" in data["observation"]
+            and key in data["observation"]["frames"]
+            and "rgb" in data["observation"]["frames"][key]
+        ):
+            imgs = []
+            previous_timestamp = 0
+            d = data["observation"]["frames"][key]["rgb"]
+            for idx in range(min(len(d), len(data["timestamp"]))):
+                # skip images that have timestamps closer together than 0.5s
+                img = d[idx]
+                if data["timestamp"][idx] - previous_timestamp < frame_interval_s:
+                    continue
+                previous_timestamp = data["timestamp"][idx]
+                imgs.append(Image.fromarray(img))
+            imgs[0].save(
+                gif_path / "episode_{}_{}.gif".format(episode, key),
+                save_all=True,
+                append_images=imgs[1:],
+                duration=frame_interval_s * 1000,
+                loop=0,
+            )
+        else:
+            if "observation" in data and "frames" in data["observation"] and key in data["observation"]["frames"]:
+                raise ValueError(f"Key {key} not found in {data['observation']['frames'].keys()}")
+            else:
+                raise ValueError(f"Key {key} not found in data")
+
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
         # write obs and action into data
@@ -141,9 +152,6 @@ class StorageWrapperNumpy(gym.Wrapper):
 # to create them from a dataset, how about video?
 class StorageWrapperHDF5(gym.Wrapper):
     FILE = "data.h5"
-    GIF = "{}_{}.gif"
-    FOLDER = "experiment_{}"
-    GIF_DURATION_S = 0.5
 
     def __init__(
         self,
@@ -164,7 +172,7 @@ class StorageWrapperHDF5(gym.Wrapper):
         self.camera_set = camera_set
 
         # Make folders
-        self.path = Path(path)  # / self.FOLDER.format(self.timestamp)
+        self.path = Path(path)
         Path(self.path).mkdir(parents=True, exist_ok=True)
         if description is None:
             # Write a small description from input into file
@@ -255,34 +263,81 @@ class StorageWrapperHDF5(gym.Wrapper):
         # Stop camera recording if applicable
         if self.camera_set is not None and self.camera_set.recording_ongoing():
             self.camera_set.stop_video()
-        # Generate GIFs if enabled
-        if self.gif:
-            for key in ["side", "right_side", "bird_eye", "left_side", "front"]:
-                img_dataset_path = f"observation/frames/{key}/rgb"
-                if img_dataset_path in self.episode_group:
-                    dataset = self.episode_group[img_dataset_path]
-                    imgs = []
-                    previous_timestamp = 0
-                    timestamp_dataset = self.episode_group["timestamp"]
-                    for idx in range(min(len(dataset), len(timestamp_dataset))):
-                        # Skip images that have timestamps closer together than self.GIF_DURATION_S
-                        img = dataset[idx]
-                        timestamp = timestamp_dataset[idx]
-                        if timestamp - previous_timestamp < self.GIF_DURATION_S:
-                            continue
-                        previous_timestamp = timestamp
-                        imgs.append(Image.fromarray(img))
-                    if imgs:
-                        imgs[0].save(
-                            self.gif_path / self.GIF.format(self.timestamp, key),
-                            save_all=True,
-                            append_images=imgs[1:],
-                            duration=self.GIF_DURATION_S * 1000,
-                            loop=0,
-                        )
         # Reset datasets for the next episode
         self.datasets = {}
         self.episode_count += 1
+
+    @staticmethod
+    def create_gif(
+        h5file_path: str,
+        language_instruction: str,
+        episode_name: str,
+        key: str,
+        frame_interval_s: float = 0.5,
+        output_folder: str = None,
+    ):
+        """
+        Create a GIF from images stored in the HDF5 file.
+
+        Args:
+            h5file_path (str): Path to the HDF5 file.
+            language_instruction (str): The instruction group under which the episode is stored.
+            episode_name (str): The name of the episode group.
+            key (str): The camera key (e.g., 'front', 'side', etc.).
+            frame_interval_s (float, optional): Minimum time between frames to include in the GIF. Defaults to 0.5 seconds.
+            output_folder (str, optional): Path to the directory to save the GIF. Defaults to the 'gifs' folder in the HDF5 file's directory.
+        """
+
+        with h5py.File(h5file_path, "r") as h5file:
+            if language_instruction in h5file:
+                instruction_group = h5file[language_instruction]
+            else:
+                raise ValueError(f"Language instruction '{language_instruction}' not found in HDF5 file.")
+
+            if episode_name in instruction_group:
+                episode_group = instruction_group[episode_name]
+            else:
+                raise ValueError(f"Episode '{episode_name}' not found under instruction '{language_instruction}'.")
+
+            img_dataset_path = f"observation/frames/{key}/rgb"
+            if img_dataset_path in episode_group:
+                images_dataset = episode_group[img_dataset_path]
+            else:
+                raise ValueError(f"Image dataset '{img_dataset_path}' not found in episode '{episode_name}'.")
+
+            if "timestamp" in episode_group:
+                timestamps = episode_group["timestamp"][:]
+            else:
+                raise ValueError(f"'timestamp' dataset not found in episode '{episode_name}'.")
+
+            imgs = []
+            previous_timestamp = None  # Initialize as None
+            for idx in range(min(len(images_dataset), len(timestamps))):
+                timestamp = timestamps[idx]
+                if previous_timestamp is not None and (timestamp - previous_timestamp) < frame_interval_s:
+                    continue
+                previous_timestamp = timestamp
+                img_array = images_dataset[idx]
+                img = Image.fromarray(img_array)
+                imgs.append(img)
+
+            if not imgs:
+                raise ValueError(f"No images found to create GIF for key '{key}' in episode '{episode_name}'.")
+
+            if output_folder is None:
+                output_folder = os.path.join(os.path.dirname(h5file_path), "gifs")
+            os.makedirs(output_folder, exist_ok=True)
+
+            gif_filename = f"{language_instruction}_{episode_name}_{key}.gif"
+            gif_filepath = os.path.join(output_folder, gif_filename)
+
+            imgs[0].save(
+                gif_filepath,
+                save_all=True,
+                append_images=imgs[1:],
+                duration=frame_interval_s * 1000,  # Duration per frame in milliseconds
+                loop=0,
+            )
 
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
