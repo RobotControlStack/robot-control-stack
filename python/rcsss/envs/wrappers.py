@@ -39,6 +39,7 @@ class StorageWrapper(gym.Wrapper):
         self.record_numpy = record_numpy
         self.gif = gif
         self.camera_set = camera_set
+        self.prev_obs: dict | None = None
 
         # make folders
         self.path = Path(path) / self.FOLDER.format(self.timestamp)
@@ -102,7 +103,9 @@ class StorageWrapper(gym.Wrapper):
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
         # write obs and action into data
-        act_obs = {"action": action, "observation": obs, "timestamp": datetime.now().timestamp()}
+        act_obs = {"action": action, "observation": self.prev_obs, "timestamp": datetime.now().timestamp()}
+        # delay observation by one time step to ensure that the observation leads to the action (and not like in gym env)
+        self.prev_obs = obs
         act_obs["timestamp"] = datetime.now().timestamp()
         self.data["language_instruction"] = self.language_instruction
         for key, value in act_obs.items():
@@ -116,7 +119,9 @@ class StorageWrapper(gym.Wrapper):
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
         self.flush()
         self.step_count = 0
+        self.prev_obs = None
         re = super().reset(seed=seed, options=options)
+        self.prev_obs = re[0]
         return re
 
     def close(self):
