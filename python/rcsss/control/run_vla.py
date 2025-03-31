@@ -189,7 +189,7 @@ def main():
             )
             env.get_wrapper_attr("sim").open_gui()
         if not DEBUG:
-            env = StorageWrapper(env, path="octo_realv1_async", instruction=INSTRUCTION, record_numpy=False)
+            env = StorageWrapper(env, path="octo_realv1_async", instruction=INSTRUCTION)
 
             # record videos
             video_path = env.path / "videos"

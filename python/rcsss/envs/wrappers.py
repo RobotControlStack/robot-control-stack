@@ -27,7 +27,6 @@ class StorageWrapper(gym.Wrapper):
         path: str,
         instruction: str | None = None,
         description: str | None = None,
-        record_numpy: bool = True,
         gif: bool = True,
         camera_set: BaseHardwareCameraSet | None = None,
     ):
@@ -36,7 +35,6 @@ class StorageWrapper(gym.Wrapper):
         self.step_count = 0
         self.data = {}
         self.timestamp = str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        self.record_numpy = record_numpy
         self.gif = gif
         self.camera_set = camera_set
         self.prev_obs: dict | None = None
@@ -70,8 +68,7 @@ class StorageWrapper(gym.Wrapper):
         if len(self.data) == 0 or self.step_count == 0:
             return
         print(self.data.keys())
-        if self.record_numpy:
-            np.savez(self.path / self.FILE.format(self.episode_count), **self.data)
+        np.savez(self.path / self.FILE.format(self.episode_count), **self.data)
         if self.camera_set is not None and self.camera_set.recording_ongoing():
             self.camera_set.stop_video()
 
