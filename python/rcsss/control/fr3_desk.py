@@ -3,6 +3,7 @@ import dataclasses
 import hashlib
 import json as json_module
 import logging
+import os
 import ssl
 import threading
 import time
@@ -298,6 +299,16 @@ class Desk:
         """
         active = self._get_active_token()
 
+        # try to read token from cache file
+        token_path = os.path.expanduser('~/.cache/rcs_fr3_token')
+        if active.id != "" and self._token.id == "" and os.path.exists(token_path):
+            with open(token_path, "r") as f:
+                content = f.read()
+            content = content.split("/n")
+            self._token = Token(content[0], content[1], content[2])
+            
+
+
         # we already have control
         if active.id != "" and self._token.id == active.id:
             _logger.info("Retaken control.")
@@ -334,12 +345,14 @@ class Desk:
                     if event["circle"]:
                         break
         self._token = Token(str(response["id"]), self._username, response["token"])
+        with open(token_path, "w") as f:
+            f.write("/n".join([self._token.id, self._token.owned_by, self._token.token]))
         _logger.info("Taken control.")
         return True
 
     def release_control(self) -> None:
         """
-        Explicitly relinquish control of the Desk. This will allow
+        Explicitly relinquish cofilentrol of the Desk. This will allow
         other users to take control or transfer control to the next
         user if there is an active queue of control requests.
         """
