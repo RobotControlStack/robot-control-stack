@@ -30,7 +30,7 @@ from rcsss.envs.factories import (
     fr3_hw_env,
     fr3_sim_env,
 )
-from rcsss.envs.wrappers import StorageWrapper
+from rcsss.envs.wrappers import StorageWrapperHDF5, StorageWrapperNumpy
 
 
 logger = logging.getLogger(__name__)
@@ -42,16 +42,16 @@ VIVE_PORT = 54321
 INCLUDE_ROTATION = True
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotInstance.HARDWARE
-DEBUG = False
+DEBUG = True
 STORAGE_PATH = "teleop_data"
 # set camera dict to none disable cameras
 CAMERA_DICT = {
-    "wrist": "244222071045",
+    # "wrist": "244222071045",
     # "wrist": "218622278131", # new realsense
     "bird_eye": "243522070364",
     "side": "243522070385",
 }
-PRODUCE_GIF = True
+# CAMERA_DICT = None
 
 
 
@@ -233,7 +233,7 @@ def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSens
                 if camera_set is not None:
                     video_path = env_rel.path / "videos"
                     video_path.mkdir(parents=True, exist_ok=True)
-                    camera_set.record_video(env_rel.path / "videos", env_rel.episode_count)
+                    camera_set.record_video(env_rel.path / "videos", f"{env_rel.key}_{env_rel.timestamp}_{env_rel.episode_count}")
                 print(f'{env_rel.episode_count = }')
 
                 thread = threading.Thread(target=action_server.environment_step_loop)
@@ -265,7 +265,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
                 gripper_cfg=default_fr3_hw_gripper_cfg(async_control=True),
-                max_relative_movement=(0.01, np.deg2rad(5)),
+                max_relative_movement=(0.01, np.deg2rad(1)),
                 # max_relative_movement=(0.5, np.deg2rad(90)),
                 # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
@@ -285,7 +285,7 @@ def main():
             env_rel.get_wrapper_attr("sim").open_gui()
 
         if not DEBUG:
-            env_rel = StorageWrapper(env_rel, path=STORAGE_PATH, camera_set=camera_set, gif=PRODUCE_GIF)
+            env_rel = StorageWrapperHDF5(env_rel, path=STORAGE_PATH, camera_set=camera_set)
             # ip_secondary = "192.168.102.1"
             # with Desk.fci(ip_secondary, user, pw):
             #     f = rcsss.hw.FR3(ip_secondary)

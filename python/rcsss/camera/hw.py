@@ -93,13 +93,13 @@ class BaseHardwareCameraSet(ABC):
         self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
         self._thread.start()
 
-    def record_video(self, path: Path, episode: int):
+    def record_video(self, path: Path, str_id: str):
         if self.recording_ongoing():
             return
         self.clear_buffer()
         for camera in self.camera_names:
             self.writer[camera] = cv2.VideoWriter(
-                str(path / f"episode_{episode}_{camera}.mp4"),
+                str(path / f"episode_{str_id}_{camera}.mp4"),
                 # migh require to install ffmpeg
                 cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
                 self.config.frame_rate,
@@ -107,7 +107,8 @@ class BaseHardwareCameraSet(ABC):
             )
 
     def recording_ongoing(self) -> bool:
-        return len(self.writer) > 0
+        with self._buffer_lock:
+            return len(self.writer) > 0
 
     def stop_video(self):
         if len(self.writer) > 0:

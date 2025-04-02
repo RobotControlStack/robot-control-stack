@@ -28,7 +28,7 @@ class SimpleFrameRate:
         )
         if sleep_time > 0:
             sleep(sleep_time)
-        if self._last_print is None or time() - self._last_print > 30:
+        if self._last_print is None or time() - self._last_print > 10:
             self._last_print = time()
             logger.info(f"FPS: {1 / (time() - self.t)}")
 
