@@ -87,7 +87,7 @@ void FR3::set_default_robot_behavior() {
 
 common::Pose FR3::get_cartesian_position() {
   common::Pose x;
-  if (this->running_controller == Controller::none){
+  if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
     x = common::Pose(this->curr_state.O_T_EE);
   } else {
@@ -99,7 +99,7 @@ common::Pose FR3::get_cartesian_position() {
 }
 
 void FR3::set_joint_position(const common::Vector7d &q) {
-  if (this->cfg.async_control){
+  if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
   }
@@ -121,9 +121,8 @@ common::Vector7d FR3::get_joint_position() {
   return joints;
 }
 
-void FR3::set_guiding_mode(bool x, bool y, bool z,
-                           bool roll, bool pitch, bool yaw,
-                           bool elbow) {
+void FR3::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
+                           bool yaw, bool elbow) {
   std::array<bool, 6> activated = {x, y, z, roll, pitch, yaw};
   this->robot.setGuidingMode(activated, elbow);
 }
@@ -160,7 +159,7 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
 
 void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
   // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 1.0; // in s
+  double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
@@ -170,8 +169,10 @@ void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
     this->get_joint_position();
   } else if (this->running_controller != Controller::jsc) {
     // runtime error
-    throw std::runtime_error("Controller type must but joint space but is " +
-                             std::to_string(this->running_controller) + ". To change controller type stop the current controller first.");
+    throw std::runtime_error(
+        "Controller type must but joint space but is " +
+        std::to_string(this->running_controller) +
+        ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
   }
@@ -183,7 +184,7 @@ void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
 
   // if not thread is running, then start
   if (this->running_controller == Controller::none) {
-    this->running_controller= Controller::jsc;
+    this->running_controller = Controller::jsc;
     this->control_thread = std::thread(&FR3::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -202,8 +203,10 @@ void FR3::osc_set_cartesian_position(
     this->controller_time = 0.0;
     this->get_cartesian_position();
   } else if (this->running_controller != Controller::osc) {
-    throw std::runtime_error("Controller type must but osc but is " +
-                             std::to_string(this->running_controller) + ". To change controller type stop the current controller first.");
+    throw std::runtime_error(
+        "Controller type must but osc but is " +
+        std::to_string(this->running_controller) +
+        ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
   }
@@ -217,7 +220,7 @@ void FR3::osc_set_cartesian_position(
 
   // if not thread is running, then start
   if (this->running_controller == Controller::none) {
-    this->running_controller= Controller::osc;
+    this->running_controller = Controller::osc;
     this->control_thread = std::thread(&FR3::osc, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -226,7 +229,8 @@ void FR3::osc_set_cartesian_position(
 
 // method to stop thread
 void FR3::stop_control_thread() {
-  if (this->control_thread.has_value() && this->running_controller != Controller::none) {
+  if (this->control_thread.has_value() &&
+      this->running_controller != Controller::none) {
     this->running_controller = Controller::none;
     this->control_thread->join();
     this->control_thread.reset();
@@ -242,11 +246,11 @@ void FR3::osc() {
   this->set_default_robot_behavior();
 
   // high collision threshold values for high impedance
-  // this->robot.setCollisionBehavior(
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   // from bench mark
   // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
@@ -546,18 +550,17 @@ void FR3::joint_controller() {
   });
 }
 
-void FR3::zero_torque_guiding(){
-
+void FR3::zero_torque_guiding() {
   if (this->running_controller != Controller::none) {
-    throw std::runtime_error("A controller is currently running. Please stop it first.");
+    throw std::runtime_error(
+        "A controller is currently running. Please stop it first.");
   }
-    this->controller_time = 0.0;
-    this->running_controller= Controller::ztc;
-    this->control_thread = std::thread(&FR3::zero_torque_controller, this);
+  this->controller_time = 0.0;
+  this->running_controller = Controller::ztc;
+  this->control_thread = std::thread(&FR3::zero_torque_controller, this);
 }
 
 void FR3::zero_torque_controller() {
-
   // high collision threshold values for high impedance
   robot.setCollisionBehavior(
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -580,7 +583,11 @@ void FR3::zero_torque_controller() {
   });
 }
 
-void FR3::move_home() { this->set_joint_position(q_home); }
+void FR3::move_home() {
+  // sync
+  MotionGenerator motion_generator(this->cfg.speed_factor, q_home);
+  this->robot.control(motion_generator);
+}
 
 void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
@@ -651,7 +658,7 @@ std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
 
 void FR3::set_cartesian_position(const common::Pose &x) {
   // pose is assumed to be in the robots coordinate frame
-  if (this->cfg.async_control){
+  if (this->cfg.async_control) {
     this->osc_set_cartesian_position(x);
     return;
   }
@@ -663,10 +670,8 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   } else {
     nominal_end_effector_frame_value = common::Pose::Identity();
   }
-  // nominal end effector frame should be on top of tcp offset as franka already takes care of
-  // the default franka hand offset
-  // lets add a franka hand offset
-
+  // nominal end effector frame should be on top of tcp offset as franka already
+  // takes care of the default franka hand offset lets add a franka hand offset
 
   if (this->cfg.ik_solver == IKSolver::franka) {
     // if gripper is attached the tcp offset will automatically be applied

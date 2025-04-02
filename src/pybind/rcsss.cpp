@@ -362,7 +362,9 @@ PYBIND11_MODULE(_core, m) {
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
-           py::arg("x") = true, py::arg("y") = true, py::arg("z") = true, py::arg("roll") = true, py::arg("pitch") = true, py::arg("yaw") = true, py::arg("elbow") = true)
+           py::arg("x") = true, py::arg("y") = true, py::arg("z") = true,
+           py::arg("roll") = true, py::arg("pitch") = true,
+           py::arg("yaw") = true, py::arg("elbow") = true)
       .def("zero_torque_guiding", &rcs::hw::FR3::zero_torque_guiding)
       .def("osc_set_cartesian_position",
            &rcs::hw::FR3::osc_set_cartesian_position,
