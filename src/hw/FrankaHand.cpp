@@ -1,9 +1,11 @@
 #include "FrankaHand.h"
 
+#include <franka/exception.h>
 #include <franka/gripper.h>
 
 #include <Eigen/Core>
 #include <cmath>
+#include <iostream>
 #include <string>
 #include <tuple>
 
@@ -62,7 +64,7 @@ void FrankaHand::set_normalized_width(double width, double force) {
     this->gripper.move(width, this->cfg.speed);
   } else {
     this->gripper.grasp(width, this->cfg.speed, force, this->cfg.epsilon_inner,
-                  this->cfg.epsilon_outer);
+                        this->cfg.epsilon_outer);
   }
 }
 double FrankaHand::get_normalized_width() {
@@ -70,13 +72,21 @@ double FrankaHand::get_normalized_width() {
   return gripper_state.width / gripper_state.max_width;
 }
 
-void FrankaHand::m_stop(){
-  this->gripper.stop();
+void FrankaHand::m_stop() {
+  try {
+    this->gripper.stop();
+  } catch (const franka::CommandException &e) {
+    std::cerr << "franka hand command exception ignored stop" << std::endl;
+  }
+  this->m_wait();
+  this->is_moving = false;
+}
+
+void FrankaHand::m_wait() {
   if (this->control_thread.has_value()) {
     this->control_thread->join();
     this->control_thread.reset();
   }
-  this->is_moving = false;
 }
 
 void FrankaHand::m_reset() {
@@ -100,12 +110,15 @@ bool FrankaHand::homing() {
   // Do a homing in order to estimate the maximum
   // grasping width with the current fingers.
   this->is_moving = true;
-  bool success =  this->gripper.homing();
+  bool success = this->gripper.homing();
   this->is_moving = false;
   return success;
 }
 
 void FrankaHand::grasp() {
+  if (this->is_moving || this->last_commanded_width == 0) {
+    return;
+  }
   this->last_commanded_width = 0;
   if (!this->cfg.async_control) {
     this->is_moving = true;
@@ -114,14 +127,21 @@ void FrankaHand::grasp() {
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){
+  this->control_thread = std::thread([&]() {
     this->is_moving = true;
-    this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
+    try {
+      this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
+    } catch (const franka::CommandException &e) {
+      std::cerr << "franka hand command exception ignored grasp" << std::endl;
+    }
     this->is_moving = false;
   });
 }
 
 void FrankaHand::open() {
+  if (this->is_moving || this->last_commanded_width == this->max_width) {
+    return;
+  }
   this->last_commanded_width = this->max_width;
   if (!this->cfg.async_control) {
     this->is_moving = true;
@@ -130,13 +150,23 @@ void FrankaHand::open() {
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){
+  this->control_thread = std::thread([&]() {
     this->is_moving = true;
-    this->gripper.move(this->max_width, this->cfg.speed);
+    try {
+      // perhaps we should use graps here
+      this->gripper.move(this->max_width, this->cfg.speed);
+      // this->gripper.grasp(this->max_width, this->cfg.speed, this->cfg.force,
+      // 1, 1);
+    } catch (const franka::CommandException &e) {
+      std::cerr << "franka hand command exception ignored open" << std::endl;
+    }
     this->is_moving = false;
   });
 }
 void FrankaHand::shut() {
+  if (this->is_moving || this->last_commanded_width == 0) {
+    return;
+  }
   this->last_commanded_width = 0;
   if (!this->cfg.async_control) {
     this->is_moving = true;
@@ -145,7 +175,7 @@ void FrankaHand::shut() {
     return;
   }
   this->m_stop();
-  this->control_thread = std::thread([&](){
+  this->control_thread = std::thread([&]() {
     this->is_moving = true;
     this->gripper.move(0, this->cfg.speed);
     this->is_moving = false;

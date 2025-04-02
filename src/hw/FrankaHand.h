@@ -45,10 +45,12 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
   double max_width;
   double last_commanded_width;
+  // TODO: might be better if is_moving is a lock
   bool is_moving = false;
   std::optional<std::thread> control_thread = std::nullopt;
   void m_reset();
   void m_stop();
+  void m_wait();
 
  public:
   FrankaHand(const std::string &ip, const FHConfig &cfg);
