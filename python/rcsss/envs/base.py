@@ -608,11 +608,10 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = np.round(action[self.gripper_key]) if self.binary else action[self.gripper_key]
         gripper_action = np.clip(gripper_action, 0.0, 1.0)
 
-        if self._last_gripper_cmd is None or self._last_gripper_cmd != gripper_action:
-            if self.binary:
-                self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
-            else:
-                self._gripper.set_normalized_width(gripper_action)
+        if self.binary:
+            self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
+        else:
+            self._gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
         return action
