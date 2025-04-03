@@ -113,12 +113,6 @@ class BaseHardwareCameraSet(ABC):
     def stop_video(self):
         if len(self.writer) > 0:
             with self._buffer_lock:
-                for camera_key, writer in self.writer.items():
-                    for i in range(self._next_ring_index):
-                        frameset = self._buffer[i]
-                        assert frameset is not None
-                        # rgb to bgr as expected by opencv
-                        writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
                 for camera in self.camera_names:
                     self.writer[camera].release()
                 self.writer = {}
