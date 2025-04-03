@@ -4,7 +4,7 @@ import threading
 from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
-from time import sleep
+import rcsss
 from rcsss.camera.interface import SimpleFrameRate
 from rcsss.camera.realsense import RealSenseCameraSet
 
@@ -42,8 +42,7 @@ VIVE_PORT = 54321
 INCLUDE_ROTATION = True
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotInstance.HARDWARE
-DEBUG = True
-STORAGE_PATH = "teleop_data"
+RECORD_FPS = 15
 # set camera dict to none disable cameras
 CAMERA_DICT = {
     # "wrist": "244222071045",
@@ -217,24 +216,23 @@ class UDPViveActionServer(threading.Thread):
 
             with self._env_lock:
                 self._env.step(action)
-            rate_limiter(0.001)
+            rate_limiter(RECORD_FPS)
 
 
 def input_loop(env_rel, action_server: UDPViveActionServer, camera_set: RealSenseCameraSet | None):
     while True:
-        i = input("> ")
+        i = input("press enter to start recording, 'q' to stop, 'h' to move to home: ")
         match i:
-            case "help":
-                print("You can use `quit` to stop the program, `episode` to start a new episode")
-            case "quit":
+            case "q":
                 sys.exit(0)
-            case "episode":
+            case "h":
+                env_rel.unwrapped.robot.move_home()
+            case _:
                 # record videos
                 if camera_set is not None:
                     video_path = env_rel.path / "videos"
                     video_path.mkdir(parents=True, exist_ok=True)
-                    camera_set.record_video(env_rel.path / "videos", f"{env_rel.key}_{env_rel.timestamp}_{env_rel.episode_count}")
-                print(f'{env_rel.episode_count = }')
+                    camera_set.record_video(video_path, f"{env_rel.key}_{env_rel.timestamp}_{env_rel.episode_count}")
 
                 thread = threading.Thread(target=action_server.environment_step_loop)
                 thread.start()
@@ -265,8 +263,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 # control_mode=ControlMode.JOINTS,
                 gripper_cfg=default_fr3_hw_gripper_cfg(async_control=True),
-                max_relative_movement=(0.01, np.deg2rad(1)),
-                # max_relative_movement=(0.5, np.deg2rad(90)),
+                max_relative_movement=(0.5, np.deg2rad(90)),
                 # max_relative_movement=np.deg2rad(20),
                 relative_to=RelativeTo.CONFIGURED_ORIGIN,
             )
