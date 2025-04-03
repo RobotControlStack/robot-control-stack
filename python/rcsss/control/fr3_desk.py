@@ -31,9 +31,8 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
     with Desk.fci(ip, username, password, unlock=unlock):
         f = rcsss.hw.FR3(ip)
         config = rcsss.hw.FR3Config()
-        config.speed_factor = 0.7
+        config.speed_factor = 0.2
         config.ik_solver = rcsss.hw.IKSolver.franka
-        config.guiding_mode_enabled = True
         f.set_parameters(config)
         config_hand = rcsss.hw.FHConfig()
         g = rcsss.hw.FrankaHand(ip, config_hand)
