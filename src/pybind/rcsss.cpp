@@ -466,8 +466,9 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
       sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    std::shared_ptr<rcs::common::IK>>(),
-           py::arg("sim"), py::arg("id"), py::arg("ik"))
+                    std::shared_ptr<rcs::common::IK>, bool>(),
+           py::arg("sim"), py::arg("id"), py::arg("ik"),
+           py::arg("register_convergence_callback") = true)
       .def("get_parameters", &rcs::sim::FR3::get_parameters)
       .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
       .def("set_joints_hard", &rcs::sim::FR3::set_joints_hard, py::arg("q"))

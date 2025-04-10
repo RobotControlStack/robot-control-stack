@@ -43,15 +43,17 @@ namespace sim {
 
 // TODO: use C++11 feature to call one constructor from another
 FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
-         std::shared_ptr<common::IK> ik)
+         std::shared_ptr<common::IK> ik, bool register_convergence_callback)
     : sim{sim}, id{id}, cfg{}, state{}, m_ik(ik) {
   this->init_ids();
-  this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),
-                         this->cfg.seconds_between_callbacks);
-  this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
-                         this->cfg.seconds_between_callbacks);
-  this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
-                             this->cfg.seconds_between_callbacks);
+  if (register_convergence_callback) {
+    this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),
+                           this->cfg.seconds_between_callbacks);
+    this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
+                           this->cfg.seconds_between_callbacks);
+    this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
+                               this->cfg.seconds_between_callbacks);
+  }
   this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
