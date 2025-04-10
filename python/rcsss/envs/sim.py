@@ -176,7 +176,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         )
 
 
-class RandomCubePosLab(SimWrapper):
+class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
     def reset(
@@ -197,57 +197,8 @@ class RandomCubePosLab(SimWrapper):
         return obs, info
 
 
-class RandomCubePos(SimWrapper):
-    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
-
-    def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
-        obs, info = super().reset(seed=seed, options=options)
-        self.sim.step(1)
-        iso_cube = [0.498, 0.0, 0.226]
-        pos_z = 0.03
-        pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
-        pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
-
-        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
-
-        return obs, info
-
-
-class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
+class PickCubeSuccessWrapper(gym.Wrapper):
     """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
-
-    EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
-
-    def __init__(self, env):
-        super().__init__(env)
-        self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim = env.get_wrapper_attr("sim")
-
-    def step(self, action: dict[str, Any]):
-        obs, reward, done, truncated, info = super().step(action)
-
-        success = (
-            self.sim.data.joint("yellow-box-joint").qpos[2] > 0.3
-            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
-        )
-        diff_ee_cube = np.linalg.norm(
-            self.sim.data.joint("yellow-box-joint").qpos[:3]
-            - self.unwrapped.robot.get_cartesian_position().translation()
-        )
-        diff_cube_home = np.linalg.norm(self.sim.data.joint("yellow-box-joint").qpos[:3] - self.EE_HOME)
-        reward = -diff_cube_home - diff_ee_cube
-
-        return obs, reward, success, truncated, info
-
-
-class FR3LabPickUpSimSuccessWrapper(gym.Wrapper):
-    """
-    Wrapper to check if the cube is successfully picked up in the LabPickupSim environments.
-    This is also used to handle the reset of the second robot.
-    """
 
     EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
 
