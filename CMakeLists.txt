@@ -98,7 +98,7 @@ FetchContent_MakeAvailable(libfranka rl pybind11)
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
         include(download_scenes)
-        set(ref 00869d446940260ec233469182a1ed2290cc60e3)
+        set(ref bfdd70ae189ed3a925bf1c16d29162e847a21d56)
         FetchContent_Declare(
             scenes
             URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"

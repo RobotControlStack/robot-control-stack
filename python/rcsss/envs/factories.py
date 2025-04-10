@@ -214,7 +214,7 @@ def make_sim_task_envs(
     render_mode: str = "human",
     control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
     delta_actions: bool = True,
-    camera_cfg: SimCameraConfig | None = None,
+    camera_cfg: SimCameraSetConfig | None = None,
 ) -> gym.Env:
 
     env_rel = fr3_sim_env(

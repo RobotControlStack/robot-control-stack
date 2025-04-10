@@ -4,7 +4,6 @@ from typing import Any, cast
 import gymnasium as gym
 import mujoco
 import numpy as np
-import rcsss.envs.base
 from rcsss._core.common import Pose
 from rcsss.envs.base import FR3Env, GripperWrapper
 
@@ -51,9 +50,8 @@ class PickUpDemo:
         for i in range(1, len(waypoints)):
             # calculate delta action
             delta_action = waypoints[i] * waypoints[i - 1].inverse()
-
-            act = self._action(delta_action, gripper)
-            self.step(act)
+            obs = self.step(self._action(delta_action, gripper))
+        return obs
 
     def approach(self, geom_name: str):
         waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)

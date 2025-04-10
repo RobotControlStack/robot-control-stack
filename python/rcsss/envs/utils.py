@@ -7,16 +7,16 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
-from rcsss._core.sim import CameraType, SimCameraSetConfig
+from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
-from rcsss.camera.sim import SimCameraConfig
+from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg(mjcf: str | PathLike = "fr3_empty_world") -> sim.FR3Config:
+def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Config:
     cfg = sim.FR3Config()
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
@@ -71,7 +71,7 @@ def default_mujoco_cameraset_cfg():
     )
 
 
-def get_tcp_offset(mjcf: str | PathLike):
+def get_tcp_offset(mjcf: str | Path):
     """Reads out tcp offset set in mjcf file.
 
     Convention: The tcp offset is stored in the model as a numeric attribute named "tcp_offset".
@@ -82,7 +82,7 @@ def get_tcp_offset(mjcf: str | PathLike):
     Returns:
         rcsss.common.Pose: The tcp offset.
     """
-    if type(mjcf) is not str:
+    if isinstance(mjcf, str):
         mjcf = Path(mjcf)
     mjmdl = rcsss.scenes.get(str(mjcf), mjcf)
     if mjmdl.suffix == ".xml":
