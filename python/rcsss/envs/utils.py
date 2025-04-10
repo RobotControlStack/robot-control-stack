@@ -1,5 +1,6 @@
 import logging
 from os import PathLike
+from pathlib import Path
 
 import mujoco as mj
 import numpy as np
@@ -81,6 +82,8 @@ def get_tcp_offset(mjcf: str | PathLike):
     Returns:
         rcsss.common.Pose: The tcp offset.
     """
+    if type(mjcf) is not str:
+        mjcf = Path(mjcf)
     mjmdl = rcsss.scenes.get(str(mjcf), mjcf)
     if mjmdl.suffix == ".xml":
         model = mj.MjModel.from_xml_path(str(mjmdl))

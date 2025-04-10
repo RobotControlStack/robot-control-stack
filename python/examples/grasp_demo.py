@@ -83,6 +83,11 @@ class PickUpDemo:
 
 def main():
     # compatilbe with rcs/SimplePickUpSimDigitHand-v0 and rcs/SimplePickUpSim-v0
+    env = gym.make(
+        "rcs/SimplePickUpSimDigitHand-v0",
+        render_mode="human",
+        delta_actions=True,
+    )
     env.reset()
     print(env.unwrapped.robot.get_cartesian_position().translation())  # type: ignore
     # assert False
