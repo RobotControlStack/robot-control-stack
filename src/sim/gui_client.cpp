@@ -65,7 +65,8 @@ void GuiClient::render_loop() {
   mjv_defaultFreeCamera(this->m, &this->cam);
   mjv_defaultOption(&this->opt);
   mjv_defaultScene(&this->scn);
-  mjv_makeScene(this->m, &this->scn, mjFONTSCALE_100);
+  size_t max_geoms = 2000;
+  mjv_makeScene(this->m, &this->scn, max_geoms);
   mjrRect viewport = {0, 0, 0, 0};
   this->platform_ui->RefreshMjrContext(this->m, mjFONTSCALE_100);
   this->platform_ui->SetVSync(true);

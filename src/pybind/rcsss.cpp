@@ -486,7 +486,10 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
       .def(py::init<>())
       .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)
-      .def_readwrite("frame_rate", &rcs::sim::SimCameraSetConfig::frame_rate)
+      .def_readwrite("frame_rate", &rcs::sim::SimCameraSetConfig::frame_rate,
+                     "The frame rate in which the cameras render in Hz. If set "
+                     "to zero, the camera frames will render on demand and "
+                     "without fixed rate which takes away compute effort.")
       .def_readwrite("resolution_width",
                      &rcs::sim::SimCameraSetConfig::resolution_width)
       .def_readwrite("resolution_height",

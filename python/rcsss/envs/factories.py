@@ -241,7 +241,7 @@ class FR3SimplePickUpSim(EnvCreator):
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         resolution: tuple[int, int] | None = None,
-        frame_rate: int = 10,
+        frame_rate: int = 0,
         delta_actions: bool = True,
     ) -> gym.Env:
         if resolution is None:
@@ -272,7 +272,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         resolution: tuple[int, int] | None = None,
-        frame_rate: int = 10,
+        frame_rate: int = 0,
         delta_actions: bool = True,
     ) -> gym.Env:
         if resolution is None:
@@ -319,7 +319,7 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         resolution: tuple[int, int] | None = None,
-        frame_rate: int = 10,
+        frame_rate: int = 0,
         delta_actions: bool = True,
     ) -> gym.Env:
         if resolution is None:
