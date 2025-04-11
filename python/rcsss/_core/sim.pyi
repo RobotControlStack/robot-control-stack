@@ -159,11 +159,18 @@ class SimCameraSet:
 
 class SimCameraSetConfig:
     cameras: dict[str, SimCameraConfig]
-    frame_rate: int
     max_buffer_frames: int
     resolution_height: int
     resolution_width: int
     def __init__(self) -> None: ...
+    @property
+    def frame_rate(self) -> int:
+        """
+        The frame rate in which the cameras render in Hz. If set to zero, the camera frames will render on demand and without fixed rate which takes away compute effort.
+        """
+
+    @frame_rate.setter
+    def frame_rate(self, arg0: int) -> None: ...
 
 def open_gui_window(uuid: str) -> None: ...
 
