@@ -96,6 +96,9 @@ class GripperDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
+class HandDictType(RCSpaceType):
+    # 0 for closed, 1 for open (>=0.5 for open)
+    hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
 class CameraDictType(RCSpaceType):
     frames: dict[
@@ -576,4 +579,61 @@ class GripperWrapper(ActObsInfoWrapper):
                 self._gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
+        return action
+
+class HandWrapper(ActObsInfoWrapper):
+    # TODO: sticky gripper, like in aloha
+
+    BINARY_HAND_CLOSED = 0
+    BINARY_HAND_OPEN = 1
+
+    def __init__(self, env, hand, binary: bool = True):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        self.observation_space: gym.spaces.Dict
+        self.observation_space.spaces.update(get_space(HandDictType).spaces)
+        self.action_space: gym.spaces.Dict
+        self.action_space.spaces.update(get_space(HandDictType).spaces)
+        self.hand_key = get_space_keys(HandDictType)[0]
+        self._hand = hand
+        self.binary = binary
+        self._last_hand_cmd = None
+
+    def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
+        self._hand.reset()
+        self._last_hand_cmd = None
+        return super().reset(**kwargs)
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        if self.binary:
+            observation[self.hand_key] = (
+                self._last_hand_cmd if self._last_hand_cmd is not None else self.BINARY_HAND_OPEN
+            )
+        else:
+            observation[self.hand_key] = self._hand.get_normalized_width()
+
+        info = False
+        return observation, info
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+
+        action = copy.deepcopy(action)
+        assert self.hand_key in action, "hand action not found."
+
+        hand_action = np.round(action[self.hand_key]) if self.binary else action[self.hand_key]
+        hand_action = np.clip(hand_action, 0.0, 1.0)
+
+        if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
+            if self.binary:
+                if hand_action == self.BINARY_HAND_CLOSED: 
+                     self._hand.grasp()
+                     print("Hand closed")
+                else: 
+                    self._hand.open()
+                    print("Hand opened")
+            else:
+                self._hand.set_normalized_width(hand_action)
+        self._last_hand_cmd = hand_action
+        del action[self.hand_key]
         return action

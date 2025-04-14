@@ -224,9 +224,13 @@ def fr3_sim_env(
         env = CameraSetWrapper(env, camera_set, include_depth=True)
 
     if gripper_cfg is not None:
-        gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=True)
-
+        #gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+        #env = GripperWrapper(env, gripper, binary=True)
+        from rcsss.hand.hand import Hand 
+        from rcsss.hand.hand import TilburgHandControl
+        from rcsss.envs.base import HandWrapper
+        hand = Hand(TilburgHandControl())
+        env = HandWrapper(env, hand, binary=True)
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
             env,

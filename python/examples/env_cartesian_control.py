@@ -80,19 +80,21 @@ def main():
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
+            from time import sleep
+            sleep(5)    
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
 
-
+            
 if __name__ == "__main__":
     main()
