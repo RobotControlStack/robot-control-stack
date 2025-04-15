@@ -227,7 +227,7 @@ def fr3_sim_env(
         #gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         #env = GripperWrapper(env, gripper, binary=True)
         from rcsss.hand.hand import Hand 
-        from rcsss.hand.hand import TilburgHandControl
+        from rcsss.hand.tilburg_hand_control import TilburgHandControl
         from rcsss.envs.base import HandWrapper
         hand = Hand(TilburgHandControl())
         env = HandWrapper(env, hand, binary=True)

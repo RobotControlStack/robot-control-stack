@@ -1,0 +1,8 @@
+{
+    "motors_dynamixelsdk_port" : "",
+    "motors_dynamixelsdk_VID_PID" : "0403:6014",
+
+    "joint_motor_mapping" : [23, 22, 21, 20, 27, 26, 25, 24, 31, 30, 29, 28, 35, 34, 33, 32, 255, 255],
+
+    "_comments": "If usb port names are left blank, then all ports are scanned for the pre-set VID:PID. If a port is set, it will override the automatic search. Motors will show as disabled if the app can't connect to the control board. All motors are pinged at the beginning, and non-responding / non-connected ones are set as disabled. joint_motor_mapping is used as, e.g., motor_id = joint_motor_mapping[Finger.INDEX_ABD]."
+}
