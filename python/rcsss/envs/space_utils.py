@@ -17,6 +17,7 @@ import numpy as np
 Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
 Vec6Type: TypeAlias = np.ndarray[Literal[6], np.dtype[np.float64]]
+Vec18Type: TypeAlias = np.ndarray[Literal[18], np.dtype[np.float64]]
 
 
 class RCSpaceType(TypedDict): ...

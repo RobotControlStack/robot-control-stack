@@ -51,7 +51,7 @@ def main():
     else:
         resource_manger = DummyResourceManager()
     with resource_manger:
-        binary_action = False
+        binary_action = True
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,

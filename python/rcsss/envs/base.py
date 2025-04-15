@@ -14,6 +14,7 @@ from rcsss.envs.space_utils import (
     RCSpaceType,
     Vec6Type,
     Vec7Type,
+    Vec18Type,
     get_space,
     get_space_keys,
 )
@@ -96,9 +97,19 @@ class GripperDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
-class HandDictType(RCSpaceType):
+class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+
+class HandVecDictType(RCSpaceType):
+    hand: Annotated[
+        Vec18Type,
+        gym.spaces.Box(
+            low=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            dtype=np.float32,
+        ),
+    ]
 
 class CameraDictType(RCSpaceType):
     frames: dict[
@@ -582,7 +593,17 @@ class GripperWrapper(ActObsInfoWrapper):
         return action
 
 class HandWrapper(ActObsInfoWrapper):
-    # TODO: sticky gripper, like in aloha
+    """
+    This wrapper allows for controlling the hand of the robot
+    using either binary or continuous actions.
+    The binary action space allows for opening and closing the hand,
+    while the continuous action space allows for setting the hand
+    to a specific pose.
+    The wrapper also provides an observation space that includes
+    the hand state.
+    The hand state is represented as a binary value (0 for closed,
+    1 for open) or as a continuous value (normalized joint positions).   
+    """
 
     BINARY_HAND_CLOSED = 0
     BINARY_HAND_OPEN = 1
@@ -591,12 +612,17 @@ class HandWrapper(ActObsInfoWrapper):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.observation_space: gym.spaces.Dict
-        self.observation_space.spaces.update(get_space(HandDictType).spaces)
         self.action_space: gym.spaces.Dict
-        self.action_space.spaces.update(get_space(HandDictType).spaces)
-        self.hand_key = get_space_keys(HandDictType)[0]
-        self._hand = hand
         self.binary = binary
+        if self.binary:
+            self.observation_space.spaces.update(get_space(HandBinDictType).spaces)
+            self.action_space.spaces.update(get_space(HandBinDictType).spaces)
+            self.hand_key = get_space_keys(HandBinDictType)[0]
+        else:
+            self.observation_space.spaces.update(get_space(HandVecDictType).spaces)
+            self.action_space.spaces.update(get_space(HandVecDictType).spaces)
+            self.hand_key = get_space_keys(HandVecDictType)[0]
+        self._hand = hand
         self._last_hand_cmd = None
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -628,10 +654,8 @@ class HandWrapper(ActObsInfoWrapper):
             if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
                 if hand_action == self.BINARY_HAND_CLOSED: 
                      self._hand.grasp()
-                     print("Hand closed")
                 else: 
                     self._hand.open()
-                    print("Hand opened")
         else:
                 self._hand.set_normalized_joints_poses(hand_action)
         self._last_hand_cmd = hand_action

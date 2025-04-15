@@ -9,6 +9,7 @@ from tilburg_hand import TilburgHandMotorInterface, Finger, Wrist, Unit
 # Setup logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.disabled = False
 
 class TilburgHandControl(HandControl):
     """
@@ -71,8 +72,6 @@ class TilburgHandControl(HandControl):
                           0.0, 0.0
                         ]
             
-
-
         self._pos_normalized = [
                                 val * value for val in template
                                 ]

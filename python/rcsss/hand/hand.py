@@ -49,28 +49,3 @@ class Hand:
 
     def __del__(self):
         self._hand.disconnect()
-
-if __name__ == "__main__":
-    # try:
-    #     hand = TilburgHandControl(verbose=True)
-    #     hand.grasp(0.9)
-    #     logger.info(f"current joints poses: {hand.get_pos_vector()}")
-    #     logger.info(hand.pos_vector_names_list)
-    #     hand.sleep(5)
-    #     hand.set_zero_pos()
-    #     hand.sleep(1)
-    #     hand.set_joint_pos(hand.fingers_joints.THUMB_CMC, 0.5)
-    #     hand.sleep(2)
-    #     logger.info(f"current joint {hand.fingers_joints.THUMB_CMC.name}: {hand.get_pos_single(hand.fingers_joints.THUMB_CMC)}")
-    #     hand.reset_joint_pos(hand.fingers_joints.THUMB_CMC)
-    # except Exception as e:
-    #     logger.exception(f"An error occurred: {e}")
-    # finally:
-    #     hand.disconnect()
-    hand = Hand(TilburgHandControl(verbose=True))
-    hand.reset()
-    hand.grasp()
-    sleep(5)
-    hand.reset()
-    sleep(2)
-    hand.disconnect()
