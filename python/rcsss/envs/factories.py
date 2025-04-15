@@ -187,7 +187,7 @@ def fr3_sim_env(
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
     sim_wrapper: Type[SimWrapper] | None = None,
-    use_hand: bool = False,
+    hand_cfg: dict = None,
 ) -> gym.Env:
     """
     Creates a simulation environment for the FR3 robot.
@@ -232,9 +232,9 @@ def fr3_sim_env(
         env = GripperWrapper(env, gripper, binary=True)
     
     else: 
-        if use_hand:
+        if hand_cfg is not None:
             hand = Hand(TilburgHandControl())
-            env = HandWrapper(env, hand, binary=True)
+            env = HandWrapper(env, hand, binary=hand_cfg["Binary"])
     
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(

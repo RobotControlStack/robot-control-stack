@@ -80,7 +80,7 @@ class TilburgHandControl(HandControl):
         self._motors.set_pos_vector(copy.deepcopy(self._pos_normalized), unit=self.pos_value_unit)
         logger.info(f"Grasp command sent with value: {value}")
 
-    def set_pose_vector(self, pos_vector: list):
+    def set_pos_vector(self, pos_vector: list):
         """
         Sets the position vector for the motors.
         """

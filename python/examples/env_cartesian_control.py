@@ -50,8 +50,8 @@ def main():
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         resource_manger = DummyResourceManager()
-    use_hand = True
     with resource_manger:
+        binary_action = False
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
@@ -71,17 +71,32 @@ def main():
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
-                use_hand=use_hand,
+                hand_cfg={"Binary": binary_action},
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
 
+        if binary_action:
+            close_action = 0
+            open_action = 1   
+        else:
+            template =  [
+                    1.0, 1.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 0.0,
+                    1.0, 1.0, 1.0, 0.0,
+                    1.0, 1.0, 1.0, 0.0,
+                    0.0, 0.0
+                ]
+            value = 0.5
+            close_action = [value * val for val in template ]
+            open_action = [0.0] * len(template)
+        
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": 0}
+                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
@@ -90,7 +105,7 @@ def main():
             sleep(5)    
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": 1}
+                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")

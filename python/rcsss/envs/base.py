@@ -611,7 +611,7 @@ class HandWrapper(ActObsInfoWrapper):
                 self._last_hand_cmd if self._last_hand_cmd is not None else self.BINARY_HAND_OPEN
             )
         else:
-            observation[self.hand_key] = self._hand.get_normalized_width()
+            observation[self.hand_key] = self._hand.get_normalized_joints_poses()
 
         info = False
         return observation, info
@@ -624,16 +624,16 @@ class HandWrapper(ActObsInfoWrapper):
         hand_action = np.round(action[self.hand_key]) if self.binary else action[self.hand_key]
         hand_action = np.clip(hand_action, 0.0, 1.0)
 
-        if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
-            if self.binary:
+        if self.binary:
+            if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
                 if hand_action == self.BINARY_HAND_CLOSED: 
                      self._hand.grasp()
                      print("Hand closed")
                 else: 
                     self._hand.open()
                     print("Hand opened")
-            else:
-                self._hand.set_normalized_width(hand_action)
+        else:
+                self._hand.set_normalized_joints_poses(hand_action)
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action
