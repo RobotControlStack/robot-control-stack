@@ -50,7 +50,7 @@ def main():
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         resource_manger = DummyResourceManager()
-
+    use_hand = True
     with resource_manger:
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
@@ -67,10 +67,11 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
-                gripper_cfg=default_fr3_sim_gripper_cfg(),
+                gripper_cfg=None,
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
+                use_hand=use_hand,
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
