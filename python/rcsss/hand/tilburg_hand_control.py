@@ -52,7 +52,7 @@ class TilburgHandControl(HandControl):
                                         "MIDDLE_DIP", "MIDDLE_PIP", "MIDDLE_MCP", "MIDDLE_ABD",
                                         "RING_DIP", "RING_PIP", "RING_MCP", "RING_ABD", 
                                         "WRIST_PITCH", "WRIST_YAW"
-                                    ]
+                                    ] 
 
         self.wrist_joints_list = [Wrist.PITCH, Wrist.YAW]
         self.set_zero_pos()
@@ -63,34 +63,40 @@ class TilburgHandControl(HandControl):
         Performs a grasp with a specified intensity (0.0 to 1.0).
         """
         if template is None:
-            template = [
-                0.0, 0.0, 1.0, 0.0,
-                1.0, 1.0, 1.0, 1.0,
-                1.0, 1.0, 1.0,
-                1.0, 1.0, 1.0, 1.0,
-                1.0
-            ]
+            template =  [
+                          1.0, 1.0, 1.0, 1.0,
+                          1.0, 1.0, 1.0, 0.0,
+                          1.0, 1.0, 1.0, 0.0,
+                          1.0, 1.0, 1.0, 0.0,
+                          0.0, 0.0
+                        ]
+            
 
-        if len(template) != len(self.fingers_joints_list):
-            logger.warning("Grasp template length mismatch. Aborting grasp.")
-            return
 
-        fingers_joints_pos_values_list = [
-            val * value for val in template
-        ]
-
-        for joint, pos in zip(self.fingers_joints_list, fingers_joints_pos_values_list):
-            self._pos_normalized[joint] = pos
+        self._pos_normalized = [
+                                val * value for val in template
+                                ]
 
         self._motors.set_pos_vector(copy.deepcopy(self._pos_normalized), unit=self.pos_value_unit)
         logger.info(f"Grasp command sent with value: {value}")
+
+    def set_pose_vector(self, pos_vector: list):
+        """
+        Sets the position vector for the motors.
+        """
+        if len(pos_vector) != len(self._pos_normalized):
+            logger.error(f"Invalid position vector length: {len(pos_vector)}. Expected: {len(self._pos_normalized)}")
+            return
+        self._pos_normalized = pos_vector
+
+        self._motors.set_pos_vector(copy.deepcopy(self._pos_normalized), unit=self.pos_value_unit)
+        logger.info(f"Set pose vector: {pos_vector}")
 
     def set_zero_pos(self):
         """
         Sets all finger joint positions to zero.
         """
-        for joint in self.fingers_joints_list:
-            self._pos_normalized[joint] = 0
+        self._pos_normalized = [0] * self._motors.n_motors
         self._motors.set_pos_vector(copy.deepcopy(self._pos_normalized), unit=self.pos_value_unit)
         logger.info("All joints reset to zero position.")
 

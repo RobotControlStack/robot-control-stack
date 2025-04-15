@@ -38,8 +38,11 @@ class Hand:
     def disconnect(self):
         self._hand.disconnect()
 
-    def get_normalized_width(self):
-        pass
+    def get_normalized_joints_poses(self):
+        self._hand.get_pos_vector()
+
+    def set_normalized_joints_poses(self, values: list):
+        self._hand.set_pos_vector(values)    
 
     def open(self):
         self.reset()
