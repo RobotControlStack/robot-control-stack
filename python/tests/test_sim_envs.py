@@ -11,11 +11,11 @@ from rcsss.envs.base import (
     TQuartDictType,
     TRPYDictType,
 )
-from rcsss.envs.factories import (
+from rcsss.envs.factories import fr3_sim_env
+from rcsss.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_sim_env,
 )
 
 
@@ -145,8 +145,8 @@ class TestSimEnvsTRPY(TestSimEnvs):
         )
         obs, _ = env.reset()
         # an obvious below ground collision action
-        obs["xyzrpy"][0] = 0.3
-        obs["xyzrpy"][2] = -0.2
+        obs["xyzrpy"][0] = 0.4
+        obs["xyzrpy"][2] = -0.05
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(collision_action)
@@ -163,14 +163,14 @@ class TestSimEnvsTRPY(TestSimEnvs):
             gripper_cfg=gripper_cfg,
             collision_guard=True,
             camera_set_cfg=cam_cfg,
-            max_relative_movement=0.5,
+            max_relative_movement=None,
         )
         obs, _ = env.reset()
         unwrapped = cast(FR3Env, env.unwrapped)
         p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
-        obs["xyzrpy"][0] = 0.3
-        obs["xyzrpy"][2] = -0.2
+        obs["xyzrpy"][0] = 0.4
+        obs["xyzrpy"][2] = -0.05
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
@@ -265,8 +265,8 @@ class TestSimEnvsTquart(TestSimEnvs):
         )
         obs, _ = env.reset()
         # an obvious below ground collision action
-        obs["tquart"][0] = 0.3
-        obs["tquart"][2] = -0.2
+        obs["tquart"][0] = 0.4
+        obs["tquart"][2] = -0.05
         collision_action = TQuartDictType(tquart=obs["tquart"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
@@ -289,8 +289,8 @@ class TestSimEnvsTquart(TestSimEnvs):
         unwrapped = cast(FR3Env, env.unwrapped)
         p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
-        obs["tquart"][0] = 0.3
-        obs["tquart"][2] = -0.2
+        obs["tquart"][0] = 0.4
+        obs["tquart"][2] = -0.05
         collision_action = TQuartDictType(tquart=obs["tquart"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)

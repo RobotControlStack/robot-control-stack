@@ -25,28 +25,25 @@ class PickUpDemo:
         data = self.env.get_wrapper_attr("sim").data
 
         geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
-        return Pose(translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3))
+        obj_pose_world_coordinates = Pose(
+            translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
+        )
+        return self.unwrapped.robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:
         waypoints = []
         for i in range(num_waypoints + 1):
             t = i / (num_waypoints + 1)
             waypoints.append(start_pose.interpolate(end_pose, t))
-        waypoints.append(end_pose)
         return waypoints
 
     def step(self, action: dict) -> dict:
         return self.env.step(action)[0]
 
-    def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
+    def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
-
         goal_pose = self.get_object_pose(geom_name=geom_name)
-        # goal pose is above the object and gripper coordinate must flip z-axis (end effector base rotation is [1, 0, 0, 0])
-        # be careful we define identity quaternion as as [0, 0, 0, 1]
-        # this does not work if the object is flipped
         goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))
-
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
@@ -57,22 +54,22 @@ class PickUpDemo:
         return obs
 
     def approach(self, geom_name: str):
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=5)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
     def grasp(self, geom_name: str):
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0, num_waypoints=15)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
         self.step(self._action(Pose(), GripperWrapper.BINARY_GRIPPER_CLOSED))
 
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=20)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.2, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def move_home(self):
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
-        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=10)
+        waypoints = self.generate_waypoints(end_eff_pose, self.home_pose, num_waypoints=50)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_CLOSED)
 
     def pickup(self, geom_name: str):
@@ -82,15 +79,15 @@ class PickUpDemo:
 
 
 def main():
-    # compatilbe with rcs/SimplePickUpSimDigitHand-v0 and rcs/SimplePickUpSim-v0
     env = gym.make(
-        "rcs/SimplePickUpSimDigitHand-v0",
+        "rcs/LabPickUpSimDigitHand-v0",
         render_mode="human",
         delta_actions=True,
+        cam_robot_joints=np.array(
+            [-0.78452318, -1.18096017, 1.75158399, -1.0718541, -0.11207275, 1.01050546, 2.47343638]
+        ),
     )
     env.reset()
-    print(env.unwrapped.robot.get_cartesian_position().translation())  # type: ignore
-    # assert False
     controller = PickUpDemo(env)
     controller.pickup("yellow_box_geom")
 

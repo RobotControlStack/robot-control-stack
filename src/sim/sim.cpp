@@ -164,17 +164,19 @@ void Sim::register_all_cb(std::function<bool(void)> cb,
 void Sim::register_rendering_callback(
     std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
         cb,
-    const std::string& id, mjtNum seconds_between_calls, size_t width,
-    size_t height) {
+    const std::string& id, int frame_rate, size_t width, size_t height) {
   this->renderer.register_context(id, width, height);
-  // dont register off screen in normal callback, but special gui callback
-  this->rendering_callbacks.push_back(
-      RenderingCallback{.cb = cb,
-                        .id = id,
-                        .seconds_between_calls = seconds_between_calls,
-                        // this is negative so that we will directly render the
-                        // cameras in the first step
-                        .last_call_timestamp = -seconds_between_calls});
+  // in case frame_rate is zero, rendering needs to be triggered
+  // manually
+  if (frame_rate != 0) {
+    this->rendering_callbacks.push_back(
+        RenderingCallback{.cb = cb,
+                          .id = id,
+                          .seconds_between_calls = 1.0 / frame_rate,
+                          // this is negative so that we will directly render
+                          // the cameras in the first step
+                          .last_call_timestamp = -1.0 / frame_rate});
+  }
 }
 
 void Sim::start_gui_server(const std::string& id) {

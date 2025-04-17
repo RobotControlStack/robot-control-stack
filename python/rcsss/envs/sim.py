@@ -7,6 +7,9 @@ import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 class SimWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, simulation: sim.Sim):
@@ -18,6 +21,7 @@ class SimWrapper(gym.Wrapper):
 
 class FR3Sim(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
+        self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
             env = sim_wrapper(env, simulation)
         super().__init__(env)
@@ -42,6 +46,7 @@ class FR3Sim(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
+        # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
         return obs, info
@@ -172,23 +177,27 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
 
 class RandomCubePos(SimWrapper):
-    """Wrapper to randomly place cube in the FR3SimplePickUpSim environment."""
+    """Wrapper to randomly place cube in the lab environments."""
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
+        self.sim.step(1)
 
-        iso_cube = [0.498, 0.0, 0.226]
+        iso_cube = np.array([0.498, 0.0, 0.226])
+        iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
+        pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
-        pos_z = 0.03
+
         self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
 
         return obs, info
 
 
-class FR3SimplePickUpSimSuccessWrapper(gym.Wrapper):
+class PickCubeSuccessWrapper(gym.Wrapper):
     """Wrapper to check if the cube is successfully picked up in the FR3SimplePickUpSim environment."""
 
     EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
