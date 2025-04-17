@@ -32,6 +32,7 @@ from rcsss.envs.sim import (
 )
 from rcsss.hand.hand import Hand
 from rcsss.hand.tilburg_hand_control import TilburgHandControl
+from rcsss.hand.mujoco_hand_control import MujocoHandControl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -233,7 +234,8 @@ def fr3_sim_env(
 
     else:
         if hand_cfg is not None:
-            hand = Hand(TilburgHandControl())
+            # hand = Hand(TilburgHandControl())
+            hand = Hand(MujocoHandControl(str(hand_cfg["mujoco_xml_path"])))
             env = HandWrapper(env, hand, binary=hand_cfg["Binary"])
 
     if collision_guard:
