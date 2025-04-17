@@ -8,7 +8,7 @@ __pycache__
 .ruff_cache
 .mypy_cache
 dist
-.venv
+*venv*
 config.yaml
 MUJOCO_LOG.TXT
 src/pybind/mujoco

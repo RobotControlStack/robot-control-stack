@@ -24,10 +24,13 @@ namespace sim {
 SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
     : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{}, cameras{} {
   for (auto const& [id, cam] : cfg.cameras) {
+    // if frame_rate is zero, then we only render when an image is requested
+    // this mode is useful when no videos are required as it speeds up the
+    // simulation significantly
     this->sim->register_rendering_callback(
         [this](const std::string& id, mjrContext& ctx, mjvScene& scene,
                mjvOption& opt) { this->frame_callback(id, ctx, scene, opt); },
-        id, 1.0 / this->cfg.frame_rate, this->cfg.resolution_width,
+        id, this->cfg.frame_rate, this->cfg.resolution_width,
         this->cfg.resolution_height);
 
     mjvCamera mjcam;
@@ -57,6 +60,9 @@ void SimCameraSet::clear_buffer() {
 }
 
 std::optional<FrameSet> SimCameraSet::get_latest_frameset() {
+  if (this->cfg.frame_rate == 0) {
+    this->render_all();
+  }
   if (buffer.empty()) {
     return std::nullopt;
   }
@@ -71,6 +77,14 @@ std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
     }
   }
   return std::nullopt;
+}
+
+void SimCameraSet::render_all() {
+  for (auto const& [id, cam] : this->cfg.cameras) {
+    mjrContext* ctx = this->sim->renderer.get_context(id);
+    this->frame_callback(id, *ctx, this->sim->renderer.scene,
+                         this->sim->renderer.opt);
+  }
 }
 
 void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,

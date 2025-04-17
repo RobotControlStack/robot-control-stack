@@ -86,7 +86,9 @@ class FHState(rcsss._core.common.GState):
     def max_unnormalized_width(self) -> float: ...
 
 class FR3(rcsss._core.common.Robot):
-    def __init__(self, sim: Sim, id: str, ik: rcsss._core.common.IK) -> None: ...
+    def __init__(
+        self, sim: Sim, id: str, ik: rcsss._core.common.IK, register_convergence_callback: bool = True
+    ) -> None: ...
     def get_parameters(self) -> FR3Config: ...
     def get_state(self) -> FR3State: ...
     def set_joints_hard(self, q: numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]]) -> None: ...
@@ -157,11 +159,18 @@ class SimCameraSet:
 
 class SimCameraSetConfig:
     cameras: dict[str, SimCameraConfig]
-    frame_rate: int
     max_buffer_frames: int
     resolution_height: int
     resolution_width: int
     def __init__(self) -> None: ...
+    @property
+    def frame_rate(self) -> int:
+        """
+        The frame rate in which the cameras render in Hz. If set to zero, the camera frames will render on demand and without fixed rate which takes away compute effort.
+        """
+
+    @frame_rate.setter
+    def frame_rate(self, arg0: int) -> None: ...
 
 def open_gui_window(uuid: str) -> None: ...
 

@@ -7,11 +7,8 @@ import numpy as np
 import rcsss
 from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
 from rcsss.camera.hw import BaseHardwareCameraSet
-from rcsss.camera.interface import BaseCameraConfig
-from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.base import (
     CameraSetWrapper,
@@ -26,60 +23,24 @@ from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
     CollisionGuard,
     FR3Sim,
-    FR3SimplePickUpSimSuccessWrapper,
+    PickCubeSuccessWrapper,
     RandomCubePos,
     SimWrapper,
 )
 from rcsss.hand.hand import Hand
 from rcsss.hand.tilburg_hand_control import TilburgHandControl
+from rcsss.envs.space_utils import Vec7Type
+from rcsss.envs.utils import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
+    default_fr3_sim_robot_cfg,
+    default_realsense,
+    get_urdf_path,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def default_fr3_hw_robot_cfg():
-    robot_cfg = FR3Config()
-    robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    robot_cfg.speed_factor = 0.1
-    robot_cfg.controller = IKController.robotics_library
-    return robot_cfg
-
-
-def default_fr3_hw_gripper_cfg():
-    gripper_cfg = rcsss.hw.FHConfig()
-    gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-    gripper_cfg.speed = 0.1
-    gripper_cfg.force = 30
-    return gripper_cfg
-
-
-def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
-    if name2id is None:
-        return None
-    cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
-    cam_cfg = RealSenseSetConfig(
-        cameras=cameras,
-        resolution_width=1280,
-        resolution_height=720,
-        frame_rate=15,
-        enable_imu=False,  # does not work with imu, why?
-        enable_ir=True,
-        enable_ir_emitter=False,
-    )
-    return RealSenseCameraSet(cam_cfg)
-
-
-def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
-    if urdf_path is None and "lab" in rcsss.scenes:
-        urdf_path = rcsss.scenes["lab"].parent / "fr3.urdf"
-        assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None and not allow_none_if_not_found:
-        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path to use simulation or collision guard."
-        raise ValueError(msg)
-    elif urdf_path is None:
-        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return str(urdf_path) if urdf_path is not None else None
 
 
 def fr3_hw_env(
@@ -152,30 +113,6 @@ def fr3_hw_env(
     return env
 
 
-def default_fr3_sim_robot_cfg():
-    cfg = sim.FR3Config()
-    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    cfg.realtime = False
-    return cfg
-
-
-def default_fr3_sim_gripper_cfg():
-    return sim.FHConfig()
-
-
-def default_mujoco_cameraset_cfg():
-
-    cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
-    }
-    # 256x256 needed for VLAs
-    return SimCameraSetConfig(
-        cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
-    )
-
-
 def fr3_sim_env(
     control_mode: ControlMode,
     robot_cfg: rcsss.sim.FR3Config,
@@ -215,8 +152,9 @@ def fr3_sim_env(
     assert urdf_path is not None
     if mjcf not in rcsss.scenes:
         logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+    mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
+    simulation = sim.Sim(mjb_file)
 
-    simulation = sim.Sim(rcsss.scenes.get(str(mjcf), mjcf))
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
     robot.set_parameters(robot_cfg)
@@ -280,13 +218,39 @@ class FR3Real(EnvCreator):
         )
 
 
+def make_sim_task_envs(
+    mjcf: str,
+    render_mode: str = "human",
+    control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
+    delta_actions: bool = True,
+    camera_cfg: SimCameraSetConfig | None = None,
+) -> gym.Env:
+
+    env_rel = fr3_sim_env(
+        control_mode=control_mode,
+        robot_cfg=default_fr3_sim_robot_cfg(mjcf),
+        collision_guard=False,
+        gripper_cfg=default_fr3_sim_gripper_cfg(),
+        camera_set_cfg=camera_cfg,
+        max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+        relative_to=RelativeTo.LAST_STEP,
+        mjcf=mjcf,
+        sim_wrapper=RandomCubePos,
+    )
+    env_rel = PickCubeSuccessWrapper(env_rel)
+    if render_mode == "human":
+        env_rel.get_wrapper_attr("sim").open_gui()
+
+    return env_rel
+
+
 class FR3SimplePickUpSim(EnvCreator):
     def __call__(  # type: ignore
         self,
         render_mode: str = "human",
-        control_mode: str = "xyzrpy",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         resolution: tuple[int, int] | None = None,
-        frame_rate: int = 10,
+        frame_rate: int = 0,
         delta_actions: bool = True,
     ) -> gym.Env:
         if resolution is None:
@@ -308,23 +272,85 @@ class FR3SimplePickUpSim(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        env_rel = fr3_sim_env(
-            control_mode=(
-                ControlMode.CARTESIAN_TRPY
-                if control_mode == "xyzrpy"
-                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
-            ),
-            robot_cfg=default_fr3_sim_robot_cfg(),
-            collision_guard=False,
-            gripper_cfg=default_fr3_sim_gripper_cfg(),
-            camera_set_cfg=camera_cfg,
-            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
-            relative_to=RelativeTo.LAST_STEP,
-            mjcf="fr3_simple_pick_up",
-            sim_wrapper=RandomCubePos,
-        )
-        env_rel = FR3SimplePickUpSimSuccessWrapper(env_rel)
-        if render_mode == "human":
-            env_rel.get_wrapper_attr("sim").open_gui()
+        return make_sim_task_envs("simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
 
-        return env_rel
+
+class FR3SimplePickUpSimDigitHand(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        render_mode: str = "human",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
+        resolution: tuple[int, int] | None = None,
+        frame_rate: int = 0,
+        delta_actions: bool = True,
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {"wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed))}
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+        return make_sim_task_envs("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg)
+
+
+class CamRobot(gym.Wrapper):
+
+    def __init__(self, env, cam_robot_joints: Vec7Type):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+        self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False)
+        self.cam_robot.set_parameters(default_fr3_sim_robot_cfg("lab_simple_pick_up_digit_hand"))
+        self.cam_robot_joints = cam_robot_joints
+
+    def step(self, action: dict):
+        self.cam_robot.set_joints_hard(self.cam_robot_joints)
+        obs, reward, done, truncated, info = super().step(action)
+        return obs, reward, done, truncated, info
+
+    def reset(self, *, seed=None, options=None):
+        re = super().reset(seed=seed, options=options)
+        self.cam_robot.reset()
+        return re
+
+
+class FR3LabPickUpSimDigitHand(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        cam_robot_joints: Vec7Type,
+        render_mode: str = "human",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
+        resolution: tuple[int, int] | None = None,
+        frame_rate: int = 0,
+        delta_actions: bool = True,
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+
+        cameras = {
+            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+            "side": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed)),
+        }
+
+        camera_cfg = SimCameraSetConfig(
+            cameras=cameras,
+            resolution_width=resolution[0],
+            resolution_height=resolution[1],
+            frame_rate=frame_rate,
+            physical_units=True,
+        )
+        env_rel = make_sim_task_envs(
+            "lab_simple_pick_up_digit_hand",
+            render_mode,
+            control_mode,
+            delta_actions,
+            camera_cfg,
+        )
+        return CamRobot(env_rel, cam_robot_joints)

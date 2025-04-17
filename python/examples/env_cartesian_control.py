@@ -4,13 +4,12 @@ from typing import Union
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcsss.envs.factories import (
+from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
+from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_hw_env,
-    fr3_sim_env,
 )
 
 logger = logging.getLogger(__name__)
