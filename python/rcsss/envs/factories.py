@@ -13,16 +13,14 @@ from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.hand.hand import Hand 
-from rcsss.hand.tilburg_hand_control import TilburgHandControl
 from rcsss.envs.base import (
     CameraSetWrapper,
     ControlMode,
     FR3Env,
     GripperWrapper,
+    HandWrapper,
     RelativeActionSpace,
     RelativeTo,
-    HandWrapper
 )
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
@@ -32,6 +30,8 @@ from rcsss.envs.sim import (
     RandomCubePos,
     SimWrapper,
 )
+from rcsss.hand.hand import Hand
+from rcsss.hand.tilburg_hand_control import TilburgHandControl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -187,7 +187,7 @@ def fr3_sim_env(
     urdf_path: str | PathLike | None = None,
     mjcf: str | PathLike = "fr3_empty_world",
     sim_wrapper: Type[SimWrapper] | None = None,
-    hand_cfg: dict = None,
+    hand_cfg: dict | None = None,
 ) -> gym.Env:
     """
     Creates a simulation environment for the FR3 robot.
@@ -230,12 +230,12 @@ def fr3_sim_env(
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=True)
-    
-    else: 
+
+    else:
         if hand_cfg is not None:
             hand = Hand(TilburgHandControl())
             env = HandWrapper(env, hand, binary=hand_cfg["Binary"])
-    
+
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(
             env,

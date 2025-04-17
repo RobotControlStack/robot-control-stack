@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
@@ -6,7 +7,6 @@ from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
 from rcsss.envs.factories import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
-    default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     fr3_hw_env,
@@ -77,22 +77,17 @@ def main():
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-
+        close_action: Union[int, list[float]]
+        open_action: Union[int, list[float]]
         if binary_action:
             close_action = 0
-            open_action = 1   
+            open_action = 1
         else:
-            template =  [
-                    1.0, 1.0, 1.0, 1.0,
-                    1.0, 1.0, 1.0, 0.0,
-                    1.0, 1.0, 1.0, 0.0,
-                    1.0, 1.0, 1.0, 0.0,
-                    0.0, 0.0
-                ]
+            template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
             value = 0.5
-            close_action = [value * val for val in template ]
+            close_action = [value * val for val in template]
             open_action = [0.0] * len(template)
-        
+
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
@@ -102,7 +97,8 @@ def main():
                     logger.info("Truncated or terminated!")
                     return
             from time import sleep
-            sleep(5)    
+
+            sleep(5)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
                 act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
@@ -111,6 +107,6 @@ def main():
                     logger.info("Truncated or terminated!")
                     return
 
-            
+
 if __name__ == "__main__":
     main()

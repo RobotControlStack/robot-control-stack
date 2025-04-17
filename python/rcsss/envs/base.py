@@ -97,9 +97,11 @@ class GripperDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
+
 class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+
 
 class HandVecDictType(RCSpaceType):
     hand: Annotated[
@@ -110,6 +112,7 @@ class HandVecDictType(RCSpaceType):
             dtype=np.float32,
         ),
     ]
+
 
 class CameraDictType(RCSpaceType):
     frames: dict[
@@ -592,6 +595,7 @@ class GripperWrapper(ActObsInfoWrapper):
         del action[self.gripper_key]
         return action
 
+
 class HandWrapper(ActObsInfoWrapper):
     """
     This wrapper allows for controlling the hand of the robot
@@ -602,7 +606,7 @@ class HandWrapper(ActObsInfoWrapper):
     The wrapper also provides an observation space that includes
     the hand state.
     The hand state is represented as a binary value (0 for closed,
-    1 for open) or as a continuous value (normalized joint positions).   
+    1 for open) or as a continuous value (normalized joint positions).
     """
 
     BINARY_HAND_CLOSED = 0
@@ -639,7 +643,7 @@ class HandWrapper(ActObsInfoWrapper):
         else:
             observation[self.hand_key] = self._hand.get_normalized_joints_poses()
 
-        info = False
+        info = {}
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
@@ -652,12 +656,12 @@ class HandWrapper(ActObsInfoWrapper):
 
         if self.binary:
             if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
-                if hand_action == self.BINARY_HAND_CLOSED: 
-                     self._hand.grasp()
-                else: 
+                if hand_action == self.BINARY_HAND_CLOSED:
+                    self._hand.grasp()
+                else:
                     self._hand.open()
         else:
-                self._hand.set_normalized_joints_poses(hand_action)
+            self._hand.set_normalized_joints_poses(hand_action)
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action
