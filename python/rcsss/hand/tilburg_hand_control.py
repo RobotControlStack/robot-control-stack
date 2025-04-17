@@ -86,7 +86,7 @@ class TilburgHandControl(HandControl):
         self.set_zero_pos()
         logger.info("Setting all joints to zero position.")
 
-    def grasp(self, value: float, template: list | None = None):
+    def grasp(self, value: float = 0.9, template: list | None = None):
         """
         Performs a grasp with a specified intensity (0.0 to 1.0).
         """

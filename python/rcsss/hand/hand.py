@@ -41,7 +41,7 @@ class Hand:
         self._hand = hand
 
     def grasp(self):
-        self._hand.grasp(value=0.9)
+        self._hand.grasp()
 
     def reset(self):
         self._hand.set_zero_pos()
