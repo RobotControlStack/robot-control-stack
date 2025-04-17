@@ -27,8 +27,6 @@ from rcsss.envs.sim import (
     RandomCubePos,
     SimWrapper,
 )
-from rcsss.hand.hand import Hand
-from rcsss.hand.tilburg_hand_control import TilburgHandControl
 from rcsss.envs.space_utils import Vec7Type
 from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
@@ -38,6 +36,8 @@ from rcsss.envs.utils import (
     default_realsense,
     get_urdf_path,
 )
+from rcsss.hand.hand import Hand
+from rcsss.hand.tilburg_hand_control import TilburgHandControl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

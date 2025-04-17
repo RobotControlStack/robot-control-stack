@@ -8,7 +8,7 @@ class HandControl:
         pass
 
     def grasp(self, value: float):
-        self.value = value # to pass pylint
+        self.value = value  # to pass pylint
         message = "This method should be overridden by subclasses."
         raise NotImplementedError(message)
 
@@ -25,7 +25,7 @@ class HandControl:
         raise NotImplementedError(message)
 
     def set_pos_vector(self, values: list):
-        self.values = values # to pass pylint
+        self.values = values  # to pass pylint
         message = "This method should be overridden by subclasses."
         raise NotImplementedError(message)
 
@@ -40,8 +40,8 @@ class Hand:
     def __init__(self, hand: HandControl):
         self._hand = hand
 
-    def grasp(self):
-        self._hand.grasp()
+    def grasp(self, value):
+        self._hand.grasp(value)
 
     def reset(self):
         self._hand.set_zero_pos()

@@ -124,7 +124,7 @@ class TilburgHandControl(HandControl):
         """
         sleep(seconds)
 
-    def set_joint_pos(self, finger_joint : Finger, pos_value: float):
+    def set_joint_pos(self, finger_joint: Finger, pos_value: float):
         """
         Sets a single joint to a specific normalized position.
         """
@@ -132,7 +132,7 @@ class TilburgHandControl(HandControl):
         self._pos_normalized[int(finger_joint)] = pos_value
         logger.info(f"Set joint {finger_joint.name} to {pos_value:.2f}")
 
-    def reset_joint_pos(self, finger_joint : Finger):
+    def reset_joint_pos(self, finger_joint: Finger):
         """
         Resets a specific joint to zero.
         """
