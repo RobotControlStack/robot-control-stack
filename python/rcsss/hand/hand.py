@@ -27,7 +27,7 @@ class HandControl:
         message = "This method should be overridden by subclasses."
         raise NotImplementedError(message)
 
-    def set_pos_vector(self, values: list):
+    def set_pos_vector(self, values: list[float]):
         self.values = values  # to pass pylint
         message = "This method should be overridden by subclasses."
         raise NotImplementedError(message)
