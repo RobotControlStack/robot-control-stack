@@ -10,9 +10,9 @@ Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
 
 Eigen::Matrix4d FrankaHandTCPOffset() {
   return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1,
-          0.1034, 0, 0, 0, 1)
+          0.065, 0, 0, 0, 1)
       .finished();
-}
+} // 6.5 cm from the flange till the hand edge (end point of the white plastic hand w/o finger holders)
 
 // CONSTRUCTORS
 
