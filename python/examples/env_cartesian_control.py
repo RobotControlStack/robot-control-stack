@@ -63,8 +63,7 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            hand_cfg = {"Binary": binary_action,
-                        "mujoco_xml_path": mujoco_xml_path}
+            hand_cfg = {"Binary": binary_action, "mujoco_xml_path": mujoco_xml_path}
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),

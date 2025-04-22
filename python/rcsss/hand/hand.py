@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class HandControl:
     """
     Base class for hand control.
@@ -7,7 +10,7 @@ class HandControl:
     def __init__(self):
         pass
 
-    def grasp(self, value: float):
+    def grasp(self, value: Optional[float] = None):
         self.value = value  # to pass pylint
         message = "This method should be overridden by subclasses."
         raise NotImplementedError(message)
@@ -40,7 +43,7 @@ class Hand:
     def __init__(self, hand: HandControl):
         self._hand = hand
 
-    def grasp(self, value):
+    def grasp(self, value: Optional[float] = None):
         self._hand.grasp(value)
 
     def reset(self):

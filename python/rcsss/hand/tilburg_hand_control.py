@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from time import sleep
+from typing import Optional
 
 from rcsss.hand.hand import HandControl
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit, Wrist
@@ -86,13 +87,13 @@ class TilburgHandControl(HandControl):
         self.set_zero_pos()
         logger.info("Setting all joints to zero position.")
 
-    def grasp(self, value: float = 0.9, template: list | None = None):
+    def grasp(self, value: Optional[float] = None):
         """
         Performs a grasp with a specified intensity (0.0 to 1.0).
         """
-        if template is None:
-            template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-
+        template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
+        if value is None:
+            value = 0.9
         self._pos_normalized = [val * value for val in template]
 
         self._motors.set_pos_vector(copy.deepcopy(self._pos_normalized), unit=self.pos_value_unit)
