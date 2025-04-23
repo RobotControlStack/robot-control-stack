@@ -10,6 +10,7 @@ from rcsss.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
+    default_tilburg_hw_hand_cfg,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,6 @@ def main():
     else:
         resource_manger = DummyResourceManager()
     with resource_manger:
-        binary_action = False
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
@@ -66,11 +66,10 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
-                gripper_cfg=None,
+                gripper_cfg=default_tilburg_hw_hand_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
-                hand_cfg={"Binary": binary_action},
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
@@ -78,7 +77,7 @@ def main():
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
         close_action: Union[int, list[float]]
         open_action: Union[int, list[float]]
-        if binary_action:
+        if default_tilburg_hw_hand_cfg().binary_action:
             close_action = 0
             open_action = 1
         else:
