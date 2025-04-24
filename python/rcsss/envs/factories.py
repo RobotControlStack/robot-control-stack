@@ -172,9 +172,10 @@ def fr3_sim_env(
     elif isinstance(gripper_cfg, rcsss.hand.interface.THConfig):
         hand = Hand(TilburgHandControl(gripper_cfg))
         env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
-        
-    # hand = Hand(MujocoHandControl(str(hand_cfg["mujoco_xml_path"])))
-    # env = HandWrapper(env, hand, binary=hand_cfg["Binary"])
+    
+    elif isinstance(gripper_cfg, rcsss.hand.interface.THMujocoConfig):    
+        hand = Hand(MujocoHandControl(gripper_cfg))
+        env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
 
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(

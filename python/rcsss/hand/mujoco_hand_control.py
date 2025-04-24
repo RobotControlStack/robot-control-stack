@@ -4,7 +4,7 @@ from typing import Optional
 import mujoco
 import mujoco.viewer
 from rcsss.hand.hand import HandControl
-
+from rcsss.hand.interface import THMujocoConfig
 
 class MujocoHandControl(HandControl):
     """
@@ -13,9 +13,10 @@ class MujocoHandControl(HandControl):
     It allows for grasping, resetting, and disconnecting from the hand.
     """
 
-    def __init__(self, xml_path: str):
+    def __init__(self, mujoco_hand_cfg: Optional[THMujocoConfig]):
 
         # Load model
+        xml_path = mujoco_hand_cfg.mujoco_xml_path
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
         self.viewer = mujoco.viewer.launch_passive(self.model, self.data)

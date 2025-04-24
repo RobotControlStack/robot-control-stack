@@ -50,8 +50,7 @@ def main():
     else:
         resource_manger = DummyResourceManager()
     with resource_manger:
-        binary_action = False
-        mujoco_xml_path = "/home/gamal/repos/tilburg-hand/src/tilburg_hand_urdf_mujoco/robot.xml"
+
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
@@ -63,7 +62,6 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            hand_cfg = {"Binary": binary_action, "mujoco_xml_path": mujoco_xml_path}
             env_rel = fr3_sim_env(
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
