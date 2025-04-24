@@ -10,7 +10,7 @@ import rcsss.control.fr3_desk
 import typer
 from PIL import Image
 from rcsss.camera.realsense import RealSenseCameraSet
-from rcsss.config import create_sample_config_yaml, read_config_yaml
+# from rcsss.config import create_sample_config_yaml, read_config_yaml
 from rcsss.control.record import PoseList
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.factories import get_urdf_path
@@ -28,7 +28,7 @@ def sample_config(
     ] = "config.yaml",
 ):
     """Creates a sample yaml config file"""
-    create_sample_config_yaml(path)
+    # create_sample_config_yaml(path)
 
 
 # REALSENSE CLI
@@ -203,6 +203,7 @@ def record(
     if lpaths is not None and len(lpaths) > 0:
         with ExitStack() as stack:
             for r_ip in name2ip.values():
+                
                 stack.enter_context(rcsss.control.fr3_desk.Desk.fci(r_ip, username=user, password=pw, unlock=True))
 
             p = PoseList.load(name2ip, lpaths, urdf_path=urdf_path)

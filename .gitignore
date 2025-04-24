@@ -17,3 +17,4 @@ config.h
 wheels
 .env
 settings.json
+.rcs
