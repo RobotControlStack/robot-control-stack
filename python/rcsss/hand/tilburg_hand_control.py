@@ -1,11 +1,11 @@
 import copy
 import logging
-import os
 import sys
 from time import sleep
 from typing import Optional
 
 from rcsss.hand.hand import HandControl
+from rcsss.hand.interface import THConfig
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit, Wrist
 
 # Setup logger
@@ -21,16 +21,13 @@ class TilburgHandControl(HandControl):
     It allows for grasping, resetting, and disconnecting from the hand.
     """
 
-    def __init__(self, config_folder_path="config", verbose=False):
+    def __init__(self, tilburghand_cfg: Optional[THConfig] = None, verbose: bool = False):
         """
         Initializes the Tilburg Hand Control interface.
         """
-        self.config_folder_path = config_folder_path
-        self.tilburg_hand_config_file_path = os.path.join(config_folder_path, "config.json")
-        self.tilburg_hand_calibration_file_path = os.path.join(config_folder_path, "calibration.json")
+        self.tilburg_hand_calibration_file_path = tilburghand_cfg.calibration_file_path if tilburghand_cfg else None
 
         self._motors = TilburgHandMotorInterface(
-            config_file=self.tilburg_hand_config_file_path,
             calibration_file=self.tilburg_hand_calibration_file_path,
             verbose=verbose,
         )

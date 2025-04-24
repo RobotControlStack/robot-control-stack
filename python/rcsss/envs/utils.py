@@ -39,6 +39,10 @@ def default_fr3_hw_gripper_cfg():
     return gripper_cfg
 
 
+def default_tilburg_hw_hand_cfg():
+    return rcsss.hand.interface.THConfig()
+
+
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
     if name2id is None:
         return None
