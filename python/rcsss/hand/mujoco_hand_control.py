@@ -6,6 +6,7 @@ import mujoco.viewer
 from rcsss.hand.hand import HandControl
 from rcsss.hand.interface import THMujocoConfig
 
+
 class MujocoHandControl(HandControl):
     """
     Tilburg Mujoco Hand Control
@@ -13,7 +14,7 @@ class MujocoHandControl(HandControl):
     It allows for grasping, resetting, and disconnecting from the hand.
     """
 
-    def __init__(self, mujoco_hand_cfg: Optional[THMujocoConfig]):
+    def __init__(self, mujoco_hand_cfg: THMujocoConfig):
 
         # Load model
         xml_path = mujoco_hand_cfg.mujoco_xml_path

@@ -10,7 +10,7 @@ from rcsss.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    default_tilburg_mujoco_hand_cfg
+    default_tilburg_mujoco_hand_cfg,
 )
 
 logger = logging.getLogger(__name__)

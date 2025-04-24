@@ -37,8 +37,8 @@ from rcsss.envs.utils import (
     get_urdf_path,
 )
 from rcsss.hand.hand import Hand
-from rcsss.hand.tilburg_hand_control import TilburgHandControl
 from rcsss.hand.mujoco_hand_control import MujocoHandControl
+from rcsss.hand.tilburg_hand_control import TilburgHandControl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -172,8 +172,8 @@ def fr3_sim_env(
     elif isinstance(gripper_cfg, rcsss.hand.interface.THConfig):
         hand = Hand(TilburgHandControl(gripper_cfg))
         env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
-    
-    elif isinstance(gripper_cfg, rcsss.hand.interface.THMujocoConfig):    
+
+    elif isinstance(gripper_cfg, rcsss.hand.interface.THMujocoConfig):
         hand = Hand(MujocoHandControl(gripper_cfg))
         env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
 

@@ -77,6 +77,7 @@ def main():
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
         close_action: Union[int, list[float]]
         open_action: Union[int, list[float]]
+        binary_action = False
         if binary_action:
             close_action = 0
             open_action = 1
