@@ -1,5 +1,6 @@
 import logging
 from os import PathLike
+import sys
 from typing import Type
 
 import gymnasium as gym
@@ -144,15 +145,14 @@ def fr3_sim_env(
     Returns:
         gym.Env: The configured simulation environment for the FR3 robot.
     """
-    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-    assert urdf_path is not None
-    if mjcf not in rcsss.scenes:
-        logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-    mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
-    simulation = sim.Sim(mjb_file)
-
+    # urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
+    urdf_path = "/home/ayad/ontouch/phantomtouch/fr3.urdf"
+    mjxml_file = "/home/ayad/ontouch/phantomtouch/fr3_simple_pick_up_digit_hand_wsensor/scene.xml"
+    simulation = sim.Sim(mjxml_file)
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
+    # robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * rcsss.common.Pose(translation=[0, 0, 0])
+    print(robot_cfg.tcp_offset, "tcp offset")
     robot.set_parameters(robot_cfg)
     env: gym.Env = FR3Env(robot, control_mode)
     env = FR3Sim(env, simulation, sim_wrapper)

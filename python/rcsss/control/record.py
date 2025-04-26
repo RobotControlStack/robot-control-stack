@@ -261,17 +261,22 @@ class PoseList:
             self._button_recording = False
 
     def record(self):
+        import time
+        previous_stamp = 0
         while True:
             i = input(
                 "Press p to record a pose, press s to shut the gripper, press r to release the gripper, press w to have a wait for input pose\n"
             )
             if i.split(" ")[0] == "p":
-                if not check_pose(self.r[i.split(" ")[1]].get_joint_position()):
-                    _logger.warning("REJECTED due to joint constraints")
-                    continue
-                j = JointPose(name=i.split(" ")[1])
-                j.record(self.r)
-                self.poses.append(j)
+                while True:
+                    pose = self.r[i.split(" ")[1]].get_cartesian_position().pose_matrix()
+                    self.poses.append(pose)
+                    timestamp = int(time.time())
+                    if timestamp - previous_stamp >= 1:
+                        _logger.info(f"Pose saved at {timestamp}")
+                        directory = "data/orbbec/"
+                        np.save(f"{directory}/pose_{int(timestamp)}.npy",pose, allow_pickle=True)
+                    previous_stamp = int(timestamp)
             elif i.split(" ")[0] == "s":
                 g = GripperPose(name=i.split(" ")[1])
                 g.record(True, self.g)

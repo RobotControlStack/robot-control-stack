@@ -15,6 +15,7 @@ from rcsss.envs.factories import (
 
 # available mujoco scenes
 scenes = {
+    # "lab": "/home/ayad/ontouch/phantomtouch"
     path.stem: path / "scene.mjb" for path in (pathlib.Path(site.getsitepackages()[0]) / "rcsss" / "scenes").glob("*")
 }
 

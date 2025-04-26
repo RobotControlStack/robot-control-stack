@@ -18,7 +18,7 @@ logger.setLevel(logging.INFO)
 
 def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Config:
     cfg = sim.FR3Config()
-    cfg.tcp_offset = get_tcp_offset(mjcf)
+    cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * rcsss.common.Pose(translation=[0, 0, 0.185])
     cfg.realtime = False
     return cfg
 
@@ -61,13 +61,14 @@ def default_fr3_sim_gripper_cfg():
 
 def default_mujoco_cameraset_cfg():
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
+        # "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        # "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
         # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        "orbbec": SimCameraConfig(identifier="orbbec", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
     return SimCameraSetConfig(
-        cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
+        cameras=cameras, resolution_width=1920, resolution_height=1080, frame_rate=10, physical_units=True
     )
 
 
