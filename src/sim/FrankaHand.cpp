@@ -10,7 +10,7 @@
 struct {
   // TODO(juelg): add camera mount collision (first a name needs to be
   // added to the model)
-  std::vector<std::string> collision_geoms{"hand_c", "d435i_collision",
+  std::vector<std::string> collision_geoms{"hand_c",
                                            "finger_0_left", "finger_0_right"};
 
   std::vector<std::string> collision_geoms_fingers{"finger_0_left",
