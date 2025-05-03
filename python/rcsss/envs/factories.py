@@ -33,7 +33,7 @@ from rcsss.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
-    default_realsense,
+    # default_realsense,
     get_urdf_path,
 )
 
@@ -146,8 +146,8 @@ def fr3_sim_env(
         gym.Env: The configured simulation environment for the FR3 robot.
     """
     # urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-    urdf_path = "/home/ayad/ontouch/phantomtouch/fr3.urdf"
-    mjxml_file = "/home/ayad/ontouch/phantomtouch/fr3_simple_pick_up_digit_hand_wsensor/scene.xml"
+    urdf_path = "/home/epon04yc/phantom-touch/src/phantom-touch/data/fr3.urdf"
+    mjxml_file = "/home/epon04yc/phantom-touch/src/phantom-touch/data/fr3_simple_pick_up_digit_hand_wsensor/scene.xml"
     simulation = sim.Sim(mjxml_file)
     ik = rcsss.common.IK(urdf_path)
     robot = rcsss.sim.FR3(simulation, "0", ik)
