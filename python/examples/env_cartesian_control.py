@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
@@ -8,6 +7,7 @@ from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
 from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
 )
@@ -49,8 +49,8 @@ def main():
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         resource_manger = DummyResourceManager()
-    with resource_manger:
 
+    with resource_manger:
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
@@ -66,7 +66,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
-                gripper_cfg=None,
+                gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
@@ -75,32 +75,18 @@ def main():
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-        close_action: Union[int, list[float]]
-        open_action: Union[int, list[float]]
-        binary_action = False
-        if binary_action:
-            close_action = 0
-            open_action = 1
-        else:
-            template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-            value = 0.5
-            close_action = [value * val for val in template]
-            open_action = [0.0] * len(template)
 
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
+                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-            from time import sleep
-
-            sleep(5)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
+                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")

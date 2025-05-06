@@ -6,8 +6,8 @@ from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
 from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
 from rcsss.envs.utils import (
-    default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     default_tilburg_hw_hand_cfg,
@@ -57,7 +57,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
-                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                gripper_cfg=default_tilburg_hw_hand_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -66,7 +66,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuart,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
-                gripper_cfg=default_tilburg_hw_hand_cfg(),
+                gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
