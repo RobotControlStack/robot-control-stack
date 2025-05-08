@@ -20,15 +20,13 @@ from rcsss.envs.base import (
     RelativeTo,
     RobotInstance,
 )
-from rcsss.envs.factories import (
+from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
+from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
-    default_mujoco_cameraset_cfg,
     default_realsense,
-    fr3_hw_env,
-    fr3_sim_env,
 )
 from rcsss.envs.wrappers import StorageWrapperHDF5, StorageWrapperNumpy
 
