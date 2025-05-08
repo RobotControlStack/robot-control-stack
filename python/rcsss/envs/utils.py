@@ -23,19 +23,21 @@ def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Co
     return cfg
 
 
-def default_fr3_hw_robot_cfg():
+def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
     robot_cfg.ik_solver = IKSolver.rcs
+    robot_cfg.async_control = async_control
     return robot_cfg
 
 
-def default_fr3_hw_gripper_cfg():
+def default_fr3_hw_gripper_cfg(async_control: bool = False):
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
     gripper_cfg.force = 30
+    gripper_cfg.async_control = async_control
     return gripper_cfg
 
 

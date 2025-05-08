@@ -6,7 +6,6 @@ from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
 
 import numpy as np
-import rcsss
 from rcsss._core.common import RPY, Pose
 from rcsss.camera.interface import SimpleFrameRate
 from rcsss.camera.realsense import RealSenseCameraSet
@@ -28,7 +27,7 @@ from rcsss.envs.utils import (
     default_fr3_sim_robot_cfg,
     default_realsense,
 )
-from rcsss.envs.wrappers import StorageWrapperHDF5, StorageWrapperNumpy
+from rcsss.envs.wrappers import StorageWrapperHDF5
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +47,9 @@ CAMERA_DICT = {
     "side": "243522070385",
 }
 # CAMERA_DICT = None
+DEBUG = True
+STORAGE_PATH = "data"
+
 
 
 class Button(IntFlag):
@@ -290,12 +292,11 @@ def main():
 
         env_rel.reset()
 
-        with env_rel:
-            with UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
-                if not DEBUG:
-                    input_loop(env_rel, action_server, camera_set)
-                else:
-                    action_server.environment_step_loop()
+        with env_rel, UDPViveActionServer(VIVE_HOST, VIVE_PORT, env_rel) as action_server:
+            if not DEBUG:
+                input_loop(env_rel, action_server, camera_set)
+            else:
+                action_server.environment_step_loop()
 
 
 if __name__ == "__main__":

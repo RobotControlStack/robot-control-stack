@@ -95,9 +95,10 @@ class StorageWrapperNumpy(gym.Wrapper):
             )
         else:
             if "observation" in data and "frames" in data["observation"] and key in data["observation"]["frames"]:
-                raise ValueError(f"Key {key} not found in {data['observation']['frames'].keys()}")
+                msg = f"Key {key} not found in {data['observation']['frames'].keys()}"
             else:
-                raise ValueError(f"Key {key} not found in data")
+                msg = f"Key {key} not found in data"
+            raise ValueError(msg)
 
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
@@ -190,10 +191,7 @@ class StorageWrapperHDF5(gym.Wrapper):
         for key, value in data_dict.items():
             if isinstance(value, dict):
                 # Handle subgroup
-                if key not in group:
-                    subgroup = group.create_group(key)
-                else:
-                    subgroup = group[key]
+                subgroup = group.create_group(key) if key not in group else group[key]
                 self.append_to_hdf5(subgroup, value, index)
             else:
                 # Handle dataset
@@ -212,19 +210,21 @@ class StorageWrapperHDF5(gym.Wrapper):
                         shape = ()
                     elif isinstance(value, np.ndarray):
                         # Numpy array
+                        v = value
                         dtype = value.dtype
                         shape = value.shape
                     else:
                         # Other types, try to convert to numpy array
                         try:
-                            value = np.array(value)
-                            dtype = value.dtype
-                            shape = value.shape
+                            v = np.array(value)
+                            dtype = v.dtype
+                            shape = v.shape
                         except Exception as e:
-                            raise ValueError(f"Unsupported data type for key '{key}': {type(value)}") from e
+                            msg = f"Unsupported data type for key '{key}': {type(value)}"
+                            raise ValueError(msg) from e
                     # Create dataset
-                    initial_shape = (index + 1,) + shape
-                    maxshape = (None,) + shape
+                    initial_shape = (index + 1, *shape)
+                    maxshape = (None, *shape)
                     dataset = group.create_dataset(
                         dataset_name,
                         shape=initial_shape,
@@ -240,12 +240,10 @@ class StorageWrapperHDF5(gym.Wrapper):
                         new_size = index + 1
                         dataset.resize(new_size, axis=0)
                 # Store value
-                if isinstance(value, str):
-                    dataset[index] = value
-                elif np.isscalar(value):
+                if isinstance(value, str) or np.isscalar(value):
                     dataset[index] = value
                 else:
-                    dataset[index, ...] = value
+                    dataset[index, ...] = v
 
     def flush(self):
         """Writes data to disk."""
@@ -267,7 +265,7 @@ class StorageWrapperHDF5(gym.Wrapper):
         episode_name: str,
         camera_id: str,
         frame_interval_s: float = 0.5,
-        output_folder: str = None,
+        output_folder: str | None = None,
     ):
 
         with h5py.File(h5file_path, "r") as data:
@@ -302,7 +300,8 @@ class StorageWrapperHDF5(gym.Wrapper):
                     loop=0,
                 )
             else:
-                raise ValueError(f"camera id {camera_id} not found in data")
+                msg = f"camera id {camera_id} not found in data"
+                raise ValueError(msg)
 
     def step(self, action: dict) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = super().step(action)
@@ -327,7 +326,7 @@ class StorageWrapperHDF5(gym.Wrapper):
             git_diff = subprocess.check_output(["git", "diff", "--submodule=diff"]).decode("utf-8")
             git_commit_id = subprocess.check_output(["git", "log", "--format=%H", "-n", "1"]).decode("utf-8").strip()
             git_submodule_status = subprocess.check_output(["git", "submodule", "status"]).decode("utf-8")
-        except Exception as e:
+        except subprocess.CalledProcessError:
             git_diff = ""
             git_commit_id = ""
             git_submodule_status = ""

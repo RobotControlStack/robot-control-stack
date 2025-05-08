@@ -1,36 +1,26 @@
 import logging
-from dataclasses import dataclass
-from time import sleep
 
-import cv2
 import gymnasium as gym
 import json_numpy
-import matplotlib.pyplot as plt
 import numpy as np
-import requests
 from agents.client import RemoteAgent
-from agents.policies import Act, Obs
+from agents.policies import Obs
 from omegaconf import OmegaConf
 from PIL import Image
-from rcsss._core.sim import FR3, FR3State
-from rcsss.camera.realsense import RealSenseCameraSet
-from rcsss.config import read_config_yaml
 
-# from rcsss.desk import FCI, Desk
+from python.rcsss.envs.factories import fr3_hw_env, fr3_sim_env
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcsss.envs.factories import (
+from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     default_realsense,
-    fr3_hw_env,
-    fr3_sim_env,
 )
-from rcsss.envs.wrappers import RHCWrapper, StorageWrapper
+from rcsss.envs.wrappers import RHCWrapper, StorageWrapperNumpy
 
 json_numpy.patch()
 
@@ -156,7 +146,7 @@ def main():
             Desk(cfg.robot_ip, user, pw), unlock=False, lock_when_done=False, guiding_mode_when_done=True
         )
     else:
-        resource_manger = DummyResourceManager()
+        resource_manger = DummyResourceManager() # type: ignore
     with resource_manger:
 
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
@@ -201,12 +191,12 @@ def main():
             )
             env.get_wrapper_attr("sim").open_gui()
         if not DEBUG:
-            env = StorageWrapper(env, path="octo_realv1_async", instruction=INSTRUCTION)
+            env = StorageWrapperNumpy(env, path="octo_realv1_async", instruction=INSTRUCTION)
 
             # record videos
             video_path = env.path / "videos"
             video_path.mkdir(parents=True, exist_ok=True)
-            camera_set.record_video(video_path, 0)
+            camera_set.record_video(video_path, "0")
 
         env = RHCWrapper(env, exec_horizon=1)
         controller = RobotControl(env, INSTRUCTION, cfg.host, cfg.port, cfg.model)
