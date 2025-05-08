@@ -7,8 +7,8 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+from python.rcsss._core.common import Robot
 from rcsss import common, sim
-from rcsss._core import hw
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -160,7 +160,7 @@ class FR3Env(gym.Env):
     y
     """
 
-    def __init__(self, robot: hw.FR3, control_mode: ControlMode):
+    def __init__(self, robot: Robot, control_mode: ControlMode):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -255,7 +255,6 @@ class FR3Env(gym.Env):
         return self.get_obs(), {}
 
     def close(self):
-        self.robot.stop_control_thread()
         super().close()
 
 
