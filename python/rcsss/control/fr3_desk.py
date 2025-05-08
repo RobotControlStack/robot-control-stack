@@ -299,14 +299,12 @@ class Desk:
         active = self._get_active_token()
 
         # try to read token from cache file
-        token_path = os.path.expanduser('~/.cache/rcs_fr3_token')
+        token_path = os.path.expanduser("~/.cache/rcs_fr3_token")
         if active.id != "" and self._token.id == "" and os.path.exists(token_path):
             with open(token_path, "r") as f:
                 content = f.read()
             content = content.split("/n")
             self._token = Token(content[0], content[1], content[2])
-            
-
 
         # we already have control
         if active.id != "" and self._token.id == active.id:

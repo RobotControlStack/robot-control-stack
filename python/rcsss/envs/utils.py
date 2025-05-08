@@ -6,7 +6,7 @@ import mujoco as mj
 import numpy as np
 import rcsss
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
+from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
@@ -27,7 +27,7 @@ def default_fr3_hw_robot_cfg():
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
-    robot_cfg.controller = IKController.robotics_library
+    robot_cfg.ik_solver = IKSolver.rcs
     return robot_cfg
 
 

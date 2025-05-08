@@ -4,12 +4,12 @@ import threading
 from enum import IntFlag, auto
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import unpack
-import rcsss
-from rcsss.camera.interface import SimpleFrameRate
-from rcsss.camera.realsense import RealSenseCameraSet
 
 import numpy as np
+import rcsss
 from rcsss._core.common import RPY, Pose
+from rcsss.camera.interface import SimpleFrameRate
+from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import (
@@ -30,7 +30,6 @@ from rcsss.envs.utils import (
 )
 from rcsss.envs.wrappers import StorageWrapperHDF5, StorageWrapperNumpy
 
-
 logger = logging.getLogger(__name__)
 
 EGO_LOCK = False
@@ -49,7 +48,6 @@ CAMERA_DICT = {
     "side": "243522070385",
 }
 # CAMERA_DICT = None
-
 
 
 class Button(IntFlag):
@@ -174,7 +172,6 @@ class UDPViveActionServer(threading.Thread):
                     with self._resource_lock:
                         self._last_controller_pose = last_controller_pose
 
-
                 if Button(int(unpacked[7])) & self._grp_btn and not Button(int(self._buttons)) & self._grp_btn:
                     # just pressed
                     self._grp_pos = 0
@@ -255,7 +252,7 @@ def main():
             camera_set = default_realsense(CAMERA_DICT)
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
-                camera_set = camera_set,
+                camera_set=camera_set,
                 # collision_guard="lab",
                 robot_cfg=default_fr3_hw_robot_cfg(async_control=True),
                 control_mode=ControlMode.CARTESIAN_TQuart,

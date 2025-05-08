@@ -1,13 +1,14 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-import logging
-from time import time, sleep
+from time import sleep, time
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 class SimpleFrameRate:
     def __init__(self):

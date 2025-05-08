@@ -1,19 +1,14 @@
-from datetime import datetime
 import os
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any, SupportsFloat
 
 import gymnasium as gym
-
-import os
-
-import gymnasium as gym
+import h5py
 import numpy as np
 from PIL import Image
 from rcsss.camera.hw import BaseHardwareCameraSet
-
-import subprocess
-import h5py
 
 
 class StorageWrapperNumpy(gym.Wrapper):
@@ -56,7 +51,6 @@ class StorageWrapperNumpy(gym.Wrapper):
         os.system(f'git submodule status > {os.path.join(str(self.path), "git_id_submodules.txt")}')
         # get git diff
         os.system(f'git diff --submodule=diff > {os.path.join(str(self.path), "git_diff.txt")}')
-
 
     def flush(self):
         """writes data to disk"""
@@ -192,7 +186,6 @@ class StorageWrapperHDF5(gym.Wrapper):
         else:
             self.instruction_group = self.h5file.create_group(self.key)
 
-
     def append_to_hdf5(self, group, data_dict, index):
         for key, value in data_dict.items():
             if isinstance(value, dict):
@@ -233,7 +226,12 @@ class StorageWrapperHDF5(gym.Wrapper):
                     initial_shape = (index + 1,) + shape
                     maxshape = (None,) + shape
                     dataset = group.create_dataset(
-                        dataset_name, shape=initial_shape, maxshape=maxshape, chunks=True, dtype=dtype , compression="gzip"
+                        dataset_name,
+                        shape=initial_shape,
+                        maxshape=maxshape,
+                        chunks=True,
+                        dtype=dtype,
+                        compression="gzip",
                     )
                     self.datasets[full_dataset_path] = dataset
                 else:

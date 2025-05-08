@@ -1,13 +1,17 @@
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from time import sleep
-from PIL import Image
+
 import cv2
 import gymnasium as gym
-import numpy as np
+import json_numpy
 import matplotlib.pyplot as plt
-from rcsss.envs.wrappers import RHCWrapper, StorageWrapper
+import numpy as np
+import requests
+from agents.client import RemoteAgent
+from agents.policies import Act, Obs
 from omegaconf import OmegaConf
+from PIL import Image
 from rcsss._core.sim import FR3, FR3State
 from rcsss.camera.realsense import RealSenseCameraSet
 from rcsss.config import read_config_yaml
@@ -16,13 +20,17 @@ from rcsss.config import read_config_yaml
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcsss.envs.factories import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg, default_fr3_sim_gripper_cfg, default_fr3_sim_robot_cfg, default_mujoco_cameraset_cfg, default_realsense, fr3_hw_env, fr3_sim_env
-import requests
-import json_numpy
-
-from agents.policies import Act, Obs
-from agents.client import RemoteAgent
-from rcsss.envs.base import ControlMode
+from rcsss.envs.factories import (
+    default_fr3_hw_gripper_cfg,
+    default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
+    default_fr3_sim_robot_cfg,
+    default_mujoco_cameraset_cfg,
+    default_realsense,
+    fr3_hw_env,
+    fr3_sim_env,
+)
+from rcsss.envs.wrappers import RHCWrapper, StorageWrapper
 
 json_numpy.patch()
 
@@ -37,7 +45,13 @@ ROBOT_INSTANCE = RobotInstance.HARDWARE
 INSTRUCTION = "pick up the can"
 
 default_cfg = OmegaConf.create(
-    {"host": "dep-eng-air-p-1.hosts.utn.de", "port": 9000, "model": "openvla", "robot_ip": "192.168.101.1", "debug": True}
+    {
+        "host": "dep-eng-air-p-1.hosts.utn.de",
+        "port": 9000,
+        "model": "openvla",
+        "robot_ip": "192.168.101.1",
+        "debug": True,
+    }
     # {"host": "dep-eng-air-p-1.hosts.utn.de", "port": 7000, "model": "octo", "robot_ip": "192.168.101.1", "debug": False}
     # {"host": "localhost", "port": 8080, "model": "chatgpt", "robot_ip": "192.168.101.1", "debug": False}
 )
@@ -65,11 +79,7 @@ class RobotControl:
         # side = obs["frames"]["default_free"]["rgb"]
         # side = obs["frames"]["openvla_view"]["rgb"]
 
-        side = np.array(Image.fromarray(side).resize(
-                            (256, 256), Image.Resampling.LANCZOS))
-
-
-        
+        side = np.array(Image.fromarray(side).resize((256, 256), Image.Resampling.LANCZOS))
 
         # center crop square
         # h = side.shape[0]
@@ -91,7 +101,7 @@ class RobotControl:
 
         # return {"bird_eye": bird_eye, "wrist": wrist, "side": side, "gripper": obs["gripper"]}
         # return Obs(rgb_bird_eye=bird_eye, rgb_wrist=wrist, rgb_side=side, gripper=obs["gripper"], rgb=obs["frames"])
-        return Obs(rgb_side=side, gripper=obs["gripper"]) #, info={"rgb": obs["frames"], "xyzrpy": obs["xyzrpy"]})
+        return Obs(rgb_side=side, gripper=obs["gripper"])  # , info={"rgb": obs["frames"], "xyzrpy": obs["xyzrpy"]})
 
     def step(self, action) -> tuple[bool, list[str], dict]:
         # TODO Check if the model indicates when an action is finished.
@@ -142,7 +152,9 @@ class RobotControl:
 def main():
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(cfg.robot_ip, user, pw), unlock=False, lock_when_done=False, guiding_mode_when_done=True)
+        resource_manger = FCI(
+            Desk(cfg.robot_ip, user, pw), unlock=False, lock_when_done=False, guiding_mode_when_done=True
+        )
     else:
         resource_manger = DummyResourceManager()
     with resource_manger:
@@ -168,13 +180,13 @@ def main():
             # )
             env = fr3_hw_env(
                 ip=cfg.robot_ip,
-                camera_set = camera_set,
+                camera_set=camera_set,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 control_mode=ControlMode.CARTESIAN_TRPY,
                 collision_guard=None,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=(0.1, np.deg2rad(5)),
-            relative_to=RelativeTo.LAST_STEP,
+                relative_to=RelativeTo.LAST_STEP,
             )
         else:
             env = fr3_sim_env(

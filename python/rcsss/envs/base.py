@@ -400,12 +400,15 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
                 self._last_action = clipped_pose_offset
             else:
-                pose_diff = common.Pose(
-                    translation=action[self.trpy_key][:3],
-                    rpy_vector=action[self.trpy_key][3:],
-                ) * self._last_action.inverse()
-                clipped_pose_diff = (
-                    pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+                pose_diff = (
+                    common.Pose(
+                        translation=action[self.trpy_key][:3],
+                        rpy_vector=action[self.trpy_key][3:],
+                    )
+                    * self._last_action.inverse()
+                )
+                clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                    self.max_mov[1]
                 )
                 clipped_pose_offset = clipped_pose_diff * self._last_action
                 self._last_action = clipped_pose_offset
@@ -440,12 +443,15 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
                 self._last_action = clipped_pose_offset
             else:
-                pose_diff = common.Pose(
-                    translation=action[self.tquart_key][:3],
-                    quaternion=action[self.tquart_key][3:],
-                ) * self._last_action.inverse()
-                clipped_pose_diff = (
-                    pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+                pose_diff = (
+                    common.Pose(
+                        translation=action[self.tquart_key][:3],
+                        quaternion=action[self.tquart_key][3:],
+                    )
+                    * self._last_action.inverse()
+                )
+                clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                    self.max_mov[1]
                 )
                 clipped_pose_offset = clipped_pose_diff * self._last_action
                 self._last_action = clipped_pose_offset
