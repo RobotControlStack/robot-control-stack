@@ -2,6 +2,7 @@
 #define RCS_FR3_H
 
 #include <common/IK.h>
+#include <common/LinearPoseTrajInterpolator.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
@@ -9,8 +10,10 @@
 
 #include <cmath>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 
 namespace rcs {
 namespace hw {
@@ -25,18 +28,21 @@ struct FR3Load {
   std::optional<Eigen::Vector3d> f_x_cload;
   std::optional<Eigen::Matrix3d> load_inertia;
 };
-enum IKController { internal = 0, robotics_library };
+enum IKSolver { franka = 0, rcs };
+// modes: joint-space control, operational-space control, zero-torque
+// control
+enum Controller { none = 0, jsc, osc, ztc };
 struct FR3Config : common::RConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
-  IKController controller = IKController::internal;
-  bool guiding_mode_enabled = true;
+  IKSolver ik_solver = IKSolver::franka;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
   common::Pose tcp_offset = common::Pose::Identity();
+  bool async_control = false;
 };
 
 struct FR3State : common::RState {};
@@ -46,6 +52,16 @@ class FR3 : public common::Robot {
   franka::Robot robot;
   FR3Config cfg;
   std::optional<std::shared_ptr<common::IK>> m_ik;
+  std::optional<std::thread> control_thread = std::nullopt;
+  common::LinearPoseTrajInterpolator traj_interpolator;
+  double controller_time = 0.0;
+  common::LinearJointPositionTrajInterpolator joint_interpolator;
+  franka::RobotState curr_state;
+  std::mutex interpolator_mutex;
+  Controller running_controller = Controller::none;
+  void osc();
+  void joint_controller();
+  void zero_torque_controller();
 
  public:
   FR3(const std::string &ip,
@@ -67,7 +83,15 @@ class FR3 : public common::Robot {
 
   common::Vector7d get_joint_position() override;
 
-  void set_guiding_mode(bool enabled);
+  void set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch, bool yaw,
+                        bool elbow);
+
+  void controller_set_joint_position(const common::Vector7d &desired_q);
+  void osc_set_cartesian_position(
+      const common::Pose &desired_pose_EE_in_base_frame);
+  void zero_torque_guiding();
+
+  void stop_control_thread();
 
   void move_home() override;
 

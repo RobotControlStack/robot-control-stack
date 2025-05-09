@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 #include <cmath>
 #include <string>
+#include <thread>
 
 // TODO: we need a common interface for the gripper, maybe we do use the hal
 // we need to create a robot class that has both the robot and the gripper
@@ -24,14 +25,18 @@ struct FHConfig : common::GConfig {
   double force = 5;
   double epsilon_inner = 0.005;
   double epsilon_outer = 0.005;
+  bool async_control = false;
 };
 
 struct FHState : common::GState {
   double width;
+  // true is open
+  bool bool_state;
   bool is_grasped;
   uint16_t temperature;
   double last_commanded_width;
   double max_unnormalized_width;
+  bool is_moving;
 };
 
 class FrankaHand : public common::Gripper {
@@ -40,7 +45,12 @@ class FrankaHand : public common::Gripper {
   FHConfig cfg;
   double max_width;
   double last_commanded_width;
+  // TODO: might be better if is_moving is a lock
+  bool is_moving = false;
+  std::optional<std::thread> control_thread = std::nullopt;
   void m_reset();
+  void m_stop();
+  void m_wait();
 
  public:
   FrankaHand(const std::string &ip, const FHConfig &cfg);

@@ -14,6 +14,7 @@ from rcsss.camera.interface import (
     BaseCameraSetConfig,
     Frame,
     FrameSet,
+    SimpleFrameRate,
 )
 
 
@@ -40,6 +41,7 @@ class BaseHardwareCameraSet(ABC):
         self._next_ring_index = 0
         self._buffer_len = 0
         self.writer: dict[str, cv2.VideoWriter] = {}
+        self.rate = SimpleFrameRate()
 
     def buffer_size(self) -> int:
         return len(self._buffer) - self._buffer.count(None)
@@ -91,33 +93,35 @@ class BaseHardwareCameraSet(ABC):
         self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
         self._thread.start()
 
-    def record_video(self, path: Path, episode: int):
+    def record_video(self, path: Path, str_id: str):
+        if self.recording_ongoing():
+            return
+        self.clear_buffer()
         for camera in self.camera_names:
             self.writer[camera] = cv2.VideoWriter(
-                str(path / f"episode_{episode}_{camera}.mp4"),
+                str(path / f"episode_{str_id}_{camera}.mp4"),
                 # migh require to install ffmpeg
                 cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
                 self.config.frame_rate,
                 (self.config.resolution_width, self.config.resolution_height),
             )
 
+    def recording_ongoing(self) -> bool:
+        with self._buffer_lock:
+            return len(self.writer) > 0
+
     def stop_video(self):
         if len(self.writer) > 0:
-            for camera_key, writer in self.writer.items():
-                for i in range(self._next_ring_index):
-                    frameset = self._buffer[i]
-                    assert frameset is not None
-                    # rgb to bgr as expected by opencv
-                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
-            for camera in self.camera_names:
-                self.writer[camera].release()
-            self.writer = {}
+            with self._buffer_lock:
+                for camera in self.camera_names:
+                    self.writer[camera].release()
+                self.writer = {}
 
     def warm_up(self):
         for _ in range(self.config.warm_up_disposal_frames):
             for camera_name in self.camera_names:
                 self._poll_frame(camera_name)
-            sleep(1 / self.config.frame_rate)
+            self.rate(self.config.frame_rate)
 
     def polling_thread(self, warm_up: bool = True):
         if warm_up:
@@ -126,16 +130,14 @@ class BaseHardwareCameraSet(ABC):
             frame_set = self.poll_frame_set()
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
+                # copy the buffer to the record path
+                for camera_key, writer in self.writer.items():
+                    frameset = self._buffer[self._next_ring_index]
+                    assert frameset is not None
+                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
                 self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
                 self._buffer_len = max(self._buffer_len + 1, self.config.max_buffer_frames)
-                if self._next_ring_index == 0:
-                    # copy the buffer to the record path
-                    for camera_key, writer in self.writer.items():
-                        for i in range(self.config.max_buffer_frames):
-                            frameset = self._buffer[i]
-                            assert frameset is not None
-                            writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
-            sleep(1 / self.config.frame_rate)
+            self.rate(self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
         """Gather frames over all available cameras."""

@@ -3,6 +3,7 @@ import dataclasses
 import hashlib
 import json as json_module
 import logging
+import os
 import ssl
 import threading
 import time
@@ -30,9 +31,8 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
     with Desk.fci(ip, username, password, unlock=unlock):
         f = rcsss.hw.FR3(ip)
         config = rcsss.hw.FR3Config()
-        config.speed_factor = 0.7
-        config.controller = rcsss.hw.IKController.internal
-        config.guiding_mode_enabled = True
+        config.speed_factor = 0.2
+        config.ik_solver = rcsss.hw.IKSolver.franka
         f.set_parameters(config)
         config_hand = rcsss.hw.FHConfig()
         g = rcsss.hw.FrankaHand(ip, config_hand)
@@ -161,6 +161,11 @@ class Desk:
             "down": False,
             "up": False,
         }
+        # Create an SSLContext that doesn't verify certificates
+        self.ssl_context = ssl.create_default_context()
+        self.ssl_context.check_hostname = False  # Disable hostname verification
+        self.ssl_context.verify_mode = ssl.CERT_NONE  # Disable certificate verification
+
         self.login()
 
     def __enter__(self) -> "Desk":
@@ -293,6 +298,14 @@ class Desk:
         """
         active = self._get_active_token()
 
+        # try to read token from cache file
+        token_path = os.path.expanduser("~/.cache/rcs_fr3_token")
+        if active.id != "" and self._token.id == "" and os.path.exists(token_path):
+            with open(token_path, "r") as f:
+                content = f.read()
+            content_splitted = content.split("/n")
+            self._token = Token(*content_splitted)
+
         # we already have control
         if active.id != "" and self._token.id == active.id:
             _logger.info("Retaken control.")
@@ -322,18 +335,21 @@ class Desk:
                 f"wss://{self._hostname}/desk/api/navigation/events",
                 server_hostname="robot.franka.de",
                 additional_headers={"authorization": self._session.cookies.get("authorization")},  # type: ignore[arg-type]
+                ssl_context=self.ssl_context,
             ) as websocket:
                 while True:
                     event: dict = json_module.loads(websocket.recv(timeout))
-                    if event["circle"]:
+                    if event.get("circle", False):
                         break
         self._token = Token(str(response["id"]), self._username, response["token"])
+        with open(token_path, "w") as f:
+            f.write("/n".join([self._token.id, self._token.owned_by, self._token.token]))
         _logger.info("Taken control.")
         return True
 
     def release_control(self) -> None:
         """
-        Explicitly relinquish control of the Desk. This will allow
+        Explicitly relinquish cofilentrol of the Desk. This will allow
         other users to take control or transfer control to the next
         user if there is an active queue of control requests.
         """

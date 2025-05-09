@@ -1,8 +1,39 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
+from time import sleep, time
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+class SimpleFrameRate:
+    def __init__(self):
+        self.t = None
+        self._last_print = None
+
+    def reset(self):
+        self.t = None
+
+    def __call__(self, frame_rate: int | float):
+        if self.t is None:
+            self.t = time()
+            self._last_print = self.t
+            sleep(1 / frame_rate if isinstance(frame_rate, int) else frame_rate)
+            return
+        sleep_time = (
+            1 / frame_rate - (time() - self.t) if isinstance(frame_rate, int) else frame_rate - (time() - self.t)
+        )
+        if sleep_time > 0:
+            sleep(sleep_time)
+        if self._last_print is None or time() - self._last_print > 10:
+            self._last_print = time()
+            logger.info(f"FPS: {1 / (time() - self.t)}")
+
+        self.t = time()
 
 
 class BaseCameraConfig(BaseModel):

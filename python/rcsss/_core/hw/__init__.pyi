@@ -19,13 +19,14 @@ __all__ = [
     "FR3Load",
     "FR3State",
     "FrankaHand",
-    "IKController",
+    "IKSolver",
     "exceptions",
-    "internal",
-    "robotics_library",
+    "franka",
+    "rcs",
 ]
 
 class FHConfig(rcsss._core.common.GConfig):
+    async_control: bool
     epsilon_inner: float
     epsilon_outer: float
     force: float
@@ -36,7 +37,11 @@ class FHConfig(rcsss._core.common.GConfig):
 class FHState(rcsss._core.common.GState):
     def __init__(self) -> None: ...
     @property
+    def bool_state(self) -> bool: ...
+    @property
     def is_grasped(self) -> bool: ...
+    @property
+    def is_moving(self) -> bool: ...
     @property
     def last_commanded_width(self) -> float: ...
     @property
@@ -49,20 +54,35 @@ class FHState(rcsss._core.common.GState):
 class FR3(rcsss._core.common.Robot):
     def __init__(self, ip: str, ik: rcsss._core.common.IK | None = None) -> None: ...
     def automatic_error_recovery(self) -> None: ...
+    def controller_set_joint_position(
+        self, desired_q: numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]]
+    ) -> None: ...
     def double_tap_robot_to_continue(self) -> None: ...
     def get_parameters(self) -> FR3Config: ...
     def get_state(self) -> FR3State: ...
+    def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcsss._core.common.Pose) -> None: ...
     def set_cartesian_position_ik(
         self, pose: rcsss._core.common.Pose, max_time: float, elbow: float | None, max_force: float | None = 5
     ) -> None: ...
     def set_cartesian_position_internal(self, pose: rcsss._core.common.Pose) -> None: ...
     def set_default_robot_behavior(self) -> None: ...
-    def set_guiding_mode(self, enabled: bool) -> None: ...
+    def set_guiding_mode(
+        self,
+        x: bool = True,
+        y: bool = True,
+        z: bool = True,
+        roll: bool = True,
+        pitch: bool = True,
+        yaw: bool = True,
+        elbow: bool = True,
+    ) -> None: ...
     def set_parameters(self, cfg: FR3Config) -> bool: ...
+    def stop_control_thread(self) -> None: ...
+    def zero_torque_guiding(self) -> None: ...
 
 class FR3Config(rcsss._core.common.RConfig):
-    controller: IKController
-    guiding_mode_enabled: bool
+    async_control: bool
+    ik_solver: IKSolver
     load_parameters: FR3Load | None
     nominal_end_effector_frame: rcsss._core.common.Pose | None
     speed_factor: float
@@ -87,20 +107,20 @@ class FrankaHand(rcsss._core.common.Gripper):
     def is_grasped(self) -> bool: ...
     def set_parameters(self, cfg: FHConfig) -> bool: ...
 
-class IKController:
+class IKSolver:
     """
     Members:
 
-      internal
+      franka
 
-      robotics_library
+      rcs
     """
 
     __members__: typing.ClassVar[
-        dict[str, IKController]
-    ]  # value = {'internal': <IKController.internal: 0>, 'robotics_library': <IKController.robotics_library: 1>}
-    internal: typing.ClassVar[IKController]  # value = <IKController.internal: 0>
-    robotics_library: typing.ClassVar[IKController]  # value = <IKController.robotics_library: 1>
+        dict[str, IKSolver]
+    ]  # value = {'franka': <IKSolver.franka: 0>, 'rcs': <IKSolver.rcs: 1>}
+    franka: typing.ClassVar[IKSolver]  # value = <IKSolver.franka: 0>
+    rcs: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs: 1>
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -116,5 +136,5 @@ class IKController:
     @property
     def value(self) -> int: ...
 
-internal: IKController  # value = <IKController.internal: 0>
-robotics_library: IKController  # value = <IKController.robotics_library: 1>
+franka: IKSolver  # value = <IKSolver.franka: 0>
+rcs: IKSolver  # value = <IKSolver.rcs: 1>

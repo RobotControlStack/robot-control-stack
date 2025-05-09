@@ -314,22 +314,21 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("f_x_cload", &rcs::hw::FR3Load::f_x_cload)
       .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
 
-  py::enum_<rcs::hw::IKController>(hw, "IKController")
-      .value("internal", rcs::hw::IKController::internal)
-      .value("robotics_library", rcs::hw::IKController::robotics_library)
+  py::enum_<rcs::hw::IKSolver>(hw, "IKSolver")
+      .value("franka", rcs::hw::IKSolver::franka)
+      .value("rcs", rcs::hw::IKSolver::rcs)
       .export_values();
 
   py::class_<rcs::hw::FR3Config, rcs::common::RConfig>(hw, "FR3Config")
       .def(py::init<>())
-      .def_readwrite("controller", &rcs::hw::FR3Config::controller)
+      .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
-      .def_readwrite("guiding_mode_enabled",
-                     &rcs::hw::FR3Config::guiding_mode_enabled)
       .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame)
       .def_readwrite("world_to_robot", &rcs::hw::FR3Config::world_to_robot)
-      .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset);
+      .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset)
+      .def_readwrite("async_control", &rcs::hw::FR3Config::async_control);
 
   py::class_<rcs::hw::FHConfig, rcs::common::GConfig>(hw, "FHConfig")
       .def(py::init<>())
@@ -337,12 +336,15 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
       .def_readwrite("force", &rcs::hw::FHConfig::force)
       .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
-      .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer);
+      .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer)
+      .def_readwrite("async_control", &rcs::hw::FHConfig::async_control);
 
   py::class_<rcs::hw::FHState, rcs::common::GState>(hw, "FHState")
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
+      .def_readonly("is_moving", &rcs::hw::FHState::is_moving)
+      .def_readonly("bool_state", &rcs::hw::FHState::bool_state)
       .def_readonly("last_commanded_width",
                     &rcs::hw::FHState::last_commanded_width)
       .def_readonly("max_unnormalized_width",
@@ -360,7 +362,16 @@ PYBIND11_MODULE(_core, m) {
       .def("set_default_robot_behavior",
            &rcs::hw::FR3::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
-           py::arg("enabled"))
+           py::arg("x") = true, py::arg("y") = true, py::arg("z") = true,
+           py::arg("roll") = true, py::arg("pitch") = true,
+           py::arg("yaw") = true, py::arg("elbow") = true)
+      .def("zero_torque_guiding", &rcs::hw::FR3::zero_torque_guiding)
+      .def("osc_set_cartesian_position",
+           &rcs::hw::FR3::osc_set_cartesian_position,
+           py::arg("desired_pos_EE_in_base_frame"))
+      .def("controller_set_joint_position",
+           &rcs::hw::FR3::controller_set_joint_position, py::arg("desired_q"))
+      .def("stop_control_thread", &rcs::hw::FR3::stop_control_thread)
       .def("automatic_error_recovery", &rcs::hw::FR3::automatic_error_recovery)
       .def("double_tap_robot_to_continue",
            &rcs::hw::FR3::double_tap_robot_to_continue)

@@ -8,6 +8,7 @@ from typing import Annotated, Any, TypeAlias, cast
 import gymnasium as gym
 import numpy as np
 from rcsss import common, sim
+from rcsss._core.common import Robot
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -18,7 +19,7 @@ from rcsss.envs.space_utils import (
     get_space_keys,
 )
 
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 
 class TRPYDictType(RCSpaceType):
@@ -159,7 +160,7 @@ class FR3Env(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode):
+    def __init__(self, robot: Robot, control_mode: ControlMode):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -222,7 +223,6 @@ class FR3Env(gym.Env):
             self.prev_action is None
             or not np.allclose(action_dict[self.joints_key], self.prev_action[self.joints_key], atol=1e-03, rtol=0)
         ):
-            # cast is needed because typed dicts cannot be checked at runtime
             self.robot.set_joint_position(action_dict[self.joints_key])
         elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
             self.prev_action is None
@@ -251,7 +251,11 @@ class FR3Env(gym.Env):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         self.robot.reset()
+        self.robot.move_home()
         return self.get_obs(), {}
+
+    def close(self):
+        super().close()
 
 
 class RelativeTo(Enum):
@@ -329,6 +333,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
         self.initial_obs: dict[str, Any] | None = None
         self._origin: common.Pose | Vec7Type | None = None
+        self._last_action: common.Pose | Vec7Type | None = None
 
     def set_origin(self, origin: common.Pose | Vec7Type):
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS:
@@ -352,11 +357,13 @@ class RelativeActionSpace(gym.ActionWrapper):
         obs, info = super().reset(**kwargs)
         self.initial_obs = obs
         self.set_origin_to_current()
+        self._last_action = None
         return obs, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         if self.relative_to == RelativeTo.LAST_STEP:
             # TODO: should we use the last observation instead?
+            # -> could be done after the step to the state that is returned by the observation
             self.set_origin_to_current()
         action = copy.deepcopy(action)
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS and self.joints_key in action:
@@ -364,7 +371,14 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, float)
             joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
             # TODO: should we also clip euqally for all joints?
-            limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
+            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
+                self._last_action = limited_joints
+            else:
+                joints_diff = action[self.joints_key] - self._last_action
+                limited_joints_diff = np.clip(joints_diff, -self.max_mov, self.max_mov)
+                limited_joints = limited_joints_diff + self._last_action
+                self._last_action = limited_joints
             action.update(
                 JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
             )
@@ -374,14 +388,30 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
 
-            clipped_pose_offset = (
-                common.Pose(
-                    translation=action[self.trpy_key][:3],
-                    rpy_vector=action[self.trpy_key][3:],
+            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                clipped_pose_offset = (
+                    common.Pose(
+                        translation=action[self.trpy_key][:3],
+                        rpy_vector=action[self.trpy_key][3:],
+                    )
+                    .limit_translation_length(self.max_mov[0])
+                    .limit_rotation_angle(self.max_mov[1])
                 )
-                .limit_translation_length(self.max_mov[0])
-                .limit_rotation_angle(self.max_mov[1])
-            )
+                self._last_action = clipped_pose_offset
+            else:
+                assert isinstance(self._last_action, common.Pose)
+                pose_diff = (
+                    common.Pose(
+                        translation=action[self.trpy_key][:3],
+                        rpy_vector=action[self.trpy_key][3:],
+                    )
+                    * self._last_action.inverse()
+                )
+                clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                    self.max_mov[1]
+                )
+                clipped_pose_offset = clipped_pose_diff * self._last_action
+                self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
                 translation=self._origin.translation() + clipped_pose_offset.translation(),
@@ -402,14 +432,30 @@ class RelativeActionSpace(gym.ActionWrapper):
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
 
-            clipped_pose_offset = (
-                common.Pose(
-                    translation=action[self.tquart_key][:3],
-                    quaternion=action[self.tquart_key][3:],
+            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                clipped_pose_offset = (
+                    common.Pose(
+                        translation=action[self.tquart_key][:3],
+                        quaternion=action[self.tquart_key][3:],
+                    )
+                    .limit_translation_length(self.max_mov[0])
+                    .limit_rotation_angle(self.max_mov[1])
                 )
-                .limit_translation_length(self.max_mov[0])
-                .limit_rotation_angle(self.max_mov[1])
-            )
+                self._last_action = clipped_pose_offset
+            else:
+                assert isinstance(self._last_action, common.Pose)
+                pose_diff = (
+                    common.Pose(
+                        translation=action[self.tquart_key][:3],
+                        quaternion=action[self.tquart_key][3:],
+                    )
+                    * self._last_action.inverse()
+                )
+                clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                    self.max_mov[1]
+                )
+                clipped_pose_offset = clipped_pose_diff * self._last_action
+                self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
                 translation=self._origin.translation() + clipped_pose_offset.translation(),
@@ -569,11 +615,10 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = np.round(action[self.gripper_key]) if self.binary else action[self.gripper_key]
         gripper_action = np.clip(gripper_action, 0.0, 1.0)
 
-        if self._last_gripper_cmd is None or self._last_gripper_cmd != gripper_action:
-            if self.binary:
-                self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
-            else:
-                self._gripper.set_normalized_width(gripper_action)
+        if self.binary:
+            self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
+        else:
+            self._gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
         return action

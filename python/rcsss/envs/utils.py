@@ -6,7 +6,7 @@ import mujoco as mj
 import numpy as np
 import rcsss
 from rcsss import sim
-from rcsss._core.hw import FR3Config, IKController
+from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
@@ -23,19 +23,21 @@ def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Co
     return cfg
 
 
-def default_fr3_hw_robot_cfg():
+def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
-    robot_cfg.controller = IKController.robotics_library
+    robot_cfg.ik_solver = IKSolver.rcs
+    robot_cfg.async_control = async_control
     return robot_cfg
 
 
-def default_fr3_hw_gripper_cfg():
+def default_fr3_hw_gripper_cfg(async_control: bool = False):
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
     gripper_cfg.force = 30
+    gripper_cfg.async_control = async_control
     return gripper_cfg
 
 
@@ -61,9 +63,9 @@ def default_fr3_sim_gripper_cfg():
 
 def default_mujoco_cameraset_cfg():
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
     return SimCameraSetConfig(

@@ -53,7 +53,7 @@ find_package(MuJoCo REQUIRED)
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
-    GIT_TAG 0.14.2
+    GIT_TAG 0.15.0
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
@@ -98,7 +98,7 @@ FetchContent_MakeAvailable(libfranka rl pybind11)
 if (${INCLUDE_UTN_MODELS})
     if (DEFINED GITLAB_MODELS_TOKEN)
         include(download_scenes)
-        set(ref bfdd70ae189ed3a925bf1c16d29162e847a21d56)
+        set(ref 055a6fdab480dde8443030236012f76d9be90918)
         FetchContent_Declare(
             scenes
             URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"

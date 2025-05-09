@@ -29,3 +29,7 @@ class FR3HW(gym.Wrapper):
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         return super().reset(seed=seed, options=options)
+
+    def close(self):
+        self.hw_robot.stop_control_thread()
+        super().close()
