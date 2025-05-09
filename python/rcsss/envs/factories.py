@@ -22,6 +22,7 @@ from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
     CollisionGuard,
     FR3Sim,
+    GripperWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
     SimWrapper,
@@ -164,6 +165,7 @@ def fr3_sim_env(
     if gripper_cfg is not None:
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=True)
+        env = GripperWrapperSim(env, gripper)
 
     if collision_guard:
         env = CollisionGuard.env_from_xml_paths(

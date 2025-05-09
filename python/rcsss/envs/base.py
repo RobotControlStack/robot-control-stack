@@ -7,8 +7,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import common, sim
-from rcsss._core.common import Robot
+from rcsss import common
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -160,7 +159,7 @@ class FR3Env(gym.Env):
     y
     """
 
-    def __init__(self, robot: Robot, control_mode: ControlMode):
+    def __init__(self, robot: common.Robot, control_mode: ControlMode):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -599,12 +598,6 @@ class GripperWrapper(ActObsInfoWrapper):
         else:
             observation[self.gripper_key] = self._gripper.get_normalized_width()
 
-        # TODO: a cleaner solution would be to put this code into env/sim.py
-        # similar to sim fr3 has also a sim specific wrapper
-        if isinstance(self._gripper, sim.FrankaHand):
-            state = self._gripper.get_state()
-            if "collision" not in info or not info["collision"]:
-                info["collision"] = state.collision
         return observation, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:

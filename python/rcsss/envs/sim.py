@@ -6,12 +6,17 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
+from rcsss.envs.space_utils import ActObsInfoWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 class SimWrapper(gym.Wrapper):
+    """A sub class of this wrapper can be passed to FR3Sim to assure that its code is called before
+    step_until_convergence() is called.
+    """
+
     def __init__(self, env: gym.Env, simulation: sim.Sim):
         super().__init__(env)
         self.unwrapped: FR3Env
@@ -50,6 +55,18 @@ class FR3Sim(gym.Wrapper):
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
         return obs, info
+
+
+class GripperWrapperSim(ActObsInfoWrapper):
+    def __init__(self, env, gripper: sim.FrankaHand):
+        super().__init__(env)
+        self._gripper = gripper
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        state = self._gripper.get_state()
+        if "collision" not in info or not info["collision"]:
+            info["collision"] = state.collision
+        return observation, info
 
 
 class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
@@ -165,6 +182,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             gripper_cfg = sim.FHConfig()
             fh = sim.FrankaHand(simulation, id, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
+            c_env = GripperWrapperSim(c_env, fh)
         return cls(
             env=env,
             simulation=simulation,
