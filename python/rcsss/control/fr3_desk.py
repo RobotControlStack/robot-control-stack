@@ -303,8 +303,8 @@ class Desk:
         if active.id != "" and self._token.id == "" and os.path.exists(token_path):
             with open(token_path, "r") as f:
                 content = f.read()
-            content = content.split("/n")
-            self._token = Token(content[0], content[1], content[2])
+            content_splitted = content.split("/n")
+            self._token = Token(*content_splitted)
 
         # we already have control
         if active.id != "" and self._token.id == active.id:
