@@ -1,4 +1,4 @@
-#include "FR3.h"
+#include "SimRobot.h"
 
 #include <Eigen/src/Core/Matrix.h>
 #include <math.h>
@@ -19,10 +19,6 @@
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 
-const rcs::common::Vector7d q_home((rcs::common::Vector7d() << 0, -M_PI_4, 0,
-                                    -3 * M_PI_4, 0, M_PI_2, M_PI_4)
-                                       .finished());
-
 struct {
   std::array<std::string, 8> arm_collision_geoms{
       "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
@@ -42,28 +38,31 @@ namespace rcs {
 namespace sim {
 
 // TODO: use C++11 feature to call one constructor from another
-FR3::FR3(std::shared_ptr<Sim> sim, const std::string& id,
-         std::shared_ptr<common::IK> ik, bool register_convergence_callback)
+SimRobot::SimRobot(std::shared_ptr<Sim> sim, const std::string& id,
+                   std::shared_ptr<common::IK> ik,
+                   bool register_convergence_callback)
     : sim{sim}, id{id}, cfg{}, state{}, m_ik(ik) {
   this->init_ids();
   if (register_convergence_callback) {
-    this->sim->register_cb(std::bind(&FR3::is_arrived_callback, this),
+    this->sim->register_cb(std::bind(&SimRobot::is_arrived_callback, this),
                            this->cfg.seconds_between_callbacks);
-    this->sim->register_cb(std::bind(&FR3::is_moving_callback, this),
+    this->sim->register_cb(std::bind(&SimRobot::is_moving_callback, this),
                            this->cfg.seconds_between_callbacks);
-    this->sim->register_all_cb(std::bind(&FR3::convergence_callback, this),
+    this->sim->register_all_cb(std::bind(&SimRobot::convergence_callback, this),
                                this->cfg.seconds_between_callbacks);
   }
-  this->sim->register_any_cb(std::bind(&FR3::collision_callback, this),
+  this->sim->register_any_cb(std::bind(&SimRobot::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
 }
 
-FR3::~FR3() {}
+SimRobot::~SimRobot() {}
 
-void FR3::move_home() { this->set_joint_position(q_home); }
+void SimRobot::move_home() {
+  this->set_joint_position(common::robots_q_home.at(this->cfg.robot_type));
+}
 
-void FR3::init_ids() {
+void SimRobot::init_ids() {
   std::string name;
   // Collision geoms
   for (size_t i = 0; i < std::size(model_names.arm_collision_geoms); ++i) {
@@ -107,25 +106,25 @@ void FR3::init_ids() {
   }
 }
 
-bool FR3::set_parameters(const FR3Config& cfg) {
+bool SimRobot::set_parameters(const SimRobotConfig& cfg) {
   this->cfg = cfg;
   this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
   return true;
 }
 
-FR3Config* FR3::get_parameters() {
-  FR3Config* cfg = new FR3Config();
+SimRobotConfig* SimRobot::get_parameters() {
+  SimRobotConfig* cfg = new SimRobotConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FR3State* FR3::get_state() {
-  FR3State* state = new FR3State();
+SimRobotState* SimRobot::get_state() {
+  SimRobotState* state = new SimRobotState();
   *state = this->state;
   return state;
 }
 
-common::Pose FR3::get_cartesian_position() {
+common::Pose SimRobot::get_cartesian_position() {
   Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation(
       this->sim->d->site_xmat + 9 * this->ids.attachment_site);
   Eigen::Vector3d translation(this->sim->d->site_xpos +
@@ -134,7 +133,7 @@ common::Pose FR3::get_cartesian_position() {
   return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
-void FR3::set_joint_position(const common::Vector7d& q) {
+void SimRobot::set_joint_position(const common::Vectord& q) {
   this->state.target_angles = q;
   this->state.previous_angles = this->get_joint_position();
   this->state.is_moving = true;
@@ -144,17 +143,19 @@ void FR3::set_joint_position(const common::Vector7d& q) {
   }
 }
 
-common::Vector7d FR3::get_joint_position() {
-  common::Vector7d q;
+common::Vectord SimRobot::get_joint_position() {
+  common::Vectord q;
   for (size_t i = 0; i < std::size(model_names.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
   }
   return q;
 }
 
-std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
+std::optional<std::shared_ptr<common::IK>> SimRobot::get_ik() {
+  return this->m_ik;
+}
 
-void FR3::set_cartesian_position(const common::Pose& pose) {
+void SimRobot::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
   auto joint_vals =
       this->m_ik->ik(pose, this->get_joint_position(), this->cfg.tcp_offset);
@@ -165,8 +166,8 @@ void FR3::set_cartesian_position(const common::Pose& pose) {
     this->state.ik_success = false;
   }
 }
-void FR3::is_moving_callback() {
-  common::Vector7d current_angles = this->get_joint_position();
+void SimRobot::is_moving_callback() {
+  common::Vectord current_angles = this->get_joint_position();
   // difference of the largest element is smaller than threshold
   this->state.is_moving =
       (current_angles - this->state.previous_angles).cwiseAbs().maxCoeff() >
@@ -174,14 +175,14 @@ void FR3::is_moving_callback() {
   this->state.previous_angles = current_angles;
 }
 
-void FR3::is_arrived_callback() {
-  common::Vector7d current_angles = this->get_joint_position();
+void SimRobot::is_arrived_callback() {
+  common::Vectord current_angles = this->get_joint_position();
   this->state.is_arrived =
       (current_angles - this->state.target_angles).cwiseAbs().maxCoeff() <
       this->cfg.joint_rotational_tolerance;
 }
 
-bool FR3::collision_callback() {
+bool SimRobot::collision_callback() {
   this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->ids.cgeom.contains(this->sim->d->contact[i].geom[0]) ||
@@ -193,7 +194,7 @@ bool FR3::collision_callback() {
   return this->state.collision;
 }
 
-bool FR3::convergence_callback() {
+bool SimRobot::convergence_callback() {
   /* When ik failed, the robot is not doing anything */
   if (not this->state.ik_success) {
     return true;
@@ -202,9 +203,11 @@ bool FR3::convergence_callback() {
   return this->state.is_arrived and not this->state.is_moving;
 }
 
-void FR3::m_reset() { this->set_joints_hard(q_home); }
+void SimRobot::m_reset() {
+  this->set_joints_hard(common::robots_q_home.at(this->cfg.robot_type));
+}
 
-void FR3::set_joints_hard(const common::Vector7d& q) {
+void SimRobot::set_joints_hard(const common::Vectord& q) {
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
@@ -213,7 +216,7 @@ void FR3::set_joints_hard(const common::Vector7d& q) {
   }
 }
 
-common::Pose FR3::get_base_pose_in_world_coordinates() {
+common::Pose SimRobot::get_base_pose_in_world_coordinates() {
   auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
                        (std::string("base_") + this->id).c_str());
   Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
@@ -222,6 +225,6 @@ common::Pose FR3::get_base_pose_in_world_coordinates() {
   return common::Pose(rotation, translation);
 }
 
-void FR3::reset() { this->m_reset(); }
+void SimRobot::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs

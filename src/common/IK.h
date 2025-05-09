@@ -27,8 +27,8 @@ class IK {
 
  public:
   IK(const std::string& urdf_path, size_t max_duration_ms = 300);
-  std::optional<Vector7d> ik(const Pose& pose, const Vector7d& q0,
-                             const Pose& tcp_offset = Pose::Identity());
+  std::optional<Vectord> ik(const Pose& pose, const Vectord& q0,
+                            const Pose& tcp_offset = Pose::Identity());
 
   // TODO: set max time
 };

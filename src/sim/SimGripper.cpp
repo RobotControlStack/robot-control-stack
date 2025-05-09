@@ -1,5 +1,5 @@
 
-#include "FrankaHand.h"
+#include "SimGripper.h"
 
 #include <Eigen/Core>
 #include <cmath>
@@ -23,10 +23,10 @@ struct {
 namespace rcs {
 namespace sim {
 
-FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
-                       const FHConfig &cfg)
+SimGripper::SimGripper(std::shared_ptr<Sim> sim, const std::string &id,
+                       const SimGripperConfig &cfg)
     : sim{sim}, cfg{cfg}, id{id} {
-  this->state = FHState();
+  this->state = SimGripperState();
   this->actuator_id = mj_name2id(this->sim->m, mjOBJ_ACTUATOR,
                                  (gripper_names.actuator + "_" + id).c_str());
   if (this->actuator_id == -1) {
@@ -52,16 +52,16 @@ FrankaHand::FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
   this->add_collision_geoms(gripper_names.collision_geoms_fingers, this->cfgeom,
                             false);
 
-  this->sim->register_all_cb(std::bind(&FrankaHand::convergence_callback, this),
+  this->sim->register_all_cb(std::bind(&SimGripper::convergence_callback, this),
                              this->cfg.seconds_between_callbacks);
-  this->sim->register_any_cb(std::bind(&FrankaHand::collision_callback, this),
+  this->sim->register_any_cb(std::bind(&SimGripper::collision_callback, this),
                              this->cfg.seconds_between_callbacks);
   this->m_reset();
 }
 
-FrankaHand::~FrankaHand() {}
+SimGripper::~SimGripper() {}
 
-void FrankaHand::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
+void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
                                      std::set<size_t> &cgeoms_set,
                                      bool clear_before) {
   if (clear_before) {
@@ -78,26 +78,26 @@ void FrankaHand::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
   }
 }
 
-bool FrankaHand::set_parameters(const FHConfig &cfg) {
+bool SimGripper::set_parameters(const SimGripperConfig &cfg) {
   this->cfg = cfg;
   this->add_collision_geoms(cfg.ignored_collision_geoms,
                             this->ignored_collision_geoms, true);
   return true;
 }
 
-FHConfig *FrankaHand::get_parameters() {
+SimGripperConfig *SimGripper::get_parameters() {
   // copy config to heap
-  FHConfig *cfg = new FHConfig();
+  SimGripperConfig *cfg = new SimGripperConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FHState *FrankaHand::get_state() {
-  FHState *state = new FHState();
+SimGripperState *SimGripper::get_state() {
+  SimGripperState *state = new SimGripperState();
   *state = this->state;
   return state;
 }
-void FrankaHand::set_normalized_width(double width, double force) {
+void SimGripper::set_normalized_width(double width, double force) {
   if (width < 0 || width > 1 || force < 0) {
     throw std::invalid_argument(
         "width must be between 0 and 1, force must be positive");
@@ -108,7 +108,7 @@ void FrankaHand::set_normalized_width(double width, double force) {
   // we ignore force for now
   // this->sim->d->actuator_force[this->gripper_id] = 0;
 }
-double FrankaHand::get_normalized_width() {
+double SimGripper::get_normalized_width() {
   // TODO: maybe we should use the mujoco sensors? Not sure what the difference
   // is between reading out from qpos and reading from the sensors.
   double width = this->sim->d->qpos[this->joint_id_1] / this->MAX_JOINT_WIDTH;
@@ -121,7 +121,7 @@ double FrankaHand::get_normalized_width() {
   return width;
 }
 
-bool FrankaHand::collision_callback() {
+bool SimGripper::collision_callback() {
   this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->cfgeom.contains(this->sim->d->contact[i].geom[0]) &&
@@ -145,7 +145,7 @@ bool FrankaHand::collision_callback() {
   return this->state.collision;
 }
 
-bool FrankaHand::is_grasped() {
+bool SimGripper::is_grasped() {
   double width = this->get_normalized_width();
 
   if (this->state.last_commanded_width - this->cfg.epsilon_inner < width &&
@@ -156,7 +156,7 @@ bool FrankaHand::is_grasped() {
   return false;
 }
 
-bool FrankaHand::convergence_callback() {
+bool SimGripper::convergence_callback() {
   double w = get_normalized_width();
   this->state.is_moving = std::abs(this->state.last_width - w) >
                           0.001 / this->MAX_WIDTH;  // 1mm tolerance
@@ -164,13 +164,13 @@ bool FrankaHand::convergence_callback() {
   return not this->state.is_moving;
 }
 
-void FrankaHand::grasp() { this->shut(); }
+void SimGripper::grasp() { this->shut(); }
 
-void FrankaHand::open() { this->set_normalized_width(1); }
-void FrankaHand::shut() { this->set_normalized_width(0); }
+void SimGripper::open() { this->set_normalized_width(1); }
+void SimGripper::shut() { this->set_normalized_width(0); }
 
-void FrankaHand::m_reset() {
-  this->state = FHState();
+void SimGripper::m_reset() {
+  this->state = SimGripperState();
   this->state.max_unnormalized_width = this->MAX_WIDTH;
   // reset state hard
   this->sim->d->qpos[this->joint_id_1] = this->MAX_JOINT_WIDTH;
@@ -178,6 +178,6 @@ void FrankaHand::m_reset() {
   this->sim->d->ctrl[this->actuator_id] = this->MAX_WIDTH;
 }
 
-void FrankaHand::reset() { this->m_reset(); }
+void SimGripper::reset() { this->m_reset(); }
 }  // namespace sim
 }  // namespace rcs

@@ -13,14 +13,14 @@
 namespace rcs {
 namespace sim {
 
-struct FHConfig : common::GConfig {
+struct SimGripperConfig : common::GripperConfig {
   double epsilon_inner = 0.005;
   double epsilon_outer = 0.005;
   double seconds_between_callbacks = 0.05;  // 20 Hz
   std::vector<std::string> ignored_collision_geoms = {};
 };
 
-struct FHState : common::GState {
+struct SimGripperState : common::GripperState {
   double last_commanded_width = 0;
   double max_unnormalized_width = 0;
   bool is_moving = false;
@@ -28,16 +28,16 @@ struct FHState : common::GState {
   bool collision = false;
 };
 
-class FrankaHand : public common::Gripper {
+class SimGripper : public common::Gripper {
  private:
   const double MAX_WIDTH = 255;
   const double MAX_JOINT_WIDTH = 0.04;
-  FHConfig cfg;
+  SimGripperConfig cfg;
   std::shared_ptr<Sim> sim;
   int actuator_id;
   int joint_id_1;
   int joint_id_2;
-  FHState state;
+  SimGripperState state;
   std::string id;
   bool convergence_callback();
   bool collision_callback();
@@ -49,15 +49,15 @@ class FrankaHand : public common::Gripper {
   void m_reset();
 
  public:
-  FrankaHand(std::shared_ptr<Sim> sim, const std::string &id,
-             const FHConfig &cfg);
-  ~FrankaHand() override;
+  SimGripper(std::shared_ptr<Sim> sim, const std::string &id,
+             const SimGripperConfig &cfg);
+  ~SimGripper() override;
 
-  bool set_parameters(const FHConfig &cfg);
+  bool set_parameters(const SimGripperConfig &cfg);
 
-  FHConfig *get_parameters() override;
+  SimGripperConfig *get_parameters() override;
 
-  FHState *get_state() override;
+  SimGripperState *get_state() override;
 
   // normalized width of the gripper, 0 is closed, 1 is open
   void set_normalized_width(double width, double force = 0) override;

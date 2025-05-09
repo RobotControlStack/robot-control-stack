@@ -10,8 +10,8 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <sim/FR3.h>
-#include <sim/FrankaHand.h>
+#include <sim/SimGripper.h>
+#include <sim/SimRobot.h>
 #include <sim/camera.h>
 #include <sim/gui.h>
 
@@ -36,13 +36,13 @@ class PyRobot : public rcs::common::Robot {
  public:
   using rcs::common::Robot::Robot;  // Inherit constructors
 
-  rcs::common::RConfig *get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::RConfig *, rcs::common::Robot,
+  rcs::common::RobotConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RobotConfig *, rcs::common::Robot,
                            get_parameters, );
   }
 
-  rcs::common::RState *get_state() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::RState *, rcs::common::Robot,
+  rcs::common::RobotState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::RobotState *, rcs::common::Robot,
                            get_state, );
   }
 
@@ -51,12 +51,12 @@ class PyRobot : public rcs::common::Robot {
                            get_cartesian_position, );
   }
 
-  void set_joint_position(const rcs::common::Vector7d &q) override {
+  void set_joint_position(const rcs::common::Vectord &q) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
   }
 
-  rcs::common::Vector7d get_joint_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
+  rcs::common::Vectord get_joint_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vectord, rcs::common::Robot,
                            get_joint_position, );
   }
 
@@ -81,13 +81,13 @@ class PyGripper : public rcs::common::Gripper {
  public:
   using rcs::common::Gripper::Gripper;  // Inherit constructors
 
-  rcs::common::GConfig *get_parameters() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::GConfig *, rcs::common::Gripper,
+  rcs::common::GripperConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GripperConfig *, rcs::common::Gripper,
                            get_parameters, );
   }
 
-  rcs::common::GState *get_state() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::GState *, rcs::common::Gripper,
+  rcs::common::GripperState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::GripperState *, rcs::common::Gripper,
                            get_state, );
   }
 
@@ -216,10 +216,10 @@ PYBIND11_MODULE(_core, m) {
       .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
 
-  py::class_<rcs::common::RConfig>(common, "RConfig");
-  py::class_<rcs::common::RState>(common, "RState");
-  py::class_<rcs::common::GConfig>(common, "GConfig");
-  py::class_<rcs::common::GState>(common, "GState");
+  py::class_<rcs::common::RobotConfig>(common, "RobotConfig");
+  py::class_<rcs::common::RobotState>(common, "RobotState");
+  py::class_<rcs::common::GripperConfig>(common, "GripperConfig");
+  py::class_<rcs::common::GripperState>(common, "GripperState");
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
@@ -268,7 +268,7 @@ PYBIND11_MODULE(_core, m) {
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "hardware module");
 
-  py::class_<rcs::hw::FR3State, rcs::common::RState>(hw, "FR3State")
+  py::class_<rcs::hw::FR3State, rcs::common::RobotState>(hw, "FR3State")
       .def(py::init<>());
   py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
       .def(py::init<>())
@@ -281,7 +281,7 @@ PYBIND11_MODULE(_core, m) {
       .value("rcs", rcs::hw::IKSolver::rcs)
       .export_values();
 
-  py::class_<rcs::hw::FR3Config, rcs::common::RConfig>(hw, "FR3Config")
+  py::class_<rcs::hw::FR3Config, rcs::common::RobotConfig>(hw, "FR3Config")
       .def(py::init<>())
       .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
@@ -292,7 +292,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset)
       .def_readwrite("async_control", &rcs::hw::FR3Config::async_control);
 
-  py::class_<rcs::hw::FHConfig, rcs::common::GConfig>(hw, "FHConfig")
+  py::class_<rcs::hw::FHConfig, rcs::common::GripperConfig>(hw, "FHConfig")
       .def(py::init<>())
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
@@ -301,7 +301,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer)
       .def_readwrite("async_control", &rcs::hw::FHConfig::async_control);
 
-  py::class_<rcs::hw::FHState, rcs::common::GState>(hw, "FHState")
+  py::class_<rcs::hw::FHState, rcs::common::GripperState>(hw, "FHState")
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
       .def_readonly("is_grasped", &rcs::hw::FHState::is_grasped)
@@ -377,43 +377,49 @@ PYBIND11_MODULE(_core, m) {
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
-  py::class_<rcs::sim::FR3Config, rcs::common::RConfig>(sim, "FR3Config")
+  py::class_<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(sim,
+                                                                 "FR3Config")
       .def(py::init<>())
-      .def_readwrite("tcp_offset", &rcs::sim::FR3Config::tcp_offset)
+      .def_readwrite("tcp_offset", &rcs::sim::SimRobotConfig::tcp_offset)
       .def_readwrite("joint_rotational_tolerance",
-                     &rcs::sim::FR3Config::joint_rotational_tolerance)
+                     &rcs::sim::SimRobotConfig::joint_rotational_tolerance)
       .def_readwrite("seconds_between_callbacks",
-                     &rcs::sim::FR3Config::seconds_between_callbacks)
-      .def_readwrite("realtime", &rcs::sim::FR3Config::realtime)
+                     &rcs::sim::SimRobotConfig::seconds_between_callbacks)
+      .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("trajectory_trace",
-                     &rcs::sim::FR3Config::trajectory_trace);
-  py::class_<rcs::sim::FR3State, rcs::common::RState>(sim, "FR3State")
+                     &rcs::sim::SimRobotConfig::trajectory_trace);
+  py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim, "FR3State")
       .def(py::init<>())
-      .def_readonly("previous_angles", &rcs::sim::FR3State::previous_angles)
-      .def_readonly("target_angles", &rcs::sim::FR3State::target_angles)
+      .def_readonly("previous_angles",
+                    &rcs::sim::SimRobotState::previous_angles)
+      .def_readonly("target_angles", &rcs::sim::SimRobotState::target_angles)
       .def_readonly("inverse_tcp_offset",
-                    &rcs::sim::FR3State::inverse_tcp_offset)
-      .def_readonly("ik_success", &rcs::sim::FR3State::ik_success)
-      .def_readonly("collision", &rcs::sim::FR3State::collision)
-      .def_readonly("is_moving", &rcs::sim::FR3State::is_moving)
-      .def_readonly("is_arrived", &rcs::sim::FR3State::is_arrived);
-  py::class_<rcs::sim::FHConfig, rcs::common::GConfig>(sim, "FHConfig")
+                    &rcs::sim::SimRobotState::inverse_tcp_offset)
+      .def_readonly("ik_success", &rcs::sim::SimRobotState::ik_success)
+      .def_readonly("collision", &rcs::sim::SimRobotState::collision)
+      .def_readonly("is_moving", &rcs::sim::SimRobotState::is_moving)
+      .def_readonly("is_arrived", &rcs::sim::SimRobotState::is_arrived);
+  py::class_<rcs::sim::SimGripperConfig, rcs::common::GripperConfig>(sim,
+                                                                     "FHConfig")
       .def(py::init<>())
-      .def_readwrite("epsilon_inner", &rcs::sim::FHConfig::epsilon_inner)
-      .def_readwrite("epsilon_outer", &rcs::sim::FHConfig::epsilon_outer)
+      .def_readwrite("epsilon_inner",
+                     &rcs::sim::SimGripperConfig::epsilon_inner)
+      .def_readwrite("epsilon_outer",
+                     &rcs::sim::SimGripperConfig::epsilon_outer)
       .def_readwrite("seconds_between_callbacks",
-                     &rcs::sim::FHConfig::seconds_between_callbacks)
+                     &rcs::sim::SimGripperConfig::seconds_between_callbacks)
       .def_readwrite("ignored_collision_geoms",
-                     &rcs::sim::FHConfig::ignored_collision_geoms);
-  py::class_<rcs::sim::FHState, rcs::common::GState>(sim, "FHState")
+                     &rcs::sim::SimGripperConfig::ignored_collision_geoms);
+  py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(sim,
+                                                                   "FHState")
       .def(py::init<>())
       .def_readonly("last_commanded_width",
-                    &rcs::sim::FHState::last_commanded_width)
+                    &rcs::sim::SimGripperState::last_commanded_width)
       .def_readonly("max_unnormalized_width",
-                    &rcs::sim::FHState::max_unnormalized_width)
-      .def_readonly("is_moving", &rcs::sim::FHState::is_moving)
-      .def_readonly("last_width", &rcs::sim::FHState::last_width)
-      .def_readonly("collision", &rcs::sim::FHState::collision);
+                    &rcs::sim::SimGripperState::max_unnormalized_width)
+      .def_readonly("is_moving", &rcs::sim::SimGripperState::is_moving)
+      .def_readonly("last_width", &rcs::sim::SimGripperState::last_width)
+      .def_readonly("collision", &rcs::sim::SimGripperState::collision);
 
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
@@ -427,25 +433,27 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::sim::Sim::reset)
       .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
-  py::class_<rcs::sim::FrankaHand, rcs::common::Gripper,
-             std::shared_ptr<rcs::sim::FrankaHand>>(sim, "FrankaHand")
+  py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
+             std::shared_ptr<rcs::sim::SimGripper>>(sim, "FrankaHand")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    const rcs::sim::FHConfig &>(),
+                    const rcs::sim::SimGripperConfig &>(),
            py::arg("sim"), py::arg("id"), py::arg("cfg"))
-      .def("get_parameters", &rcs::sim::FrankaHand::get_parameters)
-      .def("get_state", &rcs::sim::FrankaHand::get_state)
-      .def("set_parameters", &rcs::sim::FrankaHand::set_parameters,
+      .def("get_parameters", &rcs::sim::SimGripper::get_parameters)
+      .def("get_state", &rcs::sim::SimGripper::get_state)
+      .def("set_parameters", &rcs::sim::SimGripper::set_parameters,
            py::arg("cfg"));
-  py::class_<rcs::sim::FR3, rcs::common::Robot, std::shared_ptr<rcs::sim::FR3>>(
-      sim, "FR3")
+  py::class_<rcs::sim::SimRobot, rcs::common::Robot,
+             std::shared_ptr<rcs::sim::SimRobot>>(sim, "FR3")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
                     std::shared_ptr<rcs::common::IK>, bool>(),
            py::arg("sim"), py::arg("id"), py::arg("ik"),
            py::arg("register_convergence_callback") = true)
-      .def("get_parameters", &rcs::sim::FR3::get_parameters)
-      .def("set_parameters", &rcs::sim::FR3::set_parameters, py::arg("cfg"))
-      .def("set_joints_hard", &rcs::sim::FR3::set_joints_hard, py::arg("q"))
-      .def("get_state", &rcs::sim::FR3::get_state);
+      .def("get_parameters", &rcs::sim::SimRobot::get_parameters)
+      .def("set_parameters", &rcs::sim::SimRobot::set_parameters,
+           py::arg("cfg"))
+      .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
+           py::arg("q"))
+      .def("get_state", &rcs::sim::SimRobot::get_state);
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
       .value("tracking", rcs::sim::CameraType::tracking)

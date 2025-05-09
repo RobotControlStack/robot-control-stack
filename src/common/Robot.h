@@ -12,18 +12,28 @@
 namespace rcs {
 namespace common {
 
-struct RConfig {
-  virtual ~RConfig(){};
+enum RobotType { FR3 = 0, UR5e };
+
+static const std::map<RobotType, Vectord> robots_q_home = {
+    {FR3, (common::Vectord() << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+           M_PI_4)
+              .finished()},
+    {UR5e, (common::Vectord() << -0.4488354, -2.02711196, 1.64630026,
+            -1.18999615, -1.57079762, -2.01963249, 0.0)
+               .finished()}};
+
+struct RobotConfig {
+  virtual ~RobotConfig(){};
 };
-struct RState {
-  virtual ~RState(){};
+struct RobotState {
+  virtual ~RobotState(){};
 };
 
-struct GConfig {
-  virtual ~GConfig(){};
+struct GripperConfig {
+  virtual ~GripperConfig(){};
 };
-struct GState {
-  virtual ~GState(){};
+struct GripperState {
+  virtual ~GripperState(){};
 };
 
 class Robot {
@@ -36,15 +46,15 @@ class Robot {
   // like
   // bool set_parameters(const RConfig& cfg);
 
-  virtual RConfig* get_parameters() = 0;
+  virtual RobotConfig* get_parameters() = 0;
 
-  virtual RState* get_state() = 0;
+  virtual RobotState* get_state() = 0;
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual void set_joint_position(const Vector7d& q) = 0;
+  virtual void set_joint_position(const Vectord& q) = 0;
 
-  virtual Vector7d get_joint_position() = 0;
+  virtual Vectord get_joint_position() = 0;
 
   virtual void move_home() = 0;
 
@@ -71,8 +81,8 @@ class Gripper {
   // a deduced config type
   // bool set_parameters(const GConfig& cfg);
 
-  virtual GConfig* get_parameters() = 0;
-  virtual GState* get_state() = 0;
+  virtual GripperConfig* get_parameters() = 0;
+  virtual GripperState* get_state() = 0;
 
   // set width of the gripper, 0 is closed, 1 is open
   virtual void set_normalized_width(double width, double force = 0) = 0;
@@ -92,7 +102,6 @@ class Gripper {
   // puts the gripper to max position
   virtual void reset() = 0;
 };
-
 
 }  // namespace common
 }  // namespace rcs

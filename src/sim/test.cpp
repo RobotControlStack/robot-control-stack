@@ -10,7 +10,7 @@
 
 #include "common/Pose.h"
 #include "sim.h"
-#include "sim/FR3.h"
+#include "sim/SimRobot.h"
 
 // const std::string mjcf = MODEL_DIR "/mjcf/fr3_modular/scene.xml";
 // const std::string urdf = MODEL_DIR "/fr3/urdf/fr3_from_panda.urdf";
@@ -127,9 +127,9 @@ int test_sim() {
   std::string id = "0";
 
   auto ik = std::make_shared<rcs::common::IK>(urdf);
-  auto fr3 = rcs::sim::FR3(sim, id, ik);
+  auto fr3 = rcs::sim::SimRobot(sim, id, ik);
   auto tcp_offset = rcs::common::Pose(rcs::common::FrankaHandTCPOffset());
-  rcs::sim::FR3Config fr3_config = *fr3.get_parameters();
+  rcs::sim::SimRobotConfig fr3_config = *fr3.get_parameters();
   fr3_config.tcp_offset = tcp_offset;
   fr3_config.seconds_between_callbacks = 0.05;  // 20hz
   fr3.set_parameters(fr3_config);

@@ -24,7 +24,7 @@ void setDefaultBehavior(franka::Robot& robot) {
 }
 
 FR3MotionGenerator::FR3MotionGenerator(double speed_factor,
-                                 const common::Vector7d q_goal)
+                                       const common::Vector7d q_goal)
     : q_goal_(q_goal) {
   dq_max_ *= speed_factor;
   ddq_max_start_ *= speed_factor;

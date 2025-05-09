@@ -18,9 +18,6 @@
 namespace rcs {
 namespace hw {
 
-const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
-                               0, M_PI_2, M_PI_4)
-                                  .finished());
 const double DEFAULT_SPEED_FACTOR = 0.2;
 
 struct FR3Load {
@@ -32,7 +29,7 @@ enum IKSolver { franka = 0, rcs };
 // modes: joint-space control, operational-space control, zero-torque
 // control
 enum Controller { none = 0, jsc, osc, ztc };
-struct FR3Config : common::RConfig {
+struct FR3Config : common::RobotConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
@@ -45,7 +42,7 @@ struct FR3Config : common::RConfig {
   bool async_control = false;
 };
 
-struct FR3State : common::RState {};
+struct FR3State : common::RobotState {};
 
 class FR3 : public common::Robot {
  private:
@@ -79,9 +76,9 @@ class FR3 : public common::Robot {
 
   common::Pose get_cartesian_position() override;
 
-  void set_joint_position(const common::Vector7d &q) override;
+  void set_joint_position(const common::Vectord &q) override;
 
-  common::Vector7d get_joint_position() override;
+  common::Vectord get_joint_position() override;
 
   void set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch, bool yaw,
                         bool elbow);

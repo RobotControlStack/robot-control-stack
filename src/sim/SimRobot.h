@@ -11,22 +11,19 @@
 namespace rcs {
 namespace sim {
 
-const common::Vector7d q_home((common::Vector7d() << 0, -M_PI_4, 0, -3 * M_PI_4,
-                               0, M_PI_2, M_PI_4)
-                                  .finished());
-
-struct FR3Config : common::RConfig {
+struct SimRobotConfig : common::RobotConfig {
   rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
   bool realtime = false;
   bool trajectory_trace = false;
+  common::RobotType robot_type = common::RobotType::FR3;
 };
 
-struct FR3State : common::RState {
-  common::Vector7d previous_angles;
-  common::Vector7d target_angles;
+struct SimRobotState : common::RobotState {
+  common::Vectord previous_angles;
+  common::Vectord target_angles;
   common::Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
@@ -34,28 +31,28 @@ struct FR3State : common::RState {
   bool is_arrived = false;
 };
 
-class FR3 : public common::Robot {
+class SimRobot : public common::Robot {
  public:
-  FR3(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
-      std::shared_ptr<common::IK> ik,
-      bool register_convergence_callback = true);
-  ~FR3() override;
-  bool set_parameters(const FR3Config &cfg);
-  FR3Config *get_parameters() override;
-  FR3State *get_state() override;
+  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
+           std::shared_ptr<common::IK> ik,
+           bool register_convergence_callback = true);
+  ~SimRobot() override;
+  bool set_parameters(const SimRobotConfig &cfg);
+  SimRobotConfig *get_parameters() override;
+  SimRobotState *get_state() override;
   common::Pose get_cartesian_position() override;
-  void set_joint_position(const common::Vector7d &q) override;
-  common::Vector7d get_joint_position() override;
+  void set_joint_position(const common::Vectord &q) override;
+  common::Vectord get_joint_position() override;
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;
   std::optional<std::shared_ptr<common::IK>> get_ik() override;
   void reset() override;
-  void set_joints_hard(const common::Vector7d &q);
+  void set_joints_hard(const common::Vectord &q);
 
  private:
-  FR3Config cfg;
-  FR3State state;
+  SimRobotConfig cfg;
+  SimRobotState state;
   std::shared_ptr<Sim> sim;
   std::string id;
   std::shared_ptr<common::IK> m_ik;
