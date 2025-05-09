@@ -8,6 +8,7 @@ from typing import Annotated, Any, TypeAlias, cast
 import gymnasium as gym
 import numpy as np
 from rcsss import common, sim
+from rcsss._core.common import Robot
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
     ActObsInfoWrapper,
@@ -18,9 +19,7 @@ from rcsss.envs.space_utils import (
     get_space_keys,
 )
 
-from python.rcsss._core.common import Robot
-
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__)
 
 
 class TRPYDictType(RCSpaceType):
