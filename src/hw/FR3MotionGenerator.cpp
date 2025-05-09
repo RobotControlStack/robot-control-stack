@@ -1,4 +1,4 @@
-#include "MotionGenerator.h"
+#include "FR3MotionGenerator.h"
 
 #include <franka/exception.h>
 #include <franka/robot.h>
@@ -23,7 +23,7 @@ void setDefaultBehavior(franka::Robot& robot) {
   robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-MotionGenerator::MotionGenerator(double speed_factor,
+FR3MotionGenerator::FR3MotionGenerator(double speed_factor,
                                  const common::Vector7d q_goal)
     : q_goal_(q_goal) {
   dq_max_ *= speed_factor;
@@ -38,7 +38,7 @@ MotionGenerator::MotionGenerator(double speed_factor,
   q_1_.setZero();
 }
 
-bool MotionGenerator::calculateDesiredValues(
+bool FR3MotionGenerator::calculateDesiredValues(
     double t, common::Vector7d* delta_q_d) const {
   common::Vector7i sign_delta_q;
   sign_delta_q << delta_q_.cwiseSign().cast<int>();
@@ -78,7 +78,7 @@ bool MotionGenerator::calculateDesiredValues(
                      joint_motion_finished.cend(), [](bool x) { return x; });
 }
 
-void MotionGenerator::calculateSynchronizedValues() {
+void FR3MotionGenerator::calculateSynchronizedValues() {
   common::Vector7d dq_max_reach(dq_max_);
   common::Vector7d t_f = common::Vector7d::Zero();
   common::Vector7d delta_t_2 = common::Vector7d::Zero();
@@ -123,7 +123,7 @@ void MotionGenerator::calculateSynchronizedValues() {
   }
 }
 
-franka::JointPositions MotionGenerator::operator()(
+franka::JointPositions FR3MotionGenerator::operator()(
     const franka::RobotState& robot_state, franka::Duration period) {
   time_ += period.toSec();
 

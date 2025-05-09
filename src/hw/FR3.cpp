@@ -14,7 +14,7 @@
 #include <string>
 #include <thread>
 
-#include "MotionGenerator.h"
+#include "FR3MotionGenerator.h"
 #include "common/Pose.h"
 
 namespace rcs {
@@ -104,7 +104,7 @@ void FR3::set_joint_position(const common::Vector7d &q) {
     return;
   }
   // sync control
-  MotionGenerator motion_generator(this->cfg.speed_factor, q);
+  FR3MotionGenerator motion_generator(this->cfg.speed_factor, q);
   this->robot.control(motion_generator);
 }
 
@@ -585,7 +585,7 @@ void FR3::zero_torque_controller() {
 
 void FR3::move_home() {
   // sync
-  MotionGenerator motion_generator(this->cfg.speed_factor, q_home);
+  FR3MotionGenerator motion_generator(this->cfg.speed_factor, q_home);
   this->robot.control(motion_generator);
 }
 
