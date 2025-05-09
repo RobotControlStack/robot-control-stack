@@ -14,11 +14,11 @@ namespace common {
 
 enum RobotType { FR3 = 0, UR5e };
 
-static const std::map<RobotType, Vectord> robots_q_home = {
-    {FR3, (common::Vectord() << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+static const std::map<RobotType, Vector7d> robots_q_home = {
+    {FR3, (common::Vector7d() << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
            M_PI_4)
               .finished()},
-    {UR5e, (common::Vectord() << -0.4488354, -2.02711196, 1.64630026,
+    {UR5e, (common::Vector7d() << -0.4488354, -2.02711196, 1.64630026,
             -1.18999615, -1.57079762, -2.01963249, 0.0)
                .finished()}};
 
@@ -52,9 +52,9 @@ class Robot {
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual void set_joint_position(const Vectord& q) = 0;
+  virtual void set_joint_position(const Vector7d& q) = 0;
 
-  virtual Vectord get_joint_position() = 0;
+  virtual Vector7d get_joint_position() = 0;
 
   virtual void move_home() = 0;
 

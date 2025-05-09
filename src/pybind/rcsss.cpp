@@ -51,12 +51,12 @@ class PyRobot : public rcs::common::Robot {
                            get_cartesian_position, );
   }
 
-  void set_joint_position(const rcs::common::Vectord &q) override {
+  void set_joint_position(const rcs::common::Vector7d &q) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
   }
 
-  rcs::common::Vectord get_joint_position() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::Vectord, rcs::common::Robot,
+  rcs::common::Vector7d get_joint_position() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
                            get_joint_position, );
   }
 

@@ -9,7 +9,7 @@ namespace common {
 
 typedef Eigen::Matrix<double, 6, 1, Eigen::ColMajor> Vector6d;
 typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
-typedef Eigen::Matrix<double, -1, 1, Eigen::ColMajor> Vectord;
+// typedef Eigen::Matrix<double, -1, 1, Eigen::ColMajor> Vectord;
 typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
 
 /***
