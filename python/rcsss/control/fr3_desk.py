@@ -339,7 +339,7 @@ class Desk:
             ) as websocket:
                 while True:
                     event: dict = json_module.loads(websocket.recv(timeout))
-                    if event["circle"]:
+                    if event.get("circle", False):
                         break
         self._token = Token(str(response["id"]), self._username, response["token"])
         with open(token_path, "w") as f:
