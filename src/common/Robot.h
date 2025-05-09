@@ -93,17 +93,6 @@ class Gripper {
   virtual void reset() = 0;
 };
 
-class RobotWithGripper {
- public:
-  std::shared_ptr<Robot> robot;
-  std::optional<std::shared_ptr<Gripper>> gripper;
-
-  RobotWithGripper(std::shared_ptr<Robot> robot,
-                   std::optional<std::shared_ptr<Gripper>> gripper)
-      : robot(robot), gripper(gripper) {}
-
-  ~RobotWithGripper() {}
-};
 
 }  // namespace common
 }  // namespace rcs

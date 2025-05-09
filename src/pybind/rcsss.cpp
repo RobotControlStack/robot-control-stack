@@ -265,13 +265,6 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::common::Gripper::reset,
            py::call_guard<py::gil_scoped_release>());
 
-  py::class_<rcs::common::RobotWithGripper,
-             std::shared_ptr<rcs::common::RobotWithGripper>>(common,
-                                                             "RobotWithGripper")
-      .def(py::init<std::shared_ptr<rcs::common::Robot>,
-                    std::optional<std::shared_ptr<rcs::common::Gripper>>>(),
-           py::arg("robot"), py::arg("gripper"));
-
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "hardware module");
 
