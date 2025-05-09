@@ -9,7 +9,7 @@ from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcsss.envs.base import RobotInstance
-from rcsss.envs.factories import get_urdf_path
+from rcsss.envs.creators import get_urdf_path
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotInstance.SIMULATION

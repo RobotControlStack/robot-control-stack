@@ -13,7 +13,7 @@ from urllib import parse
 import rcsss
 import requests
 from dotenv import load_dotenv
-from rcsss.envs.factories import default_fr3_hw_gripper_cfg
+from rcsss.envs.creators import default_fr3_hw_gripper_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
@@ -109,7 +109,7 @@ class Token:
     token: str = ""
 
 
-class DummyResourceManager:
+class ContextManager:
     def __enter__(self):
         pass
 
@@ -117,7 +117,7 @@ class DummyResourceManager:
         pass
 
 
-class Desk:
+class Desk(ContextManager):
     """
     Connects to the control unit running the web-based Desk interface
     to manage the robot. Use this class to interact with the Desk
@@ -512,7 +512,7 @@ class Desk:
             self._listen_thread.join()
 
 
-class FCI:
+class FCI(ContextManager):
     """
     Can be used as a context manager to activate the Franka Control Interface (FCI).
     """
@@ -543,7 +543,7 @@ class FCI:
         self.desk.__exit__()
 
 
-class GuidingMode:
+class GuidingMode(ContextManager):
     """
     Can be used as a context manager to enable or disable guiding mode.
     """

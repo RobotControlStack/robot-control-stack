@@ -20,6 +20,7 @@ from rcsss.envs.base import (
 )
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
+    CamRobot,
     CollisionGuard,
     FR3Sim,
     GripperWrapperSim,
@@ -41,168 +42,92 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def fr3_hw_env(
-    ip: str,
-    control_mode: ControlMode,
-    robot_cfg: rcsss.hw.FR3Config,
-    collision_guard: str | PathLike | None = None,
-    gripper_cfg: rcsss.hw.FHConfig | None = None,
-    camera_set: BaseHardwareCameraSet | None = None,
-    max_relative_movement: float | tuple[float, float] | None = None,
-    relative_to: RelativeTo = RelativeTo.LAST_STEP,
-    urdf_path: str | PathLike | None = None,
-) -> gym.Env:
-    """
-    Creates a hardware environment for the FR3 robot.
+class RCSFR3Env(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        ip: str,
+        control_mode: ControlMode,
+        robot_cfg: rcsss.hw.FR3Config,
+        collision_guard: str | PathLike | None = None,
+        gripper_cfg: rcsss.hw.FHConfig | None = None,
+        camera_set: BaseHardwareCameraSet | None = None,
+        max_relative_movement: float | tuple[float, float] | None = None,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
+        urdf_path: str | PathLike | None = None,
+    ) -> gym.Env:
+        """
+        Creates a hardware environment for the FR3 robot.
 
-    Args:
-        ip (str): IP address of the robot.
-        control_mode (ControlMode): Control mode for the robot.
-        robot_cfg (rcsss.hw.FR3Config): Configuration for the FR3 robot.
-        collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
-            or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
-        gripper_cfg (rcsss.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
-        camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
-        max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
-            translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
-            (in radians) movements. If None, no restriction is applied.
-        relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-        urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
-            which requires a UTN compatible lab scene to be present. If no URDF file is found, the environment will
-            still work but set_cartesian methods might throw an error. A URDF file is needed for collision guarding.
+        Args:
+            ip (str): IP address of the robot.
+            control_mode (ControlMode): Control mode for the robot.
+            robot_cfg (rcsss.hw.FR3Config): Configuration for the FR3 robot.
+            collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
+                or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
+            gripper_cfg (rcsss.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+            camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
+            max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
+                translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
+                (in radians) movements. If None, no restriction is applied.
+            relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
+            urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
+                which requires a UTN compatible lab scene to be present. If no URDF file is found, the environment will
+                still work but set_cartesian methods might throw an error. A URDF file is needed for collision guarding.
 
-    Returns:
-        gym.Env: The configured hardware environment for the FR3 robot.
-    """
-    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
-    ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
-    robot = rcsss.hw.FR3(ip, ik)
-    robot.set_parameters(robot_cfg)
+        Returns:
+            gym.Env: The configured hardware environment for the FR3 robot.
+        """
+        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
+        ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
+        robot = rcsss.hw.FR3(ip, ik)
+        robot.set_parameters(robot_cfg)
 
-    env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
+        env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
-    env = FR3HW(env)
-    if gripper_cfg is not None:
-        gripper = rcsss.hw.FrankaHand(ip, gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=True)
+        env = FR3HW(env)
+        if gripper_cfg is not None:
+            gripper = rcsss.hw.FrankaHand(ip, gripper_cfg)
+            env = GripperWrapper(env, gripper, binary=True)
 
-    if camera_set is not None:
-        camera_set.start()
-        camera_set.wait_for_frames()
-        logger.info("CameraSet started")
-        env = CameraSetWrapper(env, camera_set)
+        if camera_set is not None:
+            camera_set.start()
+            camera_set.wait_for_frames()
+            logger.info("CameraSet started")
+            env = CameraSetWrapper(env, camera_set)
 
-    if collision_guard is not None:
-        assert urdf_path is not None
-        env = CollisionGuard.env_from_xml_paths(
-            env,
-            str(rcsss.scenes.get(str(collision_guard), collision_guard)),
-            urdf_path,
-            gripper=True,
-            check_home_collision=False,
-            control_mode=control_mode,
-            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
-            sim_gui=True,
-            truncate_on_collision=False,
-        )
-    if max_relative_movement is not None:
-        env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
+        if collision_guard is not None:
+            assert urdf_path is not None
+            env = CollisionGuard.env_from_xml_paths(
+                env,
+                str(rcsss.scenes.get(str(collision_guard), collision_guard)),
+                urdf_path,
+                gripper=True,
+                check_home_collision=False,
+                control_mode=control_mode,
+                tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+                sim_gui=True,
+                truncate_on_collision=False,
+            )
+        if max_relative_movement is not None:
+            env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
-    return env
-
-
-def fr3_sim_env(
-    control_mode: ControlMode,
-    robot_cfg: rcsss.sim.FR3Config,
-    collision_guard: bool = False,
-    gripper_cfg: rcsss.sim.FHConfig | None = None,
-    camera_set_cfg: SimCameraSetConfig | None = None,
-    max_relative_movement: float | tuple[float, float] | None = None,
-    relative_to: RelativeTo = RelativeTo.LAST_STEP,
-    urdf_path: str | PathLike | None = None,
-    mjcf: str | PathLike = "fr3_empty_world",
-    sim_wrapper: Type[SimWrapper] | None = None,
-) -> gym.Env:
-    """
-    Creates a simulation environment for the FR3 robot.
-
-    Args:
-        control_mode (ControlMode): Control mode for the robot.
-        robot_cfg (rcsss.sim.FR3Config): Configuration for the FR3 robot.
-        collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
-        gripper_cfg (rcsss.sim.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
-        camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
-        max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
-            translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
-            (in radians) movements. If None, no restriction is applied.
-        relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-        urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
-            which requires a UTN compatible lab scene to be present.
-        mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
-        sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
-            for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
-
-    Returns:
-        gym.Env: The configured simulation environment for the FR3 robot.
-    """
-    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-    assert urdf_path is not None
-    if mjcf not in rcsss.scenes:
-        logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-    mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
-    simulation = sim.Sim(mjb_file)
-
-    ik = rcsss.common.IK(urdf_path)
-    robot = rcsss.sim.FR3(simulation, "0", ik)
-    robot.set_parameters(robot_cfg)
-    env: gym.Env = FR3Env(robot, control_mode)
-    env = FR3Sim(env, simulation, sim_wrapper)
-
-    if camera_set_cfg is not None:
-        camera_set = SimCameraSet(simulation, camera_set_cfg)
-        env = CameraSetWrapper(env, camera_set, include_depth=True)
-
-    if gripper_cfg is not None:
-        gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
-        env = GripperWrapper(env, gripper, binary=True)
-        env = GripperWrapperSim(env, gripper)
-
-    if collision_guard:
-        env = CollisionGuard.env_from_xml_paths(
-            env,
-            str(rcsss.scenes.get(str(mjcf), mjcf)),
-            urdf_path,
-            gripper=gripper_cfg is not None,
-            check_home_collision=False,
-            control_mode=control_mode,
-            tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
-            sim_gui=True,
-            truncate_on_collision=True,
-        )
-    if max_relative_movement is not None:
-        env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
-
-    return env
+        return env
 
 
-class FR3Real(EnvCreator):
+class RCSFR3Default(EnvCreator):
     def __call__(  # type: ignore
         self,
         robot_ip: str,
-        control_mode: str = "xyzrpy",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
         camera_config: dict[str, str] | None = None,
         gripper: bool = True,
     ) -> gym.Env:
         camera_set = default_realsense(camera_config)
-        return fr3_hw_env(
+        return RCSFR3Env()(
             ip=robot_ip,
             camera_set=camera_set,
-            control_mode=(
-                ControlMode.CARTESIAN_TRPY
-                if control_mode == "xyzrpy"
-                else ControlMode.JOINTS if control_mode == "joints" else ControlMode.CARTESIAN_TQuart
-            ),
+            control_mode=control_mode,
             robot_cfg=default_fr3_hw_robot_cfg(),
             collision_guard=None,
             gripper_cfg=default_fr3_hw_gripper_cfg() if gripper else None,
@@ -211,30 +136,108 @@ class FR3Real(EnvCreator):
         )
 
 
-def make_sim_task_envs(
-    mjcf: str,
-    render_mode: str = "human",
-    control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
-    delta_actions: bool = True,
-    camera_cfg: SimCameraSetConfig | None = None,
-) -> gym.Env:
+class RCSSimEnv(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        control_mode: ControlMode,
+        robot_cfg: rcsss.sim.FR3Config,
+        collision_guard: bool = False,
+        gripper_cfg: rcsss.sim.FHConfig | None = None,
+        camera_set_cfg: SimCameraSetConfig | None = None,
+        max_relative_movement: float | tuple[float, float] | None = None,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
+        urdf_path: str | PathLike | None = None,
+        mjcf: str | PathLike = "fr3_empty_world",
+        sim_wrapper: Type[SimWrapper] | None = None,
+    ) -> gym.Env:
+        """
+        Creates a simulation environment for the FR3 robot.
 
-    env_rel = fr3_sim_env(
-        control_mode=control_mode,
-        robot_cfg=default_fr3_sim_robot_cfg(mjcf),
-        collision_guard=False,
-        gripper_cfg=default_fr3_sim_gripper_cfg(),
-        camera_set_cfg=camera_cfg,
-        max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
-        relative_to=RelativeTo.LAST_STEP,
-        mjcf=mjcf,
-        sim_wrapper=RandomCubePos,
-    )
-    env_rel = PickCubeSuccessWrapper(env_rel)
-    if render_mode == "human":
-        env_rel.get_wrapper_attr("sim").open_gui()
+        Args:
+            control_mode (ControlMode): Control mode for the robot.
+            robot_cfg (rcsss.sim.FR3Config): Configuration for the FR3 robot.
+            collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
+            gripper_cfg (rcsss.sim.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+            camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
+            max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
+                translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
+                (in radians) movements. If None, no restriction is applied.
+            relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
+            urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
+                which requires a UTN compatible lab scene to be present.
+            mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
+            sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
+                for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
 
-    return env_rel
+        Returns:
+            gym.Env: The configured simulation environment for the FR3 robot.
+        """
+        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
+        assert urdf_path is not None
+        if mjcf not in rcsss.scenes:
+            logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+        mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
+        simulation = sim.Sim(mjb_file)
+
+        ik = rcsss.common.IK(urdf_path)
+        robot = rcsss.sim.FR3(simulation, "0", ik)
+        robot.set_parameters(robot_cfg)
+        env: gym.Env = FR3Env(robot, control_mode)
+        env = FR3Sim(env, simulation, sim_wrapper)
+
+        if camera_set_cfg is not None:
+            camera_set = SimCameraSet(simulation, camera_set_cfg)
+            env = CameraSetWrapper(env, camera_set, include_depth=True)
+
+        if gripper_cfg is not None:
+            gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+            env = GripperWrapper(env, gripper, binary=True)
+            env = GripperWrapperSim(env, gripper)
+
+        if collision_guard:
+            env = CollisionGuard.env_from_xml_paths(
+                env,
+                str(rcsss.scenes.get(str(mjcf), mjcf)),
+                urdf_path,
+                gripper=gripper_cfg is not None,
+                check_home_collision=False,
+                control_mode=control_mode,
+                tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+                sim_gui=True,
+                truncate_on_collision=True,
+            )
+        if max_relative_movement is not None:
+            env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
+
+        return env
+
+
+class SimTaskEnv(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        mjcf: str,
+        render_mode: str = "human",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
+        delta_actions: bool = True,
+        camera_cfg: SimCameraSetConfig | None = None,
+    ) -> gym.Env:
+
+        env_rel = RCSSimEnv()(
+            control_mode=control_mode,
+            robot_cfg=default_fr3_sim_robot_cfg(mjcf),
+            collision_guard=False,
+            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            camera_set_cfg=camera_cfg,
+            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
+            relative_to=RelativeTo.LAST_STEP,
+            mjcf=mjcf,
+            sim_wrapper=RandomCubePos,
+        )
+        env_rel = PickCubeSuccessWrapper(env_rel)
+        if render_mode == "human":
+            env_rel.get_wrapper_attr("sim").open_gui()
+
+        return env_rel
 
 
 class FR3SimplePickUpSim(EnvCreator):
@@ -265,7 +268,7 @@ class FR3SimplePickUpSim(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        return make_sim_task_envs("simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
+        return SimTaskEnv()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
 
 
 class FR3SimplePickUpSimDigitHand(EnvCreator):
@@ -289,29 +292,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        return make_sim_task_envs("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg)
-
-
-class CamRobot(gym.Wrapper):
-
-    def __init__(self, env, cam_robot_joints: Vec7Type):
-        super().__init__(env)
-        self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim = env.get_wrapper_attr("sim")
-        self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False)
-        self.cam_robot.set_parameters(default_fr3_sim_robot_cfg("lab_simple_pick_up_digit_hand"))
-        self.cam_robot_joints = cam_robot_joints
-
-    def step(self, action: dict):
-        self.cam_robot.set_joints_hard(self.cam_robot_joints)
-        obs, reward, done, truncated, info = super().step(action)
-        return obs, reward, done, truncated, info
-
-    def reset(self, *, seed=None, options=None):
-        re = super().reset(seed=seed, options=options)
-        self.cam_robot.reset()
-        return re
+        return SimTaskEnv()("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg)
 
 
 class FR3LabPickUpSimDigitHand(EnvCreator):
@@ -339,11 +320,11 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        env_rel = make_sim_task_envs(
+        env_rel = SimTaskEnv()(
             "lab_simple_pick_up_digit_hand",
             render_mode,
             control_mode,
             delta_actions,
             camera_cfg,
         )
-        return CamRobot(env_rel, cam_robot_joints)
+        return CamRobot(env_rel, cam_robot_joints, "lab_simple_pick_up_digit_hand")

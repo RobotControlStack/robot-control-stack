@@ -6,7 +6,8 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
-from rcsss.envs.space_utils import ActObsInfoWrapper
+from rcsss.envs.space_utils import ActObsInfoWrapper, Vec7Type
+from rcsss.envs.utils import default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -239,3 +240,26 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         reward = -diff_cube_home - diff_ee_cube
 
         return obs, reward, success, truncated, info
+
+
+class CamRobot(gym.Wrapper):
+    """Use this wrapper in lab setups where the second arm is used as a camera holder."""
+
+    def __init__(self, env, cam_robot_joints: Vec7Type, scene: str = "lab_simple_pick_up_digit_hand"):
+        super().__init__(env)
+        self.unwrapped: FR3Env
+        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        self.sim = env.get_wrapper_attr("sim")
+        self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False)
+        self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))
+        self.cam_robot_joints = cam_robot_joints
+
+    def step(self, action: dict):
+        self.cam_robot.set_joints_hard(self.cam_robot_joints)
+        obs, reward, done, truncated, info = super().step(action)
+        return obs, reward, done, truncated, info
+
+    def reset(self, *, seed=None, options=None):
+        re = super().reset(seed=seed, options=options)
+        self.cam_robot.reset()
+        return re
