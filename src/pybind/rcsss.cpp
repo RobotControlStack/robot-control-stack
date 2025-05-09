@@ -378,7 +378,7 @@ PYBIND11_MODULE(_core, m) {
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");
   py::class_<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(sim,
-                                                                 "FR3Config")
+                                                                 "SimRobotConfig")
       .def(py::init<>())
       .def_readwrite("tcp_offset", &rcs::sim::SimRobotConfig::tcp_offset)
       .def_readwrite("joint_rotational_tolerance",
@@ -388,7 +388,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::SimRobotConfig::trajectory_trace);
-  py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim, "FR3State")
+  py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim, "SimRobotState")
       .def(py::init<>())
       .def_readonly("previous_angles",
                     &rcs::sim::SimRobotState::previous_angles)
@@ -400,7 +400,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("is_moving", &rcs::sim::SimRobotState::is_moving)
       .def_readonly("is_arrived", &rcs::sim::SimRobotState::is_arrived);
   py::class_<rcs::sim::SimGripperConfig, rcs::common::GripperConfig>(sim,
-                                                                     "FHConfig")
+                                                                     "SimGripperConfig")
       .def(py::init<>())
       .def_readwrite("epsilon_inner",
                      &rcs::sim::SimGripperConfig::epsilon_inner)
@@ -411,7 +411,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("ignored_collision_geoms",
                      &rcs::sim::SimGripperConfig::ignored_collision_geoms);
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(sim,
-                                                                   "FHState")
+                                                                   "SimGripperState")
       .def(py::init<>())
       .def_readonly("last_commanded_width",
                     &rcs::sim::SimGripperState::last_commanded_width)
@@ -434,7 +434,7 @@ PYBIND11_MODULE(_core, m) {
       .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
-             std::shared_ptr<rcs::sim::SimGripper>>(sim, "FrankaHand")
+             std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
                     const rcs::sim::SimGripperConfig &>(),
            py::arg("sim"), py::arg("id"), py::arg("cfg"))
@@ -443,7 +443,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_parameters", &rcs::sim::SimGripper::set_parameters,
            py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
-             std::shared_ptr<rcs::sim::SimRobot>>(sim, "FR3")
+             std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
                     std::shared_ptr<rcs::common::IK>, bool>(),
            py::arg("sim"), py::arg("id"), py::arg("ik"),
