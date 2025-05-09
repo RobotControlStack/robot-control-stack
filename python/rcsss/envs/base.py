@@ -386,7 +386,6 @@ class RelativeActionSpace(gym.ActionWrapper):
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             assert isinstance(self.max_mov, tuple)
-            assert isinstance(self._last_action, common.Pose)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
 
             if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
@@ -400,6 +399,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
                 self._last_action = clipped_pose_offset
             else:
+                assert isinstance(self._last_action, common.Pose)
                 pose_diff = (
                     common.Pose(
                         translation=action[self.trpy_key][:3],
@@ -430,7 +430,6 @@ class RelativeActionSpace(gym.ActionWrapper):
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             assert isinstance(self.max_mov, tuple)
-            assert isinstance(self._last_action, common.Pose)
             pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
 
             if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
@@ -444,6 +443,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 )
                 self._last_action = clipped_pose_offset
             else:
+                assert isinstance(self._last_action, common.Pose)
                 pose_diff = (
                     common.Pose(
                         translation=action[self.tquart_key][:3],

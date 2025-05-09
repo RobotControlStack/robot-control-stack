@@ -108,10 +108,10 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(non_zero_action)
         self.assert_no_pose_change(info, expected_obs, obs)
 
-    def test_relative_zero_action_trpy(self, cfg, gripper_cfg, cam_cfg):
+    def test_relative_zero_action_trpy(self, cfg, gripper_cfg):
         # env creation
         env = fr3_sim_env(
-            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=0.5
+            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
         # action to be performed
@@ -120,10 +120,10 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(zero_action)
         self.assert_no_pose_change(info, obs_initial, obs)
 
-    def test_relative_non_zero_action(self, cfg, gripper_cfg, cam_cfg):
+    def test_relative_non_zero_action(self, cfg, gripper_cfg):
         # env creation
         env = fr3_sim_env(
-            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=0.5
+            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
         # action to be performed
@@ -135,13 +135,13 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(non_zero_action)
         self.assert_no_pose_change(info, obs_initial, expected_obs)
 
-    def test_collision_trpy(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_trpy(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by sim
         """
         # env creation
         env = fr3_sim_env(
-            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
+            ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=None
         )
         obs, _ = env.reset()
         # an obvious below ground collision action
@@ -152,7 +152,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(collision_action)
         self.assert_collision(info)
 
-    def test_collision_guard_trpy(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_guard_trpy(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
         """
@@ -162,7 +162,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
             cfg,
             gripper_cfg=gripper_cfg,
             collision_guard=True,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=None,
         )
         obs, _ = env.reset()
@@ -236,13 +236,13 @@ class TestSimEnvsTquart(TestSimEnvs):
         obs, _, _, _, info = env.step(zero_action)
         self.assert_no_pose_change(info, obs_initial, obs)
 
-    def test_relative_zero_action_tquart(self, cfg, gripper_cfg, cam_cfg):
+    def test_relative_zero_action_tquart(self, cfg, gripper_cfg):
         # env creation
         env_rel = fr3_sim_env(
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
@@ -251,7 +251,7 @@ class TestSimEnvsTquart(TestSimEnvs):
         obs, _, _, _, info = env_rel.step(zero_rel_action)
         self.assert_no_pose_change(info, obs_initial, obs)
 
-    def test_collision_tquart(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_tquart(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by sim
         """
@@ -260,7 +260,7 @@ class TestSimEnvsTquart(TestSimEnvs):
             ControlMode.CARTESIAN_TQuart,
             cfg,
             gripper_cfg=gripper_cfg,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=None,
         )
         obs, _ = env.reset()
@@ -272,7 +272,7 @@ class TestSimEnvsTquart(TestSimEnvs):
         _, _, _, _, info = env.step(collision_action)
         self.assert_collision(info)
 
-    def test_collision_guard_tquart(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_guard_tquart(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
         """
@@ -282,7 +282,7 @@ class TestSimEnvsTquart(TestSimEnvs):
             cfg,
             gripper_cfg=gripper_cfg,
             collision_guard=True,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=None,
         )
         obs, _ = env.reset()
@@ -346,13 +346,13 @@ class TestSimEnvsJoints(TestSimEnvs):
         assert info["is_sim_converged"]
         assert np.allclose(obs["joints"], non_zero_action["joints"], atol=0.01, rtol=0)
 
-    def test_collision_joints(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_joints(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
         env = fr3_sim_env(
-            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
+            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=None
         )
         env.reset()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
@@ -361,7 +361,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         _, _, _, _, info = env.step(collision_act)
         self.assert_collision(info)
 
-    def test_collision_guard_joints(self, cfg, gripper_cfg, cam_cfg):
+    def test_collision_guard_joints(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by sim
         """
@@ -371,7 +371,7 @@ class TestSimEnvsJoints(TestSimEnvs):
             cfg,
             gripper_cfg=gripper_cfg,
             collision_guard=True,
-            camera_set_cfg=cam_cfg,
+            camera_set_cfg=None,
             max_relative_movement=None,
         )
         env.reset()
@@ -387,13 +387,13 @@ class TestSimEnvsJoints(TestSimEnvs):
         # assure that the robot did not move
         assert np.allclose(p1, p2)
 
-    def test_relative_zero_action_joints(self, cfg, gripper_cfg, cam_cfg):
+    def test_relative_zero_action_joints(self, cfg, gripper_cfg):
         """
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
         env = fr3_sim_env(
-            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=0.5
+            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
         act = JointsDictType(joints=np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32))
