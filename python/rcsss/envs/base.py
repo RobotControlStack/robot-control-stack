@@ -46,8 +46,8 @@ class LimitedTRPYRelDictType(RCSpaceType):
     ]
 
 
-class TQuartDictType(RCSpaceType):
-    tquart: Annotated[
+class TQuatDictType(RCSpaceType):
+    tquat: Annotated[
         Vec7Type,
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0] + [-1] + [-np.inf] * 3),
@@ -57,8 +57,8 @@ class TQuartDictType(RCSpaceType):
     ]
 
 
-class LimitedTQuartRelDictType(RCSpaceType):
-    tquart: Annotated[
+class LimitedTQuatRelDictType(RCSpaceType):
+    tquat: Annotated[
         Vec7Type,
         lambda max_cart_mov: gym.spaces.Box(
             low=np.array(3 * [-max_cart_mov] + [-1] + [-np.inf] * 3),
@@ -118,11 +118,11 @@ class CameraDictType(RCSpaceType):
 
 
 # joining works with inheritance but need to inherit from protocol again
-class ArmObsType(TQuartDictType, JointsDictType, TRPYDictType): ...
+class ArmObsType(TQuatDictType, JointsDictType, TRPYDictType): ...
 
 
-CartOrJointContType: TypeAlias = TQuartDictType | JointsDictType | TRPYDictType
-LimitedCartOrJointContType: TypeAlias = LimitedTQuartRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
+CartOrJointContType: TypeAlias = TQuatDictType | JointsDictType | TRPYDictType
+LimitedCartOrJointContType: TypeAlias = LimitedTQuatRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
 
 class ObsArmsGr(ArmObsType, GripperDictType):
@@ -140,7 +140,7 @@ class ObsArmsGrCamCG(ArmObsType, GripperDictType, CameraDictType):
 class ControlMode(Enum):
     JOINTS = auto()
     CARTESIAN_TRPY = auto()
-    CARTESIAN_TQuart = auto()
+    CARTESIAN_TQuat = auto()
 
 
 class RobotInstance(Enum):
@@ -168,15 +168,15 @@ class FR3Env(gym.Env):
             self.action_space = get_space(JointsDictType)
         elif control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space = get_space(TRPYDictType)
-        elif control_mode == ControlMode.CARTESIAN_TQuart:
-            self.action_space = get_space(TQuartDictType)
+        elif control_mode == ControlMode.CARTESIAN_TQuat:
+            self.action_space = get_space(TQuatDictType)
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
         self.observation_space = get_space(ArmObsType)
         self.joints_key = get_space_keys(JointsDictType)[0]
         self.trpy_key = get_space_keys(TRPYDictType)[0]
-        self.tquart_key = get_space_keys(TQuartDictType)[0]
+        self.tquat_key = get_space_keys(TQuatDictType)[0]
         self.prev_action: dict | None = None
 
     def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
@@ -198,7 +198,7 @@ class FR3Env(gym.Env):
 
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
-            tquart=np.concatenate(
+            tquat=np.concatenate(
                 [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
             ),
             joints=self.robot.get_joint_position(),
@@ -208,8 +208,8 @@ class FR3Env(gym.Env):
     def step(self, action: CartOrJointContType) -> tuple[ArmObsType, float, bool, bool, dict]:
         action_dict = cast(dict, action)
         if (
-            self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart
-            and self.tquart_key not in action_dict
+            self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat
+            and self.tquat_key not in action_dict
             or self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY
             and self.trpy_key not in action_dict
             or self.get_base_control_mode() == ControlMode.JOINTS
@@ -230,12 +230,12 @@ class FR3Env(gym.Env):
             self.robot.set_cartesian_position(
                 common.Pose(translation=action_dict[self.trpy_key][:3], rpy_vector=action_dict[self.trpy_key][3:])
             )
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuart and (
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat and (
             self.prev_action is None
-            or not np.allclose(action_dict[self.tquart_key], self.prev_action[self.tquart_key], atol=1e-03, rtol=0)
+            or not np.allclose(action_dict[self.tquat_key], self.prev_action[self.tquat_key], atol=1e-03, rtol=0)
         ):
             self.robot.set_cartesian_position(
-                common.Pose(translation=action_dict[self.tquart_key][:3], quaternion=action_dict[self.tquart_key][3:])
+                common.Pose(translation=action_dict[self.tquat_key][:3], quaternion=action_dict[self.tquat_key][3:])
             )
         self.prev_action = copy.deepcopy(action_dict)
         return self.get_obs(), 0, False, False, {}
@@ -279,7 +279,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.relative_to = relative_to
         if (
             self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY
-            or self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart
+            or self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuat
         ):
             if max_mov is None:
                 max_mov = (self.DEFAULT_MAX_CART_MOV, self.DEFAULT_MAX_CART_ROT)
@@ -319,17 +319,17 @@ class RelativeActionSpace(gym.ActionWrapper):
             self.action_space.spaces.update(
                 get_space(LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.max_mov}}).spaces
             )
-        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart:
+        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuat:
             assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
-                get_space(LimitedTQuartRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
+                get_space(LimitedTQuatRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
             )
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
         self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
-        self.tquart_key = get_space_keys(LimitedTQuartRelDictType)[0]
+        self.tquat_key = get_space_keys(LimitedTQuatRelDictType)[0]
         self.initial_obs: dict[str, Any] | None = None
         self._origin: common.Pose | Vec7Type | None = None
         self._last_action: common.Pose | Vec7Type | None = None
@@ -426,16 +426,16 @@ class RelativeActionSpace(gym.ActionWrapper):
                     )
                 )
             )
-        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuart and self.tquart_key in action:
+        elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuat and self.tquat_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             assert isinstance(self.max_mov, tuple)
-            pose_space = cast(gym.spaces.Box, get_space(TQuartDictType).spaces[self.tquart_key])
+            pose_space = cast(gym.spaces.Box, get_space(TQuatDictType).spaces[self.tquat_key])
 
             if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
                 clipped_pose_offset = (
                     common.Pose(
-                        translation=action[self.tquart_key][:3],
-                        quaternion=action[self.tquart_key][3:],
+                        translation=action[self.tquat_key][:3],
+                        quaternion=action[self.tquat_key][3:],
                     )
                     .limit_translation_length(self.max_mov[0])
                     .limit_rotation_angle(self.max_mov[1])
@@ -445,8 +445,8 @@ class RelativeActionSpace(gym.ActionWrapper):
                 assert isinstance(self._last_action, common.Pose)
                 pose_diff = (
                     common.Pose(
-                        translation=action[self.tquart_key][:3],
-                        quaternion=action[self.tquart_key][3:],
+                        translation=action[self.tquat_key][:3],
+                        quaternion=action[self.tquat_key][3:],
                     )
                     * self._last_action.inverse()
                 )
@@ -462,8 +462,8 @@ class RelativeActionSpace(gym.ActionWrapper):
             )
 
             action.update(
-                TQuartDictType(
-                    tquart=np.concatenate(
+                TQuatDictType(
+                    tquat=np.concatenate(
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_q(),

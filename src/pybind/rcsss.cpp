@@ -142,7 +142,7 @@ PYBIND11_MODULE(_core, m) {
 
   common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
   common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
-  common.def("IdentityRotQuartVec", &rcs::common::IdentityRotQuartVec);
+  common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
   common.def("FrankaHandTCPOffset", &rcs::common::FrankaHandTCPOffset);
 
   py::class_<rcs::common::RPY>(common, "RPY")
