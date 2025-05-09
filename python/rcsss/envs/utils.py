@@ -63,9 +63,9 @@ def default_fr3_sim_gripper_cfg():
 
 def default_mujoco_cameraset_cfg():
     cameras = {
-        "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+        "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+        # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed)),
     }
     # 256x256 needed for VLAs
     return SimCameraSetConfig(

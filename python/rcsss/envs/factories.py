@@ -248,8 +248,8 @@ class FR3SimplePickUpSim(EnvCreator):
             resolution = (256, 256)
 
         cameras = {
-            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-            "bird_eye": SimCameraConfig(identifier="bird-eye-cam", type=int(CameraType.fixed)),
+            "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
+            "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed)),
             "side": SimCameraConfig(identifier="side_view", type=int(CameraType.fixed)),
             "right_side": SimCameraConfig(identifier="right_side", type=int(CameraType.fixed)),
             "left_side": SimCameraConfig(identifier="left_side", type=int(CameraType.fixed)),
@@ -278,7 +278,7 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
         if resolution is None:
             resolution = (256, 256)
 
-        cameras = {"wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed))}
+        cameras = {"wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed))}
 
         camera_cfg = SimCameraSetConfig(
             cameras=cameras,
@@ -326,8 +326,8 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             resolution = (256, 256)
 
         cameras = {
-            "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
-            "side": SimCameraConfig(identifier="eye-in-hand_1", type=int(CameraType.fixed)),
+            "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
+            "side": SimCameraConfig(identifier="wrist_1", type=int(CameraType.fixed)),
         }
 
         camera_cfg = SimCameraSetConfig(

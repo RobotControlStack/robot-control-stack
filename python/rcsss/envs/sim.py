@@ -192,7 +192,7 @@ class RandomCubePos(SimWrapper):
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
-        self.sim.data.joint("yellow-box-joint").qpos[:3] = [pos_x, pos_y, pos_z]
+        self.sim.data.joint("box_joint").qpos[:3] = [pos_x, pos_y, pos_z]
 
         return obs, info
 
@@ -212,14 +212,12 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         obs, reward, done, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("yellow-box-joint").qpos[2] > 0.3
-            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
+            self.sim.data.joint("box_joint").qpos[2] > 0.3 and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
         diff_ee_cube = np.linalg.norm(
-            self.sim.data.joint("yellow-box-joint").qpos[:3]
-            - self.unwrapped.robot.get_cartesian_position().translation()
+            self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
         )
-        diff_cube_home = np.linalg.norm(self.sim.data.joint("yellow-box-joint").qpos[:3] - self.EE_HOME)
+        diff_cube_home = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
         reward = -diff_cube_home - diff_ee_cube
 
         return obs, reward, success, truncated, info

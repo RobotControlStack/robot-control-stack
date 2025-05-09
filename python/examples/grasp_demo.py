@@ -92,7 +92,7 @@ def main():
     print(env.unwrapped.robot.get_cartesian_position().translation())  # type: ignore
     # assert False
     controller = PickUpDemo(env)
-    controller.pickup("yellow_box_geom")
+    controller.pickup("box_geom")
 
 
 if __name__ == "__main__":

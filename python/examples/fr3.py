@@ -82,7 +82,7 @@ def main():
             # add camera to have a rendering gui
             cameras = {
                 "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-                "wrist": SimCameraConfig(identifier="eye-in-hand_0", type=int(CameraType.fixed)),
+                "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
             }
             cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
             camera_set = SimCameraSet(simulation, cam_cfg)  # noqa: F841
