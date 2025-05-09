@@ -25,7 +25,7 @@ __all__ = [
     "rcs",
 ]
 
-class FHConfig(rcsss._core.common.GConfig):
+class FHConfig(rcsss._core.common.GripperConfig):
     async_control: bool
     epsilon_inner: float
     epsilon_outer: float
@@ -34,7 +34,7 @@ class FHConfig(rcsss._core.common.GConfig):
     speed: float
     def __init__(self) -> None: ...
 
-class FHState(rcsss._core.common.GState):
+class FHState(rcsss._core.common.GripperState):
     def __init__(self) -> None: ...
     @property
     def bool_state(self) -> bool: ...
@@ -80,7 +80,7 @@ class FR3(rcsss._core.common.Robot):
     def stop_control_thread(self) -> None: ...
     def zero_torque_guiding(self) -> None: ...
 
-class FR3Config(rcsss._core.common.RConfig):
+class FR3Config(rcsss._core.common.RobotConfig):
     async_control: bool
     ik_solver: IKSolver
     load_parameters: FR3Load | None
@@ -96,7 +96,7 @@ class FR3Load:
     load_mass: float
     def __init__(self) -> None: ...
 
-class FR3State(rcsss._core.common.RState):
+class FR3State(rcsss._core.common.RobotState):
     def __init__(self) -> None: ...
 
 class FrankaHand(rcsss._core.common.Gripper):
