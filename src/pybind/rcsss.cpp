@@ -1,5 +1,4 @@
 #include <common/IK.h>
-#include <common/NRobotsWithGripper.h>
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
@@ -272,36 +271,6 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<std::shared_ptr<rcs::common::Robot>,
                     std::optional<std::shared_ptr<rcs::common::Gripper>>>(),
            py::arg("robot"), py::arg("gripper"));
-
-  py::class_<rcs::common::NRobotsWithGripper>(common, "NRobotsWithGripper")
-      .def(py::init<
-               std::vector<std::shared_ptr<rcs::common::RobotWithGripper>>>(),
-           py::arg("robots_with_gripper"))
-      .def("get_parameters_r",
-           &rcs::common::NRobotsWithGripper::get_parameters_r, py::arg("idxs"))
-      .def("get_state_r", &rcs::common::NRobotsWithGripper::get_state_r,
-           py::arg("idxs"))
-      .def("get_cartesian_position",
-           &rcs::common::NRobotsWithGripper::get_cartesian_position,
-           py::arg("idxs"))
-      .def("set_joint_position",
-           &rcs::common::NRobotsWithGripper::set_joint_position,
-           py::arg("idxs"), py::arg("q"))
-      .def("get_joint_position",
-           &rcs::common::NRobotsWithGripper::get_joint_position,
-           py::arg("idxs"))
-      .def("move_home", &rcs::common::NRobotsWithGripper::move_home,
-           py::arg("idxs"))
-      .def("set_cartesian_position",
-           &rcs::common::NRobotsWithGripper::set_cartesian_position,
-           py::arg("idxs"), py::arg("pose"))
-      .def("get_parameters_g",
-           &rcs::common::NRobotsWithGripper::get_parameters_g, py::arg("idxs"))
-      .def("get_state_g", &rcs::common::NRobotsWithGripper::get_state_g,
-           py::arg("idxs"))
-      .def("grasp", &rcs::common::NRobotsWithGripper::grasp, py::arg("idxs"))
-      .def("open", &rcs::common::NRobotsWithGripper::open, py::arg("idxs"))
-      .def("shut", &rcs::common::NRobotsWithGripper::shut, py::arg("idxs"));
 
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "hardware module");
