@@ -1,5 +1,4 @@
 import base64
-import dataclasses
 import hashlib
 import json as json_module
 import logging
@@ -7,11 +6,13 @@ import os
 import ssl
 import threading
 import time
+from dataclasses import dataclass
 from typing import Callable, Literal
 from urllib import parse
 
 import rcsss
 import requests
+from dotenv import load_dotenv
 from rcsss.envs.factories import default_fr3_hw_gripper_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
@@ -25,6 +26,13 @@ If :py:class:`Desk` is used to connect to a control unit's
 web interface and takes control, the generated token is stored
 in this file under the unit's IP address or hostname.
 """
+
+
+def load_creds_fr3_desk() -> tuple[str, str]:
+    load_dotenv()
+    assert "DESK_USERNAME" in os.environ, "DESK_USERNAME not set in .env file or environment var."
+    assert "DESK_PASSWORD" in os.environ, "DESK_PASSWORD not set in .env file or environment var."
+    return os.environ["DESK_USERNAME"], os.environ["DESK_PASSWORD"]
 
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
@@ -90,7 +98,7 @@ def shutdown(ip: str, username: str, password: str):
     d.shutdown()
 
 
-@dataclasses.dataclass
+@dataclass
 class Token:
     """
     Represents a Desk token owned by a user.

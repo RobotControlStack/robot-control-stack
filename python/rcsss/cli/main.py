@@ -8,8 +8,8 @@ import rcsss
 import rcsss.control.fr3_desk
 import typer
 from rcsss.camera.realsense import RealSenseCameraSet
+from rcsss.control.fr3_desk import load_creds_fr3_desk
 from rcsss.control.record import PoseList
-from rcsss.control.utils import load_creds_fr3_desk
 from rcsss.envs.factories import get_urdf_path
 
 logger = logging.getLogger(__name__)

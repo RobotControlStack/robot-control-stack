@@ -7,8 +7,7 @@ from rcsss import sim
 from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
-from rcsss.control.utils import load_creds_fr3_desk
+from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager, load_creds_fr3_desk
 from rcsss.envs.base import RobotInstance
 from rcsss.envs.factories import get_urdf_path
 
