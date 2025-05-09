@@ -1,6 +1,6 @@
 import logging
 
-from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager, load_creds_fr3_desk
+from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
 from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
 from rcsss.envs.utils import (
@@ -42,14 +42,14 @@ python -m rcsss fr3 shutdown <ip>
 
 
 def main():
-    resource_manger: FCI | DummyResourceManager
+    context_manger: ContextManager
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = DummyResourceManager()
+        context_manger = ContextManager()
 
-    with resource_manger:
+    with context_manger:
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,

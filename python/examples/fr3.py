@@ -7,7 +7,7 @@ from rcsss import sim
 from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager, load_creds_fr3_desk
+from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcsss.envs.base import RobotInstance
 from rcsss.envs.factories import get_urdf_path
 
@@ -54,14 +54,14 @@ def main():
     if "lab" not in rcsss.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
-    resource_manger: FCI | DummyResourceManager
+    context_manger: FCI | ContextManager
     if ROBOT_INSTANCE == RobotInstance.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = DummyResourceManager()
+        context_manger = ContextManager()
 
-    with resource_manger:
+    with context_manger:
         robot: rcsss.common.Robot
         gripper: rcsss.common.Gripper
         if ROBOT_INSTANCE == RobotInstance.SIMULATION:
