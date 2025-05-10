@@ -21,7 +21,7 @@ class SimWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, simulation: sim.Sim):
         super().__init__(env)
         self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = simulation
 
 
@@ -32,8 +32,8 @@ class FR3Sim(gym.Wrapper):
             env = sim_wrapper(env, simulation)
         super().__init__(env)
         self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
-        self.sim_robot = cast(sim.FR3, self.unwrapped.robot)
+        assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
+        self.sim_robot = cast(sim.SimRobot, self.unwrapped.robot)
         self.sim = simulation
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
@@ -59,7 +59,7 @@ class FR3Sim(gym.Wrapper):
 
 
 class GripperWrapperSim(ActObsInfoWrapper):
-    def __init__(self, env, gripper: sim.FrankaHand):
+    def __init__(self, env, gripper: sim.SimGripper):
         super().__init__(env)
         self._gripper = gripper
 
@@ -161,8 +161,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         assert isinstance(env.unwrapped, FR3Env)
         simulation = sim.Sim(mjmld)
         ik = rcsss.common.IK(urdf, max_duration_ms=300)
-        robot = rcsss.sim.FR3(simulation, id, ik)
-        cfg = sim.FR3Config()
+        robot = rcsss.sim.SimRobot(simulation, id, ik)
+        cfg = sim.SimRobotConfig()
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
@@ -180,8 +180,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         c_env: gym.Env = FR3Env(robot, control_mode)
         c_env = FR3Sim(c_env, simulation)
         if gripper:
-            gripper_cfg = sim.FHConfig()
-            fh = sim.FrankaHand(simulation, id, gripper_cfg)
+            gripper_cfg = sim.SimGripperConfig()
+            fh = sim.SimGripper(simulation, id, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)
         return cls(
@@ -224,7 +224,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
 
     def step(self, action: dict[str, Any]):
@@ -248,9 +248,11 @@ class CamRobot(gym.Wrapper):
     def __init__(self, env, cam_robot_joints: Vec7Type, scene: str = "lab_simple_pick_up_digit_hand"):
         super().__init__(env)
         self.unwrapped: FR3Env
-        assert isinstance(self.unwrapped.robot, sim.FR3), "Robot must be a sim.FR3 instance."
+        assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
-        self.cam_robot = rcsss.sim.FR3(self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False)
+        self.cam_robot = rcsss.sim.SimRobot(
+            self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False
+        )
         self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))
         self.cam_robot_joints = cam_robot_joints
 

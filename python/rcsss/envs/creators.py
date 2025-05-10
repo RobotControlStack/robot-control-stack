@@ -140,9 +140,9 @@ class RCSSimEnv(EnvCreator):
     def __call__(  # type: ignore
         self,
         control_mode: ControlMode,
-        robot_cfg: rcsss.sim.FR3Config,
+        robot_cfg: rcsss.sim.SimRobotConfig,
         collision_guard: bool = False,
-        gripper_cfg: rcsss.sim.FHConfig | None = None,
+        gripper_cfg: rcsss.sim.SimGripperConfig | None = None,
         camera_set_cfg: SimCameraSetConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -155,9 +155,9 @@ class RCSSimEnv(EnvCreator):
 
         Args:
             control_mode (ControlMode): Control mode for the robot.
-            robot_cfg (rcsss.sim.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (rcsss.sim.SimRobotConfig): Configuration for the FR3 robot.
             collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
-            gripper_cfg (rcsss.sim.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+            gripper_cfg (rcsss.sim.SimGripperConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
@@ -180,7 +180,7 @@ class RCSSimEnv(EnvCreator):
         simulation = sim.Sim(mjb_file)
 
         ik = rcsss.common.IK(urdf_path)
-        robot = rcsss.sim.FR3(simulation, "0", ik)
+        robot = rcsss.sim.SimRobot(simulation, "0", ik)
         robot.set_parameters(robot_cfg)
         env: gym.Env = FR3Env(robot, control_mode)
         env = FR3Sim(env, simulation, sim_wrapper)
@@ -190,7 +190,7 @@ class RCSSimEnv(EnvCreator):
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if gripper_cfg is not None:
-            gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
+            gripper = sim.SimGripper(simulation, "0", gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
 

@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Config:
-    cfg = sim.FR3Config()
+def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.SimRobotConfig:
+    cfg = sim.SimRobotConfig()
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
     return cfg
@@ -58,7 +58,7 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
 
 
 def default_fr3_sim_gripper_cfg():
-    return sim.FHConfig()
+    return sim.SimGripperConfig()
 
 
 def default_mujoco_cameraset_cfg():
