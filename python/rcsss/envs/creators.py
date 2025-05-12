@@ -42,7 +42,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class RCSFR3Env(EnvCreator):
+class RCSHardwareEnvCreator(EnvCreator):
+    pass
+
+
+class RCSFR3EnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
         ip: str,
@@ -114,7 +118,7 @@ class RCSFR3Env(EnvCreator):
         return env
 
 
-class RCSFR3Default(EnvCreator):
+class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
         robot_ip: str,
@@ -124,7 +128,7 @@ class RCSFR3Default(EnvCreator):
         gripper: bool = True,
     ) -> gym.Env:
         camera_set = default_realsense(camera_config)
-        return RCSFR3Env()(
+        return RCSFR3EnvCreator()(
             ip=robot_ip,
             camera_set=camera_set,
             control_mode=control_mode,
@@ -136,7 +140,7 @@ class RCSFR3Default(EnvCreator):
         )
 
 
-class RCSSimEnv(EnvCreator):
+class RCSSimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         control_mode: ControlMode,
@@ -212,7 +216,7 @@ class RCSSimEnv(EnvCreator):
         return env
 
 
-class SimTaskEnv(EnvCreator):
+class SimTaskEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         mjcf: str,
@@ -222,7 +226,7 @@ class SimTaskEnv(EnvCreator):
         camera_cfg: SimCameraSetConfig | None = None,
     ) -> gym.Env:
 
-        env_rel = RCSSimEnv()(
+        env_rel = RCSSimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=default_fr3_sim_robot_cfg(mjcf),
             collision_guard=False,
@@ -240,7 +244,7 @@ class SimTaskEnv(EnvCreator):
         return env_rel
 
 
-class FR3SimplePickUpSim(EnvCreator):
+class FR3SimplePickUpSimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         render_mode: str = "human",
@@ -268,10 +272,10 @@ class FR3SimplePickUpSim(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        return SimTaskEnv()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
+        return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
 
 
-class FR3SimplePickUpSimDigitHand(EnvCreator):
+class FR3SimplePickUpSimDigitHandEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         render_mode: str = "human",
@@ -292,10 +296,12 @@ class FR3SimplePickUpSimDigitHand(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        return SimTaskEnv()("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg)
+        return SimTaskEnvCreator()(
+            "fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg
+        )
 
 
-class FR3LabPickUpSimDigitHand(EnvCreator):
+class FR3LabPickUpSimDigitHandEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         cam_robot_joints: Vec7Type,
@@ -320,7 +326,7 @@ class FR3LabPickUpSimDigitHand(EnvCreator):
             frame_rate=frame_rate,
             physical_units=True,
         )
-        env_rel = SimTaskEnv()(
+        env_rel = SimTaskEnvCreator()(
             "lab_simple_pick_up_digit_hand",
             render_mode,
             control_mode,
