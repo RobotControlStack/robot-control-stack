@@ -1,3 +1,115 @@
+## v0.4.0 (2025-05-12)
+
+### Feat
+
+- **sim camera**: allow camera render on demand
+- **sim fr3**: make convergence callback registration optional
+- **env**: camera robot
+- **grasp_lab_demo**: added second robot cam pose setter
+- **grasp_demo_lab**: unified cube pose randomizer and separated the pose setter for the second robot
+- **grasp**: pickup script for grasp added
+- **sim**: separated grasp_demo script from the grasp_demo_lab script
+- **wrapper recorder**: hdf5 gzip compression
+- frame rate logger
+- **wrapper**: added hdf5 recorder wrapper
+- **wrappers**: storage wrapper delays action
+- **hw gripper**: bool state and is moving
+- **hw gripper**: async control for hardware gripper
+- **camera**: added rate limiter
+- added async for teleop
+- added webcam live viewer and vla executer
+- updated vive teleop to use controls and data recording
+- added first osc implementation
+- **env**: reward and success for simple pick up env
+- **env**: random cube pos wrapper
+- **sim**: sim wrapper env
+- **gym env**: register envs in gym
+- **hw camera**: record frames as mp4 video
+- **factories**: added collision guard to factories and examples
+- **cli**: info command to get current robot and gripper state
+- **hw/camera**: option to wait for frames in buffer
+- **sim/camera**: optional conversion to pyhsical units for depth camera in sim
+- **pose**: read out total quat angle and set angle
+
+### Fix
+
+- **fr3 desk**: error when circle is not in event dict
+- **env**: type assertion and improved tests
+- wrong automatic import and logger
+- type linting issues
+- **env**: moved close of control thread to hw env
+- **sim gui**: increases max geoms in render gui
+- **hw fr3**: default register convergence callback
+- **py lint**: type annotations and imports
+- **sim**: allow string path in tcp offset getter
+- **control**: joint reset also sets controllers
+- **grasp_demo_lab**: removed side camera feature and refactored
+- **sim**: random cube placement in lab scene fixed
+- **merge**: merge commit
+- **desk**: remove guiding mode in move home
+- **hw camera**: removed double video saving
+- **desk**: cache token in case of program crash
+- **env gripper**: remove same action ignore
+- **hw gripper**: exception handling for franka hand, improved roboustness
+- remove slow unnecessary flatten
+- lock usage in camera
+- async reset
+- relative move move high freqency filter
+- **hw**: joint controller torque limit
+- **rel env**: relative limiting for origin set
+- **vive**: collision guard
+- lock usgage, controllers, remove unused code
+- double reset segfault / fp error (Merge pull request #163 from utn-mi/krack/fix_double_reset)
+- linting errors in examples and tests
+- numpy < 2 compatibility
+- **env**: binary gripper observation
+- **sim**: reset sim
+- **collision guard**: back compatibility truncate episode
+- **collision guard**: hard sim update and identity action
+- **collision guard**: updated gui visualization
+- **factories**: default relative_to and max_realtive_movement type
+- **vive**: the collision guard is no longer a bool, so updated it to default None
+- **realsense**: properly stop camera
+- **examples**: ik usage in fr3
+- **envs/colguard**: order of sim env, gym interface and typing
+- **envs/gripper**: avoid overwrite of collision
+- **sim/gripper**: fixed is_moving and simplified callback schema
+- **sim**: corrected reset observation
+- **envs**: stop camera thread in camera env with close method
+- support numpy versions < 2.0
+- rel env last step default and gripper wrapper correct last step detection
+- dot env in cli, panic activates guiding mode
+- **example, rel env**: added last step relative to examples and fixed rel env
+- **rel env**: improved relative limiting, avoiding clip
+
+### Refactor
+
+- **cli**: remove remaing config functions
+- **control**: remove vive and recorder app code
+- **sim envs**: simple and lab pick up share more code
+- **lab env**: flexible camera robot joint position
+- **envs**: tcp extraction before env creation
+- **envs**: move default configs to utils
+- **grasp_demo_lab**: resolved pylint issues
+- **grasp_demo**: refactored to correct linting issues
+- **grasp_demo**: refactored to correct linting issues
+- **grasp_demo**: refactored to correct linting issues
+- **wrappers**: fixed gif and video generation for HDF5 data
+- **recorder wrapper**: moved gif generation into own function
+- **storage wrapper**: flag removed to simplify interface
+- **hw**: zero torque guiding integrated into control thread flow
+- **hw**: guiding mode configure DOFs
+- **hw control**: async control in config
+- proper rate limiter in vive
+- **hw**: moved stop async control thread to reset
+- **hw camera**: video recording in storage wrapper
+- video frame is written every step
+- **vive**: more conservative lock usage
+- **factories**: same mjcf scene for sim collision guard
+- **cameraset**: close method in cameraset interface
+- **env/gripper**: better observation difference between binary and non binary gripper
+- **pose,rel env**: limitation of rot and trans moved to cpp
+
 ## v0.3.1 (2024-10-02)
 
 ### Fix
