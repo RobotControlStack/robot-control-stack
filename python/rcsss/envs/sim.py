@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 import rcsss
 from rcsss import sim
-from rcsss.envs.base import ControlMode, FR3Env, GripperWrapper
+from rcsss.envs.base import ControlMode, GripperWrapper, RobotEnv
 from rcsss.envs.space_utils import ActObsInfoWrapper, Vec7Type
 from rcsss.envs.utils import default_fr3_sim_robot_cfg
 
@@ -20,7 +20,7 @@ class SimWrapper(gym.Wrapper):
 
     def __init__(self, env: gym.Env, simulation: sim.Sim):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = simulation
 
@@ -31,7 +31,7 @@ class FR3Sim(gym.Wrapper):
         if sim_wrapper is not None:
             env = sim_wrapper(env, simulation)
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim_robot = cast(sim.SimRobot, self.unwrapped.robot)
         self.sim = simulation
@@ -87,7 +87,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         truncate_on_collision: bool = True,
     ):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         self.collision_env = collision_env
         self.sim = simulation
         self.last_obs: tuple[dict[str, Any], dict[str, Any]] | None = None
@@ -111,7 +111,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 
         if self.to_joint_control:
             fr3_env = self.collision_env.unwrapped
-            assert isinstance(fr3_env, FR3Env), "Collision env must be an FR3Env instance."
+            assert isinstance(fr3_env, RobotEnv), "Collision env must be an RobotEnv instance."
             action[self.unwrapped.joints_key] = fr3_env.robot.get_joint_position()
 
         if info["collision"]:
@@ -158,7 +158,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
-        assert isinstance(env.unwrapped, FR3Env)
+        assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
         ik = rcsss.common.IK(urdf, max_duration_ms=300)
         robot = rcsss.sim.SimRobot(simulation, id, ik)
@@ -177,7 +177,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
                 to_joint_control = True
         else:
             control_mode = env.unwrapped.get_control_mode()
-        c_env: gym.Env = FR3Env(robot, control_mode)
+        c_env: gym.Env = RobotEnv(robot, control_mode)
         c_env = FR3Sim(c_env, simulation)
         if gripper:
             gripper_cfg = sim.SimGripperConfig()
@@ -223,7 +223,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
 
@@ -247,7 +247,7 @@ class CamRobot(gym.Wrapper):
 
     def __init__(self, env, cam_robot_joints: Vec7Type, scene: str = "lab_simple_pick_up_digit_hand"):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
         self.cam_robot = rcsss.sim.SimRobot(

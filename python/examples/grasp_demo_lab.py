@@ -5,7 +5,7 @@ import gymnasium as gym
 import mujoco
 import numpy as np
 from rcsss._core.common import Pose
-from rcsss.envs.base import FR3Env, GripperWrapper
+from rcsss.envs.base import GripperWrapper, RobotEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 class PickUpDemo:
     def __init__(self, env: gym.Env):
         self.env = env
-        self.unwrapped: FR3Env = cast(FR3Env, self.env.unwrapped)
+        self.unwrapped: RobotEnv = cast(RobotEnv, self.env.unwrapped)
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
     def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:

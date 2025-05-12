@@ -13,10 +13,10 @@ from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.base import (
     CameraSetWrapper,
     ControlMode,
-    FR3Env,
     GripperWrapper,
     RelativeActionSpace,
     RelativeTo,
+    RobotEnv,
 )
 from rcsss.envs.hw import FR3HW
 from rcsss.envs.sim import (
@@ -86,7 +86,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         robot = rcsss.hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
 
-        env: gym.Env = FR3Env(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
+        env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
         if gripper_cfg is not None:
@@ -186,7 +186,7 @@ class RCSSimEnvCreator(EnvCreator):
         ik = rcsss.common.IK(urdf_path)
         robot = rcsss.sim.SimRobot(simulation, "0", ik)
         robot.set_parameters(robot_cfg)
-        env: gym.Env = FR3Env(robot, control_mode)
+        env: gym.Env = RobotEnv(robot, control_mode)
         env = FR3Sim(env, simulation, sim_wrapper)
 
         if camera_set_cfg is not None:

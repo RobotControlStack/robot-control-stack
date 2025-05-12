@@ -5,9 +5,9 @@ import pytest
 import rcsss
 from rcsss.envs.base import (
     ControlMode,
-    FR3Env,
     GripperDictType,
     JointsDictType,
+    RobotEnv,
     TQuatDictType,
     TRPYDictType,
 )
@@ -166,7 +166,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
             max_relative_movement=None,
         )
         obs, _ = env.reset()
-        unwrapped = cast(FR3Env, env.unwrapped)
+        unwrapped = cast(RobotEnv, env.unwrapped)
         p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["xyzrpy"][0] = 0.4
@@ -286,7 +286,7 @@ class TestSimEnvsTquat(TestSimEnvs):
             max_relative_movement=None,
         )
         obs, _ = env.reset()
-        unwrapped = cast(FR3Env, env.unwrapped)
+        unwrapped = cast(RobotEnv, env.unwrapped)
         p1 = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["tquat"][0] = 0.4
@@ -379,7 +379,7 @@ class TestSimEnvsJoints(TestSimEnvs):
             max_relative_movement=None,
         )
         env.reset()
-        unwrapped = cast(FR3Env, env.unwrapped)
+        unwrapped = cast(RobotEnv, env.unwrapped)
         p1 = unwrapped.robot.get_joint_position()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
         collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))

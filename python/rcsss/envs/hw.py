@@ -3,7 +3,7 @@ from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
 from rcsss import hw
-from rcsss.envs.base import FR3Env
+from rcsss.envs.base import RobotEnv
 
 _logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 class FR3HW(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
         self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
 
@@ -22,7 +22,7 @@ class FR3HW(gym.Wrapper):
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
             # TODO: this does not work if some wrappers are in between
-            # FR3HW and FR3Env
+            # FR3HW and RobotEnv
             return dict(self.unwrapped.get_obs()), 0, False, True, {}
 
     def reset(

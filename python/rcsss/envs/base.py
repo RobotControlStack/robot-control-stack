@@ -148,8 +148,8 @@ class RobotInstance(Enum):
     SIMULATION = auto()
 
 
-class FR3Env(gym.Env):
-    """Joint Gym Environment for Franka Research 3.
+class RobotEnv(gym.Env):
+    """Joint Gym Environment for a single robot arm.
 
     Top view of on the robot. Robot faces into x direction.
     z direction faces upwards. (Right handed coordinate axis)
@@ -274,7 +274,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         max_mov: float | tuple[float, float] | None = None,
     ):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         self.action_space: gym.spaces.Dict
         self.relative_to = relative_to
         if (
@@ -483,7 +483,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
     def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         self.camera_set = camera_set
         self.include_depth = include_depth
 
@@ -574,7 +574,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
-        self.unwrapped: FR3Env
+        self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
         self.observation_space.spaces.update(get_space(GripperDictType).spaces)
         self.action_space: gym.spaces.Dict
