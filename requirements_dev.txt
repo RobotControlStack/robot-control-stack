@@ -13,3 +13,4 @@ mujoco==3.2.6
 pin==2.7.0
 wheel
 tilburg-hand
+digit-interface

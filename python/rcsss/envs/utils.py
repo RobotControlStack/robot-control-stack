@@ -62,6 +62,8 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
 def default_fr3_sim_gripper_cfg():
     return sim.FHConfig()
 
+def default_digit_cam_cfg():
+    return rcsss.digit_cam.interface.DigitConfig()
 
 def default_mujoco_cameraset_cfg():
     cameras = {

@@ -7,6 +7,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+import rcsss
 from rcsss import common, sim
 from rcsss.camera.interface import BaseCameraSet
 from rcsss.envs.space_utils import (
@@ -134,6 +135,24 @@ class CameraDictType(RCSpaceType):
         ],
     ]
 
+class DigitCameraDictType(RCSpaceType):
+    digit_frame: dict[
+        Annotated[str, "camera_names"],
+        dict[
+            Annotated[str, "camera_type"],  # "rgb" or "depth"
+            Annotated[
+                np.ndarray,
+                # needs to be filled with values downstream
+                lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+                    low=low,
+                    high=high,
+                    shape=(height, width, color_dim),
+                    dtype=dtype,
+                ),
+                "digit_frame",
+            ],
+        ],
+    ]
 
 # joining works with inheritance but need to inherit from protocol again
 class ArmObsType(TQuartDictType, JointsDictType, TRPYDictType): ...
@@ -532,11 +551,61 @@ class CameraSetWrapper(ActObsInfoWrapper):
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
+                
+        if isinstance(self.camera_set, rcsss.digit_cam.digit_cam.DigitCam): #TODO reomve after debugging
+            pass    
         return observation, info
 
     def close(self):
         self.camera_set.close()
         super().close()
+
+class DigitCameraSetWrapper(CameraSetWrapper):
+    RGB_KEY = "rgb"
+    DEPTH_KEY = "depth"
+
+    def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
+        super().__init__(env, camera_set, include_depth)
+        self.unwrapped: FR3Env
+        self.camera_set = camera_set
+        self.include_depth = include_depth
+
+        self.observation_space: gym.spaces.Dict
+        # rgb is always included
+        params: dict = {
+                        "digit_frame": 
+                            {
+                            "height": camera_set.config.resolution_height,
+                            "width": camera_set.config.resolution_width,
+                            }
+                        }
+
+        if self.include_depth:
+            # depth is optional
+            params.update(
+                {
+                    f"/{name}/{self.DEPTH_KEY}/frame": {
+                        "height": camera_set.config.resolution_height,
+                        "width": camera_set.config.resolution_width,
+                        "color_dim": 1,
+                        "dtype": np.float32,
+                        "low": 0.0,
+                        "high": 1.0,
+                    }
+                    for name in camera_set.camera_names
+                }
+            )
+        self.observation_space.spaces.update(
+            get_space(
+                DigitCameraDictType,
+                child_dict_keys_to_unfold={
+                    "camera_names": camera_set.camera_names,
+                    "camera_type": [self.RGB_KEY, self.DEPTH_KEY] if self.include_depth else [self.RGB_KEY],
+                },
+                params=params,
+            ).spaces
+        )
+        self.camera_key = get_space_keys(DigitCameraDictType)[0]
 
 
 class GripperWrapper(ActObsInfoWrapper):

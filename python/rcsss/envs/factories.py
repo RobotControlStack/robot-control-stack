@@ -12,6 +12,7 @@ from rcsss.camera.hw import BaseHardwareCameraSet
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.envs.base import (
     CameraSetWrapper,
+    DigitCameraSetWrapper,
     ControlMode,
     FR3Env,
     GripperWrapper,
@@ -38,7 +39,7 @@ from rcsss.envs.utils import (
 )
 from rcsss.hand.hand import Hand
 from rcsss.hand.tilburg_hand_control import TilburgHandControl
-
+from rcsss.digit_cam.digit_cam import DigitCam
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -119,6 +120,7 @@ def fr3_sim_env(
     collision_guard: bool = False,
     gripper_cfg: rcsss.sim.FHConfig | None = None,
     camera_set_cfg: SimCameraSetConfig | None = None,
+    digit_set_cfg: rcsss.digit_cam.interface.DigitConfig | None = None,
     max_relative_movement: float | tuple[float, float] | None = None,
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
     urdf_path: str | PathLike | None = None,
@@ -163,7 +165,14 @@ def fr3_sim_env(
     if camera_set_cfg is not None:
         camera_set = SimCameraSet(simulation, camera_set_cfg)
         env = CameraSetWrapper(env, camera_set, include_depth=True)
-
+    
+    if digit_set_cfg is not None:
+        digit_cam = DigitCam(digit_set_cfg)
+        digit_cam.start()
+        digit_cam.wait_for_frames()
+        logger.info("CameraSet started")
+        env = DigitCameraSetWrapper(env, digit_cam)
+    
     if isinstance(gripper_cfg, rcsss.sim.FHConfig):
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=True)

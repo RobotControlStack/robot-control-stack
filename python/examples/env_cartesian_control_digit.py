@@ -10,6 +10,7 @@ from rcsss.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
+    default_digit_cam_cfg
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ def main():
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
+                digit_set_cfg= default_digit_cam_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -91,6 +93,8 @@ def main():
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
+        env_rel.close()
+
 
 if __name__ == "__main__":
     main()
