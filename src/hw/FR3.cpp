@@ -14,7 +14,7 @@
 #include <string>
 #include <thread>
 
-#include "MotionGenerator.h"
+#include "FR3MotionGenerator.h"
 #include "common/Pose.h"
 
 namespace rcs {
@@ -98,17 +98,17 @@ common::Pose FR3::get_cartesian_position() {
   return x;
 }
 
-void FR3::set_joint_position(const common::Vector7d &q) {
+void FR3::set_joint_position(const common::VectorXd &q) {
   if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
   }
   // sync control
-  MotionGenerator motion_generator(this->cfg.speed_factor, q);
+  FR3MotionGenerator motion_generator(this->cfg.speed_factor, q);
   this->robot.control(motion_generator);
 }
 
-common::Vector7d FR3::get_joint_position() {
+common::VectorXd FR3::get_joint_position() {
   common::Vector7d joints;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -177,7 +177,7 @@ void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
     this->interpolator_mutex.lock();
   }
 
-  this->joint_interpolator.Reset(
+  this->joint_interpolator.reset(
       this->controller_time,
       Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
       policy_rate, traj_rate, traj_interpolation_time_fraction);
@@ -212,7 +212,7 @@ void FR3::osc_set_cartesian_position(
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
-  this->traj_interpolator.Reset(
+  this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
       desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
@@ -310,17 +310,11 @@ void FR3::osc() {
     int traj_rate = 500;
 
     this->interpolator_mutex.lock();
-    // if (this->controller_time == 0) {
-    //   this->traj_interpolator.Reset(
-    //       0., pose.translation(), pose.quaternion(),
-    //       desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
-    //       policy_rate, traj_rate, traj_interpolation_time_fraction);
-    // }
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
-    this->traj_interpolator.GetNextStep(this->controller_time,
-                                        desired_pos_EE_in_base_frame,
-                                        desired_quat_EE_in_base_frame);
+    this->traj_interpolator.next_step(this->controller_time,
+                                      desired_pos_EE_in_base_frame,
+                                      desired_quat_EE_in_base_frame);
     this->interpolator_mutex.unlock();
 
     // end torques handler
@@ -501,7 +495,7 @@ void FR3::joint_controller() {
     this->interpolator_mutex.lock();
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
-    this->joint_interpolator.GetNextStep(this->controller_time, desired_q);
+    this->joint_interpolator.next_step(this->controller_time, desired_q);
     this->interpolator_mutex.unlock();
     // end torques handler
 
@@ -585,7 +579,9 @@ void FR3::zero_torque_controller() {
 
 void FR3::move_home() {
   // sync
-  MotionGenerator motion_generator(this->cfg.speed_factor, q_home);
+  FR3MotionGenerator motion_generator(
+      this->cfg.speed_factor,
+      common::robots_meta_config.at(common::RobotType::FR3).q_home);
   this->robot.control(motion_generator);
 }
 
@@ -673,13 +669,13 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   // nominal end effector frame should be on top of tcp offset as franka already
   // takes care of the default franka hand offset lets add a franka hand offset
 
-  if (this->cfg.ik_solver == IKSolver::franka) {
+  if (this->cfg.ik_solver == IKSolver::franka_ik) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
 
-  } else if (this->cfg.ik_solver == IKSolver::rcs) {
+  } else if (this->cfg.ik_solver == IKSolver::rcs_ik) {
     this->set_cartesian_position_ik(x);
   }
 }

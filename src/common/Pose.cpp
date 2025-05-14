@@ -5,8 +5,8 @@ namespace common {
 
 Eigen::Vector3d IdentityTranslation() { return Eigen::Vector3d::Zero(); }
 Eigen::Matrix3d IdentityRotMatrix() { return Eigen::Matrix3d::Identity(); }
-Eigen::Quaterniond IdentityRotQuart() { return Eigen::Quaterniond::Identity(); }
-Eigen::Vector4d IdentityRotQuartVec() { return IdentityRotQuart().coeffs(); }
+Eigen::Quaterniond IdentityRotQuat() { return Eigen::Quaterniond::Identity(); }
+Eigen::Vector4d IdentityRotQuatVec() { return IdentityRotQuat().coeffs(); }
 
 Eigen::Matrix4d FrankaHandTCPOffset() {
   return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1,
@@ -18,7 +18,7 @@ Eigen::Matrix4d FrankaHandTCPOffset() {
 
 Pose::Pose() {
   this->m_translation = IdentityTranslation();
-  this->m_rotation = IdentityRotQuart();
+  this->m_rotation = IdentityRotQuat();
 }
 
 Pose::Pose(const Eigen::Affine3d &pose_matrix) {
@@ -73,7 +73,7 @@ Pose::Pose(const Eigen::Vector3d &rotation,
 
 Pose::Pose(const Eigen::Vector3d &translation) {
   this->m_translation = translation;
-  this->m_rotation = IdentityRotQuart();
+  this->m_rotation = IdentityRotQuat();
 }
 
 Pose::Pose(const Eigen::Quaterniond &quaternion) {
@@ -178,14 +178,14 @@ Pose Pose::operator*(const Pose &pose_b) const {
 }
 
 double Pose::total_angle() const {
-  return this->m_rotation.angularDistance(IdentityRotQuart());
+  return this->m_rotation.angularDistance(IdentityRotQuat());
 }
 
 Pose Pose::limit_rotation_angle(double max_angle) const {
   auto curr_angle = this->total_angle();
   if (curr_angle > max_angle && max_angle >= 0) {
     auto new_rot =
-        IdentityRotQuart().slerp(max_angle / curr_angle, this->m_rotation);
+        IdentityRotQuat().slerp(max_angle / curr_angle, this->m_rotation);
     return Pose(new_rot, this->m_translation);
   }
   return *this;

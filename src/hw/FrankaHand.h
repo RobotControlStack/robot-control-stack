@@ -19,7 +19,7 @@
 namespace rcs {
 namespace hw {
 
-struct FHConfig : common::GConfig {
+struct FHConfig : common::GripperConfig {
   double grasping_width = 0.05;
   double speed = 0.1;
   double force = 5;
@@ -28,7 +28,7 @@ struct FHConfig : common::GConfig {
   bool async_control = false;
 };
 
-struct FHState : common::GState {
+struct FHState : common::GripperState {
   double width;
   // true is open
   bool bool_state;

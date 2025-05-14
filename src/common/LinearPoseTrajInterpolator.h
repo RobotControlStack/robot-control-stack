@@ -1,5 +1,5 @@
-#ifndef DEOXYS_FRANKA_INTERFACE_INCLUDE_UTILS_TRAJ_INTERPOLATORS_POSE_TRAJ_INTERPOLATOR_H_
-#define DEOXYS_FRANKA_INTERFACE_INCLUDE_UTILS_TRAJ_INTERPOLATORS_POSE_TRAJ_INTERPOLATOR_H_
+#ifndef RCS_LINEAR_POSE_TRAJ_INTERPOLATOR_H
+#define RCS_LINEAR_POSE_TRAJ_INTERPOLATOR_H
 #include <Eigen/Dense>
 
 namespace rcs {
@@ -35,7 +35,7 @@ class LinearPoseTrajInterpolator {
 
   inline ~LinearPoseTrajInterpolator(){};
 
-  inline void Reset(const double &time_sec, const Eigen::Vector3d &p_start,
+  inline void reset(const double &time_sec, const Eigen::Vector3d &p_start,
                     const Eigen::Quaterniond &q_start,
                     const Eigen::Vector3d &p_goal,
                     const Eigen::Quaterniond &q_goal, const int &policy_rate,
@@ -75,8 +75,8 @@ class LinearPoseTrajInterpolator {
     }
   };
 
-  inline void GetNextStep(const double &time_sec, Eigen::Vector3d &p_t,
-                          Eigen::Quaterniond &q_t) {
+  inline void next_step(const double &time_sec, Eigen::Vector3d &p_t,
+                        Eigen::Quaterniond &q_t) {
     if (!start_) {
       start_time_ = time_sec;
       last_p_t_ = p_start_;
@@ -127,7 +127,7 @@ class LinearJointPositionTrajInterpolator {
 
   inline ~LinearJointPositionTrajInterpolator(){};
 
-  inline void Reset(const double &time_sec,
+  inline void reset(const double &time_sec,
                     const Eigen::Matrix<double, 7, 1> &q_start,
                     const Eigen::Matrix<double, 7, 1> &q_goal,
                     const int &policy_rate, const int &rate,
@@ -153,7 +153,7 @@ class LinearJointPositionTrajInterpolator {
     q_goal_ = q_goal;
   };
 
-  inline void GetNextStep(const double &time_sec, Vector7d &q_t) {
+  inline void next_step(const double &time_sec, Vector7d &q_t) {
     if (!start_) {
       start_time_ = time_sec;
       last_q_t_ = q_start_;
@@ -172,4 +172,4 @@ class LinearJointPositionTrajInterpolator {
 };
 }  // namespace common
 }  // namespace rcs
-#endif  // DEOXYS_FRANKA_INTERFACE_INCLUDE_UTILS_TRAJ_INTERPOLATORS_POSE_TRAJ_INTERPOLATOR_H_
+#endif  // RCS_LINEAR_POSE_TRAJ_INTERPOLATOR_H
