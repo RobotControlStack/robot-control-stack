@@ -304,8 +304,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
 
   py::enum_<rcs::hw::IKSolver>(hw, "IKSolver")
-      .value("franka", rcs::hw::IKSolver::franka)
-      .value("rcs", rcs::hw::IKSolver::rcs)
+      .value("franka_ik", rcs::hw::IKSolver::franka_ik)
+      .value("rcs_ik", rcs::hw::IKSolver::rcs_ik)
       .export_values();
 
   py::class_<rcs::hw::FR3Config, rcs::common::RobotConfig>(hw, "FR3Config")

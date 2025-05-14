@@ -27,7 +27,7 @@ def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
-    robot_cfg.ik_solver = IKSolver.rcs
+    robot_cfg.ik_solver = IKSolver.rcs_ik
     robot_cfg.async_control = async_control
     return robot_cfg
 

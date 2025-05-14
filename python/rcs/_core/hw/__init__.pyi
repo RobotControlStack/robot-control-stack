@@ -21,8 +21,8 @@ __all__ = [
     "FrankaHand",
     "IKSolver",
     "exceptions",
-    "franka",
-    "rcs",
+    "franka_ik",
+    "rcs_ik",
 ]
 
 class FHConfig(rcs._core.common.GripperConfig):
@@ -111,16 +111,16 @@ class IKSolver:
     """
     Members:
 
-      franka
+      franka_ik
 
-      rcs
+      rcs_ik
     """
 
     __members__: typing.ClassVar[
         dict[str, IKSolver]
-    ]  # value = {'franka': <IKSolver.franka: 0>, 'rcs': <IKSolver.rcs: 1>}
-    franka: typing.ClassVar[IKSolver]  # value = <IKSolver.franka: 0>
-    rcs: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs: 1>
+    ]  # value = {'franka_ik': <IKSolver.franka_ik: 0>, 'rcs_ik': <IKSolver.rcs_ik: 1>}
+    franka_ik: typing.ClassVar[IKSolver]  # value = <IKSolver.franka_ik: 0>
+    rcs_ik: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs_ik: 1>
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -136,5 +136,5 @@ class IKSolver:
     @property
     def value(self) -> int: ...
 
-franka: IKSolver  # value = <IKSolver.franka: 0>
-rcs: IKSolver  # value = <IKSolver.rcs: 1>
+franka_ik: IKSolver  # value = <IKSolver.franka_ik: 0>
+rcs_ik: IKSolver  # value = <IKSolver.rcs_ik: 1>

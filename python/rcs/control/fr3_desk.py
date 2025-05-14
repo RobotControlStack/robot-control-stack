@@ -40,7 +40,7 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         f = rcs.hw.FR3(ip)
         config = rcs.hw.FR3Config()
         config.speed_factor = 0.2
-        config.ik_solver = rcs.hw.IKSolver.franka
+        config.ik_solver = rcs.hw.IKSolver.franka_ik
         f.set_parameters(config)
         config_hand = rcs.hw.FHConfig()
         g = rcs.hw.FrankaHand(ip, config_hand)

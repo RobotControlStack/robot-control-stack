@@ -94,7 +94,7 @@ def main():
             robot = rcs.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            robot_cfg.ik_solver = IKSolver.rcs
+            robot_cfg.ik_solver = IKSolver.rcs_ik
             robot.set_parameters(robot_cfg)
 
             gripper_cfg_hw = rcs.hw.FHConfig()
