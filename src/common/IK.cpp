@@ -28,7 +28,7 @@ IK::IK(const std::string& urdf_path, size_t max_duration_ms) : rl() {
 }
 
 std::optional<VectorXd> IK::ik(const Pose& pose, const VectorXd& q0,
-                              const Pose& tcp_offset) {
+                               const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
   this->rl.kin->setPosition(q0);
   this->rl.kin->forwardPosition();

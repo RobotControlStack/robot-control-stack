@@ -21,7 +21,6 @@ struct RobotMetaConfig {
 enum RobotType { FR3 = 0, UR5e };
 enum RobotPlatform { SIMULATION = 0, HARDWARE };
 
-
 static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
     {{// -------------- FR3 --------------
       {FR3,
@@ -61,22 +60,22 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
-  virtual ~RobotConfig() {};
+  virtual ~RobotConfig(){};
 };
 struct RobotState {
-  virtual ~RobotState() {};
+  virtual ~RobotState(){};
 };
 
 struct GripperConfig {
-  virtual ~GripperConfig() {};
+  virtual ~GripperConfig(){};
 };
 struct GripperState {
-  virtual ~GripperState() {};
+  virtual ~GripperState(){};
 };
 
 class Robot {
  public:
-  virtual ~Robot() {};
+  virtual ~Robot(){};
 
   // Also add an implementation specific set_parameters function that takes
   // a deduced config type
@@ -113,7 +112,7 @@ class Robot {
 
 class Gripper {
  public:
-  virtual ~Gripper() {};
+  virtual ~Gripper(){};
 
   // Also add an implementation specific set_parameters function that takes
   // a deduced config type

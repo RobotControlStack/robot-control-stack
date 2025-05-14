@@ -313,8 +313,8 @@ void FR3::osc() {
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
     this->traj_interpolator.next_step(this->controller_time,
-                                        desired_pos_EE_in_base_frame,
-                                        desired_quat_EE_in_base_frame);
+                                      desired_pos_EE_in_base_frame,
+                                      desired_quat_EE_in_base_frame);
     this->interpolator_mutex.unlock();
 
     // end torques handler

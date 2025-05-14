@@ -226,8 +226,7 @@ PYBIND11_MODULE(_core, m) {
       .value("SIMULATION", rcs::common::RobotPlatform::SIMULATION)
       .export_values();
 
-  py::class_<rcs::common::RobotMetaConfig>(common,
-                                                            "RobotMetaConfig")
+  py::class_<rcs::common::RobotMetaConfig>(common, "RobotMetaConfig")
       .def_readonly("q_home", &rcs::common::RobotMetaConfig::q_home)
       .def_readonly("dof", &rcs::common::RobotMetaConfig::dof)
       .def_readonly("joint_limits",
