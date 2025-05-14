@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import numpy as np
 import rcsss
@@ -9,12 +8,9 @@ from rcsss._core.hw import FR3Config, IKSolver
 from rcsss._core.sim import CameraType
 from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcsss.envs.creators import get_urdf_path
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# replace this with a path to a robot urdf file if you dont have the utn models
-URDF_PATH = None
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -51,9 +47,6 @@ python -m rcsss fr3 shutdown <ip>
 
 
 def main():
-    if "lab" not in rcsss.scenes:
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        sys.exit()
     context_manger: FCI | ContextManager
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
@@ -65,10 +58,9 @@ def main():
         robot: rcsss.common.Robot
         gripper: rcsss.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
-            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
+            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"]["mjb"])
+            urdf_path = rcsss.scenes["fr3_empty_world"]["urdf"]
+            ik = rcsss.common.IK(str(urdf_path))
             robot = rcsss.sim.SimRobot(simulation, "0", ik)
             cfg = sim.SimRobotConfig()
             cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
@@ -88,9 +80,8 @@ def main():
             simulation.open_gui()
 
         else:
-            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
+            urdf_path = rcsss.scenes["fr3_empty_world"]["urdf"]
+            ik = rcsss.common.IK(str(urdf_path))
             robot = rcsss.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())

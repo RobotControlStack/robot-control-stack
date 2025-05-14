@@ -35,7 +35,6 @@ from rcsss.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_realsense,
-    get_urdf_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,7 +65,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             ip (str): IP address of the robot.
             control_mode (ControlMode): Control mode for the robot.
             robot_cfg (rcsss.hw.FR3Config): Configuration for the FR3 robot.
-            collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
+            collision_guard (str | PathLike | None): Key to a built-in scene
                 or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
             gripper_cfg (rcsss.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
@@ -74,14 +73,13 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
-                which requires a UTN compatible lab scene to be present. If no URDF file is found, the environment will
-                still work but set_cartesian methods might throw an error. A URDF file is needed for collision guarding.
+            urdf_path (str | PathLike | None): Path to the URDF file. If None the included one is used. A URDF file is needed for collision guarding.
 
         Returns:
             gym.Env: The configured hardware environment for the FR3 robot.
         """
-        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
+        if urdf_path is None:
+            urdf_path = rcsss.scenes["fr3_empty_world"]["urdf"]
         ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
         robot = rcsss.hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
@@ -104,7 +102,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             env = CollisionGuard.env_from_xml_paths(
                 env,
                 str(rcsss.scenes.get(str(collision_guard), collision_guard)),
-                urdf_path,
+                str(urdf_path),
                 gripper=True,
                 check_home_collision=False,
                 control_mode=control_mode,
@@ -176,14 +174,16 @@ class RCSSimEnvCreator(EnvCreator):
         Returns:
             gym.Env: The configured simulation environment for the FR3 robot.
         """
-        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-        assert urdf_path is not None
+        if urdf_path is None:
+            urdf_path = rcsss.scenes["fr3_empty_world"]["urdf"]
         if mjcf not in rcsss.scenes:
-            logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-        mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
-        simulation = sim.Sim(mjb_file)
+            logger.info("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+        if mjcf in rcsss.scenes:
+            assert isinstance(mjcf, str)
+            mjcf = rcsss.scenes[mjcf]["mjb"]
+        simulation = sim.Sim(mjcf)
 
-        ik = rcsss.common.IK(urdf_path)
+        ik = rcsss.common.IK(str(urdf_path))
         robot = rcsss.sim.SimRobot(simulation, "0", ik)
         robot.set_parameters(robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
@@ -202,7 +202,7 @@ class RCSSimEnvCreator(EnvCreator):
             env = CollisionGuard.env_from_xml_paths(
                 env,
                 str(rcsss.scenes.get(str(mjcf), mjcf)),
-                urdf_path,
+                str(urdf_path),
                 gripper=gripper_cfg is not None,
                 check_home_collision=False,
                 control_mode=control_mode,
