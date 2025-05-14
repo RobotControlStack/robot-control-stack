@@ -177,7 +177,7 @@ void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
     this->interpolator_mutex.lock();
   }
 
-  this->joint_interpolator.Reset(
+  this->joint_interpolator.reset(
       this->controller_time,
       Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
       policy_rate, traj_rate, traj_interpolation_time_fraction);
@@ -212,7 +212,7 @@ void FR3::osc_set_cartesian_position(
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
-  this->traj_interpolator.Reset(
+  this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
       desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
@@ -310,15 +310,9 @@ void FR3::osc() {
     int traj_rate = 500;
 
     this->interpolator_mutex.lock();
-    // if (this->controller_time == 0) {
-    //   this->traj_interpolator.Reset(
-    //       0., pose.translation(), pose.quaternion(),
-    //       desired_pos_EE_in_base_frame, fixed_desired_quat_EE_in_base_frame,
-    //       policy_rate, traj_rate, traj_interpolation_time_fraction);
-    // }
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
-    this->traj_interpolator.GetNextStep(this->controller_time,
+    this->traj_interpolator.next_step(this->controller_time,
                                         desired_pos_EE_in_base_frame,
                                         desired_quat_EE_in_base_frame);
     this->interpolator_mutex.unlock();
@@ -501,7 +495,7 @@ void FR3::joint_controller() {
     this->interpolator_mutex.lock();
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
-    this->joint_interpolator.GetNextStep(this->controller_time, desired_q);
+    this->joint_interpolator.next_step(this->controller_time, desired_q);
     this->interpolator_mutex.unlock();
     // end torques handler
 
