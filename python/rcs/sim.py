@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Optional
 
 import mujoco as mj
-from rcsss._core.sim import Sim as _Sim
-from rcsss._core.sim import (
+from rcs._core.sim import Sim as _Sim
+from rcs._core.sim import (
     SimGripper,
     SimGripperConfig,
     SimGripperState,
@@ -15,7 +15,7 @@ from rcsss._core.sim import (
     SimRobotConfig,
     SimRobotState,
 )
-from rcsss._core.sim import open_gui_window as _open_gui_window
+from rcs._core.sim import open_gui_window as _open_gui_window
 
 __all__ = ["Sim", "SimRobot", "SimRobotConfig", "SimRobotState", "SimGripper", "SimGripperConfig", "SimGripperState"]
 
@@ -43,7 +43,7 @@ class Sim(_Sim):
 
     def open_gui(self):
         if self._gui_uuid is None:
-            self._gui_uuid = "rcsss_" + str(uuid.uuid4())
+            self._gui_uuid = "rcs_" + str(uuid.uuid4())
             self._start_gui_server(self._gui_uuid)
         self._mp_context.Process(target=_start_gui, args=(self._gui_uuid,), daemon=True).start()
 

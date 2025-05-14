@@ -2,14 +2,14 @@ import logging
 import sys
 
 import numpy as np
-import rcsss
-from rcsss import sim
-from rcsss._core.common import RobotPlatform
-from rcsss._core.hw import FR3Config, IKSolver
-from rcsss._core.sim import CameraType
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcsss.envs.creators import get_urdf_path
+import rcs
+from rcs import sim
+from rcs._core.common import RobotPlatform
+from rcs._core.hw import FR3Config, IKSolver
+from rcs._core.sim import CameraType
+from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs.envs.creators import get_urdf_path
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
@@ -34,24 +34,24 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcsss fr3 unlock <ip>
+python -m rcs fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcsss fr3 guiding-mode <ip>
+python -m rcs fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcsss fr3 lock <ip>
+python -m rcs fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcsss fr3 shutdown <ip>
+python -m rcs fr3 shutdown <ip>
 """
 
 
 def main():
-    if "lab" not in rcsss.scenes:
+    if "lab" not in rcs.scenes:
         logger.error("This pip package was not built with the UTN lab models, aborting.")
         sys.exit()
     context_manger: FCI | ContextManager
@@ -62,16 +62,16 @@ def main():
         context_manger = ContextManager()
 
     with context_manger:
-        robot: rcsss.common.Robot
-        gripper: rcsss.common.Gripper
+        robot: rcs.common.Robot
+        gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            simulation = sim.Sim(rcsss.scenes["fr3_empty_world"])
+            simulation = sim.Sim(rcs.scenes["fr3_empty_world"])
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
-            robot = rcsss.sim.SimRobot(simulation, "0", ik)
+            ik = rcs.common.IK(urdf_path)
+            robot = rcs.sim.SimRobot(simulation, "0", ik)
             cfg = sim.SimRobotConfig()
-            cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+            cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             cfg.realtime = False
             robot.set_parameters(cfg)
 
@@ -90,18 +90,18 @@ def main():
         else:
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
-            ik = rcsss.common.IK(urdf_path)
-            robot = rcsss.hw.FR3(ROBOT_IP, ik)
+            ik = rcs.common.IK(urdf_path)
+            robot = rcs.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
-            robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+            robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             robot_cfg.ik_solver = IKSolver.rcs
             robot.set_parameters(robot_cfg)
 
-            gripper_cfg_hw = rcsss.hw.FHConfig()
+            gripper_cfg_hw = rcs.hw.FHConfig()
             gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
             gripper_cfg_hw.speed = 0.1
             gripper_cfg_hw.force = 30
-            gripper = rcsss.hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
+            gripper = rcs.hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
             input("the robot is going to move, press enter whenever you are ready")
 
         # move to home position and open gripper
@@ -113,7 +113,7 @@ def main():
 
         # 5cm in x direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0.05, 0, 0]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -122,7 +122,7 @@ def main():
 
         # 5cm in y direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0.05, 0]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0.05, 0]))
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -131,7 +131,7 @@ def main():
 
         # 5cm in z direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0, 0.05]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.05]))
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -139,8 +139,8 @@ def main():
             logger.debug(f"sim converged: {simulation.is_converged()}")
 
         # rotate the arm 90 degrees around the inverted y and z axis
-        new_pose = robot.get_cartesian_position() * rcsss.common.Pose(
-            translation=np.array([0, 0, 0]), rpy=rcsss.common.RPY(roll=0, pitch=-np.deg2rad(90), yaw=-np.deg2rad(90))
+        new_pose = robot.get_cartesian_position() * rcs.common.Pose(
+            translation=np.array([0, 0, 0]), rpy=rcs.common.RPY(roll=0, pitch=-np.deg2rad(90), yaw=-np.deg2rad(90))
         )
         robot.set_cartesian_position(new_pose)
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
@@ -155,7 +155,7 @@ def main():
 
         # move 25cm towards the gripper direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0, 0.25]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.25]))
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -170,7 +170,7 @@ def main():
 
         # move 25cm backward
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcsss.common.Pose(translation=np.array([0, 0, -0.25]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, -0.25]))
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()

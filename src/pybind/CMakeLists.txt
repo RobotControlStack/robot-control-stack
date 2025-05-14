@@ -10,4 +10,4 @@ set_target_properties(franka PROPERTIES
     INSTALL_RPATH "$ORIGIN/../cmeel.prefix/lib"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
-install(TARGETS _core franka DESTINATION rcsss COMPONENT python_package)
+install(TARGETS _core franka DESTINATION rcs COMPONENT python_package)

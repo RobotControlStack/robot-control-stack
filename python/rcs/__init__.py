@@ -4,9 +4,9 @@ import pathlib
 import site
 
 from gymnasium import register
-from rcsss import camera, control, envs, sim
-from rcsss._core import __version__, common, hw
-from rcsss.envs.creators import (
+from rcs import camera, control, envs, sim
+from rcs._core import __version__, common, hw
+from rcs.envs.creators import (
     FR3LabPickUpSimDigitHandEnvCreator,
     FR3SimplePickUpSimDigitHandEnvCreator,
     FR3SimplePickUpSimEnvCreator,
@@ -16,7 +16,7 @@ from rcsss.envs.creators import (
 
 # available mujoco scenes
 scenes = {
-    path.stem: path / "scene.mjb" for path in (pathlib.Path(site.getsitepackages()[0]) / "rcsss" / "scenes").glob("*")
+    path.stem: path / "scene.mjb" for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }
 
 # make submodules available

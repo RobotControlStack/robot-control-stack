@@ -3,11 +3,11 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-import rcsss
-from rcsss import sim
-from rcsss.envs.base import ControlMode, GripperWrapper, RobotEnv
-from rcsss.envs.space_utils import ActObsInfoWrapper, VecType
-from rcsss.envs.utils import default_fr3_sim_robot_cfg
+import rcs
+from rcs import sim
+from rcs.envs.base import ControlMode, GripperWrapper, RobotEnv
+from rcs.envs.space_utils import ActObsInfoWrapper, VecType
+from rcs.envs.utils import default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -153,15 +153,15 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         id: str = "0",
         gripper: bool = True,
         check_home_collision: bool = True,
-        tcp_offset: rcsss.common.Pose | None = None,
+        tcp_offset: rcs.common.Pose | None = None,
         control_mode: ControlMode | None = None,
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
-        ik = rcsss.common.IK(urdf, max_duration_ms=300)
-        robot = rcsss.sim.SimRobot(simulation, id, ik)
+        ik = rcs.common.IK(urdf, max_duration_ms=300)
+        robot = rcs.sim.SimRobot(simulation, id, ik)
         cfg = sim.SimRobotConfig()
         cfg.realtime = False
         if tcp_offset is not None:
@@ -205,7 +205,7 @@ class RandomCubePos(SimWrapper):
         self.sim.step(1)
 
         iso_cube = np.array([0.498, 0.0, 0.226])
-        iso_cube_pose = rcsss.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
         pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
@@ -250,7 +250,7 @@ class CamRobot(gym.Wrapper):
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
-        self.cam_robot = rcsss.sim.SimRobot(
+        self.cam_robot = rcs.sim.SimRobot(
             self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False
         )
         self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))

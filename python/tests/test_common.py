@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 import pytest
-from rcsss import common
+from rcs import common
 
 
 class TestPose:

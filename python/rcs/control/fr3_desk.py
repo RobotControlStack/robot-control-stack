@@ -10,16 +10,16 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 from urllib import parse
 
-import rcsss
+import rcs
 import requests
 from dotenv import load_dotenv
-from rcsss.envs.creators import default_fr3_hw_gripper_cfg
+from rcs.envs.creators import default_fr3_hw_gripper_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
 _logger = logging.getLogger("desk")
 
-TOKEN_PATH = "~/.rcsss/token.conf"
+TOKEN_PATH = "~/.rcs/token.conf"
 """
 Path to the configuration file holding known control tokens.
 If :py:class:`Desk` is used to connect to a control unit's
@@ -37,13 +37,13 @@ def load_creds_fr3_desk() -> tuple[str, str]:
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
-        f = rcsss.hw.FR3(ip)
-        config = rcsss.hw.FR3Config()
+        f = rcs.hw.FR3(ip)
+        config = rcs.hw.FR3Config()
         config.speed_factor = 0.2
-        config.ik_solver = rcsss.hw.IKSolver.franka
+        config.ik_solver = rcs.hw.IKSolver.franka
         f.set_parameters(config)
-        config_hand = rcsss.hw.FHConfig()
-        g = rcsss.hw.FrankaHand(ip, config_hand)
+        config_hand = rcs.hw.FHConfig()
+        g = rcs.hw.FrankaHand(ip, config_hand)
         if shut:
             g.shut()
         else:
@@ -53,8 +53,8 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
-        f = rcsss.hw.FR3(ip)
-        config = rcsss.hw.FR3Config()
+        f = rcs.hw.FR3(ip)
+        config = rcs.hw.FR3Config()
         f.set_parameters(config)
         print("Robot info:")
         print("Current cartesian position:")
@@ -63,7 +63,7 @@ def info(ip: str, username: str, password: str, include_hand: bool = False):
         print(f.get_joint_position())
         if include_hand:
             config_hand = default_fr3_hw_gripper_cfg()
-            g = rcsss.hw.FrankaHand(ip, config_hand)
+            g = rcs.hw.FrankaHand(ip, config_hand)
             print("Gripper info:")
             print("Current normalized width:")
             print(g.get_normalized_width())

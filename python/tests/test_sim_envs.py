@@ -2,8 +2,8 @@ from typing import cast
 
 import numpy as np
 import pytest
-import rcsss
-from rcsss.envs.base import (
+import rcs
+from rcs.envs.base import (
     ControlMode,
     GripperDictType,
     JointsDictType,
@@ -11,8 +11,8 @@ from rcsss.envs.base import (
     TQuatDictType,
     TRPYDictType,
 )
-from rcsss.envs.creators import RCSSimEnvCreator
-from rcsss.envs.utils import (
+from rcs.envs.creators import RCSSimEnvCreator
+from rcs.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
@@ -40,10 +40,10 @@ class TestSimEnvs:
     def assert_no_pose_change(self, info: dict, initial_obs: dict, final_obs: dict):
         assert info["ik_success"]
         assert info["is_sim_converged"]
-        out_pose = rcsss.common.Pose(
+        out_pose = rcs.common.Pose(
             translation=np.array(final_obs["tquat"][:3]), quaternion=np.array(final_obs["tquat"][3:])
         )
-        expected_pose = rcsss.common.Pose(
+        expected_pose = rcs.common.Pose(
             translation=np.array(initial_obs["tquat"][:3]), quaternion=np.array(initial_obs["tquat"][3:])
         )
         assert out_pose.is_close(expected_pose, 1e-2, 1e-3)
@@ -99,7 +99,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         # shift the translation in x
         t[0] += x_pos_change
         q = initial_tquat[3:]
-        initial_pose = rcsss.common.Pose(translation=np.array(t), quaternion=np.array(q))
+        initial_pose = rcs.common.Pose(translation=np.array(t), quaternion=np.array(q))
         xyzrpy = np.concatenate([t, initial_pose.rotation_rpy().as_vector()], axis=0)
         non_zero_action = TRPYDictType(xyzrpy=np.array(xyzrpy))
         non_zero_action.update(GripperDictType(gripper=0))

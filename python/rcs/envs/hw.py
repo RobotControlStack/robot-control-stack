@@ -2,8 +2,8 @@ import logging
 from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
-from rcsss import hw
-from rcsss.envs.base import RobotEnv
+from rcs import hw
+from rcs.envs.base import RobotEnv
 
 _logger = logging.getLogger(__name__)
 

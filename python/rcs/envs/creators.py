@@ -4,13 +4,13 @@ from typing import Type
 
 import gymnasium as gym
 import numpy as np
-import rcsss
+import rcs
 from gymnasium.envs.registration import EnvCreator
-from rcsss import sim
-from rcsss._core.sim import CameraType
-from rcsss.camera.hw import BaseHardwareCameraSet
-from rcsss.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
-from rcsss.envs.base import (
+from rcs import sim
+from rcs._core.sim import CameraType
+from rcs.camera.hw import BaseHardwareCameraSet
+from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
@@ -18,8 +18,8 @@ from rcsss.envs.base import (
     RelativeTo,
     RobotEnv,
 )
-from rcsss.envs.hw import FR3HW
-from rcsss.envs.sim import (
+from rcs.envs.hw import FR3HW
+from rcs.envs.sim import (
     CamRobot,
     CollisionGuard,
     FR3Sim,
@@ -28,8 +28,8 @@ from rcsss.envs.sim import (
     RandomCubePos,
     SimWrapper,
 )
-from rcsss.envs.space_utils import VecType
-from rcsss.envs.utils import (
+from rcs.envs.space_utils import VecType
+from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
@@ -51,9 +51,9 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         self,
         ip: str,
         control_mode: ControlMode,
-        robot_cfg: rcsss.hw.FR3Config,
+        robot_cfg: rcs.hw.FR3Config,
         collision_guard: str | PathLike | None = None,
-        gripper_cfg: rcsss.hw.FHConfig | None = None,
+        gripper_cfg: rcs.hw.FHConfig | None = None,
         camera_set: BaseHardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -65,10 +65,10 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         Args:
             ip (str): IP address of the robot.
             control_mode (ControlMode): Control mode for the robot.
-            robot_cfg (rcsss.hw.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
                 or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
-            gripper_cfg (rcsss.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+            gripper_cfg (rcs.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
@@ -82,15 +82,15 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             gym.Env: The configured hardware environment for the FR3 robot.
         """
         urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
-        ik = rcsss.common.IK(str(urdf_path)) if urdf_path is not None else None
-        robot = rcsss.hw.FR3(ip, ik)
+        ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
+        robot = rcs.hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
 
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
         if gripper_cfg is not None:
-            gripper = rcsss.hw.FrankaHand(ip, gripper_cfg)
+            gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
 
         if camera_set is not None:
@@ -103,12 +103,12 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             assert urdf_path is not None
             env = CollisionGuard.env_from_xml_paths(
                 env,
-                str(rcsss.scenes.get(str(collision_guard), collision_guard)),
+                str(rcs.scenes.get(str(collision_guard), collision_guard)),
                 urdf_path,
                 gripper=True,
                 check_home_collision=False,
                 control_mode=control_mode,
-                tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+                tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
                 sim_gui=True,
                 truncate_on_collision=False,
             )
@@ -144,9 +144,9 @@ class RCSSimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         control_mode: ControlMode,
-        robot_cfg: rcsss.sim.SimRobotConfig,
+        robot_cfg: rcs.sim.SimRobotConfig,
         collision_guard: bool = False,
-        gripper_cfg: rcsss.sim.SimGripperConfig | None = None,
+        gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         camera_set_cfg: SimCameraSetConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -159,9 +159,9 @@ class RCSSimEnvCreator(EnvCreator):
 
         Args:
             control_mode (ControlMode): Control mode for the robot.
-            robot_cfg (rcsss.sim.SimRobotConfig): Configuration for the FR3 robot.
+            robot_cfg (rcs.sim.SimRobotConfig): Configuration for the FR3 robot.
             collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
-            gripper_cfg (rcsss.sim.SimGripperConfig | None): Configuration for the gripper. If None, no gripper is used.
+            gripper_cfg (rcs.sim.SimGripperConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
@@ -178,13 +178,13 @@ class RCSSimEnvCreator(EnvCreator):
         """
         urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
         assert urdf_path is not None
-        if mjcf not in rcsss.scenes:
+        if mjcf not in rcs.scenes:
             logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-        mjb_file = rcsss.scenes.get(str(mjcf), mjcf)
+        mjb_file = rcs.scenes.get(str(mjcf), mjcf)
         simulation = sim.Sim(mjb_file)
 
-        ik = rcsss.common.IK(urdf_path)
-        robot = rcsss.sim.SimRobot(simulation, "0", ik)
+        ik = rcs.common.IK(urdf_path)
+        robot = rcs.sim.SimRobot(simulation, "0", ik)
         robot.set_parameters(robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = FR3Sim(env, simulation, sim_wrapper)
@@ -201,12 +201,12 @@ class RCSSimEnvCreator(EnvCreator):
         if collision_guard:
             env = CollisionGuard.env_from_xml_paths(
                 env,
-                str(rcsss.scenes.get(str(mjcf), mjcf)),
+                str(rcs.scenes.get(str(mjcf), mjcf)),
                 urdf_path,
                 gripper=gripper_cfg is not None,
                 check_home_collision=False,
                 control_mode=control_mode,
-                tcp_offset=rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()),
+                tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
                 sim_gui=True,
                 truncate_on_collision=True,
             )
