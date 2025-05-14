@@ -36,8 +36,8 @@ Checkout the python examples that we provide in [python/examples](python/example
 All of these examples work both in the MuJoCo simulation as well as on your hardware FR3.
 Just switch between the following settings in the example script
 ```python
-ROBOT_INSTANCE = RobotInstance.SIMULATION
-# ROBOT_INSTANCE = RobotInstance.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 ```
 and add your robot credentials to a `.env` file like this:
 ```env

@@ -6,6 +6,7 @@ from typing import (
     Type,
     TypeAlias,
     TypedDict,
+    TypeVar,
     get_args,
     get_origin,
     get_type_hints,
@@ -14,6 +15,8 @@ from typing import (
 import gymnasium as gym
 import numpy as np
 
+M = TypeVar("M", bound=int)
+VecType: TypeAlias = np.ndarray[M, np.dtype[np.float64]]
 Vec7Type: TypeAlias = np.ndarray[Literal[7], np.dtype[np.float64]]
 Vec3Type: TypeAlias = np.ndarray[Literal[3], np.dtype[np.float64]]
 Vec6Type: TypeAlias = np.ndarray[Literal[6], np.dtype[np.float64]]

@@ -12,33 +12,71 @@
 namespace rcs {
 namespace common {
 
-enum RobotType { FR3 = 0, UR5e };
+struct RobotMetaConfig {
+  VectorXd q_home;
+  int dof;
+  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits;
+};
 
-static const std::map<RobotType, Vector7d> robots_q_home = {
-    {FR3, (common::Vector7d() << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
-           M_PI_4)
-              .finished()},
-    {UR5e, (common::Vector7d() << -0.4488354, -2.02711196, 1.64630026,
-            -1.18999615, -1.57079762, -2.01963249, 0.0)
-               .finished()}};
+enum RobotType { FR3 = 0, UR5e };
+enum RobotPlatform { SIMULATION = 0, HARDWARE };
+
+
+static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
+    {{// -------------- FR3 --------------
+      {FR3,
+       RobotMetaConfig{
+           // q_home:
+           (Vector7d() << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2, M_PI_4)
+               .finished(),
+           // dof:
+           7,
+           // joint_limits:
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+                // low 7‐tuple
+                -2.3093,
+            -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
+            // high 7‐tuple
+            2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+               .finished()}},
+
+      // -------------- UR5e --------------
+      {UR5e,
+       RobotMetaConfig{
+           // q_home (6‐vector):
+           (Vector6d() << -0.4488354, -2.02711196, 1.64630026, -1.18999615,
+            -1.57079762, -2.01963249)
+               .finished(),
+           // dof:
+           6,
+           // joint_limits (2×6):
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 6) <<
+                // low 6‐tuple
+                -2 * M_PI,
+            -2 * M_PI, -1 * M_PI, -2 * M_PI, -2 * M_PI, -2 * M_PI,
+            // high 6‐tuple
+            2 * M_PI, 2 * M_PI, 1 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI)
+               .finished()}}}};
 
 struct RobotConfig {
-  virtual ~RobotConfig(){};
+  RobotType robot_type = RobotType::FR3;
+  RobotPlatform robot_platform = RobotPlatform::SIMULATION;
+  virtual ~RobotConfig() {};
 };
 struct RobotState {
-  virtual ~RobotState(){};
+  virtual ~RobotState() {};
 };
 
 struct GripperConfig {
-  virtual ~GripperConfig(){};
+  virtual ~GripperConfig() {};
 };
 struct GripperState {
-  virtual ~GripperState(){};
+  virtual ~GripperState() {};
 };
 
 class Robot {
  public:
-  virtual ~Robot(){};
+  virtual ~Robot() {};
 
   // Also add an implementation specific set_parameters function that takes
   // a deduced config type
@@ -52,9 +90,9 @@ class Robot {
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual void set_joint_position(const Vector7d& q) = 0;
+  virtual void set_joint_position(const VectorXd& q) = 0;
 
-  virtual Vector7d get_joint_position() = 0;
+  virtual VectorXd get_joint_position() = 0;
 
   virtual void move_home() = 0;
 
@@ -75,7 +113,7 @@ class Robot {
 
 class Gripper {
  public:
-  virtual ~Gripper(){};
+  virtual ~Gripper() {};
 
   // Also add an implementation specific set_parameters function that takes
   // a deduced config type

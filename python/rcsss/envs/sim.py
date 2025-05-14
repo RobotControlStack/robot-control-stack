@@ -6,7 +6,7 @@ import numpy as np
 import rcsss
 from rcsss import sim
 from rcsss.envs.base import ControlMode, GripperWrapper, RobotEnv
-from rcsss.envs.space_utils import ActObsInfoWrapper, Vec7Type
+from rcsss.envs.space_utils import ActObsInfoWrapper, VecType
 from rcsss.envs.utils import default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
@@ -245,7 +245,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
 class CamRobot(gym.Wrapper):
     """Use this wrapper in lab setups where the second arm is used as a camera holder."""
 
-    def __init__(self, env, cam_robot_joints: Vec7Type, scene: str = "lab_simple_pick_up_digit_hand"):
+    def __init__(self, env, cam_robot_joints: VecType, scene: str = "lab_simple_pick_up_digit_hand"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."

@@ -59,7 +59,8 @@ SimRobot::SimRobot(std::shared_ptr<Sim> sim, const std::string& id,
 SimRobot::~SimRobot() {}
 
 void SimRobot::move_home() {
-  this->set_joint_position(common::robots_q_home.at(this->cfg.robot_type));
+  this->set_joint_position(
+      common::robots_meta_config.at(this->cfg.robot_type).q_home);
 }
 
 void SimRobot::init_ids() {
@@ -133,7 +134,7 @@ common::Pose SimRobot::get_cartesian_position() {
   return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
-void SimRobot::set_joint_position(const common::Vector7d& q) {
+void SimRobot::set_joint_position(const common::VectorXd& q) {
   this->state.target_angles = q;
   this->state.previous_angles = this->get_joint_position();
   this->state.is_moving = true;
@@ -143,8 +144,8 @@ void SimRobot::set_joint_position(const common::Vector7d& q) {
   }
 }
 
-common::Vector7d SimRobot::get_joint_position() {
-  common::Vector7d q;
+common::VectorXd SimRobot::get_joint_position() {
+  common::VectorXd q(std::size(model_names.joints));
   for (size_t i = 0; i < std::size(model_names.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
   }
@@ -167,7 +168,7 @@ void SimRobot::set_cartesian_position(const common::Pose& pose) {
   }
 }
 void SimRobot::is_moving_callback() {
-  common::Vector7d current_angles = this->get_joint_position();
+  common::VectorXd current_angles = this->get_joint_position();
   // difference of the largest element is smaller than threshold
   this->state.is_moving =
       (current_angles - this->state.previous_angles).cwiseAbs().maxCoeff() >
@@ -176,7 +177,7 @@ void SimRobot::is_moving_callback() {
 }
 
 void SimRobot::is_arrived_callback() {
-  common::Vector7d current_angles = this->get_joint_position();
+  common::VectorXd current_angles = this->get_joint_position();
   this->state.is_arrived =
       (current_angles - this->state.target_angles).cwiseAbs().maxCoeff() <
       this->cfg.joint_rotational_tolerance;
@@ -204,10 +205,11 @@ bool SimRobot::convergence_callback() {
 }
 
 void SimRobot::m_reset() {
-  this->set_joints_hard(common::robots_q_home.at(this->cfg.robot_type));
+  this->set_joints_hard(
+      common::robots_meta_config.at(this->cfg.robot_type).q_home);
 }
 
-void SimRobot::set_joints_hard(const common::Vector7d& q) {
+void SimRobot::set_joints_hard(const common::VectorXd& q) {
   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
     size_t jnt_id = this->ids.joints[i];
     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];

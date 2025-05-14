@@ -31,9 +31,9 @@ class LinearPoseTrajInterpolator {
         max_time_(1.),
         start_time_(0.),
         start_(false),
-        first_goal_(true){};
+        first_goal_(true) {};
 
-  inline ~LinearPoseTrajInterpolator(){};
+  inline ~LinearPoseTrajInterpolator() {};
 
   inline void Reset(const double &time_sec, const Eigen::Vector3d &p_start,
                     const Eigen::Quaterniond &q_start,
@@ -123,9 +123,9 @@ class LinearJointPositionTrajInterpolator {
         max_time_(1.),
         start_time_(0.),
         start_(false),
-        first_goal_(true){};
+        first_goal_(true) {};
 
-  inline ~LinearJointPositionTrajInterpolator(){};
+  inline ~LinearJointPositionTrajInterpolator() {};
 
   inline void Reset(const double &time_sec,
                     const Eigen::Matrix<double, 7, 1> &q_start,

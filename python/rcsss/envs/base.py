@@ -14,6 +14,7 @@ from rcsss.envs.space_utils import (
     RCSpaceType,
     Vec6Type,
     Vec7Type,
+    VecType,
     get_space,
     get_space_keys,
 )
@@ -29,7 +30,7 @@ class TRPYDictType(RCSpaceType):
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0, -np.deg2rad(180), -np.deg2rad(180), -np.deg2rad(180)]),
             high=np.array([0.855, 0.855, 1.188, np.deg2rad(180), np.deg2rad(180), np.deg2rad(180)]),
-            dtype=np.float32,
+            dtype=np.float64,
         ),
     ]
 
@@ -37,10 +38,10 @@ class TRPYDictType(RCSpaceType):
 class LimitedTRPYRelDictType(RCSpaceType):
     xyzrpy: Annotated[
         Vec6Type,
-        lambda max_cart_mov: gym.spaces.Box(
-            low=np.array(3 * [-max_cart_mov] + 3 * [-np.deg2rad(180)]),
-            high=np.array(3 * [max_cart_mov] + 3 * [np.deg2rad(180)]),
-            dtype=np.float32,
+        lambda max_cart_mov, max_angle_mov: gym.spaces.Box(
+            low=np.array(3 * [-max_cart_mov] + 3 * [-max_angle_mov]),
+            high=np.array(3 * [max_cart_mov] + 3 * [max_angle_mov]),
+            dtype=np.float64,
         ),
         "cart_limits",
     ]
@@ -52,7 +53,7 @@ class TQuatDictType(RCSpaceType):
         gym.spaces.Box(
             low=np.array([-0.855, -0.855, 0] + [-1] + [-np.inf] * 3),
             high=np.array([0.855, 0.855, 1.188] + [1] + [np.inf] * 3),
-            dtype=np.float32,
+            dtype=np.float64,
         ),
     ]
 
@@ -63,7 +64,7 @@ class LimitedTQuatRelDictType(RCSpaceType):
         lambda max_cart_mov: gym.spaces.Box(
             low=np.array(3 * [-max_cart_mov] + [-1] + [-np.inf] * 3),
             high=np.array(3 * [max_cart_mov] + [1] + [np.inf] * 3),
-            dtype=np.float32,
+            dtype=np.float64,
         ),
         "cart_limits",
     ]
@@ -71,22 +72,23 @@ class LimitedTQuatRelDictType(RCSpaceType):
 
 class JointsDictType(RCSpaceType):
     joints: Annotated[
-        Vec7Type,
-        gym.spaces.Box(
-            low=np.array([-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]),
-            high=np.array([2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895]),
-            dtype=np.float32,
+        VecType,
+        lambda low, high: gym.spaces.Box(
+            low=np.array(low),
+            high=np.array(high),
+            dtype=np.float64,
         ),
+        "joint_limits",
     ]
 
 
 class LimitedJointsRelDictType(RCSpaceType):
     joints: Annotated[
-        Vec7Type,
-        lambda max_joint_mov: gym.spaces.Box(
-            low=np.array(7 * [-max_joint_mov]),
-            high=np.array(7 * [max_joint_mov]),
-            dtype=np.float32,
+        VecType,
+        lambda max_joint_mov, dof=7: gym.spaces.Box(
+            low=np.array(dof * [-max_joint_mov]),
+            high=np.array(dof * [max_joint_mov]),
+            dtype=np.float64,
         ),
         "joint_limits",
     ]
@@ -125,27 +127,29 @@ CartOrJointContType: TypeAlias = TQuatDictType | JointsDictType | TRPYDictType
 LimitedCartOrJointContType: TypeAlias = LimitedTQuatRelDictType | LimitedJointsRelDictType | LimitedTRPYRelDictType
 
 
-class ObsArmsGr(ArmObsType, GripperDictType):
-    pass
-
-
-class ObsArmsGrCam(ArmObsType, GripperDictType, CameraDictType):
-    pass
-
-
-class ObsArmsGrCamCG(ArmObsType, GripperDictType, CameraDictType):
-    pass
-
-
 class ControlMode(Enum):
     JOINTS = auto()
     CARTESIAN_TRPY = auto()
     CARTESIAN_TQuat = auto()
 
 
-class RobotInstance(Enum):
-    HARDWARE = auto()
-    SIMULATION = auto()
+def get_dof(robot: common.Robot) -> int:
+    """Returns the number of degrees of freedom of the robot."""
+    return common.robots_meta_config(robot.get_parameters().robot_type).dof
+
+
+def get_joint_limits(robot: common.Robot) -> tuple[np.ndarray, np.ndarray]:
+    """Returns the joint limits of the robot.
+
+    The first element is the lower limit, the second element is the upper limit.
+    """
+    limits = common.robots_meta_config(robot.get_parameters().robot_type).joint_limits
+    return limits[0], limits[1]
+
+
+def get_home_position(robot: common.Robot) -> np.ndarray:
+    """Returns the home position of the robot."""
+    return common.robots_meta_config(robot.get_parameters().robot_type).q_home
 
 
 class RobotEnv(gym.Env):
@@ -164,8 +168,9 @@ class RobotEnv(gym.Env):
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
+        low, high = get_joint_limits(self.robot)
         if control_mode == ControlMode.JOINTS:
-            self.action_space = get_space(JointsDictType)
+            self.action_space = get_space(JointsDictType, params={"joint_limits": {"low": low, "high": high}})
         elif control_mode == ControlMode.CARTESIAN_TRPY:
             self.action_space = get_space(TRPYDictType)
         elif control_mode == ControlMode.CARTESIAN_TQuat:
@@ -173,7 +178,7 @@ class RobotEnv(gym.Env):
         else:
             msg = "Control mode not recognized!"
             raise ValueError(msg)
-        self.observation_space = get_space(ArmObsType)
+        self.observation_space = get_space(ArmObsType, params={"joint_limits": {"low": low, "high": high}})
         self.joints_key = get_space_keys(JointsDictType)[0]
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquat_key = get_space_keys(TQuatDictType)[0]
@@ -313,16 +318,25 @@ class RelativeActionSpace(gym.ActionWrapper):
         if self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY:
             assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
-                get_space(LimitedTRPYRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
+                get_space(
+                    LimitedTRPYRelDictType,
+                    params={"cart_limits": {"max_cart_mov": self.max_mov[0], "max_angle_mov": self.max_mov[1]}},
+                ).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self.action_space.spaces.update(
-                get_space(LimitedJointsRelDictType, params={"joint_limits": {"max_joint_mov": self.max_mov}}).spaces
+                get_space(
+                    LimitedJointsRelDictType,
+                    params={"joint_limits": {"max_joint_mov": self.max_mov, "dof": get_dof(self.unwrapped.robot)}},
+                ).spaces
             )
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TQuat:
             assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
-                get_space(LimitedTQuatRelDictType, params={"cart_limits": {"max_cart_mov": self.max_mov[0]}}).spaces
+                get_space(
+                    LimitedTQuatRelDictType,
+                    params={"cart_limits": {"max_cart_mov": self.max_mov[0]}},
+                ).spaces
             )
         else:
             msg = "Control mode not recognized!"
@@ -331,14 +345,14 @@ class RelativeActionSpace(gym.ActionWrapper):
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
         self.tquat_key = get_space_keys(LimitedTQuatRelDictType)[0]
         self.initial_obs: dict[str, Any] | None = None
-        self._origin: common.Pose | Vec7Type | None = None
-        self._last_action: common.Pose | Vec7Type | None = None
+        self._origin: common.Pose | VecType | None = None
+        self._last_action: common.Pose | VecType | None = None
 
-    def set_origin(self, origin: common.Pose | Vec7Type):
+    def set_origin(self, origin: common.Pose | VecType):
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             assert isinstance(
                 origin, np.ndarray
-            ), "Invalid origin type. If control mode is joints, origin must be Vec7Type."
+            ), "Invalid origin type. If control mode is joints, origin must be VecType."
             self._origin = copy.deepcopy(origin)
         else:
             assert isinstance(
@@ -368,7 +382,7 @@ class RelativeActionSpace(gym.ActionWrapper):
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS and self.joints_key in action:
             assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             assert isinstance(self.max_mov, float)
-            joint_space = cast(gym.spaces.Box, get_space(JointsDictType).spaces[self.joints_key])
+            low, high = get_joint_limits(self.unwrapped.robot)
             # TODO: should we also clip euqally for all joints?
             if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
                 limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
@@ -378,9 +392,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 limited_joints_diff = np.clip(joints_diff, -self.max_mov, self.max_mov)
                 limited_joints = limited_joints_diff + self._last_action
                 self._last_action = limited_joints
-            action.update(
-                JointsDictType(joints=np.clip(self._origin + limited_joints, joint_space.low, joint_space.high))
-            )
+            action.update(JointsDictType(joints=np.clip(self._origin + limited_joints, low, high)))
 
         elif self.unwrapped.get_control_mode() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
             assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."

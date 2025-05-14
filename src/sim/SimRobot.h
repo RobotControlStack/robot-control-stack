@@ -22,8 +22,8 @@ struct SimRobotConfig : common::RobotConfig {
 };
 
 struct SimRobotState : common::RobotState {
-  common::Vector7d previous_angles;
-  common::Vector7d target_angles;
+  common::VectorXd previous_angles;
+  common::VectorXd target_angles;
   common::Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
@@ -41,14 +41,14 @@ class SimRobot : public common::Robot {
   SimRobotConfig *get_parameters() override;
   SimRobotState *get_state() override;
   common::Pose get_cartesian_position() override;
-  void set_joint_position(const common::Vector7d &q) override;
-  common::Vector7d get_joint_position() override;
+  void set_joint_position(const common::VectorXd &q) override;
+  common::VectorXd get_joint_position() override;
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;
   std::optional<std::shared_ptr<common::IK>> get_ik() override;
   void reset() override;
-  void set_joints_hard(const common::Vector7d &q);
+  void set_joints_hard(const common::VectorXd &q);
 
  private:
   SimRobotConfig cfg;

@@ -167,14 +167,14 @@ class TestSimEnvsTRPY(TestSimEnvs):
         )
         obs, _ = env.reset()
         unwrapped = cast(RobotEnv, env.unwrapped)
-        p1 = unwrapped.robot.get_joint_position()
+        p1: np.ndarray = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["xyzrpy"][0] = 0.4
         obs["xyzrpy"][2] = -0.05
         collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
-        p2 = unwrapped.robot.get_joint_position()
+        p2: np.ndarray = unwrapped.robot.get_joint_position()
         self.assert_collision(info)
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -287,14 +287,14 @@ class TestSimEnvsTquat(TestSimEnvs):
         )
         obs, _ = env.reset()
         unwrapped = cast(RobotEnv, env.unwrapped)
-        p1 = unwrapped.robot.get_joint_position()
+        p1: np.ndarray = unwrapped.robot.get_joint_position()
         # an obvious below ground collision action
         obs["tquat"][0] = 0.4
         obs["tquat"][2] = -0.05
         collision_action = TQuatDictType(tquat=obs["tquat"])
         collision_action.update(GripperDictType(gripper=0))
         _, _, _, _, info = env.step(collision_action)
-        p2 = unwrapped.robot.get_joint_position()
+        p2: np.ndarray = unwrapped.robot.get_joint_position()
         self.assert_collision(info)
         # assure that the robot did not move
         assert np.allclose(p1, p2)
@@ -380,12 +380,12 @@ class TestSimEnvsJoints(TestSimEnvs):
         )
         env.reset()
         unwrapped = cast(RobotEnv, env.unwrapped)
-        p1 = unwrapped.robot.get_joint_position()
+        p1: np.ndarray = unwrapped.robot.get_joint_position()
         # the below action is a test_case where there is an obvious collision regardless of the gripper action
         collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
         collision_act.update(GripperDictType(gripper=1))
         _, _, _, _, info = env.step(collision_act)
-        p2 = unwrapped.robot.get_joint_position()
+        p2: np.ndarray = unwrapped.robot.get_joint_position()
 
         self.assert_collision(info)
         # assure that the robot did not move

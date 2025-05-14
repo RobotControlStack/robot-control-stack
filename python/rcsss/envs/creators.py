@@ -28,7 +28,7 @@ from rcsss.envs.sim import (
     RandomCubePos,
     SimWrapper,
 )
-from rcsss.envs.space_utils import Vec7Type
+from rcsss.envs.space_utils import VecType
 from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -304,7 +304,7 @@ class FR3SimplePickUpSimDigitHandEnvCreator(EnvCreator):
 class FR3LabPickUpSimDigitHandEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
-        cam_robot_joints: Vec7Type,
+        cam_robot_joints: VecType,
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         resolution: tuple[int, int] | None = None,

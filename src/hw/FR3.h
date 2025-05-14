@@ -76,9 +76,9 @@ class FR3 : public common::Robot {
 
   common::Pose get_cartesian_position() override;
 
-  void set_joint_position(const common::Vector7d &q) override;
+  void set_joint_position(const common::VectorXd &q) override;
 
-  common::Vector7d get_joint_position() override;
+  common::VectorXd get_joint_position() override;
 
   void set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch, bool yaw,
                         bool elbow);

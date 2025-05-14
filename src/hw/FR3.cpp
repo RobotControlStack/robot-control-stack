@@ -98,7 +98,7 @@ common::Pose FR3::get_cartesian_position() {
   return x;
 }
 
-void FR3::set_joint_position(const common::Vector7d &q) {
+void FR3::set_joint_position(const common::VectorXd &q) {
   if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
@@ -108,7 +108,7 @@ void FR3::set_joint_position(const common::Vector7d &q) {
   this->robot.control(motion_generator);
 }
 
-common::Vector7d FR3::get_joint_position() {
+common::VectorXd FR3::get_joint_position() {
   common::Vector7d joints;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -586,7 +586,8 @@ void FR3::zero_torque_controller() {
 void FR3::move_home() {
   // sync
   FR3MotionGenerator motion_generator(
-      this->cfg.speed_factor, common::robots_q_home.at(common::RobotType::FR3));
+      this->cfg.speed_factor,
+      common::robots_meta_config.at(common::RobotType::FR3).q_home);
   this->robot.control(motion_generator);
 }
 

@@ -1,7 +1,8 @@
 import logging
 
+from rcsss._core.common import RobotPlatform
 from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
+from rcsss.envs.base import ControlMode, RelativeTo
 from rcsss.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcsss.envs.utils import (
     default_fr3_hw_gripper_cfg,
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 
 """
@@ -43,14 +44,14 @@ python -m rcsss fr3 shutdown <ip>
 
 def main():
     context_manger: ContextManager
-    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
         context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
         context_manger = ContextManager()
 
     with context_manger:
-        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+        if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
             env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
                 control_mode=ControlMode.CARTESIAN_TQuat,
