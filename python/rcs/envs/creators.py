@@ -68,7 +68,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             collision_guard (str | PathLike | None): Key to a built-in scene
             robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
-            or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
+                or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
             gripper_cfg (rcs.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
@@ -140,7 +140,7 @@ class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
         )
 
 
-class RCSSimEnvCreator(EnvCreator):
+class FR3SimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         control_mode: ControlMode,
@@ -228,7 +228,7 @@ class SimTaskEnvCreator(EnvCreator):
         camera_cfg: SimCameraSetConfig | None = None,
     ) -> gym.Env:
 
-        env_rel = RCSSimEnvCreator()(
+        env_rel = FR3SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=default_fr3_sim_robot_cfg(mjcf),
             collision_guard=False,

@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
+from rcs.envs.creators import RCSFR3EnvCreator, FR3SimEnvCreator
 from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -63,7 +63,7 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = RCSSimEnvCreator()(
+            env_rel = FR3SimEnvCreator()(
                 control_mode=ControlMode.JOINTS,
                 collision_guard=False,
                 robot_cfg=default_fr3_sim_robot_cfg(),

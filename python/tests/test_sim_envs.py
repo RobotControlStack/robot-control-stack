@@ -11,7 +11,7 @@ from rcs.envs.base import (
     TQuatDictType,
     TRPYDictType,
 )
-from rcs.envs.creators import RCSSimEnvCreator
+from rcs.envs.creators import FR3SimEnvCreator
 from rcs.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
@@ -64,7 +64,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
         )
         # Test double reset. Regression test. A lot can go wrong when resetting.
@@ -75,7 +75,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         """
         Test that a zero action does not change the state significantly
         """
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -88,7 +88,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -110,7 +110,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
 
     def test_relative_zero_action_trpy(self, cfg, gripper_cfg):
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
@@ -122,7 +122,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
 
     def test_relative_non_zero_action(self, cfg, gripper_cfg):
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
@@ -140,7 +140,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=None
         )
         obs, _ = env.reset()
@@ -157,7 +157,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -190,7 +190,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -206,7 +206,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Test that a zero action does not change the state significantly in the tquat configuration
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -227,7 +227,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Test that a zero action does not change the state significantly in the tquat configuration
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, info_ = env.reset()
@@ -238,7 +238,7 @@ class TestSimEnvsTquat(TestSimEnvs):
 
     def test_relative_zero_action_tquat(self, cfg, gripper_cfg):
         # env creation
-        env_rel = RCSSimEnvCreator()(
+        env_rel = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -256,7 +256,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -277,7 +277,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -310,7 +310,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=cam_cfg, max_relative_movement=None
         )
         # Test double reset. Regression test. A lot can go wrong when resetting.
@@ -322,7 +322,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -338,7 +338,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=None, camera_set_cfg=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -355,7 +355,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=None
         )
         env.reset()
@@ -370,7 +370,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -396,7 +396,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = RCSSimEnvCreator()(
+        env = FR3SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, camera_set_cfg=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()

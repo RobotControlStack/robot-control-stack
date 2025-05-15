@@ -1,7 +1,6 @@
 include(FetchContent)
 
-file(ARCHIVE_EXTRACT INPUT ${CMAKE_SOURCE_DIR}/assets.tar.gz DESTINATION ${CMAKE_BINARY_DIR})
-file(GLOB scene_dirs ${CMAKE_BINARY_DIR}/assets/scenes/*)
+file(GLOB scene_dirs ${CMAKE_SOURCE_DIR}/assets/scenes/*)
 
 # List to keep track of all generated .mjb files
 set(mjb_files)
