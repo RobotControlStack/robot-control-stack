@@ -4,8 +4,8 @@ from typing import Any, cast
 import gymnasium as gym
 import mujoco
 import numpy as np
-from rcsss._core.common import Pose
-from rcsss.envs.base import GripperWrapper, RobotEnv
+from rcs._core.common import Pose
+from rcs.envs.base import GripperWrapper, RobotEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -7,7 +7,7 @@ from __future__ import annotations
 import typing
 
 import numpy
-import rcsss._core.common
+import rcs._core.common
 
 from . import exceptions
 
@@ -21,11 +21,11 @@ __all__ = [
     "FrankaHand",
     "IKSolver",
     "exceptions",
-    "franka",
-    "rcs",
+    "franka_ik",
+    "rcs_ik",
 ]
 
-class FHConfig(rcsss._core.common.GripperConfig):
+class FHConfig(rcs._core.common.GripperConfig):
     async_control: bool
     epsilon_inner: float
     epsilon_outer: float
@@ -34,7 +34,7 @@ class FHConfig(rcsss._core.common.GripperConfig):
     speed: float
     def __init__(self) -> None: ...
 
-class FHState(rcsss._core.common.GripperState):
+class FHState(rcs._core.common.GripperState):
     def __init__(self) -> None: ...
     @property
     def bool_state(self) -> bool: ...
@@ -51,8 +51,8 @@ class FHState(rcsss._core.common.GripperState):
     @property
     def width(self) -> float: ...
 
-class FR3(rcsss._core.common.Robot):
-    def __init__(self, ip: str, ik: rcsss._core.common.IK | None = None) -> None: ...
+class FR3(rcs._core.common.Robot):
+    def __init__(self, ip: str, ik: rcs._core.common.IK | None = None) -> None: ...
     def automatic_error_recovery(self) -> None: ...
     def controller_set_joint_position(
         self, desired_q: numpy.ndarray[typing.Literal[7], numpy.dtype[numpy.float64]]
@@ -60,11 +60,11 @@ class FR3(rcsss._core.common.Robot):
     def double_tap_robot_to_continue(self) -> None: ...
     def get_parameters(self) -> FR3Config: ...
     def get_state(self) -> FR3State: ...
-    def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcsss._core.common.Pose) -> None: ...
+    def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcs._core.common.Pose) -> None: ...
     def set_cartesian_position_ik(
-        self, pose: rcsss._core.common.Pose, max_time: float, elbow: float | None, max_force: float | None = 5
+        self, pose: rcs._core.common.Pose, max_time: float, elbow: float | None, max_force: float | None = 5
     ) -> None: ...
-    def set_cartesian_position_internal(self, pose: rcsss._core.common.Pose) -> None: ...
+    def set_cartesian_position_internal(self, pose: rcs._core.common.Pose) -> None: ...
     def set_default_robot_behavior(self) -> None: ...
     def set_guiding_mode(
         self,
@@ -80,14 +80,14 @@ class FR3(rcsss._core.common.Robot):
     def stop_control_thread(self) -> None: ...
     def zero_torque_guiding(self) -> None: ...
 
-class FR3Config(rcsss._core.common.RobotConfig):
+class FR3Config(rcs._core.common.RobotConfig):
     async_control: bool
     ik_solver: IKSolver
     load_parameters: FR3Load | None
-    nominal_end_effector_frame: rcsss._core.common.Pose | None
+    nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
-    tcp_offset: rcsss._core.common.Pose
-    world_to_robot: rcsss._core.common.Pose | None
+    tcp_offset: rcs._core.common.Pose
+    world_to_robot: rcs._core.common.Pose | None
     def __init__(self) -> None: ...
 
 class FR3Load:
@@ -96,10 +96,10 @@ class FR3Load:
     load_mass: float
     def __init__(self) -> None: ...
 
-class FR3State(rcsss._core.common.RobotState):
+class FR3State(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
 
-class FrankaHand(rcsss._core.common.Gripper):
+class FrankaHand(rcs._core.common.Gripper):
     def __init__(self, ip: str, cfg: FHConfig) -> None: ...
     def get_parameters(self) -> FHConfig: ...
     def get_state(self) -> FHState: ...
@@ -111,16 +111,16 @@ class IKSolver:
     """
     Members:
 
-      franka
+      franka_ik
 
-      rcs
+      rcs_ik
     """
 
     __members__: typing.ClassVar[
         dict[str, IKSolver]
-    ]  # value = {'franka': <IKSolver.franka: 0>, 'rcs': <IKSolver.rcs: 1>}
-    franka: typing.ClassVar[IKSolver]  # value = <IKSolver.franka: 0>
-    rcs: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs: 1>
+    ]  # value = {'franka_ik': <IKSolver.franka_ik: 0>, 'rcs_ik': <IKSolver.rcs_ik: 1>}
+    franka_ik: typing.ClassVar[IKSolver]  # value = <IKSolver.franka_ik: 0>
+    rcs_ik: typing.ClassVar[IKSolver]  # value = <IKSolver.rcs_ik: 1>
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -136,5 +136,5 @@ class IKSolver:
     @property
     def value(self) -> int: ...
 
-franka: IKSolver  # value = <IKSolver.franka: 0>
-rcs: IKSolver  # value = <IKSolver.rcs: 1>
+franka_ik: IKSolver  # value = <IKSolver.franka_ik: 0>
+rcs_ik: IKSolver  # value = <IKSolver.rcs_ik: 1>

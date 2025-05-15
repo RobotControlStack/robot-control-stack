@@ -9,7 +9,7 @@ from time import sleep
 import cv2
 import numpy as np
 from pydantic import Field
-from rcsss.camera.interface import (
+from rcs.camera.interface import (
     BaseCameraConfig,
     BaseCameraSetConfig,
     Frame,

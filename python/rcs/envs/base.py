@@ -7,9 +7,9 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from rcsss import common
-from rcsss.camera.interface import BaseCameraSet
-from rcsss.envs.space_utils import (
+from rcs import common
+from rcs.camera.interface import BaseCameraSet
+from rcs.envs.space_utils import (
     ActObsInfoWrapper,
     RCSpaceType,
     Vec6Type,

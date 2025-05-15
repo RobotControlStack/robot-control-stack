@@ -313,8 +313,8 @@ void FR3::osc() {
     this->curr_state = robot_state;
     this->controller_time += period.toSec();
     this->traj_interpolator.next_step(this->controller_time,
-                                        desired_pos_EE_in_base_frame,
-                                        desired_quat_EE_in_base_frame);
+                                      desired_pos_EE_in_base_frame,
+                                      desired_quat_EE_in_base_frame);
     this->interpolator_mutex.unlock();
 
     // end torques handler
@@ -669,13 +669,13 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   // nominal end effector frame should be on top of tcp offset as franka already
   // takes care of the default franka hand offset lets add a franka hand offset
 
-  if (this->cfg.ik_solver == IKSolver::franka) {
+  if (this->cfg.ik_solver == IKSolver::franka_ik) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
 
-  } else if (this->cfg.ik_solver == IKSolver::rcs) {
+  } else if (this->cfg.ik_solver == IKSolver::rcs_ik) {
     this->set_cartesian_position_ik(x);
   }
 }

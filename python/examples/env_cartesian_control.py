@@ -1,10 +1,10 @@
 import logging
 
-from rcsss._core.common import RobotPlatform
-from rcsss.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcsss.envs.base import ControlMode, RelativeTo
-from rcsss.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
-from rcsss.envs.utils import (
+from rcs._core.common import RobotPlatform
+from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
+from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
@@ -26,19 +26,19 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcsss fr3 unlock <ip>
+python -m rcs fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcsss fr3 guiding-mode <ip>
+python -m rcs fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcsss fr3 lock <ip>
+python -m rcs fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcsss fr3 shutdown <ip>
+python -m rcs fr3 shutdown <ip>
 """
 
 

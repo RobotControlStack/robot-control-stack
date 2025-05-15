@@ -1,7 +1,7 @@
 import k4a
 import numpy as np
-from rcsss.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
-from rcsss.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
+from rcs.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
+from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
 
 class KinectConfig(HWCameraSetConfig):

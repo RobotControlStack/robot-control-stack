@@ -3,13 +3,13 @@ from pathlib import Path
 
 import mujoco as mj
 import numpy as np
-import rcsss
-from rcsss import sim
-from rcsss._core.hw import FR3Config, IKSolver
-from rcsss._core.sim import CameraType
-from rcsss.camera.interface import BaseCameraConfig
-from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
-from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
+import rcs
+from rcs import sim
+from rcs._core.hw import FR3Config, IKSolver
+from rcs._core.sim import CameraType
+from rcs.camera.interface import BaseCameraConfig
+from rcs.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
+from rcs.camera.sim import SimCameraConfig, SimCameraSetConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,15 +24,15 @@ def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.SimRo
 
 def default_fr3_hw_robot_cfg(async_control: bool = False):
     robot_cfg = FR3Config()
-    robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+    robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
-    robot_cfg.ik_solver = IKSolver.rcs
+    robot_cfg.ik_solver = IKSolver.rcs_ik
     robot_cfg.async_control = async_control
     return robot_cfg
 
 
 def default_fr3_hw_gripper_cfg(async_control: bool = False):
-    gripper_cfg = rcsss.hw.FHConfig()
+    gripper_cfg = rcs.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
     gripper_cfg.force = 30
@@ -81,10 +81,10 @@ def get_tcp_offset(mjcf: str | Path):
         mjcf (str | PathLike): Path to the mjcf file.
 
     Returns:
-        rcsss.common.Pose: The tcp offset.
+        rcs.common.Pose: The tcp offset.
     """
-    if mjcf in rcsss.scenes:
-        model = mj.MjModel.from_binary_path(str(rcsss.scenes[str(mjcf)]["mjb"]))
+    if mjcf in rcs.scenes:
+        model = mj.MjModel.from_binary_path(str(rcs.scenes[str(mjcf)]["mjb"]))
     else:
         mjcf = Path(mjcf)
         if mjcf.suffix in (".xml", ".mjcf"):
@@ -96,9 +96,9 @@ def get_tcp_offset(mjcf: str | Path):
             raise AssertionError(msg)
     try:
         tcp_offset = np.array(model.numeric("tcp_offset").data)
-        pose_offset = rcsss.common.Pose(translation=tcp_offset)
-        return rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset()) * pose_offset
+        pose_offset = rcs.common.Pose(translation=tcp_offset)
+        return rcs.common.Pose(rcs.common.FrankaHandTCPOffset()) * pose_offset
     except KeyError:
         msg = "No tcp offset found in the model. Using the default tcp offset."
         logging.info(msg)
-    return rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
+    return rcs.common.Pose(rcs.common.FrankaHandTCPOffset())

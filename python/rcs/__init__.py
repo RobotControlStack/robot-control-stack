@@ -3,8 +3,8 @@
 import pathlib
 import site
 
-from rcsss import camera, control, envs, sim
-from rcsss._core import __version__, common, hw
+from rcs import camera, control, envs, sim
+from rcs._core import __version__, common, hw
 
 # available mujoco scenes
 scenes: dict[str, dict[str, pathlib.Path]] = {
@@ -12,7 +12,7 @@ scenes: dict[str, dict[str, pathlib.Path]] = {
         "mjb": path / "scene.mjb",
         "urdf": path / "fr3.urdf",
     }
-    for path in (pathlib.Path(site.getsitepackages()[0]) / "rcsss" / "scenes").glob("*")
+    for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }
 
 # make submodules available

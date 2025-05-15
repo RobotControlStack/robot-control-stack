@@ -29,12 +29,12 @@ foreach(scene_dir ${scene_dirs})
     list(APPEND mjb_files ${scene_mjb})
 
     # Install scene files
-    install(FILES ${scene_mjb} DESTINATION rcsss/scenes/${scene_name} COMPONENT python_package)
+    install(FILES ${scene_mjb} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
 
     # Install URDF files
     file(GLOB urdfs ${scene_dir}/*.urdf)
     foreach(urdf ${urdfs})
-        install(FILES ${urdf} DESTINATION rcsss/scenes/${scene_name} COMPONENT python_package)
+        install(FILES ${urdf} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
     endforeach()
 endforeach()
 

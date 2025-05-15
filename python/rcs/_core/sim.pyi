@@ -7,7 +7,7 @@ from __future__ import annotations
 import typing
 
 import numpy
-import rcsss._core.common
+import rcs._core.common
 
 __all__ = [
     "CameraType",
@@ -112,20 +112,20 @@ class SimCameraSetConfig:
     @frame_rate.setter
     def frame_rate(self, arg0: int) -> None: ...
 
-class SimGripper(rcsss._core.common.Gripper):
+class SimGripper(rcs._core.common.Gripper):
     def __init__(self, sim: Sim, id: str, cfg: SimGripperConfig) -> None: ...
     def get_parameters(self) -> SimGripperConfig: ...
     def get_state(self) -> SimGripperState: ...
     def set_parameters(self, cfg: SimGripperConfig) -> bool: ...
 
-class SimGripperConfig(rcsss._core.common.GripperConfig):
+class SimGripperConfig(rcs._core.common.GripperConfig):
     epsilon_inner: float
     epsilon_outer: float
     ignored_collision_geoms: list[str]
     seconds_between_callbacks: float
     def __init__(self) -> None: ...
 
-class SimGripperState(rcsss._core.common.GripperState):
+class SimGripperState(rcs._core.common.GripperState):
     def __init__(self) -> None: ...
     @property
     def collision(self) -> bool: ...
@@ -138,31 +138,31 @@ class SimGripperState(rcsss._core.common.GripperState):
     @property
     def max_unnormalized_width(self) -> float: ...
 
-class SimRobot(rcsss._core.common.Robot):
+class SimRobot(rcs._core.common.Robot):
     def __init__(
-        self, sim: Sim, id: str, ik: rcsss._core.common.IK, register_convergence_callback: bool = True
+        self, sim: Sim, id: str, ik: rcs._core.common.IK, register_convergence_callback: bool = True
     ) -> None: ...
     def get_parameters(self) -> SimRobotConfig: ...
     def get_state(self) -> SimRobotState: ...
     def set_joints_hard(self, q: numpy.ndarray[M, numpy.dtype[numpy.float64]]) -> None: ...
     def set_parameters(self, cfg: SimRobotConfig) -> bool: ...
 
-class SimRobotConfig(rcsss._core.common.RobotConfig):
+class SimRobotConfig(rcs._core.common.RobotConfig):
     joint_rotational_tolerance: float
     realtime: bool
     seconds_between_callbacks: float
-    tcp_offset: rcsss._core.common.Pose
+    tcp_offset: rcs._core.common.Pose
     trajectory_trace: bool
     def __init__(self) -> None: ...
 
-class SimRobotState(rcsss._core.common.RobotState):
+class SimRobotState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
     @property
     def collision(self) -> bool: ...
     @property
     def ik_success(self) -> bool: ...
     @property
-    def inverse_tcp_offset(self) -> rcsss._core.common.Pose: ...
+    def inverse_tcp_offset(self) -> rcs._core.common.Pose: ...
     @property
     def is_arrived(self) -> bool: ...
     @property

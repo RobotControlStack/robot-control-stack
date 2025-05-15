@@ -3,7 +3,7 @@ requires = []
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "rcsss"
+name = "rcs"
 version = "0.4.0"
 description="Python Interface for libfranka to control the Franka Research 3 Robot"
 dependencies = ["websockets>=11.0",
@@ -60,7 +60,7 @@ build.verbose = true
 build.targets = ["_core", "scenes"]
 logging.level = "INFO"
 build-dir = "build"
-wheel.packages = ["python/rcsss"]
+wheel.packages = ["python/rcs"]
 install.components = ["python_package"]
 
 [tool.ruff]
@@ -147,5 +147,5 @@ update_changelog_on_bump = true
 major_version_zero = true
 version_files = [
     "CMakeLists.txt:VERSION",
-    "python/rcsss/_core/__init__.pyi:__version__",
+    "python/rcs/_core/__init__.pyi:__version__",
 ]
