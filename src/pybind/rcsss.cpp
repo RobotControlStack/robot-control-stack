@@ -235,6 +235,7 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state", &rcs::common::Robot::get_state)
       .def("get_cartesian_position",
            &rcs::common::Robot::get_cartesian_position)
+      .def("get_joint_velocity", &rcs::common::Robot::get_joint_velocity)
       .def("set_joint_position", &rcs::common::Robot::set_joint_position,
            py::arg("q"), py::call_guard<py::gil_scoped_release>())
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)
