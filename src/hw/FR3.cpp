@@ -99,6 +99,12 @@ common::Vector7d FR3::get_joint_position() {
   return joints;
 }
 
+common::Vector7d FR3::get_joint_velocity() {
+  franka::RobotState state = this->robot.readOnce();
+  common::Vector7d jointsv(state.dq.data());
+  return jointsv;
+}
+
 void FR3::set_guiding_mode(bool enabled) {
   std::array<bool, 6> activated;
   activated.fill(enabled);

@@ -67,6 +67,8 @@ class FR3 : public common::Robot {
 
   common::Vector7d get_joint_position() override;
 
+  common::Vector7d get_joint_velocity() override;
+
   void set_guiding_mode(bool enabled);
 
   void move_home() override;

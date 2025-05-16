@@ -46,6 +46,8 @@ class FR3 : public common::Robot {
   common::Pose get_cartesian_position() override;
   void set_joint_position(const common::Vector7d &q) override;
   common::Vector7d get_joint_position() override;
+  common::Vector7d get_joint_velocity() override;
+
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;

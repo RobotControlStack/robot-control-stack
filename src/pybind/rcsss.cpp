@@ -65,6 +65,11 @@ class PyRobot : public rcs::common::Robot {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, move_home, );
   }
 
+  rcs::common::Vector7d get_joint_velocity() override {
+     PYBIND11_OVERRIDE_PURE(rcs::common::Vector7d, rcs::common::Robot,
+                            get_joint_velocity, );
+   }
+   
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
   }

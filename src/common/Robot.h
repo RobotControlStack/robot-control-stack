@@ -46,6 +46,8 @@ class Robot {
 
   virtual Vector7d get_joint_position() = 0;
 
+  virtual Vector7d get_joint_velocity() = 0;
+
   virtual void move_home() = 0;
 
   virtual void reset() = 0;

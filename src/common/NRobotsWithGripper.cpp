@@ -53,6 +53,14 @@ std::vector<Vector7d> NRobotsWithGripper::get_joint_position(
   return NRobotsWithGripper::execute_parallel(f, idxs.size());
 }
 
+std::vector<Vector7d> NRobotsWithGripper::get_joint_velocity(
+  const std::vector<size_t> &idxs) {
+std::function<Vector7d(size_t)> f = [this, &idxs](size_t i) {
+  return this->robots_with_gripper[idxs[i]]->robot->get_joint_velocity();
+};
+return NRobotsWithGripper::execute_parallel(f, idxs.size());
+}
+
 void NRobotsWithGripper::move_home(const std::vector<size_t> &idxs) {
   std::function<void(size_t)> f = [this, &idxs](size_t i) {
     return this->robots_with_gripper[idxs[i]]->robot->move_home();

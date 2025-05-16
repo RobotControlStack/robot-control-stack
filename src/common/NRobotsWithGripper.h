@@ -80,6 +80,8 @@ class NRobotsWithGripper {
                           const std::vector<Vector7d> &q);
 
   std::vector<Vector7d> get_joint_position(const std::vector<size_t> &idxs);
+  
+  std::vector<Vector7d> get_joint_velocity(const std::vector<size_t> &idxs);
 
   void move_home(const std::vector<size_t> &idxs);
 
