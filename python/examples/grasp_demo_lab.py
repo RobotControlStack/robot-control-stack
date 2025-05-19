@@ -4,8 +4,8 @@ from typing import Any, cast
 import gymnasium as gym
 import mujoco
 import numpy as np
-from rcsss._core.common import Pose
-from rcsss.envs.base import FR3Env, GripperWrapper
+from rcs._core.common import Pose
+from rcs.envs.base import GripperWrapper, RobotEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 class PickUpDemo:
     def __init__(self, env: gym.Env):
         self.env = env
-        self.unwrapped: FR3Env = cast(FR3Env, self.env.unwrapped)
+        self.unwrapped: RobotEnv = cast(RobotEnv, self.env.unwrapped)
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
     def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
@@ -89,7 +89,7 @@ def main():
     )
     env.reset()
     controller = PickUpDemo(env)
-    controller.pickup("yellow_box_geom")
+    controller.pickup("box_geom")
 
 
 if __name__ == "__main__":
