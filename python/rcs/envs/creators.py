@@ -5,6 +5,7 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 import rcs
+import rcs.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcs import sim
 from rcs._core.sim import CameraType
@@ -14,6 +15,7 @@ from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
+    HandWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -37,6 +39,7 @@ from rcs.envs.utils import (
     default_realsense,
     get_urdf_path,
 )
+from rcs.hand.tilburg_hand import TilburgHand
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -53,7 +56,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         control_mode: ControlMode,
         robot_cfg: rcs.hw.FR3Config,
         collision_guard: str | PathLike | None = None,
-        gripper_cfg: rcs.hw.FHConfig | None = None,
+        gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: BaseHardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -89,9 +92,12 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
-        if gripper_cfg is not None:
+        if isinstance(gripper_cfg, rcs.hw.FHConfig):
             gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
+        elif isinstance(gripper_cfg, rcs.hand.tilburg_hand.THConfig):
+            hand = TilburgHand(gripper_cfg)
+            env = HandWrapper(env, hand, binary=True)
 
         if camera_set is not None:
             camera_set.start()
@@ -193,7 +199,7 @@ class RCSSimEnvCreator(EnvCreator):
             camera_set = SimCameraSet(simulation, camera_set_cfg)
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
-        if gripper_cfg is not None:
+        if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, "0", gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)

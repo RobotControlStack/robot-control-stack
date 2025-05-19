@@ -11,6 +11,7 @@ from rcs._core.sim import CameraType
 from rcs.camera.interface import BaseCameraConfig
 from rcs.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSetConfig
+from rcs.hand.tilburg_hand import THConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -39,6 +40,13 @@ def default_fr3_hw_gripper_cfg(async_control: bool = False):
     gripper_cfg.force = 30
     gripper_cfg.async_control = async_control
     return gripper_cfg
+
+
+def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
+    hand_cfg = THConfig()
+    hand_cfg.grasp_percentage = 1.0
+    hand_cfg.calibration_file = str(file) if isinstance(file, PathLike) else file
+    return hand_cfg
 
 
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
