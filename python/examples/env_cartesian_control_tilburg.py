@@ -53,7 +53,7 @@ def main():
         if ROBOT_INSTANCE == RobotInstance.HARDWARE:
             env_rel = fr3_hw_env(
                 ip=ROBOT_IP,
-                control_mode=ControlMode.CARTESIAN_TQuart,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
                 gripper_cfg=default_tilburg_hw_hand_cfg(),
@@ -62,7 +62,7 @@ def main():
             )
         else:
             env_rel = fr3_sim_env(
-                control_mode=ControlMode.CARTESIAN_TQuart,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
@@ -80,7 +80,7 @@ def main():
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
@@ -90,7 +90,7 @@ def main():
             sleep(5)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
