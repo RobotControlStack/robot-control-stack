@@ -37,7 +37,7 @@ from rcsss.envs.utils import (
     default_realsense,
     get_urdf_path,
 )
-from rcsss.hand.tilburg_hand import TilburgHandControl
+from rcsss.hand.tilburg_hand import TilburgHand
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -169,7 +169,7 @@ def fr3_sim_env(
         env = GripperWrapper(env, gripper, binary=True)
 
     elif isinstance(gripper_cfg, rcsss.hand.tilburg_hand.THConfig):
-        hand = TilburgHandControl(gripper_cfg)
+        hand = TilburgHand(gripper_cfg)
         env = HandWrapper(env, hand, binary=True)
 
     if collision_guard:

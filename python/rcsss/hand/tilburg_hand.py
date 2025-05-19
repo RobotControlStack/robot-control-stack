@@ -5,7 +5,7 @@ from time import sleep
 import numpy as np
 from pydantic import BaseModel
 from rcsss.envs.space_utils import Vec18Type
-from rcsss.hand.interface import BaseHandControl
+from rcsss.hand.interface import BaseHand
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit
 
 # Setup logger
@@ -23,9 +23,9 @@ class THConfig(BaseModel):
     hand_orientation: str = "right"
 
 
-class TilburgHandControl(BaseHandControl):
+class TilburgHand(BaseHand):
     """
-    Tilburg Hand Control Class
+    Tilburg Hand Class
     This class provides an interface for controlling the Tilburg Hand.
     It allows for grasping, resetting, and disconnecting from the hand.
     """
@@ -36,7 +36,7 @@ class TilburgHandControl(BaseHandControl):
 
     def __init__(self, cfg: THConfig, verbose: bool = False):
         """
-        Initializes the Tilburg Hand Control interface.
+        Initializes the Tilburg Hand interface.
         """
         self._cfg = cfg
 

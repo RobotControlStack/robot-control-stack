@@ -3,7 +3,7 @@ from typing import Protocol
 import numpy as np
 
 
-class BaseHandControl(Protocol):
+class BaseHand(Protocol):
     """
     Hand Class
     This class provides an interface for hand control.

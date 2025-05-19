@@ -18,7 +18,7 @@ from rcsss.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-from rcsss.hand.interface import BaseHandControl
+from rcsss.hand.interface import BaseHand
 
 _logger = logging.getLogger()
 
@@ -613,7 +613,7 @@ class HandWrapper(ActObsInfoWrapper):
     BINARY_HAND_CLOSED = 0
     BINARY_HAND_OPEN = 1
 
-    def __init__(self, env, hand: BaseHandControl, binary: bool = True):
+    def __init__(self, env, hand: BaseHand, binary: bool = True):
         super().__init__(env)
         self.unwrapped: FR3Env
         self.observation_space: gym.spaces.Dict
