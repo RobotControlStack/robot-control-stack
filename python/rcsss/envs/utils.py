@@ -11,6 +11,7 @@ from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
+from rcsss.hand.tilburg_hand_control import THConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -23,7 +24,7 @@ def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.FR3Co
     return cfg
 
 
-def default_fr3_hw_robot_cfg():
+def default_fr3_hw_robot_cfg() -> rcsss.hw.FR3Config:
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
@@ -31,7 +32,7 @@ def default_fr3_hw_robot_cfg():
     return robot_cfg
 
 
-def default_fr3_hw_gripper_cfg():
+def default_fr3_hw_gripper_cfg() -> rcsss.hw.FHConfig:
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
@@ -39,8 +40,11 @@ def default_fr3_hw_gripper_cfg():
     return gripper_cfg
 
 
-def default_tilburg_hw_hand_cfg():
-    return rcsss.hand.interface.THConfig()
+def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
+    hand_cfg = THConfig()
+    hand_cfg.grasp_percentage = 1.0
+    hand_cfg.calibration_file = str(file) if isinstance(file, PathLike) else file
+    return hand_cfg
 
 
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:

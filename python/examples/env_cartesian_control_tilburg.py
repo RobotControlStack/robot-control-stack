@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
 from rcsss.control.utils import load_creds_fr3_desk
@@ -75,16 +74,8 @@ def main():
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-        close_action: Union[int, list[float]]
-        open_action: Union[int, list[float]]
-        if default_tilburg_hw_hand_cfg().binary_action:
-            close_action = 0
-            open_action = 1
-        else:
-            template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-            value = 0.5
-            close_action = [value * val for val in template]
-            open_action = [0.0] * len(template)
+        close_action = 0
+        open_action = 1
 
         for _ in range(10):
             for _ in range(10):

@@ -1,11 +1,31 @@
-import os
-from pathlib import Path
+from typing import Protocol
 
-from pydantic import BaseModel
+import numpy as np
 
 
-class THConfig(BaseModel):
-    """Config for the Tilburg hand"""
+class BaseHandControl(Protocol):
+    """
+    Hand Class
+    This class provides an interface for hand control.
+    """
 
-    binary_action: bool = True
-    calibration_file_path: str = os.path.join(Path.home(), "tilburg_hand/calibration.json")
+    def grasp(self):
+        pass
+
+    def open(self):
+        pass
+
+    def reset(self):
+        pass
+
+    def close(self):
+        pass
+
+    def get_state(self) -> np.ndarray:
+        pass
+
+    def get_normalized_joints_poses(self) -> np.ndarray:
+        pass
+
+    def set_normalized_joints_poses(self, values: np.ndarray):
+        pass
