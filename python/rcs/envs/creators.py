@@ -92,7 +92,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
-        if isinstance(gripper_cfg, rcs.sim.SimRobotConfig):
+        if isinstance(gripper_cfg, rcs.hw.FHConfig):
             gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
         elif isinstance(gripper_cfg, rcs.hand.tilburg_hand.THConfig):
@@ -199,7 +199,7 @@ class RCSSimEnvCreator(EnvCreator):
             camera_set = SimCameraSet(simulation, camera_set_cfg)
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
-        if isinstance(gripper_cfg, rcs.sim.SimRobotConfig):
+        if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, "0", gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
