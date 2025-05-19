@@ -1,9 +1,9 @@
 import logging
 
-from rcs.control.fr3_desk import FCI, Desk, DummyResourceManager
-from rcs.control.utils import load_creds_fr3_desk
-from rcs.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcs.envs.factories import fr3_hw_env, fr3_sim_env
+from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
+from rcs._core.common import RobotPlatform
+from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 
 """
@@ -43,15 +43,15 @@ python -m rcs fr3 shutdown <ip>
 
 
 def main():
-    resource_manger: FCI | DummyResourceManager
-    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+    resource_manger: FCI | ContextManager
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = DummyResourceManager()
+        resource_manger = ContextManager()
     with resource_manger:
-        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            env_rel = fr3_hw_env(
+        if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+            env_rel = RCSFR3EnvCreator(
                 ip=ROBOT_IP,
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
@@ -61,7 +61,7 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = fr3_sim_env(
+            env_rel = RCSSimEnvCreator(
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
