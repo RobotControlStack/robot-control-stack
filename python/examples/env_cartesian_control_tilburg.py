@@ -1,9 +1,9 @@
 import logging
 
-from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcs._core.common import RobotPlatform
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcs.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
@@ -51,7 +51,7 @@ def main():
         resource_manger = ContextManager()
     with resource_manger:
         if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-            env_rel = RCSFR3EnvCreator(
+            env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
@@ -61,7 +61,7 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = RCSSimEnvCreator(
+            env_rel = RCSSimEnvCreator()(
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
