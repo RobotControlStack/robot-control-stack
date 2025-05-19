@@ -11,7 +11,7 @@ from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
 from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
-from rcsss.hand.tilburg_hand_control import THConfig
+from rcsss.hand.tilburg_hand import THConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

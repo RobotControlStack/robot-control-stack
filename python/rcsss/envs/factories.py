@@ -5,7 +5,7 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 import rcsss
-import rcsss.hand.tilburg_hand_control
+import rcsss.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcsss import sim
 from rcsss._core.sim import CameraType
@@ -37,7 +37,7 @@ from rcsss.envs.utils import (
     default_realsense,
     get_urdf_path,
 )
-from rcsss.hand.tilburg_hand_control import TilburgHandControl
+from rcsss.hand.tilburg_hand import TilburgHandControl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,7 +48,7 @@ def fr3_hw_env(
     control_mode: ControlMode,
     robot_cfg: rcsss.hw.FR3Config,
     collision_guard: str | PathLike | None = None,
-    gripper_cfg: rcsss.hw.FHConfig | rcsss.hand.tilburg_hand_control.THConfig | None = None,
+    gripper_cfg: rcsss.hw.FHConfig | rcsss.hand.tilburg_hand.THConfig | None = None,
     camera_set: BaseHardwareCameraSet | None = None,
     max_relative_movement: float | tuple[float, float] | None = None,
     relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -168,7 +168,7 @@ def fr3_sim_env(
         gripper = sim.FrankaHand(simulation, "0", gripper_cfg)
         env = GripperWrapper(env, gripper, binary=True)
 
-    elif isinstance(gripper_cfg, rcsss.hand.tilburg_hand_control.THConfig):
+    elif isinstance(gripper_cfg, rcsss.hand.tilburg_hand.THConfig):
         hand = TilburgHandControl(gripper_cfg)
         env = HandWrapper(env, hand, binary=True)
 
