@@ -19,7 +19,7 @@ from rcs.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-from rcsss.hand.interface import BaseHand
+from rcs.hand.interface import BaseHand
 
 _logger = logging.getLogger(__name__)
 
