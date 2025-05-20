@@ -119,9 +119,14 @@ class SimGripper(rcs._core.common.Gripper):
     def set_parameters(self, cfg: SimGripperConfig) -> bool: ...
 
 class SimGripperConfig(rcs._core.common.GripperConfig):
+    actuator: str
+    collision_geoms: list[str]
+    collision_geoms_fingers: list[str]
     epsilon_inner: float
     epsilon_outer: float
     ignored_collision_geoms: list[str]
+    joint1: str
+    joint2: str
     seconds_between_callbacks: float
     def __init__(self) -> None: ...
 
@@ -140,7 +145,7 @@ class SimGripperState(rcs._core.common.GripperState):
 
 class SimRobot(rcs._core.common.Robot):
     def __init__(
-        self, sim: Sim, id: str, ik: rcs._core.common.IK, register_convergence_callback: bool = True
+        self, sim: Sim, ik: rcs._core.common.IK, cfg: SimRobotConfig, register_convergence_callback: bool = True
     ) -> None: ...
     def get_parameters(self) -> SimRobotConfig: ...
     def get_state(self) -> SimRobotState: ...
@@ -148,8 +153,14 @@ class SimRobot(rcs._core.common.Robot):
     def set_parameters(self, cfg: SimRobotConfig) -> bool: ...
 
 class SimRobotConfig(rcs._core.common.RobotConfig):
+    actuators: list[str]
+    arm_collision_geoms: list[str]
+    attachment_site: str
+    base: str
     joint_rotational_tolerance: float
+    joints: list[str]
     realtime: bool
+    robot_type: rcs._core.common.RobotType
     seconds_between_callbacks: float
     tcp_offset: rcs._core.common.Pose
     trajectory_trace: bool

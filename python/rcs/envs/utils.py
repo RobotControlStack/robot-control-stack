@@ -1,3 +1,4 @@
+import copy
 import logging
 from os import PathLike
 from pathlib import Path
@@ -17,10 +18,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.SimRobotConfig:
+def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     cfg = sim.SimRobotConfig()
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
+    cfg.robot_type = rcs.common.RobotType.FR3
+    cfg.arm_collision_geoms = [f"{id}_{idx}" for id in copy.deepcopy(cfg.arm_collision_geoms)]
+    cfg.joints = [f"{id}_{idx}" for id in copy.deepcopy(cfg.joints)]
+    cfg.actuators = [f"{id}_{idx}" for id in copy.deepcopy(cfg.actuators)]
+    cfg.attachment_site = f"attachment_site_{idx}"
+    cfg.base = f"base_{idx}"
     return cfg
 
 

@@ -25,8 +25,7 @@ namespace sim {
 // TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
 SimRobot::SimRobot(std::shared_ptr<Sim> sim, std::shared_ptr<common::IK> ik,
-                   std::shared_ptr<SimRobotConfig> cfg,
-                   bool register_convergence_callback)
+                   SimRobotConfig cfg, bool register_convergence_callback)
     : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
   this->init_ids();
   if (register_convergence_callback) {
@@ -60,12 +59,18 @@ void SimRobot::init_ids() {
     }
     this->ids.cgeom.insert(id);
   }
-  // Sites
+  // Attachment Site
   name = this->cfg.attachment_site;
   this->ids.attachment_site =
       mj_name2id(this->sim->m, mjOBJ_SITE, name.c_str());
   if (this->ids.attachment_site == -1) {
     throw std::runtime_error(std::string("No site named " + name));
+  }
+  // Base
+  name = this->cfg.base;
+  this->ids.base = mj_name2id(this->sim->m, mjOBJ_BODY, name.c_str());
+  if (this->ids.base == -1) {
+    throw std::runtime_error(std::string("No body named " + name));
   }
   // Joints
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
@@ -198,10 +203,9 @@ void SimRobot::set_joints_hard(const common::VectorXd& q) {
 }
 
 common::Pose SimRobot::get_base_pose_in_world_coordinates() {
-  auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
-                       (std::string("base_") + this->id).c_str());
-  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
-  auto quat = this->sim->d->xquat + 4 * id;
+  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos +
+                                          3 * this->ids.base);
+  auto quat = this->sim->d->xquat + 4 * this->ids.base;
   Eigen::Quaterniond rotation(quat[0], quat[1], quat[2], quat[3]);
   return common::Pose(rotation, translation);
 }

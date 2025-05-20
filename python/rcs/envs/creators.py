@@ -190,8 +190,7 @@ class RCSSimEnvCreator(EnvCreator):
         simulation = sim.Sim(mjb_file)
 
         ik = rcs.common.IK(urdf_path)
-        robot = rcs.sim.SimRobot(simulation, "0", ik)
-        robot.set_parameters(robot_cfg)
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = FR3Sim(env, simulation, sim_wrapper)
 

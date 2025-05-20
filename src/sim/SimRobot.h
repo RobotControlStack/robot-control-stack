@@ -32,6 +32,7 @@ struct SimRobotConfig : common::RobotConfig {
       "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
   std::string attachment_site = "attachment_site";
+  std::string base = "base";
 };
 
 struct SimRobotState : common::RobotState {
@@ -47,8 +48,7 @@ struct SimRobotState : common::RobotState {
 class SimRobot : public common::Robot {
  public:
   SimRobot(std::shared_ptr<rcs::sim::Sim> sim, std::shared_ptr<common::IK> ik,
-           std::shared_ptr<SimRobotConfig> cfg,
-           bool register_convergence_callback = true);
+           SimRobotConfig cfg, bool register_convergence_callback = true);
   ~SimRobot() override;
   bool set_parameters(const SimRobotConfig &cfg);
   SimRobotConfig *get_parameters() override;
@@ -74,6 +74,7 @@ class SimRobot : public common::Robot {
     std::array<int, 7> joints;
     std::array<int, 7> ctrl;
     std::array<int, 7> actuators;
+    int base;
   } ids;
   void is_moving_callback();
   void is_arrived_callback();

@@ -158,15 +158,15 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
+        # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
         ik = rcs.common.IK(urdf, max_duration_ms=300)
-        robot = rcs.sim.SimRobot(simulation, id, ik)
-        cfg = sim.SimRobotConfig()
+        cfg = default_fr3_sim_robot_cfg(mjmld, id)
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
-        robot.set_parameters(cfg)
+        robot = rcs.sim.SimRobot(simulation, ik, cfg)
         to_joint_control = False
         if control_mode is not None:
             if control_mode != env.unwrapped.get_control_mode():
@@ -250,8 +250,9 @@ class CamRobot(gym.Wrapper):
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
+        cfg = default_fr3_sim_robot_cfg(scene, "1")
         self.cam_robot = rcs.sim.SimRobot(
-            self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False
+            self.sim, env.unwrapped.robot.get_ik(), cfg, register_convergence_callback=False
         )
         self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))
         self.cam_robot_joints = cam_robot_joints

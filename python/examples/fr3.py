@@ -10,6 +10,7 @@ from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.creators import get_urdf_path
+from rcs.envs.utils import default_fr3_sim_robot_cfg
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
@@ -69,11 +70,8 @@ def main():
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
             ik = rcs.common.IK(urdf_path)
-            robot = rcs.sim.SimRobot(simulation, "0", ik)
-            cfg = sim.SimRobotConfig()
-            cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            cfg.realtime = False
-            robot.set_parameters(cfg)
+            cfg = default_fr3_sim_robot_cfg(urdf_path)
+            robot = rcs.sim.SimRobot(simulation, ik, cfg)
 
             gripper_cfg_sim = sim.SimGripperConfig()
             gripper = sim.SimGripper(simulation, "0", gripper_cfg_sim)
