@@ -413,7 +413,16 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimRobotConfig::seconds_between_callbacks)
       .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("trajectory_trace",
-                     &rcs::sim::SimRobotConfig::trajectory_trace);
+                     &rcs::sim::SimRobotConfig::trajectory_trace)
+      .def_readwrite("robot_type", &rcs::sim::SimRobotConfig::robot_type)
+      .def_readwrite("arm_collision_geoms",
+                     &rcs::sim::SimRobotConfig::arm_collision_geoms)
+      .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
+      .def_readwrite("attachment_site",
+                     &rcs::sim::SimRobotConfig::attachment_site)
+      .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators)
+      .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
+      .def("add_id", &rcs::sim::SimRobotConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
       .def(py::init<>())
@@ -436,7 +445,15 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimGripperConfig::seconds_between_callbacks)
       .def_readwrite("ignored_collision_geoms",
-                     &rcs::sim::SimGripperConfig::ignored_collision_geoms);
+                     &rcs::sim::SimGripperConfig::ignored_collision_geoms)
+      .def_readwrite("collision_geoms",
+                     &rcs::sim::SimGripperConfig::collision_geoms)
+      .def_readwrite("collision_geoms_fingers",
+                     &rcs::sim::SimGripperConfig::collision_geoms_fingers)
+      .def_readwrite("joint1", &rcs::sim::SimGripperConfig::joint1)
+      .def_readwrite("joint2", &rcs::sim::SimGripperConfig::joint2)
+      .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator)
+      .def("add_id", &rcs::sim::SimGripperConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
       sim, "SimGripperState")
       .def(py::init<>())
@@ -462,18 +479,19 @@ PYBIND11_MODULE(_core, m) {
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimGripperConfig &>(),
-           py::arg("sim"), py::arg("id"), py::arg("cfg"))
+           py::arg("sim"), py::arg("cfg"))
       .def("get_parameters", &rcs::sim::SimGripper::get_parameters)
       .def("get_state", &rcs::sim::SimGripper::get_state)
       .def("set_parameters", &rcs::sim::SimGripper::set_parameters,
            py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    std::shared_ptr<rcs::common::IK>, bool>(),
-           py::arg("sim"), py::arg("id"), py::arg("ik"),
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    std::shared_ptr<rcs::common::IK>, rcs::sim::SimRobotConfig,
+                    bool>(),
+           py::arg("sim"), py::arg("ik"), py::arg("cfg"),
            py::arg("register_convergence_callback") = true)
       .def("get_parameters", &rcs::sim::SimRobot::get_parameters)
       .def("set_parameters", &rcs::sim::SimRobot::set_parameters,

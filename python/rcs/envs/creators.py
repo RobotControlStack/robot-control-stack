@@ -190,8 +190,7 @@ class RCSSimEnvCreator(EnvCreator):
         simulation = sim.Sim(mjb_file)
 
         ik = rcs.common.IK(urdf_path)
-        robot = rcs.sim.SimRobot(simulation, "0", ik)
-        robot.set_parameters(robot_cfg)
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = FR3Sim(env, simulation, sim_wrapper)
 
@@ -200,7 +199,7 @@ class RCSSimEnvCreator(EnvCreator):
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
-            gripper = sim.SimGripper(simulation, "0", gripper_cfg)
+            gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
 

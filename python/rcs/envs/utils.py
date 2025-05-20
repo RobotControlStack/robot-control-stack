@@ -17,14 +17,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world") -> sim.SimRobotConfig:
+def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     cfg = sim.SimRobotConfig()
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
+    cfg.robot_type = rcs.common.RobotType.FR3
+    cfg.add_id(idx)
     return cfg
 
 
-def default_fr3_hw_robot_cfg(async_control: bool = False):
+def default_fr3_hw_robot_cfg(async_control: bool = False) -> FR3Config:
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
     robot_cfg.speed_factor = 0.1
@@ -33,7 +35,7 @@ def default_fr3_hw_robot_cfg(async_control: bool = False):
     return robot_cfg
 
 
-def default_fr3_hw_gripper_cfg(async_control: bool = False):
+def default_fr3_hw_gripper_cfg(async_control: bool = False) -> rcs.hw.FHConfig:
     gripper_cfg = rcs.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
@@ -65,11 +67,13 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
     return RealSenseCameraSet(cam_cfg)
 
 
-def default_fr3_sim_gripper_cfg():
-    return sim.SimGripperConfig()
+def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
+    cfg = sim.SimGripperConfig()
+    cfg.add_id(idx)
+    return cfg
 
 
-def default_mujoco_cameraset_cfg():
+def default_mujoco_cameraset_cfg() -> SimCameraSetConfig:
     cameras = {
         "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
         "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
@@ -81,7 +85,7 @@ def default_mujoco_cameraset_cfg():
     )
 
 
-def get_tcp_offset(mjcf: str | Path):
+def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
     """Reads out tcp offset set in mjcf file.
 
     Convention: The tcp offset is stored in the model as a numeric attribute named "tcp_offset".

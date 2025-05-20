@@ -69,14 +69,14 @@ def main():
             urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
             assert urdf_path is not None
             ik = rcs.common.IK(urdf_path)
-            robot = rcs.sim.SimRobot(simulation, "0", ik)
             cfg = sim.SimRobotConfig()
+            cfg.add_id("0")
             cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            cfg.realtime = False
-            robot.set_parameters(cfg)
+            robot = rcs.sim.SimRobot(simulation, ik, cfg)
 
             gripper_cfg_sim = sim.SimGripperConfig()
-            gripper = sim.SimGripper(simulation, "0", gripper_cfg_sim)
+            gripper_cfg_sim.add_id("0")
+            gripper = sim.SimGripper(simulation, gripper_cfg_sim)
 
             # add camera to have a rendering gui
             cameras = {
