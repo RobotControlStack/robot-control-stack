@@ -19,24 +19,10 @@
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 
-struct {
-  std::array<std::string, 8> arm_collision_geoms{
-      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
-      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
-      "fr3_link6_collision", "fr3_link7_collision"};
-  std::array<std::string, 7> joints = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-  std::array<std::string, 7> actuators = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-} const model_names;
-
 namespace rcs {
 namespace sim {
 
+// TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
 SimRobot::SimRobot(std::shared_ptr<Sim> sim, const std::string& id,
                    std::shared_ptr<common::IK> ik,
@@ -66,8 +52,8 @@ void SimRobot::move_home() {
 void SimRobot::init_ids() {
   std::string name;
   // Collision geoms
-  for (size_t i = 0; i < std::size(model_names.arm_collision_geoms); ++i) {
-    name = model_names.arm_collision_geoms[i];
+  for (size_t i = 0; i < std::size(this->cfg.arm_collision_geoms); ++i) {
+    name = this->cfg.arm_collision_geoms[i];
     name.append("_");
     name.append(this->id);
     int id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
@@ -85,8 +71,8 @@ void SimRobot::init_ids() {
     throw std::runtime_error(std::string("No site named " + name));
   }
   // Joints
-  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
-    name = model_names.joints[i];
+  for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
+    name = this->cfg.joints[i];
     name.append("_");
     name.append(this->id);
     this->ids.joints[i] = mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str());
@@ -95,8 +81,8 @@ void SimRobot::init_ids() {
     }
   }
   // Actuators
-  for (size_t i = 0; i < std::size(model_names.actuators); ++i) {
-    name = model_names.actuators[i];
+  for (size_t i = 0; i < std::size(this->cfg.actuators); ++i) {
+    name = this->cfg.actuators[i];
     name.append("_");
     name.append(this->id);
     this->ids.actuators[i] =
@@ -145,8 +131,8 @@ void SimRobot::set_joint_position(const common::VectorXd& q) {
 }
 
 common::VectorXd SimRobot::get_joint_position() {
-  common::VectorXd q(std::size(model_names.joints));
-  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
+  common::VectorXd q(std::size(this->cfg.joints));
+  for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
   }
   return q;

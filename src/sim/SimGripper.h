@@ -18,6 +18,14 @@ struct SimGripperConfig : common::GripperConfig {
   double epsilon_outer = 0.005;
   double seconds_between_callbacks = 0.05;  // 20 Hz
   std::vector<std::string> ignored_collision_geoms = {};
+  std::vector<std::string> collision_geoms{"hand_c", "d435i_collision",
+                                           "finger_0_left", "finger_0_right"};
+
+  std::vector<std::string> collision_geoms_fingers{"finger_0_left",
+                                                   "finger_0_right"};
+  std::string joint1 = "finger_joint1";
+  std::string joint2 = "finger_joint2";
+  std::string actuator = "actuator8";
 };
 
 struct SimGripperState : common::GripperState {

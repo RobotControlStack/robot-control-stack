@@ -7,19 +7,6 @@
 #include <string>
 #include <tuple>
 
-struct {
-  // TODO(juelg): add camera mount collision (first a name needs to be
-  // added to the model)
-  std::vector<std::string> collision_geoms{"hand_c", "d435i_collision",
-                                           "finger_0_left", "finger_0_right"};
-
-  std::vector<std::string> collision_geoms_fingers{"finger_0_left",
-                                                   "finger_0_right"};
-  std::string joint1 = "finger_joint1";
-  std::string joint2 = "finger_joint2";
-  std::string actuator = "actuator8";
-} const gripper_names;
-
 namespace rcs {
 namespace sim {
 
@@ -28,28 +15,26 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const std::string &id,
     : sim{sim}, cfg{cfg}, id{id} {
   this->state = SimGripperState();
   this->actuator_id = mj_name2id(this->sim->m, mjOBJ_ACTUATOR,
-                                 (gripper_names.actuator + "_" + id).c_str());
+                                 (this->cfg.actuator + "_" + id).c_str());
   if (this->actuator_id == -1) {
     throw std::runtime_error(
-        std::string("No actuator named " + gripper_names.actuator));
+        std::string("No actuator named " + this->cfg.actuator));
   }
   // this->tendon_id =
   //     mj_name2id(this->sim->m, mjOBJ_TENDON, ("split_" + id).c_str());
   this->joint_id_1 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, (gripper_names.joint1 + "_" + id).c_str())];
+      this->sim->m, mjOBJ_JOINT, (this->cfg.joint1 + "_" + id).c_str())];
   if (this->joint_id_1 == -1) {
-    throw std::runtime_error(
-        std::string("No joint named " + gripper_names.joint1));
+    throw std::runtime_error(std::string("No joint named " + this->cfg.joint1));
   }
   this->joint_id_2 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, (gripper_names.joint2 + "_" + id).c_str())];
+      this->sim->m, mjOBJ_JOINT, (this->cfg.joint2 + "_" + id).c_str())];
   if (this->joint_id_2 == -1) {
-    throw std::runtime_error(
-        std::string("No joint named " + gripper_names.joint2));
+    throw std::runtime_error(std::string("No joint named " + this->cfg.joint2));
   }
   // Collision geoms
-  this->add_collision_geoms(gripper_names.collision_geoms, this->cgeom, false);
-  this->add_collision_geoms(gripper_names.collision_geoms_fingers, this->cfgeom,
+  this->add_collision_geoms(this->cfg.collision_geoms, this->cgeom, false);
+  this->add_collision_geoms(this->cfg.collision_geoms_fingers, this->cfgeom,
                             false);
 
   this->sim->register_all_cb(std::bind(&SimGripper::convergence_callback, this),

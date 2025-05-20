@@ -413,7 +413,12 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimRobotConfig::seconds_between_callbacks)
       .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("trajectory_trace",
-                     &rcs::sim::SimRobotConfig::trajectory_trace);
+                     &rcs::sim::SimRobotConfig::trajectory_trace)
+      .def_readwrite("robot_type", &rcs::sim::SimRobotConfig::robot_type)
+      .def_readwrite("arm_collision_geoms",
+                     &rcs::sim::SimRobotConfig::arm_collision_geoms)
+      .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
+      .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators);
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
       .def(py::init<>())
@@ -436,7 +441,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimGripperConfig::seconds_between_callbacks)
       .def_readwrite("ignored_collision_geoms",
-                     &rcs::sim::SimGripperConfig::ignored_collision_geoms);
+                     &rcs::sim::SimGripperConfig::ignored_collision_geoms)
+      .def_readwrite("collision_geoms",
+                     &rcs::sim::SimGripperConfig::collision_geoms)
+      .def_readwrite("collision_geoms_fingers",
+                     &rcs::sim::SimGripperConfig::collision_geoms_fingers)
+      .def_readwrite("joint1", &rcs::sim::SimGripperConfig::joint1)
+      .def_readwrite("joint2", &rcs::sim::SimGripperConfig::joint2)
+      .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator);
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
       sim, "SimGripperState")
       .def(py::init<>())
