@@ -31,6 +31,7 @@ struct SimRobotConfig : common::RobotConfig {
       "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
       "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
+  std::string attachment_site = "attachment_site";
 };
 
 struct SimRobotState : common::RobotState {
@@ -45,8 +46,8 @@ struct SimRobotState : common::RobotState {
 
 class SimRobot : public common::Robot {
  public:
-  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
-           std::shared_ptr<common::IK> ik,
+  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, std::shared_ptr<common::IK> ik,
+           std::shared_ptr<SimRobotConfig> cfg,
            bool register_convergence_callback = true);
   ~SimRobot() override;
   bool set_parameters(const SimRobotConfig &cfg);
@@ -66,7 +67,6 @@ class SimRobot : public common::Robot {
   SimRobotConfig cfg;
   SimRobotState state;
   std::shared_ptr<Sim> sim;
-  std::string id;
   std::shared_ptr<common::IK> m_ik;
   struct {
     std::set<size_t> cgeom;

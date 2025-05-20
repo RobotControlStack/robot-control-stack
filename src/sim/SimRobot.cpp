@@ -24,10 +24,10 @@ namespace sim {
 
 // TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
-SimRobot::SimRobot(std::shared_ptr<Sim> sim, const std::string& id,
-                   std::shared_ptr<common::IK> ik,
+SimRobot::SimRobot(std::shared_ptr<Sim> sim, std::shared_ptr<common::IK> ik,
+                   std::shared_ptr<SimRobotConfig> cfg,
                    bool register_convergence_callback)
-    : sim{sim}, id{id}, cfg{}, state{}, m_ik(ik) {
+    : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
   this->init_ids();
   if (register_convergence_callback) {
     this->sim->register_cb(std::bind(&SimRobot::is_arrived_callback, this),
@@ -54,8 +54,6 @@ void SimRobot::init_ids() {
   // Collision geoms
   for (size_t i = 0; i < std::size(this->cfg.arm_collision_geoms); ++i) {
     name = this->cfg.arm_collision_geoms[i];
-    name.append("_");
-    name.append(this->id);
     int id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
     if (id == -1) {
       throw std::runtime_error(std::string("No geom named " + name));
@@ -63,8 +61,7 @@ void SimRobot::init_ids() {
     this->ids.cgeom.insert(id);
   }
   // Sites
-  name = "attachment_site_";
-  name.append(this->id);
+  name = this->cfg.attachment_site;
   this->ids.attachment_site =
       mj_name2id(this->sim->m, mjOBJ_SITE, name.c_str());
   if (this->ids.attachment_site == -1) {
@@ -73,8 +70,6 @@ void SimRobot::init_ids() {
   // Joints
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     name = this->cfg.joints[i];
-    name.append("_");
-    name.append(this->id);
     this->ids.joints[i] = mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str());
     if (this->ids.joints[i] == -1) {
       throw std::runtime_error(std::string("No joint named " + name));
@@ -83,8 +78,6 @@ void SimRobot::init_ids() {
   // Actuators
   for (size_t i = 0; i < std::size(this->cfg.actuators); ++i) {
     name = this->cfg.actuators[i];
-    name.append("_");
-    name.append(this->id);
     this->ids.actuators[i] =
         mj_name2id(this->sim->m, mjOBJ_ACTUATOR, name.c_str());
     if (this->ids.actuators[i] == -1) {

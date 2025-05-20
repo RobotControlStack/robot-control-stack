@@ -418,6 +418,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("arm_collision_geoms",
                      &rcs::sim::SimRobotConfig::arm_collision_geoms)
       .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
+      .def_readwrite("attachment_site",
+                     &rcs::sim::SimRobotConfig::attachment_site)
       .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators);
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
@@ -483,8 +485,9 @@ PYBIND11_MODULE(_core, m) {
            py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    std::shared_ptr<rcs::common::IK>, bool>(),
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    std::shared_ptr<rcs::common::IK>,
+                    std::shared_ptr<rcs::sim::SimRobotConfig>, bool>(),
            py::arg("sim"), py::arg("id"), py::arg("ik"),
            py::arg("register_convergence_callback") = true)
       .def("get_parameters", &rcs::sim::SimRobot::get_parameters)
