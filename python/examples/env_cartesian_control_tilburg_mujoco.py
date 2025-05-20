@@ -6,12 +6,10 @@ from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcs.envs.utils import (
     default_fr3_hw_robot_cfg,
-    default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
     default_tilburg_hw_hand_cfg,
     default_tilburg_mujoco_hand_cfg,
-
 )
 
 logger = logging.getLogger(__name__)

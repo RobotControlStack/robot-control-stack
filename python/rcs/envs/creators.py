@@ -38,8 +38,8 @@ from rcs.envs.utils import (
     default_realsense,
     get_urdf_path,
 )
+from rcs.hand.mujoco_hand_control import MujocoHandControl
 from rcs.hand.tilburg_hand import TilburgHand
-from rcs.hand.mujoco_hand_control import MujocoHandControl 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -206,7 +206,6 @@ class RCSSimEnvCreator(EnvCreator):
         elif isinstance(gripper_cfg, rcs.hand.mujoco_hand_control.THMujocoConfig):
             hand = MujocoHandControl(gripper_cfg)
             env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
-
 
         if collision_guard:
             env = CollisionGuard.env_from_xml_paths(

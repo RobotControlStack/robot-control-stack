@@ -1,12 +1,14 @@
-import time
-from typing import Optional
 import os
+import time
 from pathlib import Path
+from typing import Optional
 
 import mujoco
 import mujoco.viewer
-from rcs.hand.interface import BaseHand
+import numpy as np
 from pydantic import BaseModel
+from rcs.hand.interface import BaseHand
+
 
 class THMujocoConfig(BaseModel):
     """Config for the Mujoco Tilburg hand"""
@@ -118,7 +120,7 @@ class MujocoHandControl(BaseHand):
         pos_vec.append(0.0)
         return pos_vec
 
-    def set_pos_vector(self, values: list):
+    def set_pos_vector(self, values: np.ndarray):
         """
         Set the position vector for the actuators.
         :param values: List of actuator values to set.
@@ -140,19 +142,19 @@ class MujocoHandControl(BaseHand):
         """
         self.set_zero_pos()
 
-    def get_state(self):
+    def get_state(self) -> np.ndarray:
         """
         Returns the current state of the hand.
         """
         return self.get_pos_vector()
 
-    def get_normalized_joints_poses(self):
+    def get_normalized_joints_poses(self) -> np.ndarray:
         """
         Returns the current position vector.
         """
-        self.get_pos_vector()
+        return self.get_pos_vector()
 
-    def set_normalized_joints_poses(self, values: list):
+    def set_normalized_joints_poses(self, values: np.ndarray):
         """
         Set the position vector for the actuators.
         :param values: List of actuator values to set.
