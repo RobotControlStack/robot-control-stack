@@ -52,7 +52,7 @@ def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
 
 
 def default_tilburg_mujoco_hand_cfg():
-    return rcsss.hand.interface.THMujocoConfig()
+    return rcs.hand.mujoco_hand_control.THMujocoConfig()
 
 
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:

@@ -1,13 +1,21 @@
 import time
 from typing import Optional
+import os
+from pathlib import Path
 
 import mujoco
 import mujoco.viewer
-from rcsss.hand.hand import HandControl
-from rcsss.hand.interface import THMujocoConfig
+from rcs.hand.interface import BaseHand
+from pydantic import BaseModel
+
+class THMujocoConfig(BaseModel):
+    """Config for the Mujoco Tilburg hand"""
+
+    binary_action: bool = True
+    mujoco_xml_path: str = os.path.join(Path.home(), "repos/tilburg-hand/src/tilburg_hand_urdf_mujoco/robot.xml")
 
 
-class MujocoHandControl(HandControl):
+class MujocoHandControl(BaseHand):
     """
     Tilburg Mujoco Hand Control
     This class provides an interface for controlling the Tilburg Hand in Mujoco.
@@ -125,3 +133,40 @@ class MujocoHandControl(HandControl):
         # mujoco.mj_step(self.model, self.data)
         # self.viewer.sync()
         self._run_simulation(self.control_duration)
+
+    def reset(self):
+        """
+        Reset the hand to its initial state.
+        """
+        self.set_zero_pos()
+
+    def get_state(self):
+        """
+        Returns the current state of the hand.
+        """
+        return self.get_pos_vector()
+
+    def get_normalized_joints_poses(self):
+        """
+        Returns the current position vector.
+        """
+        self.get_pos_vector()
+
+    def set_normalized_joints_poses(self, values: list):
+        """
+        Set the position vector for the actuators.
+        :param values: List of actuator values to set.
+        """
+        self.set_pos_vector(values)
+
+    def open(self):
+        """
+        Open the hand.
+        """
+        self.reset()
+
+    def __del__(self):
+        """
+        Destructor to clean up resources.
+        """
+        self.disconnect()

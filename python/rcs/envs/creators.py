@@ -5,7 +5,6 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 import rcs
-import rcs.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcs import sim
 from rcs._core.sim import CameraType
@@ -40,6 +39,7 @@ from rcs.envs.utils import (
     get_urdf_path,
 )
 from rcs.hand.tilburg_hand import TilburgHand
+from rcs.hand.mujoco_hand_control import MujocoHandControl 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -202,6 +202,11 @@ class RCSSimEnvCreator(EnvCreator):
             gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
+
+        elif isinstance(gripper_cfg, rcs.hand.mujoco_hand_control.THMujocoConfig):
+            hand = MujocoHandControl(gripper_cfg)
+            env = HandWrapper(env, hand, binary=gripper_cfg.binary_action)
+
 
         if collision_guard:
             env = CollisionGuard.env_from_xml_paths(

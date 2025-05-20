@@ -1,23 +1,24 @@
 import logging
-from typing import Union
 
-from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
-from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcsss.envs.factories import fr3_hw_env, fr3_sim_env
-from rcsss.envs.utils import (
-    default_fr3_hw_gripper_cfg,
+from rcs._core.common import RobotPlatform
+from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
+from rcs.envs.utils import (
     default_fr3_hw_robot_cfg,
+    default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
+    default_tilburg_hw_hand_cfg,
     default_tilburg_mujoco_hand_cfg,
+
 )
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 
 """
@@ -27,43 +28,43 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcsss fr3 unlock <ip>
+python -m rcs fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcsss fr3 guiding-mode <ip>
+python -m rcs fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcsss fr3 lock <ip>
+python -m rcs fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcsss fr3 shutdown <ip>
+python -m rcs fr3 shutdown <ip>
 """
 
 
 def main():
-    resource_manger: FCI | DummyResourceManager
-    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+    resource_manger: FCI | ContextManager
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
         resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = DummyResourceManager()
+        resource_manger = ContextManager()
     with resource_manger:
-        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            env_rel = fr3_hw_env(
+        if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+            env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
-                control_mode=ControlMode.CARTESIAN_TQuart,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
-                gripper_cfg=default_fr3_hw_gripper_cfg(),
+                gripper_cfg=default_tilburg_hw_hand_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = fr3_sim_env(
-                control_mode=ControlMode.CARTESIAN_TQuart,
+            env_rel = RCSSimEnvCreator()(
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
                 gripper_cfg=default_tilburg_mujoco_hand_cfg(),
@@ -75,21 +76,13 @@ def main():
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-        close_action: Union[int, list[float]]
-        open_action: Union[int, list[float]]
-        if default_tilburg_mujoco_hand_cfg().binary_action:
-            close_action = 0
-            open_action = 1
-        else:
-            template = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-            value = 0.5
-            close_action = [value * val for val in template]
-            open_action = [0.0] * len(template)
+        close_action = 0
+        open_action = 1
 
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
@@ -99,7 +92,7 @@ def main():
             sleep(5)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
