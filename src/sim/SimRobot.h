@@ -33,6 +33,20 @@ struct SimRobotConfig : common::RobotConfig {
   };
   std::string attachment_site = "attachment_site";
   std::string base = "base";
+
+  void add_id(const std::string &id) {
+    for (auto &s : this->arm_collision_geoms) {
+      s = s + "_" + id;
+    }
+    for (auto &s : this->joints) {
+      s = s + "_" + id;
+    }
+    for (auto &s : this->actuators) {
+      s = s + "_" + id;
+    }
+    this->attachment_site = this->attachment_site + "_" + id;
+    this->base = this->base + "_" + id;
+  }
 };
 
 struct SimRobotState : common::RobotState {

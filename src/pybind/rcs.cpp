@@ -421,7 +421,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("attachment_site",
                      &rcs::sim::SimRobotConfig::attachment_site)
       .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators)
-      .def_readwrite("base", &rcs::sim::SimRobotConfig::base);
+      .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
+      .def("add_id", &rcs::sim::SimRobotConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
       .def(py::init<>())
@@ -451,7 +452,8 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimGripperConfig::collision_geoms_fingers)
       .def_readwrite("joint1", &rcs::sim::SimGripperConfig::joint1)
       .def_readwrite("joint2", &rcs::sim::SimGripperConfig::joint2)
-      .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator);
+      .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator)
+      .def("add_id", &rcs::sim::SimGripperConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
       sim, "SimGripperState")
       .def(py::init<>())
@@ -477,9 +479,9 @@ PYBIND11_MODULE(_core, m) {
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimGripperConfig &>(),
-           py::arg("sim"), py::arg("id"), py::arg("cfg"))
+           py::arg("sim"), py::arg("cfg"))
       .def("get_parameters", &rcs::sim::SimGripper::get_parameters)
       .def("get_state", &rcs::sim::SimGripper::get_state)
       .def("set_parameters", &rcs::sim::SimGripper::set_parameters,

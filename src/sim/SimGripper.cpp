@@ -10,12 +10,11 @@
 namespace rcs {
 namespace sim {
 
-SimGripper::SimGripper(std::shared_ptr<Sim> sim, const std::string &id,
-                       const SimGripperConfig &cfg)
-    : sim{sim}, cfg{cfg}, id{id} {
+SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
+    : sim{sim}, cfg{cfg} {
   this->state = SimGripperState();
-  this->actuator_id = mj_name2id(this->sim->m, mjOBJ_ACTUATOR,
-                                 (this->cfg.actuator + "_" + id).c_str());
+  this->actuator_id =
+      mj_name2id(this->sim->m, mjOBJ_ACTUATOR, this->cfg.actuator.c_str());
   if (this->actuator_id == -1) {
     throw std::runtime_error(
         std::string("No actuator named " + this->cfg.actuator));
@@ -23,12 +22,12 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const std::string &id,
   // this->tendon_id =
   //     mj_name2id(this->sim->m, mjOBJ_TENDON, ("split_" + id).c_str());
   this->joint_id_1 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, (this->cfg.joint1 + "_" + id).c_str())];
+      this->sim->m, mjOBJ_JOINT, this->cfg.joint1.c_str())];
   if (this->joint_id_1 == -1) {
     throw std::runtime_error(std::string("No joint named " + this->cfg.joint1));
   }
   this->joint_id_2 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, (this->cfg.joint2 + "_" + id).c_str())];
+      this->sim->m, mjOBJ_JOINT, this->cfg.joint2.c_str())];
   if (this->joint_id_2 == -1) {
     throw std::runtime_error(std::string("No joint named " + this->cfg.joint2));
   }
@@ -53,7 +52,7 @@ void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
     cgeoms_set.clear();
   }
   for (size_t i = 0; i < std::size(cgeoms_str); ++i) {
-    std::string name = cgeoms_str[i] + "_" + id;
+    std::string name = cgeoms_str[i];
 
     int coll_id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
     if (coll_id == -1) {

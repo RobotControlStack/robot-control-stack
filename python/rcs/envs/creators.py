@@ -199,7 +199,7 @@ class RCSSimEnvCreator(EnvCreator):
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
-            gripper = sim.SimGripper(simulation, "0", gripper_cfg)
+            gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
 
