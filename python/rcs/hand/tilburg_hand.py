@@ -77,7 +77,8 @@ class TilburgHand(BaseHand):
         """
         Sets all finger joint positions to zero.
         """
-        self._motors.goto_zero_position()
+        pos_normalized = 0 * self.MAX_GRASP_JOINTS_VALS
+        self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
         logger.info("All joints reset to zero position.")
 
     def set_joint_pos(self, finger_joint: Finger, pos_value: float):
