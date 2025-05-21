@@ -199,6 +199,10 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
+    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False):
+        super().__init__(env, simulation)
+        self.include_rotation = include_rotation
+
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -212,7 +216,10 @@ class RandomCubePos(SimWrapper):
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
-        self.sim.data.joint("box_joint").qpos[:3] = [pos_x, pos_y, pos_z]
+        if self.include_rotation:
+            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+        else:
+            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
 
         return obs, info
 
@@ -229,17 +236,39 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         self.sim = env.get_wrapper_attr("sim")
 
     def step(self, action: dict[str, Any]):
-        obs, reward, done, truncated, info = super().step(action)
+        obs, reward, _, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("box_joint").qpos[2] > 0.3 and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
+            self.sim.data.joint("box-joint").qpos[2] > 0.15 + 0.852
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
-        diff_ee_cube = np.linalg.norm(
-            self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
-        )
-        diff_cube_home = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
-        reward = -diff_cube_home - diff_ee_cube
+        info["success"] = success
+        if success:
+            reward = 5
+        else:
+            tcp_to_obj_dist = np.linalg.norm(
+                self.sim.data.joint("box-joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+            )
+            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box-joint").qpos[:3] - self.EE_HOME)
 
+            # old reward
+            # reward = -obj_to_goal_dist - tcp_to_obj_dist
+
+            # Maniskill grasp reward
+            reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
+            reward = reaching_reward
+            is_grasped = info["is_grasped"]
+            reward += is_grasped
+            place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
+            reward += place_reward * is_grasped
+
+            # velocities are currently always zero after a step
+            # qvel = self.agent.robot.get_qvel()
+            # static_reward = 1 - np.tanh(5 * np.linalg.norm(qvel, axis=1))
+            # reward += static_reward * info["is_obj_placed"]
+
+        # normalize
+        reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
 
 
