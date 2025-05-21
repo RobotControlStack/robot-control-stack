@@ -199,8 +199,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
-    def __init__(self, env: gym.Env, include_rotation: bool = False):
-        super().__init__(env)
+    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False):
+        super().__init__(env, simulation)
         self.include_rotation = include_rotation
 
     def reset(
@@ -268,7 +268,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             # reward += static_reward * info["is_obj_placed"]
 
         # normalize
-        reward /= 5
+        reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
 
 
