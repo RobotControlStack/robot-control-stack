@@ -137,6 +137,7 @@ class CameraDictType(RCSpaceType):
         ],
     ]
 
+
 class DigitCameraDictType(RCSpaceType):
     digit_frame: dict[
         Annotated[str, "camera_names"],
@@ -155,6 +156,7 @@ class DigitCameraDictType(RCSpaceType):
             ],
         ],
     ]
+
 
 # joining works with inheritance but need to inherit from protocol again
 class ArmObsType(TQuatDictType, JointsDictType, TRPYDictType): ...
@@ -608,14 +610,15 @@ class CameraSetWrapper(ActObsInfoWrapper):
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
-                
-        if isinstance(self.camera_set, rcs.digit_cam.digit_cam.DigitCam): #TODO reomve after debugging
-            pass    
+
+        if isinstance(self.camera_set, rcs.digit_cam.digit_cam.DigitCam):  # TODO reomve after debugging
+            pass
         return observation, info
 
     def close(self):
         self.camera_set.close()
         super().close()
+
 
 class DigitCameraSetWrapper(CameraSetWrapper):
     RGB_KEY = "rgb"
@@ -623,19 +626,18 @@ class DigitCameraSetWrapper(CameraSetWrapper):
 
     def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
         super().__init__(env, camera_set, include_depth)
-        self.unwrapped: FR3Env
+        # self.unwrapped: FR3Env
         self.camera_set = camera_set
         self.include_depth = include_depth
 
         self.observation_space: gym.spaces.Dict
         # rgb is always included
         params: dict = {
-                        "digit_frame": 
-                            {
-                            "height": camera_set.config.resolution_height,
-                            "width": camera_set.config.resolution_width,
-                            }
-                        }
+            "digit_frame": {
+                "height": camera_set.config.resolution_height,
+                "width": camera_set.config.resolution_width,
+            }
+        }
 
         if self.include_depth:
             # depth is optional

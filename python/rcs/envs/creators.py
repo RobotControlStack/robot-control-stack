@@ -11,10 +11,11 @@ from rcs import sim
 from rcs._core.sim import CameraType
 from rcs.camera.hw import BaseHardwareCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcs.digit_cam.digit_cam import DigitCam
 from rcs.envs.base import (
     CameraSetWrapper,
-    DigitCameraSetWrapper,
     ControlMode,
+    DigitCameraSetWrapper,
     GripperWrapper,
     HandWrapper,
     RelativeActionSpace,
@@ -41,7 +42,6 @@ from rcs.envs.utils import (
     get_urdf_path,
 )
 from rcs.hand.tilburg_hand import TilburgHand
-from rcs.digit_cam.digit_cam import DigitCam
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

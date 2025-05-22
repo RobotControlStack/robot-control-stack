@@ -5,11 +5,12 @@ from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcs.envs.utils import (
+    default_digit_cam_cfg,
+    default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    default_digit_cam_cfg,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ def main():
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
-                gripper_cfg=default_fr3_hw_robot_cfg(),
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -67,7 +68,7 @@ def main():
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
-                digit_set_cfg= default_digit_cam_cfg(),
+                digit_set_cfg=default_digit_cam_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -92,6 +93,7 @@ def main():
                     logger.info("Truncated or terminated!")
                     return
         env_rel.close()
+
 
 if __name__ == "__main__":
     main()
