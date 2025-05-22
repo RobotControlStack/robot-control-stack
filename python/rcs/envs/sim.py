@@ -25,7 +25,7 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
-class FR3Sim(gym.Wrapper):
+class RobotSimWrapper(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
@@ -178,7 +178,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         else:
             control_mode = env.unwrapped.get_control_mode()
         c_env: gym.Env = RobotEnv(robot, control_mode)
-        c_env = FR3Sim(c_env, simulation)
+        c_env = RobotSimWrapper(c_env, simulation)
         if gripper:
             gripper_cfg = sim.SimGripperConfig()
             gripper_cfg.add_id(id)

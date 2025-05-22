@@ -24,7 +24,7 @@ from rcs.envs.hw import FR3HW
 from rcs.envs.sim import (
     CamRobot,
     CollisionGuard,
-    FR3Sim,
+    RobotSimWrapper,
     GripperWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
@@ -192,7 +192,7 @@ class RCSSimEnvCreator(EnvCreator):
         ik = rcs.common.IK(urdf_path)
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
-        env = FR3Sim(env, simulation, sim_wrapper)
+        env = RobotSimWrapper(env, simulation, sim_wrapper)
 
         if camera_set_cfg is not None:
             camera_set = SimCameraSet(simulation, camera_set_cfg)
