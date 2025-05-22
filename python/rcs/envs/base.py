@@ -7,6 +7,7 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+import rcs
 from rcs import common
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
@@ -608,7 +609,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
                 
-        if isinstance(self.camera_set, rcsss.digit_cam.digit_cam.DigitCam): #TODO reomve after debugging
+        if isinstance(self.camera_set, rcs.digit_cam.digit_cam.DigitCam): #TODO reomve after debugging
             pass    
         return observation, info
 

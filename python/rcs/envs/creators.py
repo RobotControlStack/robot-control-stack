@@ -13,6 +13,7 @@ from rcs.camera.hw import BaseHardwareCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcs.envs.base import (
     CameraSetWrapper,
+    DigitCameraSetWrapper,
     ControlMode,
     GripperWrapper,
     HandWrapper,
@@ -40,6 +41,7 @@ from rcs.envs.utils import (
     get_urdf_path,
 )
 from rcs.hand.tilburg_hand import TilburgHand
+from rcs.digit_cam.digit_cam import DigitCam
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -154,6 +156,7 @@ class RCSSimEnvCreator(EnvCreator):
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         camera_set_cfg: SimCameraSetConfig | None = None,
+        digit_set_cfg: rcs.digit_cam.digit_cam.DigitConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -197,6 +200,13 @@ class RCSSimEnvCreator(EnvCreator):
         if camera_set_cfg is not None:
             camera_set = SimCameraSet(simulation, camera_set_cfg)
             env = CameraSetWrapper(env, camera_set, include_depth=True)
+
+        if digit_set_cfg is not None:
+            digit_cam = DigitCam(digit_set_cfg)
+            digit_cam.start()
+            digit_cam.wait_for_frames()
+            logger.info("DigitCameraSet started")
+            env = DigitCameraSetWrapper(env, digit_cam)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)

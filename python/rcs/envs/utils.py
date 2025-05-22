@@ -11,6 +11,8 @@ from rcs._core.sim import CameraType
 from rcs.camera.interface import BaseCameraConfig
 from rcs.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSetConfig
+import rcs.digit_cam
+import rcs.digit_cam.digit_cam
 from rcs.hand.tilburg_hand import THConfig
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,7 @@ def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     return cfg
 
 def default_digit_cam_cfg():
-    return rcsss.digit_cam.interface.DigitConfig()
+    return rcs.digit_cam.digit_cam.DigitConfig()
 
 def default_mujoco_cameraset_cfg() -> SimCameraSetConfig:
     cameras = {
