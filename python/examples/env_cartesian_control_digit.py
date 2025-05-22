@@ -58,6 +58,7 @@ def main():
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
+                digit_set_cfg=default_digit_cam_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -68,7 +69,6 @@ def main():
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 camera_set_cfg=default_mujoco_cameraset_cfg(),
-                digit_set_cfg=default_digit_cam_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )

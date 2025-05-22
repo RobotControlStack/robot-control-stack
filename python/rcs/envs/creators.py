@@ -60,6 +60,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         collision_guard: str | PathLike | None = None,
         gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: BaseHardwareCameraSet | None = None,
+        digit_set_cfg: rcs.digit_cam.digit_cam.DigitConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -106,6 +107,13 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
+
+        if digit_set_cfg is not None:
+            digit_cam = DigitCam(digit_set_cfg)
+            digit_cam.start()
+            digit_cam.wait_for_frames()
+            logger.info("DigitCameraSet started")
+            env = DigitCameraSetWrapper(env, digit_cam)
 
         if collision_guard is not None:
             assert urdf_path is not None
@@ -156,7 +164,6 @@ class RCSSimEnvCreator(EnvCreator):
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         camera_set_cfg: SimCameraSetConfig | None = None,
-        digit_set_cfg: rcs.digit_cam.digit_cam.DigitConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -200,13 +207,6 @@ class RCSSimEnvCreator(EnvCreator):
         if camera_set_cfg is not None:
             camera_set = SimCameraSet(simulation, camera_set_cfg)
             env = CameraSetWrapper(env, camera_set, include_depth=True)
-
-        if digit_set_cfg is not None:
-            digit_cam = DigitCam(digit_set_cfg)
-            digit_cam.start()
-            digit_cam.wait_for_frames()
-            logger.info("DigitCameraSet started")
-            env = DigitCameraSetWrapper(env, digit_cam)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)
