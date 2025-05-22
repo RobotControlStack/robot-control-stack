@@ -139,10 +139,8 @@ class CameraDictType(RCSpaceType):
 
 
 class DigitCameraDictType(RCSpaceType):
-    digit_frame: dict[
+    digit_frames: dict[
         Annotated[str, "camera_names"],
-        dict[
-            Annotated[str, "camera_type"],  # "rgb" or "depth"
             Annotated[
                 np.ndarray,
                 # needs to be filled with values downstream
@@ -152,10 +150,10 @@ class DigitCameraDictType(RCSpaceType):
                     shape=(height, width, color_dim),
                     dtype=dtype,
                 ),
-                "digit_frame",
+                "digit_frames",
             ],
-        ],
-    ]
+        ]
+
 
 
 # joining works with inheritance but need to inherit from protocol again
@@ -611,8 +609,6 @@ class CameraSetWrapper(ActObsInfoWrapper):
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
 
-        if isinstance(self.camera_set, rcs.digit_cam.digit_cam.DigitCam):  # TODO reomve after debugging
-            pass
         return observation, info
 
     def close(self):
@@ -621,51 +617,52 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
 
 class DigitCameraSetWrapper(CameraSetWrapper):
-    RGB_KEY = "rgb"
-    DEPTH_KEY = "depth"
+    """Wrapper for digit cameras."""
 
     def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
-        super().__init__(env, camera_set, include_depth)
+        super().__init__(env, camera_set)
         # self.unwrapped: FR3Env
         self.camera_set = camera_set
-        self.include_depth = include_depth
-
         self.observation_space: gym.spaces.Dict
         # rgb is always included
         params: dict = {
-            "digit_frame": {
+            "digit_frames": {
                 "height": camera_set.config.resolution_height,
                 "width": camera_set.config.resolution_width,
             }
         }
 
-        if self.include_depth:
-            # depth is optional
-            params.update(
-                {
-                    f"/{name}/{self.DEPTH_KEY}/frame": {
-                        "height": camera_set.config.resolution_height,
-                        "width": camera_set.config.resolution_width,
-                        "color_dim": 1,
-                        "dtype": np.float32,
-                        "low": 0.0,
-                        "high": 1.0,
-                    }
-                    for name in camera_set.camera_names
-                }
-            )
         self.observation_space.spaces.update(
             get_space(
                 DigitCameraDictType,
                 child_dict_keys_to_unfold={
                     "camera_names": camera_set.camera_names,
-                    "camera_type": [self.RGB_KEY, self.DEPTH_KEY] if self.include_depth else [self.RGB_KEY],
                 },
                 params=params,
             ).spaces
         )
         self.camera_key = get_space_keys(DigitCameraDictType)[0]
 
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        info = copy.deepcopy(info)
+        frameset = self.camera_set.get_latest_frames()
+        if frameset is None:
+            observation[self.camera_key] = {}
+            info["camera_available"] = False
+            return observation, info
+
+        frame_dict: dict[str, np.ndarray] = {
+            camera_name: frame.camera.color.data
+            for camera_name, frame in frameset.frames.items()
+        }
+        observation[self.camera_key] = frame_dict
+
+        info["camera_available"] = True
+        if frameset.avg_timestamp is not None:
+            info["frame_timestamp"] = frameset.avg_timestamp
+
+        return observation, info
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
