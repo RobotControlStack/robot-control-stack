@@ -110,6 +110,9 @@ void FR3::set_guiding_mode(bool enabled) {
   activated.fill(enabled);
   this->robot.setGuidingMode(activated, enabled);
   this->cfg.guiding_mode_enabled = enabled;
+  std::cout << "Guiding mode " << (enabled ? "enabled" : "disabled") <<
+      std::endl;
+
 }
 
 void FR3::move_home() { this->set_joint_position(q_home); }
@@ -215,7 +218,7 @@ void FR3::set_cartesian_position_ik(const common::Pose &pose) {
     this->set_joint_position(joints.value());
   } else {
     // throw error
-    // throw std::runtime_error("IK failed");
+    throw std::runtime_error("IK failed");
     std::cerr << "IK failed";
   }
 }
