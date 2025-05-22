@@ -12,8 +12,8 @@ namespace common {
 
 Eigen::Vector3d IdentityTranslation();
 Eigen::Matrix3d IdentityRotMatrix();
-Eigen::Quaterniond IdentityRotQuart();
-Eigen::Vector4d IdentityRotQuartVec();
+Eigen::Quaterniond IdentityRotQuat();
+Eigen::Vector4d IdentityRotQuatVec();
 
 Eigen::Matrix4d FrankaHandTCPOffset();
 
