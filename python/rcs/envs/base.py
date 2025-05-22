@@ -7,7 +7,6 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-import rcs
 from rcs import common
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
@@ -141,19 +140,18 @@ class CameraDictType(RCSpaceType):
 class DigitCameraDictType(RCSpaceType):
     digit_frames: dict[
         Annotated[str, "camera_names"],
-            Annotated[
-                np.ndarray,
-                # needs to be filled with values downstream
-                lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
-                    low=low,
-                    high=high,
-                    shape=(height, width, color_dim),
-                    dtype=dtype,
-                ),
-                "digit_frames",
-            ],
-        ]
-
+        Annotated[
+            np.ndarray,
+            # needs to be filled with values downstream
+            lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+                low=low,
+                high=high,
+                shape=(height, width, color_dim),
+                dtype=dtype,
+            ),
+            "digit_frames",
+        ],
+    ]
 
 
 # joining works with inheritance but need to inherit from protocol again
@@ -619,7 +617,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class DigitCameraSetWrapper(CameraSetWrapper):
     """Wrapper for digit cameras."""
 
-    def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
+    def __init__(self, env, camera_set: BaseCameraSet):
         super().__init__(env, camera_set)
         # self.unwrapped: FR3Env
         self.camera_set = camera_set
@@ -653,8 +651,7 @@ class DigitCameraSetWrapper(CameraSetWrapper):
             return observation, info
 
         frame_dict: dict[str, np.ndarray] = {
-            camera_name: frame.camera.color.data
-            for camera_name, frame in frameset.frames.items()
+            camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
         }
         observation[self.camera_key] = frame_dict
 
@@ -663,6 +660,7 @@ class DigitCameraSetWrapper(CameraSetWrapper):
             info["frame_timestamp"] = frameset.avg_timestamp
 
         return observation, info
+
 
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
