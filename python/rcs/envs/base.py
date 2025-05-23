@@ -181,11 +181,12 @@ class RobotEnv(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode):
+    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
+        self.home_on_reset = home_on_reset
         low, high = get_joint_limits(self.robot)
         if control_mode == ControlMode.JOINTS:
             self.action_space = get_space(JointsDictType, params={"joint_limits": {"low": low, "high": high}})
@@ -273,7 +274,8 @@ class RobotEnv(gym.Env):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         self.robot.reset()
-        self.robot.move_home()
+        if self.home_on_reset:
+            self.robot.move_home()
         return self.get_obs(), {}
 
     def close(self):
@@ -650,7 +652,7 @@ class GripperWrapper(ActObsInfoWrapper):
     BINARY_GRIPPER_CLOSED = 0
     BINARY_GRIPPER_OPEN = 1
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, open_on_reset: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
@@ -661,9 +663,12 @@ class GripperWrapper(ActObsInfoWrapper):
         self._gripper = gripper
         self.binary = binary
         self._last_gripper_cmd = None
+        self.open_on_reset = open_on_reset
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
-        self._gripper.reset()
+        if self.open_on_reset:
+            # resetting opens the gripper
+            self._gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 
