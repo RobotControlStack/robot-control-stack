@@ -16,6 +16,7 @@ from rcs.envs.base import (
     ControlMode,
     GripperWrapper,
     HandWrapper,
+    MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -24,10 +25,10 @@ from rcs.envs.hw import FR3HW
 from rcs.envs.sim import (
     CamRobot,
     CollisionGuard,
-    RobotSimWrapper,
     GripperWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
+    RobotSimWrapper,
     SimWrapper,
 )
 from rcs.envs.space_utils import VecType
@@ -121,6 +122,46 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
+        return env
+
+
+class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
+    def __call__(  # type: ignore
+        ips: list[str],
+        control_mode: ControlMode,
+        robot_cfg: rcs.hw.FR3Config,
+        gripper_cfg: rcs.hw.FHConfig | None = None,
+        camera_set: BaseHardwareCameraSet | None = None,
+        max_relative_movement: float | tuple[float, float] | None = None,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
+        urdf_path: str | PathLike | None = None,
+    ) -> gym.Env:
+
+        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
+        ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
+        robots: dict[str, rcs.hw.FR3] = {}
+        for ip in ips:
+            robots[ip] = rcs.hw.FR3(ip, ik)
+            robots[ip].set_parameters(robot_cfg)
+
+        envs = {}
+        for ip in ips:
+            env: gym.Env = RobotEnv(robots[ip], control_mode)
+            env = FR3HW(env)
+            if gripper_cfg is not None:
+                gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
+                env = GripperWrapper(env, gripper, binary=True)
+
+            if max_relative_movement is not None:
+                env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
+            envs[ip] = env
+
+        env = MultiRobotWrapper(envs)
+        if camera_set is not None:
+            camera_set.start()
+            camera_set.wait_for_frames()
+            logger.info("CameraSet started")
+            env = CameraSetWrapper(env, camera_set)
         return env
 
 
