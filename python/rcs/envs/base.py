@@ -280,6 +280,54 @@ class RobotEnv(gym.Env):
         super().close()
 
 
+class MultiRobotWrapper(gym.Env):
+    """Wraps a dictionary of environments to allow for multi robot control."""
+
+    def __init__(self, envs: dict[str, gym.Env] | dict[str, gym.Wrapper]):
+        self.envs = envs
+        self.unwrapped_multi = cast(dict[str, RobotEnv], {key: env.unwrapped for key, env in envs.items()})
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
+        # follows gym env by combinding a dict of envs into a single env
+        obs = {}
+        reward = 0.0
+        terminated = False
+        truncated = False
+        info = {}
+        for key, env in self.envs.items():
+            obs[key], r, t, tr, info[key] = env.step(action[key])
+            reward += float(r)
+            terminated = terminated or t
+            truncated = truncated or tr
+            info[key]["terminated"] = t
+            info[key]["truncated"] = tr
+        return obs, reward, terminated, truncated, info
+
+    def reset(
+        self, seed: dict[str, int] | None = None, options: dict[str, dict[str, Any]] | None = None  # type: ignore
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs = {}
+        info = {}
+
+        seed_ = seed if seed is not None else {key: None for key in self.envs}  # type: ignore
+        options_ = options if options is not None else {key: None for key in self.envs}  # type: ignore
+        for key, env in self.envs.items():
+            obs[key], info[key] = env.reset(seed=seed_[key], options=options_[key])
+        return obs, info
+
+    def get_wrapper_attr(self, name: str) -> Any:
+        """Gets an attribute from the wrapper and lower environments if `name` doesn't exist in this object.
+        If lower environments have the same attribute, it returns a dictionary of the attribute values.
+        """
+        if name in self.__dir__():
+            return getattr(self, name)
+        return {key: env.get_wrapper_attr(name) for key, env in self.envs.items()}
+
+    def close(self):
+        for env in self.envs.values():
+            env.close()
+
+
 class RelativeTo(Enum):
     LAST_STEP = auto()
     CONFIGURED_ORIGIN = auto()

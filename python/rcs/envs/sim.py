@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 import rcs
 from rcs import sim
-from rcs.envs.base import ControlMode, GripperWrapper, RobotEnv
+from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
 from rcs.envs.space_utils import ActObsInfoWrapper, VecType
 from rcs.envs.utils import default_fr3_sim_robot_cfg
 
@@ -25,7 +25,7 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
-class FR3Sim(gym.Wrapper):
+class RobotSimWrapper(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
@@ -55,6 +55,47 @@ class FR3Sim(gym.Wrapper):
         # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
+        return obs, info
+
+
+class MultiSimRobotWrapper(gym.Wrapper):
+    """Wraps a dictionary of environments to allow for multi robot control."""
+
+    def __init__(self, env: MultiRobotWrapper, simulation: sim.Sim):
+        super().__init__(env)
+        self.env: MultiRobotWrapper
+        self.sim = simulation
+        self.sim_robots = cast(dict[str, sim.SimRobot], {key: e.robot for key, e in self.env.unwrapped_multi.items()})
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+        _, _, _, _, info = super().step(action)
+
+        self.sim.step_until_convergence()
+        info["is_sim_converged"] = self.sim.is_converged()
+        for key in self.envs.envs.items():
+            state = self.sim_robots[key].get_state()
+            info[key]["collision"] = state.collision
+            info[key]["ik_success"] = state.ik_success
+
+        obs = {key: env.get_obs() for key, env in self.env.unwrapped_multi.items()}
+        truncated = np.all([info[key]["collision"] or info[key]["ik_success"] for key in info])
+        return obs, 0.0, False, bool(truncated), info
+
+    def reset(
+        self, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None  # type: ignore
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if seed is None:
+            seed = {key: None for key in self.env.envs}
+        if options is None:
+            options = {key: {} for key in self.env.envs}
+        obs = {}
+        info = {}
+        self.sim.reset()
+        for key, env in self.env.envs.items():
+            _, info[key] = env.reset(seed=seed[key], options=options[key])
+        self.sim.step(1)
+        for key, env in self.env.unwrapped_multi.items():
+            obs[key] = cast(dict, env.get_obs())
         return obs, info
 
 
@@ -178,7 +219,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         else:
             control_mode = env.unwrapped.get_control_mode()
         c_env: gym.Env = RobotEnv(robot, control_mode)
-        c_env = FR3Sim(c_env, simulation)
+        c_env = RobotSimWrapper(c_env, simulation)
         if gripper:
             gripper_cfg = sim.SimGripperConfig()
             gripper_cfg.add_id(id)
