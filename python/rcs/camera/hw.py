@@ -96,7 +96,6 @@ class BaseHardwareCameraSet(ABC):
     def record_video(self, path: Path, str_id: str):
         if self.recording_ongoing():
             return
-        self.clear_buffer()
         for camera in self.camera_names:
             self.writer[camera] = cv2.VideoWriter(
                 str(path / f"episode_{str_id}_{camera}.mp4"),
@@ -128,15 +127,15 @@ class BaseHardwareCameraSet(ABC):
             self.warm_up()
         while self.running:
             frame_set = self.poll_frame_set()
+            # buffering
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
-                # copy the buffer to the record path
-                for camera_key, writer in self.writer.items():
-                    frameset = self._buffer[self._next_ring_index]
-                    assert frameset is not None
-                    writer.write(frameset.frames[camera_key].camera.color.data[:, :, ::-1])
                 self._next_ring_index = (self._next_ring_index + 1) % self.config.max_buffer_frames
                 self._buffer_len = max(self._buffer_len + 1, self.config.max_buffer_frames)
+            # video recording
+            for camera_key, writer in self.writer.items():
+                if frame_set is not None:
+                    writer.write(frame_set.frames[camera_key].camera.color.data[:, :, ::-1])
             self.rate(self.config.frame_rate)
 
     def poll_frame_set(self) -> FrameSet:
@@ -155,6 +154,7 @@ class BaseHardwareCameraSet(ABC):
             self._buffer = [None for _ in range(self.config.max_buffer_frames)]
             self._next_ring_index = 0
             self._buffer_len = 0
+        self.wait_for_frames()
 
     @property
     @abstractmethod
