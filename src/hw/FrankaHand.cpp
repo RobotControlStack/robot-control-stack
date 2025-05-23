@@ -126,7 +126,7 @@ void FrankaHand::grasp() {
     this->is_moving = false;
     return;
   }
-  this->m_stop();
+  this->m_wait();
   this->control_thread = std::thread([&]() {
     this->is_moving = true;
     try {
@@ -149,7 +149,7 @@ void FrankaHand::open() {
     this->is_moving = false;
     return;
   }
-  this->m_stop();
+  this->m_wait();
   this->control_thread = std::thread([&]() {
     this->is_moving = true;
     try {
@@ -174,7 +174,7 @@ void FrankaHand::shut() {
     this->is_moving = false;
     return;
   }
-  this->m_stop();
+  this->m_wait();
   this->control_thread = std::thread([&]() {
     this->is_moving = true;
     this->gripper.move(0, this->cfg.speed);
