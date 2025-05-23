@@ -9,7 +9,6 @@ import rcs.control.fr3_desk
 import typer
 from rcs.camera.realsense import RealSenseCameraSet
 from rcs.control.fr3_desk import load_creds_fr3_desk
-from rcs.control.record import PoseList
 from rcs.envs.creators import get_urdf_path
 
 logger = logging.getLogger(__name__)
@@ -125,52 +124,6 @@ def shutdown(
     """Shuts the robot down"""
     user, pw = load_creds_fr3_desk()
     rcs.control.fr3_desk.shutdown(ip, user, pw)
-
-
-@fr3_app.command()
-def record(
-    ip_str: Annotated[str, typer.Argument(help="Name to IP dict. e.g. \"{'robot1': '192.168.100.1'}\"")],
-    urdf_path: Annotated[Optional[str], typer.Option(help="Path to the urdf file")] = None,
-    lpaths: Annotated[Optional[list[str]], typer.Option("--lpaths", help="Paths to load n recordings")] = None,
-    spath: Annotated[Optional[str], typer.Option("--spath", help="Paths to load n recordings")] = None,
-    buttons: Annotated[bool, typer.Option("-b", help="Use the robots buttons instead of the keyboard")] = False,
-):
-    """Tool to record poses with multiple FR3 robots."""
-    user, pw = load_creds_fr3_desk()
-    urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)  # type: ignore
-
-    name2ip: dict[str, str] = eval(ip_str)
-
-    if lpaths is not None and len(lpaths) > 0:
-        with ExitStack() as stack:
-            for r_ip in name2ip.values():
-                stack.enter_context(rcs.control.fr3_desk.Desk.fci(r_ip, username=user, password=pw, unlock=True))
-
-            p = PoseList.load(name2ip, lpaths, urdf_path=urdf_path)
-            input("Press any key to replay")
-            p.replay()
-    else:
-        with ExitStack() as stack:
-            gms = [
-                rcs.control.fr3_desk.Desk.guiding_mode(r_ip, username=user, password=pw, unlock=True)
-                for r_ip in name2ip.values()
-            ]
-            for gm in gms:
-                stack.enter_context(gm)
-            p = PoseList(name2ip, urdf_path=urdf_path)
-            if not buttons:
-                p.record()
-            else:
-                p.start_button_recording()
-                for gm in gms:
-                    gm.desk.listen(p.button_callback)
-                while p._button_recording:
-                    pass
-                for gm in gms:
-                    gm.desk.stop_listen()
-
-            if spath is not None:
-                p.save(spath)
 
 
 def main():
