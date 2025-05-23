@@ -1,7 +1,6 @@
 import logging
-from contextlib import ExitStack
 from time import sleep
-from typing import Annotated, Optional
+from typing import Annotated
 
 import pyrealsense2 as rs
 import rcs
@@ -9,7 +8,6 @@ import rcs.control.fr3_desk
 import typer
 from rcs.camera.realsense import RealSenseCameraSet
 from rcs.control.fr3_desk import load_creds_fr3_desk
-from rcs.envs.creators import get_urdf_path
 
 logger = logging.getLogger(__name__)
 
