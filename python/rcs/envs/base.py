@@ -198,11 +198,12 @@ class RobotEnv(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode):
+    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
+        self.home_on_reset = home_on_reset
         low, high = get_joint_limits(self.robot)
         if control_mode == ControlMode.JOINTS:
             self.action_space = get_space(JointsDictType, params={"joint_limits": {"low": low, "high": high}})
@@ -290,11 +291,60 @@ class RobotEnv(gym.Env):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         self.robot.reset()
-        self.robot.move_home()
+        if self.home_on_reset:
+            self.robot.move_home()
         return self.get_obs(), {}
 
     def close(self):
         super().close()
+
+
+class MultiRobotWrapper(gym.Env):
+    """Wraps a dictionary of environments to allow for multi robot control."""
+
+    def __init__(self, envs: dict[str, gym.Env] | dict[str, gym.Wrapper]):
+        self.envs = envs
+        self.unwrapped_multi = cast(dict[str, RobotEnv], {key: env.unwrapped for key, env in envs.items()})
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
+        # follows gym env by combinding a dict of envs into a single env
+        obs = {}
+        reward = 0.0
+        terminated = False
+        truncated = False
+        info = {}
+        for key, env in self.envs.items():
+            obs[key], r, t, tr, info[key] = env.step(action[key])
+            reward += float(r)
+            terminated = terminated or t
+            truncated = truncated or tr
+            info[key]["terminated"] = t
+            info[key]["truncated"] = tr
+        return obs, reward, terminated, truncated, info
+
+    def reset(
+        self, seed: dict[str, int] | None = None, options: dict[str, dict[str, Any]] | None = None  # type: ignore
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs = {}
+        info = {}
+
+        seed_ = seed if seed is not None else {key: None for key in self.envs}  # type: ignore
+        options_ = options if options is not None else {key: None for key in self.envs}  # type: ignore
+        for key, env in self.envs.items():
+            obs[key], info[key] = env.reset(seed=seed_[key], options=options_[key])
+        return obs, info
+
+    def get_wrapper_attr(self, name: str) -> Any:
+        """Gets an attribute from the wrapper and lower environments if `name` doesn't exist in this object.
+        If lower environments have the same attribute, it returns a dictionary of the attribute values.
+        """
+        if name in self.__dir__():
+            return getattr(self, name)
+        return {key: env.get_wrapper_attr(name) for key, env in self.envs.items()}
+
+    def close(self):
+        for env in self.envs.values():
+            env.close()
 
 
 class RelativeTo(Enum):
@@ -668,7 +718,7 @@ class GripperWrapper(ActObsInfoWrapper):
     BINARY_GRIPPER_CLOSED = 0
     BINARY_GRIPPER_OPEN = 1
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, open_on_reset: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
@@ -679,9 +729,12 @@ class GripperWrapper(ActObsInfoWrapper):
         self._gripper = gripper
         self.binary = binary
         self._last_gripper_cmd = None
+        self.open_on_reset = open_on_reset
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
-        self._gripper.reset()
+        if self.open_on_reset:
+            # resetting opens the gripper
+            self._gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 
