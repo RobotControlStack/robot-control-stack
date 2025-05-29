@@ -33,7 +33,7 @@ from rcsss.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
-    # default_realsense,
+    default_realsense,
     get_urdf_path,
 )
 

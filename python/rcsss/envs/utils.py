@@ -9,7 +9,7 @@ from rcsss import sim
 from rcsss._core.hw import FR3Config, IKController
 from rcsss._core.sim import CameraType
 from rcsss.camera.interface import BaseCameraConfig
-# from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
+from rcsss.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcsss.camera.sim import SimCameraConfig, SimCameraSetConfig
 
 logger = logging.getLogger(__name__)
@@ -39,20 +39,20 @@ def default_fr3_hw_gripper_cfg():
     return gripper_cfg
 
 
-# def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
-#     if name2id is None:
-#         return None
-#     cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
-#     cam_cfg = RealSenseSetConfig(
-#         cameras=cameras,
-#         resolution_width=1280,
-#         resolution_height=720,
-#         frame_rate=15,
-#         enable_imu=False,  # does not work with imu, why?
-#         enable_ir=True,
-#         enable_ir_emitter=False,
-#     )
-#     return RealSenseCameraSet(cam_cfg)
+def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
+    if name2id is None:
+        return None
+    cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
+    cam_cfg = RealSenseSetConfig(
+        cameras=cameras,
+        resolution_width=1280,
+        resolution_height=720,
+        frame_rate=15,
+        enable_imu=False,  # does not work with imu, why?
+        enable_ir=True,
+        enable_ir_emitter=False,
+    )
+    return RealSenseCameraSet(cam_cfg)
 
 
 def default_fr3_sim_gripper_cfg():
