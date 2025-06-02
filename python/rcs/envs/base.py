@@ -656,7 +656,6 @@ class CameraSetWrapper(ActObsInfoWrapper):
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
-
         return observation, info
 
     def close(self):
@@ -697,7 +696,7 @@ class DigitCameraSetWrapper(CameraSetWrapper):
         frameset = self.camera_set.get_latest_frames()
         if frameset is None:
             observation[self.camera_key] = {}
-            info["camera_available"] = False
+            info["digit_available"] = False
             return observation, info
 
         frame_dict: dict[str, np.ndarray] = {
@@ -705,9 +704,9 @@ class DigitCameraSetWrapper(CameraSetWrapper):
         }
         observation[self.camera_key] = frame_dict
 
-        info["camera_available"] = True
+        info["digit_available"] = True
         if frameset.avg_timestamp is not None:
-            info["frame_timestamp"] = frameset.avg_timestamp
+            info["digit_timestamp"] = frameset.avg_timestamp
 
         return observation, info
 

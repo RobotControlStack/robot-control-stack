@@ -5,7 +5,7 @@ from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import RCSFR3EnvCreator, RCSSimEnvCreator
 from rcs.envs.utils import (
-    default_digit_cam_cfg,
+    default_digit,
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
@@ -58,7 +58,7 @@ def main():
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                digit_set_cfg=default_digit_cam_cfg(),
+                digit_cfg=default_digit({"digit_0": "D21182"}),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )

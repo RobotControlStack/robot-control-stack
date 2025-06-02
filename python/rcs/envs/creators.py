@@ -61,7 +61,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         collision_guard: str | PathLike | None = None,
         gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: BaseHardwareCameraSet | None = None,
-        digit_set_cfg: rcs.digit_cam.digit_cam.DigitConfig | None = None,
+        digit_set: DigitCam | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -109,12 +109,11 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
 
-        if digit_set_cfg is not None:
-            digit_cam = DigitCam(digit_set_cfg)
-            digit_cam.start()
-            digit_cam.wait_for_frames()
+        if digit_set is not None:
+            digit_set.start()
+            digit_set.wait_for_frames()
             logger.info("DigitCameraSet started")
-            env = DigitCameraSetWrapper(env, digit_cam)
+            env = DigitCameraSetWrapper(env, digit_set)
 
         if collision_guard is not None:
             assert urdf_path is not None

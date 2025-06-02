@@ -20,7 +20,7 @@ scenes = {
 }
 
 # make submodules available
-__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs", "hand"]
+__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs", "hand", "digit_cam"]
 
 # register gymnasium environments
 register(

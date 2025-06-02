@@ -10,19 +10,18 @@ class DigitConfig(HWCameraSetConfig):
     This class is used to define the settings for the DIGIT device.
     """
 
-    cameras: dict[str, BaseCameraConfig] = Field(
-        default_factory=lambda: {"camera1": BaseCameraConfig(identifier="D21182")}
-    )
-    stream: dict = Digit.STREAMS["QVGA"]  # QVGA resolution or VGA resolution
-    resolution_width: int = stream["resolution"]["width"]
-    resolution_height: int = stream["resolution"]["height"]
-    # for QVGA resolution, 60 fps is the default or 30 fps
-    # for VGA resolution, 30 fps is the default or 15 fps
-    frame_rate: int = stream["fps"]["30fps"]  # 30 fps
+    cameras: dict[str, BaseCameraConfig] = Field(default={})
+    stream_name: str = "QVGA"  # options: "QVGA" (60 and 30 fps), "VGA" (30 and 15 fps)
 
     @property
-    def name_to_identifier(self):
-        return dict(self.cameras)
+    def resolution_width(self) -> int:
+        return Digit.STREAMS[self.stream_name]["resolution"]["width"]
+
+    @property
+    def resolution_height(self) -> int:
+        return Digit.STREAMS[self.stream_name]["resolution"]["height"]
+
+    
 
 
 class DigitCam(BaseHardwareCameraSet):
@@ -35,7 +34,6 @@ class DigitCam(BaseHardwareCameraSet):
         self._cfg = cfg
         super().__init__()
         self._cameras: dict[str, Digit] = {}
-        # Initialize the digit interface
         self.initalize(self.config)
 
     def initalize(self, cfg: HWCameraSetConfig):
@@ -43,8 +41,8 @@ class DigitCam(BaseHardwareCameraSet):
         Initialize the digit interface with the given configuration.
         :param cfg: Configuration for the DIGIT device.
         """
-        for name, serial in cfg.cameras.items():
-            digit = Digit(serial.identifier, name)
+        for name, serial in cfg.name_to_identifier.items():
+            digit = Digit(serial, name)
             digit.connect()
             self._cameras[name] = digit
 
@@ -62,7 +60,3 @@ class DigitCam(BaseHardwareCameraSet):
     @property
     def config(self) -> DigitConfig:
         return self._cfg
-
-    @config.setter
-    def config(self, cfg: DigitConfig) -> None:
-        self._cfg = cfg
