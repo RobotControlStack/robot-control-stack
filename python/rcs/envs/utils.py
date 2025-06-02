@@ -6,9 +6,9 @@ import mujoco as mj
 import numpy as np
 import rcs
 from rcs import sim
-from rcs.digit_cam import digit_cam
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
+from rcs.camera.digit_cam import DigitCam, DigitConfig
 from rcs.camera.interface import BaseCameraConfig
 from rcs.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSetConfig
@@ -74,16 +74,16 @@ def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     return cfg
 
 
-def default_digit(name2id: dict[str, str] | None) -> digit_cam.DigitCam | None:
+def default_digit(name2id: dict[str, str] | None) -> DigitCam | None:
     if name2id is None:
         return None
     cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
-    digit_cfg = digit_cam.DigitConfig(
+    digit_cfg = DigitConfig(
         cameras=cameras,
         stream_name="QVGA",
         frame_rate=30,
     )
-    return digit_cam.DigitCam(digit_cfg)
+    return DigitCam(digit_cfg)
 
     
 
