@@ -5,6 +5,7 @@ from pathlib import Path
 import mujoco as mj
 import numpy as np
 import rcs
+from digit_interface import Digit
 from rcs import sim
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
@@ -74,18 +75,19 @@ def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     return cfg
 
 
-def default_digit(name2id: dict[str, str] | None) -> DigitCam | None:
+def default_digit(name2id: dict[str, str] | None, stream_name: str = "QVGA") -> DigitCam | None:
     if name2id is None:
         return None
     cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
+    stream_dict = Digit.STREAMS[stream_name]
     digit_cfg = DigitConfig(
         cameras=cameras,
-        stream_name="QVGA",
-        frame_rate=30,
+        resolution_height=stream_dict["resolution"]["height"],
+        resolution_width=stream_dict["resolution"]["width"],
+        stream_name=stream_name,
+        frame_rate=stream_dict["fps"]["30fps"],
     )
     return DigitCam(digit_cfg)
-
-    
 
 
 def default_mujoco_cameraset_cfg() -> SimCameraSetConfig:

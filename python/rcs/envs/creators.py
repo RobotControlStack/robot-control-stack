@@ -5,11 +5,11 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 import rcs
-from rcs.camera.digit_cam import DigitCam
 import rcs.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcs import sim
 from rcs._core.sim import CameraType
+from rcs.camera.digit_cam import DigitCam
 from rcs.camera.hw import BaseHardwareCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcs.envs.base import (

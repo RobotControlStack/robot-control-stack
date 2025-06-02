@@ -58,7 +58,7 @@ def main():
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                digit_cfg=default_digit({"digit_0": "D21182"}),
+                digit_set=default_digit({"digit_0": "D21182"}),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )

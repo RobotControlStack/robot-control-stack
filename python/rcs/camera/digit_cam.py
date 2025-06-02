@@ -1,7 +1,6 @@
 from digit_interface.digit import Digit
-from pydantic import Field
 from rcs.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
-from rcs.camera.interface import BaseCameraConfig, CameraFrame, DataFrame, Frame
+from rcs.camera.interface import CameraFrame, DataFrame, Frame
 
 
 class DigitConfig(HWCameraSetConfig):
@@ -10,18 +9,7 @@ class DigitConfig(HWCameraSetConfig):
     This class is used to define the settings for the DIGIT device.
     """
 
-    cameras: dict[str, BaseCameraConfig] = Field(default={})
     stream_name: str = "QVGA"  # options: "QVGA" (60 and 30 fps), "VGA" (30 and 15 fps)
-
-    @property
-    def resolution_width(self) -> int:
-        return Digit.STREAMS[self.stream_name]["resolution"]["width"]
-
-    @property
-    def resolution_height(self) -> int:
-        return Digit.STREAMS[self.stream_name]["resolution"]["height"]
-
-    
 
 
 class DigitCam(BaseHardwareCameraSet):
