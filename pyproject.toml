@@ -28,6 +28,7 @@ dependencies = ["websockets>=11.0",
     # NOTE: Same for pinocchio (pin)
     "pin==2.7.0",
     "tilburg-hand",
+    "digit-interface",
 ]
 readme = "README.md"
 maintainers = [

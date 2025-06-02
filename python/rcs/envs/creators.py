@@ -9,11 +9,13 @@ import rcs.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcs import sim
 from rcs._core.sim import CameraType
+from rcs.camera.digit_cam import DigitCam
 from rcs.camera.hw import BaseHardwareCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
+    DigitCameraSetWrapper,
     GripperWrapper,
     HandWrapper,
     MultiRobotWrapper,
@@ -59,6 +61,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         collision_guard: str | PathLike | None = None,
         gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: BaseHardwareCameraSet | None = None,
+        digit_set: DigitCam | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -105,6 +108,12 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
+
+        if digit_set is not None:
+            digit_set.start()
+            digit_set.wait_for_frames()
+            logger.info("DigitCameraSet started")
+            env = DigitCameraSetWrapper(env, digit_set)
 
         if collision_guard is not None:
             assert urdf_path is not None
