@@ -15,7 +15,6 @@ __all__ = [
     "Sim",
     "SimCameraConfig",
     "SimCameraSet",
-    "SimCameraSetConfig",
     "SimGripper",
     "SimGripperConfig",
     "SimGripperState",
@@ -83,34 +82,17 @@ class Sim:
     def step(self, k: int) -> None: ...
     def step_until_convergence(self) -> None: ...
 
-class SimCameraConfig:
-    identifier: str
+class SimCameraConfig(rcs._core.common.BaseCameraConfig):
     type: CameraType
-    def __init__(self) -> None: ...
 
 class SimCameraSet:
-    def __init__(self, sim: Sim, cfg: SimCameraSetConfig) -> None: ...
+    def __init__(self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True) -> None: ...
     def buffer_size(self) -> int: ...
     def clear_buffer(self) -> None: ...
     def get_latest_frameset(self) -> FrameSet | None: ...
     def get_timestamp_frameset(self, ts: float) -> FrameSet | None: ...
     @property
     def _sim(self) -> Sim: ...
-
-class SimCameraSetConfig:
-    cameras: dict[str, SimCameraConfig]
-    max_buffer_frames: int
-    resolution_height: int
-    resolution_width: int
-    def __init__(self) -> None: ...
-    @property
-    def frame_rate(self) -> int:
-        """
-        The frame rate in which the cameras render in Hz. If set to zero, the camera frames will render on demand and without fixed rate which takes away compute effort.
-        """
-
-    @frame_rate.setter
-    def frame_rate(self, arg0: int) -> None: ...
 
 class SimGripper(rcs._core.common.Gripper):
     def __init__(self, sim: Sim, cfg: SimGripperConfig) -> None: ...
