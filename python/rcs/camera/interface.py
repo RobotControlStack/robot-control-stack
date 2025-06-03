@@ -4,7 +4,6 @@ from datetime import datetime
 from time import sleep, time
 from typing import Any, Protocol
 
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,12 +35,9 @@ class SimpleFrameRate:
         self.t = time()
 
 
-class BaseCameraConfig(BaseModel):
+@dataclass(kw_only=True)
+class BaseCameraConfig:
     identifier: str
-
-
-class BaseCameraSetConfig(BaseModel):
-    cameras: dict = Field(default={})
     resolution_width: int = 1280  # pixels
     resolution_height: int = 720  # pixels
     frame_rate: int = 15  # Hz

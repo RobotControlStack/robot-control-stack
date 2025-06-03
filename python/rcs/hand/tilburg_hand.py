@@ -1,9 +1,9 @@
 import copy
+from dataclasses import dataclass
 import logging
 from time import sleep
 
 import numpy as np
-from pydantic import BaseModel
 from rcs.envs.space_utils import Vec18Type
 from rcs.hand.interface import BaseHand
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit
@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 logger.disabled = False
 
 
-class THConfig(BaseModel):
+@dataclass(kw_only=True)
+class THConfig:
     """Config for the Tilburg hand"""
 
     calibration_file: str | None = None
