@@ -587,18 +587,19 @@ class CameraSetWrapper(ActObsInfoWrapper):
         self.observation_space: gym.spaces.Dict
         # rgb is always included
         params: dict = {
-            "frame": {
-                "height": camera_set.config.resolution_height,
-                "width": camera_set.config.resolution_width,
+            f"/{name}/{self.RGB_KEY}/frame": {
+                "height": camera_set.config(name).resolution_height,
+                "width": camera_set.config(name).resolution_width,
             }
+            for name in camera_set.camera_names
         }
         if self.include_depth:
             # depth is optional
             params.update(
                 {
                     f"/{name}/{self.DEPTH_KEY}/frame": {
-                        "height": camera_set.config.resolution_height,
-                        "width": camera_set.config.resolution_width,
+                        "height": camera_set.config(name).resolution_height,
+                        "width": camera_set.config(name).resolution_width,
                         "color_dim": 1,
                         "dtype": np.float32,
                         "low": 0.0,
@@ -661,54 +662,6 @@ class CameraSetWrapper(ActObsInfoWrapper):
     def close(self):
         self.camera_set.close()
         super().close()
-
-
-class DigitCameraSetWrapper(CameraSetWrapper):
-    """Wrapper for digit cameras."""
-
-    def __init__(self, env, camera_set: BaseCameraSet):
-        super().__init__(env, camera_set)
-        # self.unwrapped: FR3Env
-        self.camera_set = camera_set
-        self.observation_space: gym.spaces.Dict
-        # rgb is always included
-        params: dict = {
-            "digit_frames": {
-                "height": camera_set.config.resolution_height,
-                "width": camera_set.config.resolution_width,
-            }
-        }
-
-        self.observation_space.spaces.update(
-            get_space(
-                DigitCameraDictType,
-                child_dict_keys_to_unfold={
-                    "camera_names": camera_set.camera_names,
-                },
-                params=params,
-            ).spaces
-        )
-        self.camera_key = get_space_keys(DigitCameraDictType)[0]
-
-    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-        observation = copy.deepcopy(observation)
-        info = copy.deepcopy(info)
-        frameset = self.camera_set.get_latest_frames()
-        if frameset is None:
-            observation[self.camera_key] = {}
-            info["digit_available"] = False
-            return observation, info
-
-        frame_dict: dict[str, np.ndarray] = {
-            camera_name: frame.camera.color.data for camera_name, frame in frameset.frames.items()
-        }
-        observation[self.camera_key] = frame_dict
-
-        info["digit_available"] = True
-        if frameset.avg_timestamp is not None:
-            info["digit_timestamp"] = frameset.avg_timestamp
-
-        return observation, info
 
 
 class GripperWrapper(ActObsInfoWrapper):

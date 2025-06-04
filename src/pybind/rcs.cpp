@@ -518,6 +518,10 @@ PYBIND11_MODULE(_core, m) {
       .export_values();
   py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
       sim, "SimCameraConfig")
+      .def(py::init<const std::string &, int, int, int, rcs::sim::CameraType>(),
+           py::arg("identifier"), py::arg("frame_rate"),
+           py::arg("resolution_width"), py::arg("resolution_height"),
+           py::arg("type") = rcs::sim::CameraType::fixed)
       .def_readwrite("type", &rcs::sim::SimCameraConfig::type);
   py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
       .def(py::init<>())

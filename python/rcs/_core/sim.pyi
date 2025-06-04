@@ -84,6 +84,9 @@ class Sim:
 
 class SimCameraConfig(rcs._core.common.BaseCameraConfig):
     type: CameraType
+    def __init__(
+        self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int, type: CameraType = ...
+    ) -> None: ...
 
 class SimCameraSet:
     def __init__(self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True) -> None: ...

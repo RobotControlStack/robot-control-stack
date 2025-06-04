@@ -1,22 +1,11 @@
+import logging
 from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcs.camera.hw import BaseHardwareCameraSet, HWCameraSetConfig
+from rcs._core.common import BaseCameraConfig
+from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
-
-# class RealSenseConfig(BaseCameraConfig):
-# dict with readable name and serial number
-
-
-class RealSenseSetConfig(HWCameraSetConfig):
-    # dict with readable name and serial number
-    # devices_to_enable: dict[str, str] = {}
-    # cameras: dict[str, RealSenseConfig] = []
-    enable_ir_emitter: bool = False
-    enable_ir: bool = False
-    laser_power: int = 330
-    enable_imu: bool = False
 
 
 @dataclass
@@ -32,39 +21,58 @@ class RealSenseDevicePipeline:
     camera: RealSenseDeviceInfo
 
 
-# TODO(juelg): look at frame queue
-class RealSenseCameraSet(BaseHardwareCameraSet):
+class RealSenseCameraSet(HardwareCamera):
     TIMESTAMP_FACTOR = 1e-3
 
-    def __init__(self, cfg: RealSenseSetConfig) -> None:
-        self._cfg = cfg
-        super().__init__()
-        self.D400_config = rs.config()
+    def __init__(
+        self,
+        cameras: dict[str, BaseCameraConfig],
+        enable_ir_emitter: bool = False,
+        enable_ir: bool = False,
+        laser_power: int = 330,
+        enable_imu: bool = False,
+    ) -> None:
+        self.enable_ir_emitter = enable_ir_emitter
+        self.enable_ir = enable_ir
+        self.laser_power = laser_power
+        self.enable_imu = enable_imu
+        self.cameras = cameras
+        self._logger = logging.getLogger(__name__)
+        assert (
+            len({camera.resolution_width for camera in self.cameras.values()}) == 1
+            and len({camera.resolution_height for camera in self.cameras.values()}) == 1
+            and len({camera.frame_rate for camera in self.cameras.values()}) == 1
+        ), "All cameras must have the same resolution and frame rate."
+        sample_camera_config = next(iter(self.cameras.values()))
+        self.resolution_width = sample_camera_config.resolution_width
+        self.resolution_height = sample_camera_config.resolution_height
+        self.frame_rate = sample_camera_config.frame_rate
 
+        self.D400_config = rs.config()
         self.D400_config.enable_stream(
             rs.stream.depth,
-            self._cfg.resolution_width,
-            self._cfg.resolution_height,
+            self.resolution_width,
+            self.resolution_height,
             rs.format.z16,
-            self._cfg.frame_rate,
+            self.frame_rate,
         )
         self.D400_config.enable_stream(
             rs.stream.color,
-            self._cfg.resolution_width,
-            self._cfg.resolution_height,
+            self.resolution_width,
+            self.resolution_height,
             rs.format.bgr8,
-            self._cfg.frame_rate,
+            self.frame_rate,
         )
-        if self._cfg.enable_ir:
+        if self.enable_ir:
             self.D400_config.enable_stream(
                 rs.stream.infrared,
                 1,
-                self._cfg.resolution_width,
-                self._cfg.resolution_height,
+                self.resolution_width,
+                self.resolution_height,
                 rs.format.y8,
-                self._cfg.frame_rate,
+                self.frame_rate,
             )
-        if self._cfg.enable_imu:
+        if self.enable_imu:
             # TODO(juelg): does not work work at the moment: "Couldnt resolve requests"
             # https://www.intelrealsense.com/how-to-getting-imu-data-from-d435i-and-t265/
             # Accelerometer available FPS: {63, 250}Hz
@@ -79,15 +87,26 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 rs.format.motion_xyz32f,
                 200,
             )
-
-        self._context = rs.context()
         self._available_devices: dict[str, RealSenseDeviceInfo] = {}
-        self.update_available_devices()
         self._enabled_devices: dict[str, RealSenseDevicePipeline] = {}  # serial numbers of te enabled devices
-        self.enable_devices(self.name_to_identifier, self._cfg.enable_ir_emitter)
+        self._camera_names = list(self.cameras.keys())
+
+    @property
+    def camera_names(self) -> list[str]:
+        """Returns the names of the cameras in this set."""
+        return self._camera_names
+
+    def config(self, camera_name) -> BaseCameraConfig:
+        return self.cameras[camera_name]
+
+    def open(self):
+        self._available_devices = {}
+        self.update_available_devices()
+        self._enabled_devices = {}  # serial numbers of te enabled devices
+        self.enable_devices({key: value.identifier for key, value in self.cameras.items()}, self.enable_ir_emitter)
 
     def update_available_devices(self):
-        self._available_devices = self.enumerate_connected_devices(self._context)
+        self._available_devices = self.enumerate_connected_devices(rs.context())
 
     def enable_all_devices(self, enable_ir_emitter: bool = False):
         """
@@ -143,17 +162,9 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
         sensor = pipeline_profile.get_device().first_depth_sensor()
         if sensor.supports(rs.option.emitter_enabled):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
-            sensor.set_option(rs.option.laser_power, self._cfg.laser_power)
+            sensor.set_option(rs.option.laser_power, self.laser_power)
         self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(pipeline, pipeline_profile, device_info)
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
-
-    @property
-    def config(self) -> RealSenseSetConfig:
-        return self._cfg
-
-    @config.setter
-    def config(self, cfg: RealSenseSetConfig) -> None:
-        self._cfg = cfg
 
     @staticmethod
     def enumerate_connected_devices(context: rs.context) -> dict[str, RealSenseDeviceInfo]:
@@ -182,7 +193,7 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 connect_device[serial] = device_info
         return connect_device
 
-    def _poll_frame(self, camera_name: str) -> Frame:
+    def poll_frame(self, camera_name: str) -> Frame:
         # TODO(juelg): polling should be performed in a recorder thread
         # (anyway needed to record trajectory data to disk)
         # and this method should just access the latest frame from the recorder
@@ -190,8 +201,8 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
 
         # TODO(juelg): what is a "pose" (in frame) and how can we use it
         # TODO(juelg): decide whether to use the poll method and to wait if devices get ready
-        assert camera_name in self.name_to_identifier, f"Camera {camera_name} not found in the enabled devices"
-        serial = self.name_to_identifier[camera_name]
+        assert camera_name in self.camera_names, f"Camera {camera_name} not found in the enabled devices"
+        serial = self.cameras[camera_name].identifier
         device = self._enabled_devices[serial]
 
         streams = device.pipeline_profile.get_streams()
@@ -317,7 +328,6 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
         self.D400_config.disable_all_streams()
 
     def close(self):
-        super().close()
         for device in self._enabled_devices.values():
             device.pipeline.stop()
         self.disable_streams()
@@ -334,21 +344,4 @@ class RealSenseCameraSet(BaseHardwareCameraSet):
                 continue
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             if enable_ir_emitter:
-                sensor.set_option(rs.option.laser_power, self._cfg.laser_power)
-
-    def load_settings_json(self, path_to_settings_file):
-        """
-        Load the settings stored in the JSON file
-
-        """
-
-        with open(path_to_settings_file, "r") as file:
-            json_text = file.read().strip()
-
-        for device in self._enabled_devices.values():
-            if device.camera.product_line != "D400":
-                continue
-            # Get the active profile and load the json file which contains settings readable by the realsense
-            dev = device.pipeline_profile.get_device()
-            advanced_mode = rs.rs400_advanced_mode(dev)
-            advanced_mode.load_json(json_text)
+                sensor.set_option(rs.option.laser_power, self.laser_power)

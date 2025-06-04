@@ -25,6 +25,12 @@ enum CameraType {
 
 struct SimCameraConfig : common::BaseCameraConfig {
   CameraType type;
+  SimCameraConfig(const std::string& identifier, int frame_rate,
+                  int resolution_width, int resolution_height,
+                  CameraType type = fixed)
+      : common::BaseCameraConfig(identifier, frame_rate, resolution_width,
+                                 resolution_height),
+        type(type) {}
 };
 
 // (H,W,3)
