@@ -108,6 +108,8 @@ class GripperWrapperSim(ActObsInfoWrapper):
         state = self._gripper.get_state()
         if "collision" not in info or not info["collision"]:
             info["collision"] = state.collision
+        info["gripper_width"] = self._gripper.get_normalized_width()
+        info["is_grasped"] = self._gripper.get_normalized_width() > 0.01 and self._gripper.get_normalized_width() < 0.99
         return observation, info
 
 
@@ -258,9 +260,9 @@ class RandomCubePos(SimWrapper):
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
         if self.include_rotation:
-            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
         else:
-            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
+            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
 
         return obs, info
 
@@ -280,7 +282,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         obs, reward, _, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("box-joint").qpos[2] > 0.15 + 0.852
+            self.sim.data.joint("box_joint").qpos[2] > 0.15 + 0.852
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
         info["success"] = success
@@ -288,9 +290,9 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             reward = 5
         else:
             tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint("box-joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+                self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
             )
-            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box-joint").qpos[:3] - self.EE_HOME)
+            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
 
             # old reward
             # reward = -obj_to_goal_dist - tcp_to_obj_dist
