@@ -23,7 +23,6 @@ from rcs.envs.base import (
 )
 from rcs.envs.hw import FR3HW
 from rcs.envs.sim import (
-    CamRobot,
     CollisionGuard,
     GripperWrapperSim,
     PickCubeSuccessWrapper,
@@ -31,7 +30,6 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.space_utils import VecType
 from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -352,68 +350,3 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
         }
 
         return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, cameras)
-
-
-class FR3SimplePickUpSimDigitHandEnvCreator(EnvCreator):
-    def __call__(  # type: ignore
-        self,
-        render_mode: str = "human",
-        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
-        resolution: tuple[int, int] | None = None,
-        frame_rate: int = 0,
-        delta_actions: bool = True,
-    ) -> gym.Env:
-        if resolution is None:
-            resolution = (256, 256)
-
-        cameras = {
-            "wrist": SimCameraConfig(
-                identifier="wrist_0",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            )
-        }
-
-        return SimTaskEnvCreator()("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, cameras)
-
-
-class FR3LabPickUpSimDigitHandEnvCreator(EnvCreator):
-    def __call__(  # type: ignore
-        self,
-        cam_robot_joints: VecType,
-        render_mode: str = "human",
-        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
-        resolution: tuple[int, int] | None = None,
-        frame_rate: int = 0,
-        delta_actions: bool = True,
-    ) -> gym.Env:
-        if resolution is None:
-            resolution = (256, 256)
-
-        cameras = {
-            "wrist": SimCameraConfig(
-                identifier="wrist_0",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-            "side": SimCameraConfig(
-                identifier="wrist_1",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-        }
-
-        env_rel = SimTaskEnvCreator()(
-            "lab_simple_pick_up_digit_hand",
-            render_mode,
-            control_mode,
-            delta_actions,
-            cameras,
-        )
-        return CamRobot(env_rel, cam_robot_joints, "lab_simple_pick_up_digit_hand")
