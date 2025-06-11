@@ -10,6 +10,7 @@
 #include <set>
 #include <unordered_map>
 
+#include "common/Camera.h"
 #include "sim/sim.h"
 
 namespace rcs {
@@ -21,16 +22,15 @@ enum CameraType {
   fixed = mjCAMERA_FIXED,
   default_free
 };
-struct SimCameraConfig {
-  std::string identifier;
+
+struct SimCameraConfig : common::BaseCameraConfig {
   CameraType type;
-};
-struct SimCameraSetConfig {
-  std::unordered_map<std::string, SimCameraConfig> cameras;
-  int frame_rate;
-  int resolution_width;
-  int resolution_height;
-  int max_buffer_frames;
+  SimCameraConfig(const std::string& identifier, int frame_rate,
+                  int resolution_width, int resolution_height,
+                  CameraType type = fixed)
+      : common::BaseCameraConfig(identifier, frame_rate, resolution_width,
+                                 resolution_height),
+        type(type) {}
 };
 
 // (H,W,3)
@@ -45,7 +45,9 @@ struct FrameSet {
 
 class SimCameraSet {
  public:
-  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim, SimCameraSetConfig cfg);
+  SimCameraSet(std::shared_ptr<rcs::sim::Sim> sim,
+               std::unordered_map<std::string, SimCameraConfig> cameras,
+               bool render_on_demand = true);
   ~SimCameraSet();
 
   int buffer_size();
@@ -58,10 +60,11 @@ class SimCameraSet {
                       mjvOption& opt);
 
   std::shared_ptr<Sim> get_sim() { return sim; }
+  bool render_on_demand;
 
  private:
   std::shared_ptr<Sim> sim;
-  const SimCameraSetConfig cfg;
+  std::unordered_map<std::string, SimCameraConfig> cameras_cfg;
   std::vector<FrameSet> buffer;
   std::unordered_map<std::string, mjvCamera> cameras;
   std::mutex buffer_lock;

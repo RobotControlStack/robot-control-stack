@@ -3,30 +3,12 @@ from datetime import datetime
 
 import numpy as np
 import rcs
-from pydantic import Field
-from rcs._core.sim import CameraType
+
+# from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import FrameSet as _FrameSet
-from rcs._core.sim import SimCameraConfig as _SimCameraConfig
+from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
-from rcs._core.sim import SimCameraSetConfig as _SimCameraSetConfig
-from rcs.camera.interface import (
-    BaseCameraConfig,
-    BaseCameraSetConfig,
-    CameraFrame,
-    DataFrame,
-    Frame,
-    FrameSet,
-)
-
-
-class SimCameraConfig(BaseCameraConfig):
-    type: int  # CamBaseCameraConfigeraType
-
-
-class SimCameraSetConfig(BaseCameraSetConfig):
-    cameras: dict[str, SimCameraConfig] = Field(default={})
-    max_buffer_frames: int = 1000
-    physical_units: bool = False
+from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
 
 
 class SimCameraSet(_SimCameraSet):
@@ -34,34 +16,18 @@ class SimCameraSet(_SimCameraSet):
     Implements BaseCameraSet
     """
 
-    def __init__(self, sim: rcs.sim.Sim, cfg: SimCameraSetConfig):
+    def __init__(
+        self,
+        sim: rcs.sim.Sim,
+        cameras: dict[str, SimCameraConfig],
+        physical_units: bool = False,
+        render_on_demand: bool = True,
+    ):
         self._logger = logging.getLogger(__name__)
-        self._cfg = cfg
-        cameras: dict[str, _SimCameraConfig] = {}
+        self.cameras = cameras
+        self.physical_units = physical_units
 
-        def get_type(t):
-            if t == CameraType.fixed:
-                return CameraType.fixed
-            if t == CameraType.tracking:
-                return CameraType.tracking
-            if t == CameraType.free:
-                return CameraType.free
-            return CameraType.default_free
-
-        for name, camera_cfg in cfg.cameras.items():
-            cpp_camera_cfg = _SimCameraConfig()
-            cpp_camera_cfg.type = get_type(camera_cfg.type)
-            cpp_camera_cfg.identifier = camera_cfg.identifier
-            cameras[name] = cpp_camera_cfg
-
-        cpp_set_cfg = _SimCameraSetConfig()
-        cpp_set_cfg.cameras = cameras
-        cpp_set_cfg.resolution_width = cfg.resolution_width
-        cpp_set_cfg.resolution_height = cfg.resolution_height
-        cpp_set_cfg.frame_rate = cfg.frame_rate
-        cpp_set_cfg.max_buffer_frames = cfg.max_buffer_frames
-
-        super().__init__(sim, cpp_set_cfg)
+        super().__init__(sim, cameras, render_on_demand=render_on_demand)
         self._sim: rcs.sim.Sim
 
     def get_latest_frames(self) -> FrameSet | None:
@@ -80,15 +46,19 @@ class SimCameraSet(_SimCameraSet):
         d_frames_iter = cpp_frameset.depth_frames.items()
         for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
             assert color_name == depth_name
-            color_np_frame = np.copy(color_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 3)[
+            color_np_frame = np.copy(color_frame).reshape(
+                self.cameras[color_name].resolution_height, self.cameras[color_name].resolution_width, 3
+            )[
                 # convert from column-major (c++ eigen) to row-major (python numpy)
                 ::-1
             ]
-            depth_np_frame = np.copy(depth_frame).reshape(self._cfg.resolution_height, self._cfg.resolution_width, 1)[
+            depth_np_frame = np.copy(depth_frame).reshape(
+                self.cameras[depth_name].resolution_height, self.cameras[depth_name].resolution_width, 1
+            )[
                 # convert from column-major (c++ eigen) to row-major (python numpy)
                 ::-1
             ]
-            if self._cfg.physical_units:
+            if self.physical_units:
                 # Convert from [0 1] to depth in meters, see links below:
                 # http://stackoverflow.com/a/6657284/1461210
                 # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
@@ -105,19 +75,19 @@ class SimCameraSet(_SimCameraSet):
             frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
+    def config(self, camera_name: str) -> SimCameraConfig:
+        """Should return the configuration of the camera with the given name."""
+        return self.cameras[camera_name]
+
     def close(self):
         # TODO: this could deregister camera callbacks in simulation
         pass
 
     @property
-    def config(self) -> SimCameraSetConfig:
-        return self._cfg
-
-    @property
     def camera_names(self) -> list[str]:
         """Should return a list of the activated human readable names of the cameras."""
-        return list(self._cfg.cameras.keys())
+        return list(self.cameras.keys())
 
     @property
     def name_to_identifier(self) -> dict[str, str]:
-        return self._cfg.name_to_identifier
+        return {name: cfg.identifier for name, cfg in self.cameras.items()}

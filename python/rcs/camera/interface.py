@@ -4,28 +4,31 @@ from datetime import datetime
 from time import sleep, time
 from typing import Any, Protocol
 
-from pydantic import BaseModel, Field
+from rcs._core.common import BaseCameraConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 class SimpleFrameRate:
-    def __init__(self):
-        self.t = None
-        self._last_print = None
+    def __init__(self, frame_rate: int | float):
+        self.t: float | None = None
+        self._last_print: float | None = None
+        self.frame_rate = frame_rate
 
     def reset(self):
         self.t = None
 
-    def __call__(self, frame_rate: int | float):
+    def __call__(self):
         if self.t is None:
             self.t = time()
             self._last_print = self.t
-            sleep(1 / frame_rate if isinstance(frame_rate, int) else frame_rate)
+            sleep(1 / self.frame_rate if isinstance(self.frame_rate, int) else self.frame_rate)
             return
         sleep_time = (
-            1 / frame_rate - (time() - self.t) if isinstance(frame_rate, int) else frame_rate - (time() - self.t)
+            1 / self.frame_rate - (time() - self.t)
+            if isinstance(self.frame_rate, int)
+            else self.frame_rate - (time() - self.t)
         )
         if sleep_time > 0:
             sleep(sleep_time)
@@ -34,21 +37,6 @@ class SimpleFrameRate:
             logger.info(f"FPS: {1 / (time() - self.t)}")
 
         self.t = time()
-
-
-class BaseCameraConfig(BaseModel):
-    identifier: str
-
-
-class BaseCameraSetConfig(BaseModel):
-    cameras: dict = Field(default={})
-    resolution_width: int = 1280  # pixels
-    resolution_height: int = 720  # pixels
-    frame_rate: int = 15  # Hz
-
-    @property
-    def name_to_identifier(self):
-        return {key: camera.identifier for key, camera in self.cameras.items()}
 
 
 @dataclass(kw_only=True)
@@ -104,9 +92,8 @@ class BaseCameraSet(Protocol):
     def close(self):
         """Stops any running threads e.g. for exitting."""
 
-    @property
-    def config(self) -> BaseCameraSetConfig:
-        """Return the configuration object of the cameras."""
+    def config(self, camera_name: str) -> BaseCameraConfig:
+        """Returns the configuration object of the cameras."""
 
     @property
     def camera_names(self) -> list[str]:

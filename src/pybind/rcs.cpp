@@ -145,6 +145,17 @@ PYBIND11_MODULE(_core, m) {
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
   common.def("FrankaHandTCPOffset", &rcs::common::FrankaHandTCPOffset);
 
+  py::class_<rcs::common::BaseCameraConfig>(common, "BaseCameraConfig")
+      .def(py::init<const std::string &, int, int, int>(),
+           py::arg("identifier"), py::arg("frame_rate"),
+           py::arg("resolution_width"), py::arg("resolution_height"))
+      .def_readwrite("identifier", &rcs::common::BaseCameraConfig::identifier)
+      .def_readwrite("frame_rate", &rcs::common::BaseCameraConfig::frame_rate)
+      .def_readwrite("resolution_width",
+                     &rcs::common::BaseCameraConfig::resolution_width)
+      .def_readwrite("resolution_height",
+                     &rcs::common::BaseCameraConfig::resolution_height);
+
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -505,23 +516,13 @@ PYBIND11_MODULE(_core, m) {
       .value("fixed", rcs::sim::CameraType::fixed)
       .value("default_free", rcs::sim::CameraType::default_free)
       .export_values();
-  py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
-      .def(py::init<>())
-      .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
+  py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
+      sim, "SimCameraConfig")
+      .def(py::init<const std::string &, int, int, int, rcs::sim::CameraType>(),
+           py::arg("identifier"), py::arg("frame_rate"),
+           py::arg("resolution_width"), py::arg("resolution_height"),
+           py::arg("type") = rcs::sim::CameraType::fixed)
       .def_readwrite("type", &rcs::sim::SimCameraConfig::type);
-  py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
-      .def(py::init<>())
-      .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)
-      .def_readwrite("frame_rate", &rcs::sim::SimCameraSetConfig::frame_rate,
-                     "The frame rate in which the cameras render in Hz. If set "
-                     "to zero, the camera frames will render on demand and "
-                     "without fixed rate which takes away compute effort.")
-      .def_readwrite("resolution_width",
-                     &rcs::sim::SimCameraSetConfig::resolution_width)
-      .def_readwrite("resolution_height",
-                     &rcs::sim::SimCameraSetConfig::resolution_height)
-      .def_readwrite("max_buffer_frames",
-                     &rcs::sim::SimCameraSetConfig::max_buffer_frames);
   py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
       .def(py::init<>())
       .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
@@ -529,8 +530,10 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
   py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    rcs::sim::SimCameraSetConfig>(),
-           py::arg("sim"), py::arg("cfg"))
+                    std::unordered_map<std::string, rcs::sim::SimCameraConfig>,
+                    bool>(),
+           py::arg("sim"), py::arg("cameras"),
+           py::arg("render_on_demand") = true)
       .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
       .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
       .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)

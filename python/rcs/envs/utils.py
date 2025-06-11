@@ -7,12 +7,11 @@ import numpy as np
 import rcs
 from digit_interface import Digit
 from rcs import sim
+from rcs._core.common import BaseCameraConfig
 from rcs._core.hw import FR3Config, IKSolver
-from rcs._core.sim import CameraType
-from rcs.camera.digit_cam import DigitCam, DigitConfig
-from rcs.camera.interface import BaseCameraConfig
-from rcs.camera.realsense import RealSenseCameraSet, RealSenseSetConfig
-from rcs.camera.sim import SimCameraConfig, SimCameraSetConfig
+from rcs._core.sim import CameraType, SimCameraConfig
+from rcs.camera.digit_cam import DigitCam
+from rcs.camera.realsense import RealSenseCameraSet
 from rcs.hand.tilburg_hand import THConfig
 
 logger = logging.getLogger(__name__)
@@ -56,17 +55,11 @@ def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
     if name2id is None:
         return None
-    cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
-    cam_cfg = RealSenseSetConfig(
-        cameras=cameras,
-        resolution_width=1280,
-        resolution_height=720,
-        frame_rate=15,
-        enable_imu=False,  # does not work with imu, why?
-        enable_ir=True,
-        enable_ir_emitter=False,
-    )
-    return RealSenseCameraSet(cam_cfg)
+    cameras = {
+        name: BaseCameraConfig(identifier=id, resolution_width=1280, resolution_height=720, frame_rate=30)
+        for name, id in name2id.items()
+    }
+    return RealSenseCameraSet(cameras=cameras)
 
 
 def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
@@ -78,28 +71,30 @@ def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
 def default_digit(name2id: dict[str, str] | None, stream_name: str = "QVGA") -> DigitCam | None:
     if name2id is None:
         return None
-    cameras = {name: BaseCameraConfig(identifier=id) for name, id in name2id.items()}
     stream_dict = Digit.STREAMS[stream_name]
-    digit_cfg = DigitConfig(
-        cameras=cameras,
-        resolution_height=stream_dict["resolution"]["height"],
-        resolution_width=stream_dict["resolution"]["width"],
-        stream_name=stream_name,
-        frame_rate=stream_dict["fps"]["30fps"],
-    )
-    return DigitCam(digit_cfg)
-
-
-def default_mujoco_cameraset_cfg() -> SimCameraSetConfig:
     cameras = {
-        "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
-        "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-        # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed)),
+        name: BaseCameraConfig(
+            identifier=id,
+            resolution_width=stream_dict["resolution"]["width"],
+            resolution_height=stream_dict["resolution"]["height"],
+            frame_rate=stream_dict["fps"]["30fps"],
+        )
+        for name, id in name2id.items()
     }
+    return DigitCam(cameras=cameras)
+
+
+def default_mujoco_cameraset_cfg() -> dict[str, SimCameraConfig]:
     # 256x256 needed for VLAs
-    return SimCameraSetConfig(
-        cameras=cameras, resolution_width=256, resolution_height=256, frame_rate=10, physical_units=True
-    )
+    return {
+        "wrist": SimCameraConfig(
+            identifier="wrist_0", type=CameraType.fixed, frame_rate=10, resolution_width=256, resolution_height=256
+        ),
+        "default_free": SimCameraConfig(
+            identifier="", type=CameraType.default_free, frame_rate=10, resolution_width=256, resolution_height=256
+        ),
+        # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed), frame_rate=10, resolution_width=256, resolution_height=256),
+    }
 
 
 def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:

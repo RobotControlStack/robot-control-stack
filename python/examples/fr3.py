@@ -7,7 +7,7 @@ from rcs import sim
 from rcs._core.common import RobotPlatform
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
-from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.creators import get_urdf_path
 
@@ -80,11 +80,22 @@ def main():
 
             # add camera to have a rendering gui
             cameras = {
-                "default_free": SimCameraConfig(identifier="", type=int(CameraType.default_free)),
-                "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
+                "default_free": SimCameraConfig(
+                    identifier="",
+                    type=CameraType.default_free,
+                    resolution_width=1280,
+                    resolution_height=720,
+                    frame_rate=20,
+                ),
+                "wrist": SimCameraConfig(
+                    identifier="wrist_0",
+                    type=CameraType.fixed,
+                    resolution_width=640,
+                    resolution_height=480,
+                    frame_rate=30,
+                ),
             }
-            cam_cfg = SimCameraSetConfig(cameras=cameras, resolution_width=1280, resolution_height=720, frame_rate=20)
-            camera_set = SimCameraSet(simulation, cam_cfg)  # noqa: F841
+            camera_set = SimCameraSet(simulation, cameras)  # noqa: F841
             simulation.open_gui()
 
         else:
