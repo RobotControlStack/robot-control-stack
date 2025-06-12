@@ -140,6 +140,8 @@ PYBIND11_MODULE(_core, m) {
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
 
+  common.def("_bootstrap_egl", &rcs::common::bootstrap_egl, py::arg("fn_addr"),
+             py::arg("display"), py::arg("context"));
   common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
   common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
@@ -540,5 +542,15 @@ PYBIND11_MODULE(_core, m) {
       .def_property_readonly("_sim", &rcs::sim::SimCameraSet::get_sim)
       .def("get_timestamp_frameset",
            &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
-  sim.def("open_gui_window", &rcs::sim::open_gui_window, py::arg("uuid"));
+  py::class_<rcs::sim::GuiClient>(sim, "GuiClient")
+      .def(py::init<const std::string &>(), py::arg("id"))
+      .def("get_model_bytes",
+           [](const rcs::sim::GuiClient &self) {
+             auto s = self.get_model_bytes();
+             return py::bytes(s);
+           })
+      .def("set_model_and_data", [](rcs::sim::GuiClient &self, long m, long d) {
+        self.set_model_and_data((mjModel *)m, (mjData *)d);
+      })
+      .def("sync", &rcs::sim::GuiClient::sync);
 }

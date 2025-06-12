@@ -46,7 +46,6 @@ option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires G
 include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
-find_package(glfw3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
 
@@ -69,29 +68,6 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-set(MuJoCo_UI_URL https://raw.githubusercontent.com/google-deepmind/mujoco/${MuJoCo_VERSION}/simulate/)
-set(MuJoCo_UI_FILES platform_ui_adapter.cc platform_ui_adapter.h glfw_adapter.cc glfw_adapter.h glfw_adapter.cc glfw_corevideo.h glfw_corevideo.mm glfw_dispatch.cc glfw_dispatch.h)
-# Set the destination directory for the downloaded files
-set(MuJoCo_UI_DIR "${CMAKE_BINARY_DIR}/mujoco_ui")
-
-# Create the directory if it doesn't exist
-file(MAKE_DIRECTORY ${MuJoCo_UI_DIR})
-
-# Loop through each file and download it only if it doesn't already exist
-foreach(file ${MuJoCo_UI_FILES})
-  set(output_file "${MuJoCo_UI_DIR}/${file}")
-  if (NOT EXISTS ${output_file})
-    message(STATUS "Downloading ${file}...")
-    file(DOWNLOAD ${MuJoCo_UI_URL}${file} ${output_file})
-  else()
-    message(STATUS "File ${file} already exists, skipping download.")
-  endif()
-endforeach()
-
-# Add the include directories or link the files as needed
-add_library(mujoco_ui_lib ${MuJoCo_UI_DIR}/glfw_adapter.cc ${MuJoCo_UI_DIR}/platform_ui_adapter.cc ${MuJoCo_UI_DIR}/glfw_dispatch.cc)
-target_link_libraries(mujoco_ui_lib MuJoCo::MuJoCo glfw)
-target_include_directories(mujoco_ui_lib INTERFACE ${MuJoCo_UI_DIR})
 
 FetchContent_MakeAvailable(libfranka rl pybind11)
 
