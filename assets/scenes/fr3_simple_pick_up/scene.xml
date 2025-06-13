@@ -1,0 +1,40 @@
+<mujoco model="simple pick up task">
+  <include file="fr3_common.xml" />
+  <include file="fr3_0.xml" />
+
+  <statistic center="0.3 0 0.4" extent="1" />
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="120" elevation="-20" />
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0 0 0" rgb2="0 0 0" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0" />
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" friction="1 0.005 0.0001" />
+    <!-- <body>
+      <geom type="box" name="isocube" size="0.2 0.2 0.2" rgba="0.153 0.961 0.329 0.2" pos="0.498 0.0 0.226" contype="0" conaffinity="0" group="2"/>
+    </body> -->
+    
+    <camera name="bird_eye_cam" pos="0.271 -0.000 2.080" xyaxes="0.001 -1.000 -0.000 1.000 0.001 0.017" />
+    <camera name="openvla_view" pos="1.535 -0.406 0.757" xyaxes="0.246 0.969 0.000 -0.468 0.119 0.876" />
+    <camera name="right_side" pos="0.217 -1.738 0.583" xyaxes="1.000 -0.010 0.000 0.001 0.143 0.990"/>
+    <camera name="front" pos="2.278 -0.020 0.931" xyaxes="0.003 1.000 0.000 -0.274 0.001 0.962"/>
+    <camera name="left_side" pos="0.266 1.832 0.434" xyaxes="-1.000 -0.021 0.000 0.002 -0.092 0.996"/>
+    <camera name="side_view" pos="1.760 -1.205 0.621" xyaxes="0.681 0.733 0.000 -0.105 0.097 0.990"/>
+    
+    <body name="box_body" pos="0.44 0.1 0.03">
+      <geom type="box" size="0.03 0.03 0.03" rgba="1 1 0 1" name="box_geom" friction="1 0.3 0.1" density="50" />
+      <joint type="free" name="box_joint" />
+    </body>
+  </worldbody>
+</mujoco>

@@ -20,7 +20,10 @@ realsense_app = typer.Typer()
 main_app.add_typer(
     realsense_app,
     name="realsense",
-    help="Commands to access the intel realsense camera. This includes tools such as reading out the serial numbers of connected devices.",
+    help=(
+        "Commands to access the intel realsense camera. "
+        "This includes tools such as reading out the serial numbers of connected devices."
+    ),
 )
 
 
@@ -42,7 +45,10 @@ fr3_app = typer.Typer()
 main_app.add_typer(
     fr3_app,
     name="fr3",
-    help="Commands to control a Franka Research 3. This includes tools that you would usually do with Franka's Desk interface.",
+    help=(
+        "Commands to control a Franka Research 3. "
+        "This includes tools that you would usually do with Franka's Desk interface."
+    ),
 )
 
 

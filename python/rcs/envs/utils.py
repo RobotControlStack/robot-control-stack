@@ -108,31 +108,22 @@ def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
     Returns:
         rcs.common.Pose: The tcp offset.
     """
-    if isinstance(mjcf, str):
+    if mjcf in rcs.scenes:
+        model = mj.MjModel.from_binary_path(str(rcs.scenes[str(mjcf)]["mjb"]))
+    else:
         mjcf = Path(mjcf)
-    mjmdl = rcs.scenes.get(str(mjcf), mjcf)
-    if mjmdl.suffix == ".xml":
-        model = mj.MjModel.from_xml_path(str(mjmdl))
-    elif mjmdl.suffix == ".mjb":
-        model = mj.MjModel.from_binary_path(str(mjmdl))
+        if mjcf.suffix in (".xml", ".mjcf"):
+            model = mj.MjModel.from_xml_path(str(mjcf))
+        elif mjcf.suffix == ".mjb":
+            model = mj.MjModel.from_binary_path(str(mjcf))
+        else:
+            msg = f"Expected .mjb, .mjcf or.xml, got {mjcf.suffix}"
+            raise AssertionError(msg)
     try:
         tcp_offset = np.array(model.numeric("tcp_offset").data)
         pose_offset = rcs.common.Pose(translation=tcp_offset)
         return rcs.common.Pose(rcs.common.FrankaHandTCPOffset()) * pose_offset
     except KeyError:
         msg = "No tcp offset found in the model. Using the default tcp offset."
-        logging.warning(msg)
+        logging.info(msg)
     return rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-
-
-def get_urdf_path(urdf_path: str | PathLike | None, allow_none_if_not_found: bool = False) -> str | None:
-    if urdf_path is None and "lab" in rcs.scenes:
-        urdf_path = rcs.scenes["lab"].parent / "fr3.urdf"
-        assert urdf_path.exists(), "Automatic deduced urdf path does not exist. Corrupted models directory."
-        logger.info("Using automatic found urdf.")
-    elif urdf_path is None and not allow_none_if_not_found:
-        msg = "This pip package was not built with the UTN lab models, please pass the urdf and mjcf path to use simulation or collision guard."
-        raise ValueError(msg)
-    elif urdf_path is None:
-        logger.warning("No urdf path was found. Proceeding, but set_cartesian methods will result in errors.")
-    return str(urdf_path) if urdf_path is not None else None

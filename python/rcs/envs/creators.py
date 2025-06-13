@@ -38,7 +38,6 @@ from rcs.envs.utils import (
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_realsense,
-    get_urdf_path,
 )
 from rcs.hand.tilburg_hand import TilburgHand
 
@@ -70,6 +69,8 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             ip (str): IP address of the robot.
             control_mode (ControlMode): Control mode for the robot.
             robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
+            collision_guard (str | PathLike | None): Key to a built-in scene
+            robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
                 or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
             gripper_cfg (rcs.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
@@ -78,14 +79,13 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
-                which requires a UTN compatible lab scene to be present. If no URDF file is found, the environment will
-                still work but set_cartesian methods might throw an error. A URDF file is needed for collision guarding.
+            urdf_path (str | PathLike | None): Path to the URDF file. If None the included one is used. A URDF file is needed for collision guarding.
 
         Returns:
             gym.Env: The configured hardware environment for the FR3 robot.
         """
-        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=collision_guard is not None)
+        if urdf_path is None:
+            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
         robot = rcs.hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
@@ -111,7 +111,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             env = CollisionGuard.env_from_xml_paths(
                 env,
                 str(rcs.scenes.get(str(collision_guard), collision_guard)),
-                urdf_path,
+                str(urdf_path),
                 gripper=True,
                 check_home_collision=False,
                 control_mode=control_mode,
@@ -137,7 +137,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
 
-        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
+        urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
         robots: dict[str, rcs.hw.FR3] = {}
         for ip in ips:
@@ -189,7 +189,7 @@ class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
         )
 
 
-class RCSSimEnvCreator(EnvCreator):
+class FR3SimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         control_mode: ControlMode,
@@ -225,14 +225,16 @@ class RCSSimEnvCreator(EnvCreator):
         Returns:
             gym.Env: The configured simulation environment for the FR3 robot.
         """
-        urdf_path = get_urdf_path(urdf_path, allow_none_if_not_found=False)
-        assert urdf_path is not None
+        if urdf_path is None:
+            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         if mjcf not in rcs.scenes:
-            logger.warning("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-        mjb_file = rcs.scenes.get(str(mjcf), mjcf)
-        simulation = sim.Sim(mjb_file)
+            logger.info("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
+        if mjcf in rcs.scenes:
+            assert isinstance(mjcf, str)
+            mjcf = rcs.scenes[mjcf]["mjb"]
+        simulation = sim.Sim(mjcf)
 
-        ik = rcs.common.IK(urdf_path)
+        ik = rcs.common.IK(str(urdf_path))
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = RobotSimWrapper(env, simulation, sim_wrapper)
@@ -250,7 +252,7 @@ class RCSSimEnvCreator(EnvCreator):
             env = CollisionGuard.env_from_xml_paths(
                 env,
                 str(rcs.scenes.get(str(mjcf), mjcf)),
-                urdf_path,
+                str(urdf_path),
                 gripper=gripper_cfg is not None,
                 check_home_collision=False,
                 control_mode=control_mode,
@@ -274,7 +276,7 @@ class SimTaskEnvCreator(EnvCreator):
         cameras: dict[str, SimCameraConfig] | None = None,
     ) -> gym.Env:
 
-        env_rel = RCSSimEnvCreator()(
+        env_rel = FR3SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=default_fr3_sim_robot_cfg(mjcf),
             collision_guard=False,

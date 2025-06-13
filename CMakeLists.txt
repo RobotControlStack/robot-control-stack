@@ -41,8 +41,6 @@ set(RL_BUILD_EXTRAS OFF)
 set(BUILD_PYTHON_INTERFACE OFF)
 set(BUILD_DOCUMENTATION OFF)
 
-option(INCLUDE_UTN_MODELS "Whether to include the private UTN models. Requires GITLAB_MODELS_TOKEN to be set to a valid token wit read_api permissions" OFF)
-
 include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
@@ -70,22 +68,6 @@ FetchContent_Declare(pybind11
 )
 
 FetchContent_MakeAvailable(libfranka rl pybind11)
-
-if (${INCLUDE_UTN_MODELS})
-    if (DEFINED GITLAB_MODELS_TOKEN)
-        include(download_scenes)
-        set(ref 055a6fdab480dde8443030236012f76d9be90918)
-        FetchContent_Declare(
-            scenes
-            URL         "https://gitos.rrze.fau.de/api/v4/projects/1100/repository/archive?path=scenes&sha=${ref}"
-            HTTP_HEADER "PRIVATE-TOKEN: ${GITLAB_MODELS_TOKEN}"
-        )
-        FetchContent_MakeAvailable(scenes)
-        resolve_symlinks(${ref})
-    else()
-      message(FATAL_ERROR "GITLAB_MODELS_TOKEN missing. Not including lab scene")
-    endif()
-endif()
 include(compile_scenes)
 
 add_subdirectory(src)

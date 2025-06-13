@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import numpy as np
 import rcs
@@ -9,12 +8,9 @@ from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcs.envs.creators import get_urdf_path
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# replace this with a path to a robot urdf file if you dont have the utn models
-URDF_PATH = None
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -51,9 +47,6 @@ python -m rcs fr3 shutdown <ip>
 
 
 def main():
-    if "lab" not in rcs.scenes:
-        logger.error("This pip package was not built with the UTN lab models, aborting.")
-        sys.exit()
     context_manger: FCI | ContextManager
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
@@ -65,10 +58,9 @@ def main():
         robot: rcs.common.Robot
         gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            simulation = sim.Sim(rcs.scenes["fr3_empty_world"])
-            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            ik = rcs.common.IK(urdf_path)
+            simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
+            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+            ik = rcs.common.IK(str(urdf_path))
             cfg = sim.SimRobotConfig()
             cfg.add_id("0")
             cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
@@ -99,9 +91,8 @@ def main():
             simulation.open_gui()
 
         else:
-            urdf_path = get_urdf_path(URDF_PATH, allow_none_if_not_found=False)
-            assert urdf_path is not None
-            ik = rcs.common.IK(urdf_path)
+            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+            ik = rcs.common.IK(str(urdf_path))
             robot = rcs.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())

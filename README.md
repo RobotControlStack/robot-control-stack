@@ -15,10 +15,6 @@ source .venv/bin/activate
 pip install -r requirements_dev.txt
 pip config --site set global.no-build-isolation false
 ```
-2.5 (optional) include UTN models if you have an access token
-```shell
-pip config --site set install.config-settings "cmake.args=-DINCLUDE_UTN_MODELS=ON;-DGITLAB_MODELS_TOKEN=<token>"
-```
 3. Build and install RCS:
 ```shell
 pip install -ve .
