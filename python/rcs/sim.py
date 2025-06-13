@@ -1,9 +1,13 @@
 import atexit
+import time
 import multiprocessing as mp
 import uuid
+from copy import deepcopy
 from logging import getLogger
+from multiprocessing import Event
 from os import PathLike
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from threading import Thread
 from typing import Optional
 
@@ -24,6 +28,33 @@ from rcs._core.sim import (
 __all__ = ["Sim", "SimRobot", "SimRobotConfig", "SimRobotState", "SimGripper", "SimGripperConfig", "SimGripperState"]
 
 logger = getLogger(__name__)
+
+
+# Target frames per second
+FPS = 60.0
+FRAME_DURATION = 1.0 / FPS
+
+
+def gui_loop(model_bytes: bytes, close_event: Event, gui_uuid: str):
+    with NamedTemporaryFile(mode="wb") as f:
+        f.write(model_bytes)
+        model = mujoco.MjModel.from_binary_path(f.name)
+    data = mujoco.MjData(model)
+    gui_client = _GuiClient(gui_uuid)
+    gui_client.set_model_and_data(model._address, data._address)
+    mujoco.mj_step(model, data)
+    with mujoco.viewer.launch_passive(model, data) as viewer:
+        next_frame_time = time.perf_counter()
+        while not close_event.is_set():
+            mujoco.mj_step(model, data)
+            viewer.sync()
+            gui_client.sync()
+            next_frame_time += FRAME_DURATION
+            sleep_duration = next_frame_time - time.perf_counter()
+            if sleep_duration > 0:
+                time.sleep(sleep_duration)
+            else:
+                next_frame_time = time.perf_counter()
 
 
 class Sim(_Sim):
@@ -50,9 +81,16 @@ class Sim(_Sim):
             atexit.register(self._stop_gui_server)
         if self._gui_client is None:
             self._gui_client = _GuiClient(self._gui_uuid)
-            model_byte = self._gui_client.get_model_bytes()
-            # TODO: load model and create data, pass to a process which calls
-            # step & sync in a loop
+            model_bytes = self._gui_client.get_model_bytes()
+            ctx = mp.get_context("spawn")
+            self._stop_event = ctx.Event()
+            self._gui_process = ctx.Process(
+                target=gui_loop,
+                args=(model_bytes, self._stop_event, self._gui_uuid),
+            )
+            self._gui_process.start()
 
     def __del__(self):
+        self._stop_event.set()
+        self._gui_process.join()
         self._stop_gui_server()
