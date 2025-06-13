@@ -1,0 +1,8 @@
+<mujoco model="duplo_2x2">
+  <worldbody>
+  <body>
+    <geom type="box" size="0.0158 0.0158 0.01192" rgba="1 0 0 1" pos="0.3 0.05 0.25"/>
+    <freejoint/>
+  </body>
+  </worldbody>
+</mujoco>

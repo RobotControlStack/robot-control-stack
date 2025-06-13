@@ -6,17 +6,15 @@ import site
 from gymnasium import register
 from rcs import camera, control, envs, hand, sim
 from rcs._core import __version__, common, hw
-from rcs.envs.creators import (
-    FR3LabPickUpSimDigitHandEnvCreator,
-    FR3SimplePickUpSimDigitHandEnvCreator,
-    FR3SimplePickUpSimEnvCreator,
-    RCSFR3DefaultEnvCreator,
-    RCSFR3EnvCreator,
-)
+from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
 
 # available mujoco scenes
-scenes = {
-    path.stem: path / "scene.mjb" for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
+scenes: dict[str, dict[str, pathlib.Path]] = {
+    path.stem: {
+        "mjb": path / "scene.mjb",
+        "urdf": path / "fr3.urdf",
+    }
+    for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }
 
 # make submodules available
@@ -24,25 +22,13 @@ __all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", 
 
 # register gymnasium environments
 register(
-    id="rcs/SimplePickUpSim-v0",
+    id="rcs/FR3SimplePickUpSim-v0",
     entry_point=FR3SimplePickUpSimEnvCreator(),
 )
-
-register(
-    id="rcs/SimplePickUpSimDigitHand-v0",
-    entry_point=FR3SimplePickUpSimDigitHandEnvCreator(),
-)
-register(
-    id="rcs/LabPickUpSimDigitHand-v0",
-    entry_point=FR3LabPickUpSimDigitHandEnvCreator(),
-)
-
-register(
-    id="rcs/FR3Env-v0",
-    entry_point=RCSFR3EnvCreator(),
-)
-
-register(
-    id="rcs/FR3Default-v0",
-    entry_point=RCSFR3DefaultEnvCreator(),
-)
+# TODO: gym.make("rcs/FR3SimEnv-v0") results in a pickling error:
+# TypeError: cannot pickle 'rcs._core.sim.SimRobotConfig' object
+# cf. https://pybind11.readthedocs.io/en/stable/advanced/classes.html#deepcopy-support
+# register(
+#    id="rcs/FR3SimEnv-v0",
+#    entry_point=FR3SimEnvCreator(),
+# )
