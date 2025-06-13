@@ -2,13 +2,11 @@ import atexit
 import multiprocessing as mp
 import time
 import uuid
-from copy import deepcopy
 from logging import getLogger
-from multiprocessing import Event
+from multiprocessing.synchronize import Event as EventClass
 from os import PathLike
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from threading import Thread
 from typing import Optional
 
 import mujoco as mj
@@ -27,6 +25,7 @@ from rcs._core.sim import (
 
 __all__ = ["Sim", "SimRobot", "SimRobotConfig", "SimRobotState", "SimGripper", "SimGripperConfig", "SimGripperState"]
 
+rcs.egl_bootstrap.bootstrap()
 logger = getLogger(__name__)
 
 
@@ -35,7 +34,7 @@ FPS = 60.0
 FRAME_DURATION = 1.0 / FPS
 
 
-def gui_loop(gui_uuid: str, close_event: Event):
+def gui_loop(gui_uuid: str, close_event):
     gui_client = _GuiClient(gui_uuid)
     model_bytes = gui_client.get_model_bytes()
     with NamedTemporaryFile(mode="wb") as f:
@@ -72,9 +71,9 @@ class Sim(_Sim):
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")
         self._gui_uuid: Optional[str] = None
-        self._gui_client: Optional[GuiClient] = None
-        self._gui_process: Optional[mp.Process] = None
-        self._stop_event: Optional[mp.Event] = None
+        self._gui_client: Optional[_GuiClient] = None
+        self._gui_process: Optional[mp.context.SpawnProcess] = None
+        self._stop_event: Optional[EventClass] = None
 
     def close_gui(self):
         if self._stop_event is not None:

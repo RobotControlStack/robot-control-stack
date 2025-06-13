@@ -549,8 +549,9 @@ PYBIND11_MODULE(_core, m) {
              auto s = self.get_model_bytes();
              return py::bytes(s);
            })
-      .def("set_model_and_data", [](rcs::sim::GuiClient &self, long m, long d) {
-        self.set_model_and_data((mjModel *)m, (mjData *)d);
-      })
+      .def("set_model_and_data",
+           [](rcs::sim::GuiClient &self, long m, long d) {
+             self.set_model_and_data((mjModel *)m, (mjData *)d);
+           })
       .def("sync", &rcs::sim::GuiClient::sync);
 }
