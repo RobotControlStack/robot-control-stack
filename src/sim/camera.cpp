@@ -21,17 +21,21 @@
 namespace rcs {
 namespace sim {
 
-SimCameraSet::SimCameraSet(std::shared_ptr<Sim> sim, SimCameraSetConfig cfg)
-    : sim{sim}, cfg{cfg}, buffer{}, buffer_lock{}, cameras{} {
-  for (auto const& [id, cam] : cfg.cameras) {
-    // if frame_rate is zero, then we only render when an image is requested
-    // this mode is useful when no videos are required as it speeds up the
-    // simulation significantly
+SimCameraSet::SimCameraSet(
+    std::shared_ptr<Sim> sim,
+    std::unordered_map<std::string, SimCameraConfig> cameras_cfg,
+    bool render_on_demand)
+    : sim{sim},
+      cameras_cfg{cameras_cfg},
+      buffer{},
+      buffer_lock{},
+      cameras{},
+      render_on_demand{render_on_demand} {
+  for (auto const& [id, cam] : cameras_cfg) {
     this->sim->register_rendering_callback(
         [this](const std::string& id, mjrContext& ctx, mjvScene& scene,
                mjvOption& opt) { this->frame_callback(id, ctx, scene, opt); },
-        id, this->cfg.frame_rate, this->cfg.resolution_width,
-        this->cfg.resolution_height);
+        id, cam.frame_rate, cam.resolution_width, cam.resolution_height);
 
     mjvCamera mjcam;
     mjv_defaultCamera(&mjcam);
@@ -60,7 +64,7 @@ void SimCameraSet::clear_buffer() {
 }
 
 std::optional<FrameSet> SimCameraSet::get_latest_frameset() {
-  if (this->cfg.frame_rate == 0) {
+  if (this->render_on_demand) {
     this->render_all();
   }
   if (buffer.empty()) {
@@ -80,7 +84,7 @@ std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
 }
 
 void SimCameraSet::render_all() {
-  for (auto const& [id, cam] : this->cfg.cameras) {
+  for (auto const& [id, cam] : this->cameras_cfg) {
     mjrContext* ctx = this->sim->renderer.get_context(id);
     this->frame_callback(id, *ctx, this->sim->renderer.scene,
                          this->sim->renderer.opt);

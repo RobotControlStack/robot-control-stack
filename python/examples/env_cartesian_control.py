@@ -67,7 +67,7 @@ def main():
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
-                camera_set_cfg=default_mujoco_cameraset_cfg(),
+                cameras=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )

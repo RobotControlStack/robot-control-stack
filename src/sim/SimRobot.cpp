@@ -19,29 +19,14 @@
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"
 
-struct {
-  std::array<std::string, 8> arm_collision_geoms{
-      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
-      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
-      "fr3_link6_collision", "fr3_link7_collision"};
-  std::array<std::string, 7> joints = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-  std::array<std::string, 7> actuators = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-} const model_names;
-
 namespace rcs {
 namespace sim {
 
+// TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
-SimRobot::SimRobot(std::shared_ptr<Sim> sim, const std::string& id,
-                   std::shared_ptr<common::IK> ik,
-                   bool register_convergence_callback)
-    : sim{sim}, id{id}, cfg{}, state{}, m_ik(ik) {
+SimRobot::SimRobot(std::shared_ptr<Sim> sim, std::shared_ptr<common::IK> ik,
+                   SimRobotConfig cfg, bool register_convergence_callback)
+    : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
   this->init_ids();
   if (register_convergence_callback) {
     this->sim->register_cb(std::bind(&SimRobot::is_arrived_callback, this),
@@ -66,39 +51,38 @@ void SimRobot::move_home() {
 void SimRobot::init_ids() {
   std::string name;
   // Collision geoms
-  for (size_t i = 0; i < std::size(model_names.arm_collision_geoms); ++i) {
-    name = model_names.arm_collision_geoms[i];
-    name.append("_");
-    name.append(this->id);
+  for (size_t i = 0; i < std::size(this->cfg.arm_collision_geoms); ++i) {
+    name = this->cfg.arm_collision_geoms[i];
     int id = mj_name2id(this->sim->m, mjOBJ_GEOM, name.c_str());
     if (id == -1) {
       throw std::runtime_error(std::string("No geom named " + name));
     }
     this->ids.cgeom.insert(id);
   }
-  // Sites
-  name = "attachment_site_";
-  name.append(this->id);
+  // Attachment Site
+  name = this->cfg.attachment_site;
   this->ids.attachment_site =
       mj_name2id(this->sim->m, mjOBJ_SITE, name.c_str());
   if (this->ids.attachment_site == -1) {
     throw std::runtime_error(std::string("No site named " + name));
   }
+  // Base
+  name = this->cfg.base;
+  this->ids.base = mj_name2id(this->sim->m, mjOBJ_BODY, name.c_str());
+  if (this->ids.base == -1) {
+    throw std::runtime_error(std::string("No body named " + name));
+  }
   // Joints
-  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
-    name = model_names.joints[i];
-    name.append("_");
-    name.append(this->id);
+  for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
+    name = this->cfg.joints[i];
     this->ids.joints[i] = mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str());
     if (this->ids.joints[i] == -1) {
       throw std::runtime_error(std::string("No joint named " + name));
     }
   }
   // Actuators
-  for (size_t i = 0; i < std::size(model_names.actuators); ++i) {
-    name = model_names.actuators[i];
-    name.append("_");
-    name.append(this->id);
+  for (size_t i = 0; i < std::size(this->cfg.actuators); ++i) {
+    name = this->cfg.actuators[i];
     this->ids.actuators[i] =
         mj_name2id(this->sim->m, mjOBJ_ACTUATOR, name.c_str());
     if (this->ids.actuators[i] == -1) {
@@ -145,8 +129,8 @@ void SimRobot::set_joint_position(const common::VectorXd& q) {
 }
 
 common::VectorXd SimRobot::get_joint_position() {
-  common::VectorXd q(std::size(model_names.joints));
-  for (size_t i = 0; i < std::size(model_names.joints); ++i) {
+  common::VectorXd q(std::size(this->cfg.joints));
+  for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
   }
   return q;
@@ -219,10 +203,9 @@ void SimRobot::set_joints_hard(const common::VectorXd& q) {
 }
 
 common::Pose SimRobot::get_base_pose_in_world_coordinates() {
-  auto id = mj_name2id(this->sim->m, mjOBJ_BODY,
-                       (std::string("base_") + this->id).c_str());
-  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos + 3 * id);
-  auto quat = this->sim->d->xquat + 4 * id;
+  Eigen::Map<Eigen::Vector3d> translation(this->sim->d->xpos +
+                                          3 * this->ids.base);
+  auto quat = this->sim->d->xquat + 4 * this->ids.base;
   Eigen::Quaterniond rotation(quat[0], quat[1], quat[2], quat[3]);
   return common::Pose(rotation, translation);
 }

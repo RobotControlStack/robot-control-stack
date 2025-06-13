@@ -5,15 +5,18 @@ from typing import Type
 import gymnasium as gym
 import numpy as np
 import rcs
+import rcs.hand.tilburg_hand
 from gymnasium.envs.registration import EnvCreator
 from rcs import sim
 from rcs._core.sim import CameraType
-from rcs.camera.hw import BaseHardwareCameraSet
-from rcs.camera.sim import SimCameraConfig, SimCameraSet, SimCameraSetConfig
+from rcs.camera.hw import HardwareCameraSet
+from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
+    HandWrapper,
+    MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -22,10 +25,10 @@ from rcs.envs.hw import FR3HW
 from rcs.envs.sim import (
     CamRobot,
     CollisionGuard,
-    FR3Sim,
     GripperWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
+    RobotSimWrapper,
     SimWrapper,
 )
 from rcs.envs.space_utils import VecType
@@ -36,6 +39,7 @@ from rcs.envs.utils import (
     default_fr3_sim_robot_cfg,
     default_realsense,
 )
+from rcs.hand.tilburg_hand import TilburgHand
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -52,8 +56,8 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         control_mode: ControlMode,
         robot_cfg: rcs.hw.FR3Config,
         collision_guard: str | PathLike | None = None,
-        gripper_cfg: rcs.hw.FHConfig | None = None,
-        camera_set: BaseHardwareCameraSet | None = None,
+        gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
+        camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -89,9 +93,12 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
-        if gripper_cfg is not None:
+        if isinstance(gripper_cfg, rcs.hw.FHConfig):
             gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
+        elif isinstance(gripper_cfg, rcs.hand.tilburg_hand.THConfig):
+            hand = TilburgHand(gripper_cfg)
+            env = HandWrapper(env, hand, binary=True)
 
         if camera_set is not None:
             camera_set.start()
@@ -118,6 +125,46 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         return env
 
 
+class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
+    def __call__(  # type: ignore
+        ips: list[str],
+        control_mode: ControlMode,
+        robot_cfg: rcs.hw.FR3Config,
+        gripper_cfg: rcs.hw.FHConfig | None = None,
+        camera_set: HardwareCameraSet | None = None,
+        max_relative_movement: float | tuple[float, float] | None = None,
+        relative_to: RelativeTo = RelativeTo.LAST_STEP,
+        urdf_path: str | PathLike | None = None,
+    ) -> gym.Env:
+
+        urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+        ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
+        robots: dict[str, rcs.hw.FR3] = {}
+        for ip in ips:
+            robots[ip] = rcs.hw.FR3(ip, ik)
+            robots[ip].set_parameters(robot_cfg)
+
+        envs = {}
+        for ip in ips:
+            env: gym.Env = RobotEnv(robots[ip], control_mode)
+            env = FR3HW(env)
+            if gripper_cfg is not None:
+                gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
+                env = GripperWrapper(env, gripper, binary=True)
+
+            if max_relative_movement is not None:
+                env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
+            envs[ip] = env
+
+        env = MultiRobotWrapper(envs)
+        if camera_set is not None:
+            camera_set.start()
+            camera_set.wait_for_frames()
+            logger.info("CameraSet started")
+            env = CameraSetWrapper(env, camera_set)
+        return env
+
+
 class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
@@ -127,7 +174,9 @@ class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
         camera_config: dict[str, str] | None = None,
         gripper: bool = True,
     ) -> gym.Env:
-        camera_set = default_realsense(camera_config)
+        real_sense = default_realsense(camera_config)
+        camera_set_impl_list = [] if real_sense is None else [real_sense]
+        camera_set = HardwareCameraSet(cameras=camera_set_impl_list)
         return RCSFR3EnvCreator()(
             ip=robot_ip,
             camera_set=camera_set,
@@ -147,7 +196,7 @@ class FR3SimEnvCreator(EnvCreator):
         robot_cfg: rcs.sim.SimRobotConfig,
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
-        camera_set_cfg: SimCameraSetConfig | None = None,
+        cameras: dict[str, SimCameraConfig] | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
         urdf_path: str | PathLike | None = None,
@@ -186,17 +235,16 @@ class FR3SimEnvCreator(EnvCreator):
         simulation = sim.Sim(mjcf)
 
         ik = rcs.common.IK(str(urdf_path))
-        robot = rcs.sim.SimRobot(simulation, "0", ik)
-        robot.set_parameters(robot_cfg)
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
-        env = FR3Sim(env, simulation, sim_wrapper)
+        env = RobotSimWrapper(env, simulation, sim_wrapper)
 
-        if camera_set_cfg is not None:
-            camera_set = SimCameraSet(simulation, camera_set_cfg)
+        if cameras is not None:
+            camera_set = SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
-        if gripper_cfg is not None:
-            gripper = sim.SimGripper(simulation, "0", gripper_cfg)
+        if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
+            gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
 
@@ -225,7 +273,7 @@ class SimTaskEnvCreator(EnvCreator):
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
-        camera_cfg: SimCameraSetConfig | None = None,
+        cameras: dict[str, SimCameraConfig] | None = None,
     ) -> gym.Env:
 
         env_rel = FR3SimEnvCreator()(
@@ -233,7 +281,7 @@ class SimTaskEnvCreator(EnvCreator):
             robot_cfg=default_fr3_sim_robot_cfg(mjcf),
             collision_guard=False,
             gripper_cfg=default_fr3_sim_gripper_cfg(),
-            camera_set_cfg=camera_cfg,
+            cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
             mjcf=mjcf,
@@ -259,22 +307,51 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
             resolution = (256, 256)
 
         cameras = {
-            "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
-            "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed)),
-            "side": SimCameraConfig(identifier="side_view", type=int(CameraType.fixed)),
-            "right_side": SimCameraConfig(identifier="right_side", type=int(CameraType.fixed)),
-            "left_side": SimCameraConfig(identifier="left_side", type=int(CameraType.fixed)),
-            "front": SimCameraConfig(identifier="front", type=int(CameraType.fixed)),
+            "wrist": SimCameraConfig(
+                identifier="wrist_0",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "bird_eye": SimCameraConfig(
+                identifier="bird_eye_cam",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "side": SimCameraConfig(
+                identifier="side_view",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "right_side": SimCameraConfig(
+                identifier="right_side",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "left_side": SimCameraConfig(
+                identifier="left_side",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "front": SimCameraConfig(
+                identifier="front",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
         }
 
-        camera_cfg = SimCameraSetConfig(
-            cameras=cameras,
-            resolution_width=resolution[0],
-            resolution_height=resolution[1],
-            frame_rate=frame_rate,
-            physical_units=True,
-        )
-        return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, camera_cfg)
+        return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, cameras)
 
 
 class FR3SimplePickUpSimDigitHandEnvCreator(EnvCreator):
@@ -289,18 +366,17 @@ class FR3SimplePickUpSimDigitHandEnvCreator(EnvCreator):
         if resolution is None:
             resolution = (256, 256)
 
-        cameras = {"wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed))}
+        cameras = {
+            "wrist": SimCameraConfig(
+                identifier="wrist_0",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            )
+        }
 
-        camera_cfg = SimCameraSetConfig(
-            cameras=cameras,
-            resolution_width=resolution[0],
-            resolution_height=resolution[1],
-            frame_rate=frame_rate,
-            physical_units=True,
-        )
-        return SimTaskEnvCreator()(
-            "fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, camera_cfg
-        )
+        return SimTaskEnvCreator()("fr3_simple_pick_up_digit_hand", render_mode, control_mode, delta_actions, cameras)
 
 
 class FR3LabPickUpSimDigitHandEnvCreator(EnvCreator):
@@ -317,22 +393,27 @@ class FR3LabPickUpSimDigitHandEnvCreator(EnvCreator):
             resolution = (256, 256)
 
         cameras = {
-            "wrist": SimCameraConfig(identifier="wrist_0", type=int(CameraType.fixed)),
-            "side": SimCameraConfig(identifier="wrist_1", type=int(CameraType.fixed)),
+            "wrist": SimCameraConfig(
+                identifier="wrist_0",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
+            "side": SimCameraConfig(
+                identifier="wrist_1",
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            ),
         }
 
-        camera_cfg = SimCameraSetConfig(
-            cameras=cameras,
-            resolution_width=resolution[0],
-            resolution_height=resolution[1],
-            frame_rate=frame_rate,
-            physical_units=True,
-        )
         env_rel = SimTaskEnvCreator()(
             "lab_simple_pick_up_digit_hand",
             render_mode,
             control_mode,
             delta_actions,
-            camera_cfg,
+            cameras,
         )
         return CamRobot(env_rel, cam_robot_joints, "lab_simple_pick_up_digit_hand")

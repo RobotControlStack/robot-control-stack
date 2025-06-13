@@ -127,12 +127,12 @@ int test_sim() {
   std::string id = "0";
 
   auto ik = std::make_shared<rcs::common::IK>(urdf);
-  auto fr3 = rcs::sim::SimRobot(sim, id, ik);
   auto tcp_offset = rcs::common::Pose(rcs::common::FrankaHandTCPOffset());
-  rcs::sim::SimRobotConfig fr3_config = *fr3.get_parameters();
+  rcs::sim::SimRobotConfig fr3_config;
   fr3_config.tcp_offset = tcp_offset;
   fr3_config.seconds_between_callbacks = 0.05;  // 20hz
-  fr3.set_parameters(fr3_config);
+  fr3_config.add_id(id);
+  auto fr3 = rcs::sim::SimRobot(sim, ik, fr3_config);
   std::jthread t(rendering_loop, m, d);
   sim->step(1);
   for (size_t i = 0; i < 100; ++i) {

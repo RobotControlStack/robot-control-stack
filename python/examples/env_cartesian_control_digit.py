@@ -1,17 +1,19 @@
 import logging
 
-import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import FR3SimEnvCreator, RCSFR3EnvCreator
 from rcs.envs.utils import (
+    default_digit,
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
 )
+
+from python.rcs.camera.hw import HardwareCameraSet
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -44,46 +46,55 @@ python -m rcs fr3 shutdown <ip>
 
 
 def main():
-    context_manger: FCI | ContextManager
+    resource_manger: FCI | ContextManager
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        context_manger = ContextManager()
-    with context_manger:
-
+        resource_manger = ContextManager()
+    with resource_manger:
         if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
             env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
-                control_mode=ControlMode.JOINTS,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
+                camera_set=HardwareCameraSet(default_digit({"digit_0": "D21182"})),
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
-                max_relative_movement=np.deg2rad(5),
+                max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
             env_rel = FR3SimEnvCreator()(
-                control_mode=ControlMode.JOINTS,
-                collision_guard=False,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
+                collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
                 cameras=default_mujoco_cameraset_cfg(),
-                max_relative_movement=np.deg2rad(5),
+                max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
+        env_rel.reset()
+        print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
+
         for _ in range(10):
-            obs, info = env_rel.reset()
-            for _ in range(3):
-                # sample random relative action and execute it
-                act = env_rel.action_space.sample()
+            for _ in range(10):
+                # move 1cm in x direction (forward) and close gripper
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-                logger.info(act["gripper"], obs["gripper"])
+            for _ in range(10):
+                # move 1cm in negative x direction (backward) and open gripper
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                obs, reward, terminated, truncated, info = env_rel.step(act)
+                if truncated or terminated:
+                    logger.info("Truncated or terminated!")
+                    return
+        env_rel.close()
 
 
 if __name__ == "__main__":

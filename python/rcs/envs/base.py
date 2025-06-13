@@ -14,10 +14,12 @@ from rcs.envs.space_utils import (
     RCSpaceType,
     Vec6Type,
     Vec7Type,
+    Vec18Type,
     VecType,
     get_space,
     get_space_keys,
 )
+from rcs.hand.interface import BaseHand
 
 _logger = logging.getLogger(__name__)
 
@@ -99,6 +101,22 @@ class GripperDictType(RCSpaceType):
     gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
 
+class HandBinDictType(RCSpaceType):
+    # 0 for closed, 1 for open (>=0.5 for open)
+    hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+
+
+class HandVecDictType(RCSpaceType):
+    hand: Annotated[
+        Vec18Type,
+        gym.spaces.Box(
+            low=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            dtype=np.float32,
+        ),
+    ]
+
+
 class CameraDictType(RCSpaceType):
     frames: dict[
         Annotated[str, "camera_names"],
@@ -115,6 +133,23 @@ class CameraDictType(RCSpaceType):
                 ),
                 "frame",
             ],
+        ],
+    ]
+
+
+class DigitCameraDictType(RCSpaceType):
+    digit_frames: dict[
+        Annotated[str, "camera_names"],
+        Annotated[
+            np.ndarray,
+            # needs to be filled with values downstream
+            lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+                low=low,
+                high=high,
+                shape=(height, width, color_dim),
+                dtype=dtype,
+            ),
+            "digit_frames",
         ],
     ]
 
@@ -163,11 +198,12 @@ class RobotEnv(gym.Env):
     y
     """
 
-    def __init__(self, robot: common.Robot, control_mode: ControlMode):
+    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
+        self.home_on_reset = home_on_reset
         low, high = get_joint_limits(self.robot)
         if control_mode == ControlMode.JOINTS:
             self.action_space = get_space(JointsDictType, params={"joint_limits": {"low": low, "high": high}})
@@ -255,11 +291,60 @@ class RobotEnv(gym.Env):
             msg = "options not implemented yet"
             raise NotImplementedError(msg)
         self.robot.reset()
-        self.robot.move_home()
+        if self.home_on_reset:
+            self.robot.move_home()
         return self.get_obs(), {}
 
     def close(self):
         super().close()
+
+
+class MultiRobotWrapper(gym.Env):
+    """Wraps a dictionary of environments to allow for multi robot control."""
+
+    def __init__(self, envs: dict[str, gym.Env] | dict[str, gym.Wrapper]):
+        self.envs = envs
+        self.unwrapped_multi = cast(dict[str, RobotEnv], {key: env.unwrapped for key, env in envs.items()})
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
+        # follows gym env by combinding a dict of envs into a single env
+        obs = {}
+        reward = 0.0
+        terminated = False
+        truncated = False
+        info = {}
+        for key, env in self.envs.items():
+            obs[key], r, t, tr, info[key] = env.step(action[key])
+            reward += float(r)
+            terminated = terminated or t
+            truncated = truncated or tr
+            info[key]["terminated"] = t
+            info[key]["truncated"] = tr
+        return obs, reward, terminated, truncated, info
+
+    def reset(
+        self, seed: dict[str, int] | None = None, options: dict[str, dict[str, Any]] | None = None  # type: ignore
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs = {}
+        info = {}
+
+        seed_ = seed if seed is not None else {key: None for key in self.envs}  # type: ignore
+        options_ = options if options is not None else {key: None for key in self.envs}  # type: ignore
+        for key, env in self.envs.items():
+            obs[key], info[key] = env.reset(seed=seed_[key], options=options_[key])
+        return obs, info
+
+    def get_wrapper_attr(self, name: str) -> Any:
+        """Gets an attribute from the wrapper and lower environments if `name` doesn't exist in this object.
+        If lower environments have the same attribute, it returns a dictionary of the attribute values.
+        """
+        if name in self.__dir__():
+            return getattr(self, name)
+        return {key: env.get_wrapper_attr(name) for key, env in self.envs.items()}
+
+    def close(self):
+        for env in self.envs.values():
+            env.close()
 
 
 class RelativeTo(Enum):
@@ -502,18 +587,19 @@ class CameraSetWrapper(ActObsInfoWrapper):
         self.observation_space: gym.spaces.Dict
         # rgb is always included
         params: dict = {
-            "frame": {
-                "height": camera_set.config.resolution_height,
-                "width": camera_set.config.resolution_width,
+            f"/{name}/{self.RGB_KEY}/frame": {
+                "height": camera_set.config(name).resolution_height,
+                "width": camera_set.config(name).resolution_width,
             }
+            for name in camera_set.camera_names
         }
         if self.include_depth:
             # depth is optional
             params.update(
                 {
                     f"/{name}/{self.DEPTH_KEY}/frame": {
-                        "height": camera_set.config.resolution_height,
-                        "width": camera_set.config.resolution_width,
+                        "height": camera_set.config(name).resolution_height,
+                        "width": camera_set.config(name).resolution_width,
                         "color_dim": 1,
                         "dtype": np.float32,
                         "low": 0.0,
@@ -584,7 +670,7 @@ class GripperWrapper(ActObsInfoWrapper):
     BINARY_GRIPPER_CLOSED = 0
     BINARY_GRIPPER_OPEN = 1
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, open_on_reset: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
@@ -595,9 +681,12 @@ class GripperWrapper(ActObsInfoWrapper):
         self._gripper = gripper
         self.binary = binary
         self._last_gripper_cmd = None
+        self.open_on_reset = open_on_reset
 
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
-        self._gripper.reset()
+        if self.open_on_reset:
+            # resetting opens the gripper
+            self._gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 
@@ -626,4 +715,75 @@ class GripperWrapper(ActObsInfoWrapper):
             self._gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
+        return action
+
+
+class HandWrapper(ActObsInfoWrapper):
+    """
+    This wrapper allows for controlling the hand of the robot
+    using either binary or continuous actions.
+    The binary action space allows for opening and closing the hand,
+    while the continuous action space allows for setting the hand
+    to a specific pose.
+    The wrapper also provides an observation space that includes
+    the hand state.
+    The hand state is represented as a binary value (0 for closed,
+    1 for open) or as a continuous value (normalized joint positions).
+    """
+
+    BINARY_HAND_CLOSED = 0
+    BINARY_HAND_OPEN = 1
+
+    def __init__(self, env, hand: BaseHand, binary: bool = True):
+        super().__init__(env)
+        self.unwrapped: RobotEnv
+        self.observation_space: gym.spaces.Dict
+        self.action_space: gym.spaces.Dict
+        self.binary = binary
+        if self.binary:
+            self.observation_space.spaces.update(get_space(HandBinDictType).spaces)
+            self.action_space.spaces.update(get_space(HandBinDictType).spaces)
+            self.hand_key = get_space_keys(HandBinDictType)[0]
+        else:
+            self.observation_space.spaces.update(get_space(HandVecDictType).spaces)
+            self.action_space.spaces.update(get_space(HandVecDictType).spaces)
+            self.hand_key = get_space_keys(HandVecDictType)[0]
+        self._hand = hand
+        self._last_hand_cmd = None
+
+    def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
+        self._hand.reset()
+        self._last_hand_cmd = None
+        return super().reset(**kwargs)
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        if self.binary:
+            observation[self.hand_key] = (
+                self._last_hand_cmd if self._last_hand_cmd is not None else self.BINARY_HAND_OPEN
+            )
+        else:
+            observation[self.hand_key] = self._hand.get_normalized_joints_poses()
+
+        info = {}
+        return observation, info
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+
+        action = copy.deepcopy(action)
+        assert self.hand_key in action, "hand action not found."
+
+        hand_action = np.round(action[self.hand_key]) if self.binary else action[self.hand_key]
+        hand_action = np.clip(hand_action, 0.0, 1.0)
+
+        if self.binary:
+            if self._last_hand_cmd is None or self._last_hand_cmd != hand_action:
+                if hand_action == self.BINARY_HAND_CLOSED:
+                    self._hand.grasp()
+                else:
+                    self._hand.open()
+        else:
+            self._hand.set_normalized_joints_poses(hand_action)
+        self._last_hand_cmd = hand_action
+        del action[self.hand_key]
         return action

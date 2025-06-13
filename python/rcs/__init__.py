@@ -3,8 +3,8 @@
 import pathlib
 import site
 
-from gymnasium.envs.registration import register
-from rcs import camera, control, envs, sim
+from gymnasium import register
+from rcs import camera, control, envs, hand, sim
 from rcs._core import __version__, common, hw
 from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
 
@@ -16,6 +16,9 @@ scenes: dict[str, dict[str, pathlib.Path]] = {
     }
     for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }
+
+# make submodules available
+__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs", "hand"]
 
 # register gymnasium environments
 register(
@@ -29,6 +32,3 @@ register(
 #    id="rcs/FR3SimEnv-v0",
 #    entry_point=FR3SimEnvCreator(),
 # )
-
-# make submodules available
-__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs"]

@@ -145,6 +145,17 @@ PYBIND11_MODULE(_core, m) {
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
   common.def("FrankaHandTCPOffset", &rcs::common::FrankaHandTCPOffset);
 
+  py::class_<rcs::common::BaseCameraConfig>(common, "BaseCameraConfig")
+      .def(py::init<const std::string &, int, int, int>(),
+           py::arg("identifier"), py::arg("frame_rate"),
+           py::arg("resolution_width"), py::arg("resolution_height"))
+      .def_readwrite("identifier", &rcs::common::BaseCameraConfig::identifier)
+      .def_readwrite("frame_rate", &rcs::common::BaseCameraConfig::frame_rate)
+      .def_readwrite("resolution_width",
+                     &rcs::common::BaseCameraConfig::resolution_width)
+      .def_readwrite("resolution_height",
+                     &rcs::common::BaseCameraConfig::resolution_height);
+
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -413,7 +424,16 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimRobotConfig::seconds_between_callbacks)
       .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("trajectory_trace",
-                     &rcs::sim::SimRobotConfig::trajectory_trace);
+                     &rcs::sim::SimRobotConfig::trajectory_trace)
+      .def_readwrite("robot_type", &rcs::sim::SimRobotConfig::robot_type)
+      .def_readwrite("arm_collision_geoms",
+                     &rcs::sim::SimRobotConfig::arm_collision_geoms)
+      .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
+      .def_readwrite("attachment_site",
+                     &rcs::sim::SimRobotConfig::attachment_site)
+      .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators)
+      .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
+      .def("add_id", &rcs::sim::SimRobotConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
       .def(py::init<>())
@@ -436,7 +456,15 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimGripperConfig::seconds_between_callbacks)
       .def_readwrite("ignored_collision_geoms",
-                     &rcs::sim::SimGripperConfig::ignored_collision_geoms);
+                     &rcs::sim::SimGripperConfig::ignored_collision_geoms)
+      .def_readwrite("collision_geoms",
+                     &rcs::sim::SimGripperConfig::collision_geoms)
+      .def_readwrite("collision_geoms_fingers",
+                     &rcs::sim::SimGripperConfig::collision_geoms_fingers)
+      .def_readwrite("joint1", &rcs::sim::SimGripperConfig::joint1)
+      .def_readwrite("joint2", &rcs::sim::SimGripperConfig::joint2)
+      .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator)
+      .def("add_id", &rcs::sim::SimGripperConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
       sim, "SimGripperState")
       .def(py::init<>())
@@ -462,18 +490,19 @@ PYBIND11_MODULE(_core, m) {
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimGripperConfig &>(),
-           py::arg("sim"), py::arg("id"), py::arg("cfg"))
+           py::arg("sim"), py::arg("cfg"))
       .def("get_parameters", &rcs::sim::SimGripper::get_parameters)
       .def("get_state", &rcs::sim::SimGripper::get_state)
       .def("set_parameters", &rcs::sim::SimGripper::set_parameters,
            py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>, const std::string &,
-                    std::shared_ptr<rcs::common::IK>, bool>(),
-           py::arg("sim"), py::arg("id"), py::arg("ik"),
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    std::shared_ptr<rcs::common::IK>, rcs::sim::SimRobotConfig,
+                    bool>(),
+           py::arg("sim"), py::arg("ik"), py::arg("cfg"),
            py::arg("register_convergence_callback") = true)
       .def("get_parameters", &rcs::sim::SimRobot::get_parameters)
       .def("set_parameters", &rcs::sim::SimRobot::set_parameters,
@@ -487,23 +516,13 @@ PYBIND11_MODULE(_core, m) {
       .value("fixed", rcs::sim::CameraType::fixed)
       .value("default_free", rcs::sim::CameraType::default_free)
       .export_values();
-  py::class_<rcs::sim::SimCameraConfig>(sim, "SimCameraConfig")
-      .def(py::init<>())
-      .def_readwrite("identifier", &rcs::sim::SimCameraConfig::identifier)
+  py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
+      sim, "SimCameraConfig")
+      .def(py::init<const std::string &, int, int, int, rcs::sim::CameraType>(),
+           py::arg("identifier"), py::arg("frame_rate"),
+           py::arg("resolution_width"), py::arg("resolution_height"),
+           py::arg("type") = rcs::sim::CameraType::fixed)
       .def_readwrite("type", &rcs::sim::SimCameraConfig::type);
-  py::class_<rcs::sim::SimCameraSetConfig>(sim, "SimCameraSetConfig")
-      .def(py::init<>())
-      .def_readwrite("cameras", &rcs::sim::SimCameraSetConfig::cameras)
-      .def_readwrite("frame_rate", &rcs::sim::SimCameraSetConfig::frame_rate,
-                     "The frame rate in which the cameras render in Hz. If set "
-                     "to zero, the camera frames will render on demand and "
-                     "without fixed rate which takes away compute effort.")
-      .def_readwrite("resolution_width",
-                     &rcs::sim::SimCameraSetConfig::resolution_width)
-      .def_readwrite("resolution_height",
-                     &rcs::sim::SimCameraSetConfig::resolution_height)
-      .def_readwrite("max_buffer_frames",
-                     &rcs::sim::SimCameraSetConfig::max_buffer_frames);
   py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
       .def(py::init<>())
       .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
@@ -511,8 +530,10 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
   py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    rcs::sim::SimCameraSetConfig>(),
-           py::arg("sim"), py::arg("cfg"))
+                    std::unordered_map<std::string, rcs::sim::SimCameraConfig>,
+                    bool>(),
+           py::arg("sim"), py::arg("cameras"),
+           py::arg("render_on_demand") = true)
       .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
       .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
       .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)

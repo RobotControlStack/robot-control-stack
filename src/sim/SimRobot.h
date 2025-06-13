@@ -19,6 +19,34 @@ struct SimRobotConfig : common::RobotConfig {
   bool realtime = false;
   bool trajectory_trace = false;
   common::RobotType robot_type = common::RobotType::FR3;
+  std::vector<std::string> arm_collision_geoms{
+      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
+      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
+      "fr3_link6_collision", "fr3_link7_collision"};
+  std::vector<std::string> joints = {
+      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
+      "fr3_joint5", "fr3_joint6", "fr3_joint7",
+  };
+  std::vector<std::string> actuators = {
+      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
+      "fr3_joint5", "fr3_joint6", "fr3_joint7",
+  };
+  std::string attachment_site = "attachment_site";
+  std::string base = "base";
+
+  void add_id(const std::string &id) {
+    for (auto &s : this->arm_collision_geoms) {
+      s = s + "_" + id;
+    }
+    for (auto &s : this->joints) {
+      s = s + "_" + id;
+    }
+    for (auto &s : this->actuators) {
+      s = s + "_" + id;
+    }
+    this->attachment_site = this->attachment_site + "_" + id;
+    this->base = this->base + "_" + id;
+  }
 };
 
 struct SimRobotState : common::RobotState {
@@ -33,9 +61,8 @@ struct SimRobotState : common::RobotState {
 
 class SimRobot : public common::Robot {
  public:
-  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, const std::string &id,
-           std::shared_ptr<common::IK> ik,
-           bool register_convergence_callback = true);
+  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, std::shared_ptr<common::IK> ik,
+           SimRobotConfig cfg, bool register_convergence_callback = true);
   ~SimRobot() override;
   bool set_parameters(const SimRobotConfig &cfg);
   SimRobotConfig *get_parameters() override;
@@ -54,7 +81,6 @@ class SimRobot : public common::Robot {
   SimRobotConfig cfg;
   SimRobotState state;
   std::shared_ptr<Sim> sim;
-  std::string id;
   std::shared_ptr<common::IK> m_ik;
   struct {
     std::set<size_t> cgeom;
@@ -62,6 +88,7 @@ class SimRobot : public common::Robot {
     std::array<int, 7> joints;
     std::array<int, 7> ctrl;
     std::array<int, 7> actuators;
+    int base;
   } ids;
   void is_moving_callback();
   void is_arrived_callback();

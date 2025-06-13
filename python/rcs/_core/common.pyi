@@ -10,6 +10,7 @@ import numpy
 import pybind11_stubgen.typing_ext
 
 __all__ = [
+    "BaseCameraConfig",
     "FR3",
     "FrankaHandTCPOffset",
     "Gripper",
@@ -34,6 +35,13 @@ __all__ = [
 ]
 M = typing.TypeVar("M", bound=int)
 N = typing.TypeVar("N", bound=int)
+
+class BaseCameraConfig:
+    frame_rate: int
+    identifier: str
+    resolution_height: int
+    resolution_width: int
+    def __init__(self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int) -> None: ...
 
 class Gripper:
     def get_normalized_width(self) -> float: ...

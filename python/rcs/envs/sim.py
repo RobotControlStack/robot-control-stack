@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 import rcs
 from rcs import sim
-from rcs.envs.base import ControlMode, GripperWrapper, RobotEnv
+from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
 from rcs.envs.space_utils import ActObsInfoWrapper, VecType
 from rcs.envs.utils import default_fr3_sim_robot_cfg
 
@@ -25,7 +25,7 @@ class SimWrapper(gym.Wrapper):
         self.sim = simulation
 
 
-class FR3Sim(gym.Wrapper):
+class RobotSimWrapper(gym.Wrapper):
     def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
@@ -55,6 +55,47 @@ class FR3Sim(gym.Wrapper):
         # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
+        return obs, info
+
+
+class MultiSimRobotWrapper(gym.Wrapper):
+    """Wraps a dictionary of environments to allow for multi robot control."""
+
+    def __init__(self, env: MultiRobotWrapper, simulation: sim.Sim):
+        super().__init__(env)
+        self.env: MultiRobotWrapper
+        self.sim = simulation
+        self.sim_robots = cast(dict[str, sim.SimRobot], {key: e.robot for key, e in self.env.unwrapped_multi.items()})
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+        _, _, _, _, info = super().step(action)
+
+        self.sim.step_until_convergence()
+        info["is_sim_converged"] = self.sim.is_converged()
+        for key in self.envs.envs.items():
+            state = self.sim_robots[key].get_state()
+            info[key]["collision"] = state.collision
+            info[key]["ik_success"] = state.ik_success
+
+        obs = {key: env.get_obs() for key, env in self.env.unwrapped_multi.items()}
+        truncated = np.all([info[key]["collision"] or info[key]["ik_success"] for key in info])
+        return obs, 0.0, False, bool(truncated), info
+
+    def reset(
+        self, seed: dict[str, int | None] | None = None, options: dict[str, Any] | None = None  # type: ignore
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if seed is None:
+            seed = {key: None for key in self.env.envs}
+        if options is None:
+            options = {key: {} for key in self.env.envs}
+        obs = {}
+        info = {}
+        self.sim.reset()
+        for key, env in self.env.envs.items():
+            _, info[key] = env.reset(seed=seed[key], options=options[key])
+        self.sim.step(1)
+        for key, env in self.env.unwrapped_multi.items():
+            obs[key] = cast(dict, env.get_obs())
         return obs, info
 
 
@@ -158,15 +199,15 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
+        # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
         ik = rcs.common.IK(urdf, max_duration_ms=300)
-        robot = rcs.sim.SimRobot(simulation, id, ik)
-        cfg = sim.SimRobotConfig()
+        cfg = default_fr3_sim_robot_cfg(mjmld, id)
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
-        robot.set_parameters(cfg)
+        robot = rcs.sim.SimRobot(simulation, ik, cfg)
         to_joint_control = False
         if control_mode is not None:
             if control_mode != env.unwrapped.get_control_mode():
@@ -178,10 +219,11 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         else:
             control_mode = env.unwrapped.get_control_mode()
         c_env: gym.Env = RobotEnv(robot, control_mode)
-        c_env = FR3Sim(c_env, simulation)
+        c_env = RobotSimWrapper(c_env, simulation)
         if gripper:
             gripper_cfg = sim.SimGripperConfig()
-            fh = sim.SimGripper(simulation, id, gripper_cfg)
+            gripper_cfg.add_id(id)
+            fh = sim.SimGripper(simulation, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)
         return cls(
@@ -198,6 +240,10 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
+    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False):
+        super().__init__(env, simulation)
+        self.include_rotation = include_rotation
+
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -211,7 +257,10 @@ class RandomCubePos(SimWrapper):
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
-        self.sim.data.joint("box_joint").qpos[:3] = [pos_x, pos_y, pos_z]
+        if self.include_rotation:
+            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+        else:
+            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
 
         return obs, info
 
@@ -228,17 +277,39 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         self.sim = env.get_wrapper_attr("sim")
 
     def step(self, action: dict[str, Any]):
-        obs, reward, done, truncated, info = super().step(action)
+        obs, reward, _, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("box_joint").qpos[2] > 0.3 and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
+            self.sim.data.joint("box-joint").qpos[2] > 0.15 + 0.852
+            and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
-        diff_ee_cube = np.linalg.norm(
-            self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
-        )
-        diff_cube_home = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
-        reward = -diff_cube_home - diff_ee_cube
+        info["success"] = success
+        if success:
+            reward = 5
+        else:
+            tcp_to_obj_dist = np.linalg.norm(
+                self.sim.data.joint("box-joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+            )
+            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box-joint").qpos[:3] - self.EE_HOME)
 
+            # old reward
+            # reward = -obj_to_goal_dist - tcp_to_obj_dist
+
+            # Maniskill grasp reward
+            reaching_reward = 1 - np.tanh(5 * tcp_to_obj_dist)
+            reward = reaching_reward
+            is_grasped = info["is_grasped"]
+            reward += is_grasped
+            place_reward = 1 - np.tanh(5 * obj_to_goal_dist)
+            reward += place_reward * is_grasped
+
+            # velocities are currently always zero after a step
+            # qvel = self.agent.robot.get_qvel()
+            # static_reward = 1 - np.tanh(5 * np.linalg.norm(qvel, axis=1))
+            # reward += static_reward * info["is_obj_placed"]
+
+        # normalize
+        reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
 
 
@@ -250,8 +321,9 @@ class CamRobot(gym.Wrapper):
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
+        cfg = default_fr3_sim_robot_cfg(scene, "1")
         self.cam_robot = rcs.sim.SimRobot(
-            self.sim, "1", env.unwrapped.robot.get_ik(), register_convergence_callback=False
+            self.sim, env.unwrapped.robot.get_ik(), cfg, register_convergence_callback=False
         )
         self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))
         self.cam_robot_joints = cam_robot_joints
