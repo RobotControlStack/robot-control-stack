@@ -15,12 +15,12 @@ cpplint:
 gcccompile: 
 	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
-	cmake --build build
+	cmake --build build --target _core franka
 
 clangcompile: 
 	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
-	cmake --build build
+	cmake --build build --target _core franka
 
 # Auto generation of CPP binding stub files
 stubgen:
