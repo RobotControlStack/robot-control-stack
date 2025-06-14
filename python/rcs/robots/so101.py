@@ -3,15 +3,19 @@ import typing
 import numpy as np
 from rcs._core import common
 from lerobot.common.robots.so101_follower.so101_follower import SO101Follower
-from rcs._core.common import Gripper, Robot
+from rcs._core.common import IK, Gripper, Pose, Robot, RobotState
 
 class SO101(Robot):
     def __init__(self, hf_robot: SO101Follower):
         self._hf_robot = hf_robot
 
     # def get_base_pose_in_world_coordinates(self) -> Pose: ...
-    # def get_cartesian_position(self) -> Pose: ...
-    # def get_ik(self) -> IK | None: ...
+    def get_cartesian_position(self) -> Pose:
+        return Pose()
+
+    def get_ik(self) -> IK | None:
+        return None
+
     def get_joint_position(self) -> np.ndarray[typing.Literal[5], np.dtype[np.float64]]:
         obs = self._hf_robot.get_observation()
         # (Pdb) robot.get_observation()
@@ -31,12 +35,16 @@ class SO101(Robot):
     def get_parameters(self):
         return self._hf_robot.calibration
 
-    # def get_state(self) -> RobotState: ...
+    def get_state(self) -> RobotState:
+        return RobotState()
+
     def move_home(self) -> None:
         home = common.robots_meta_config(common.RobotType.SO101).q_home
         self.set_joint_position(home)
-    # def reset(self) -> None: ...
-    # def set_cartesian_position(self, pose: Pose) -> None: ...
+    def reset(self) -> None:
+        pass
+    def set_cartesian_position(self, pose: Pose) -> None:
+        pass
     def set_joint_position(self, q: np.ndarray[typing.Literal[5], np.dtype[np.float64]]) -> None:
         self._hf_robot.send_action({
             "shoulder_pan.pos": q[0],
