@@ -6,15 +6,16 @@ from lerobot.common.robots.so101_follower.so101_follower import SO101Follower
 from rcs._core.common import IK, Gripper, Pose, Robot, RobotState
 
 class SO101(Robot):
-    def __init__(self, hf_robot: SO101Follower):
+    def __init__(self, hf_robot: SO101Follower, urdf_path: str):
+        self.ik = IK(urdf_path=urdf_path)
         self._hf_robot = hf_robot
 
     # def get_base_pose_in_world_coordinates(self) -> Pose: ...
     def get_cartesian_position(self) -> Pose:
-        return Pose()
+        return self.ik.forward(self.get_joint_position())
 
     def get_ik(self) -> IK | None:
-        return None
+        return self.ik
 
     def get_joint_position(self) -> np.ndarray[typing.Literal[5], np.dtype[np.float64]]:
         obs = self._hf_robot.get_observation()
@@ -44,7 +45,11 @@ class SO101(Robot):
     def reset(self) -> None:
         pass
     def set_cartesian_position(self, pose: Pose) -> None:
-        pass
+        joints = self.ik.ik(pose, q0=self.get_joint_position())
+        if joints is not None:
+            self.set_joint_position(joints)
+        
+
     def set_joint_position(self, q: np.ndarray[typing.Literal[5], np.dtype[np.float64]]) -> None:
         self._hf_robot.send_action({
             "shoulder_pan.pos": q[0],

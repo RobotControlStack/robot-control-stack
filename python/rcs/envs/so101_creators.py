@@ -23,6 +23,7 @@ class RCSSO101EnvCreator(RCSHardwareEnvCreator):
         self,
         id: str,
         port: str,
+        urdf_path: str,
         calibration_dir: str | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
@@ -30,7 +31,7 @@ class RCSSO101EnvCreator(RCSHardwareEnvCreator):
     ) -> gym.Env:
         cfg = SO101FollowerConfig(id, calibration_dir=calibration_dir, port=port)
         hf_robot = make_robot_from_config(cfg)
-        robot = rcs.robots.so101.SO101(hf_robot)
+        robot = rcs.robots.so101.SO101(hf_robot, urdf_path=urdf_path)
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS)
         env = FR3HW(env)
 
