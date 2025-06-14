@@ -71,7 +71,7 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
                 -100.0, -100.0, -100.0, -100.0, -100.0,
                 // high 5‐tuple
                 100.0, 100.0, 100.0, 100.0, 100.0)
-               .finished()}}};
+               .finished()}}}};
 
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
