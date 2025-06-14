@@ -19,6 +19,11 @@ pip config --site set global.no-build-isolation false
 ```shell
 pip install -ve .
 ```
+### Conda
+A Conda environment requires also the following libraries:
+```shell
+conda install -c conda-forge gcc_linux-64 gxx_linux-64 "libstdcxx-ng>=12" "libgcc-ng>=12"
+```
 
 ## Usage
 The python package is called `rcs`.
