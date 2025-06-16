@@ -11,20 +11,21 @@ from typing import Optional
 
 import mujoco as mj
 import mujoco.viewer
-from rcs.sim import egl_bootstrap
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
+from rcs.sim import egl_bootstrap
+from rcs.utils import SimpleFrameRate
 
 egl_bootstrap.bootstrap()
 logger = getLogger(__name__)
 
 
 # Target frames per second
-FPS = 60.0
-FRAME_DURATION = 1.0 / FPS
+FPS = 60
 
 
 def gui_loop(gui_uuid: str, close_event):
+    frame_rate = SimpleFrameRate(FPS, "gui_loop")
     gui_client = _GuiClient(gui_uuid)
     model_bytes = gui_client.get_model_bytes()
     with NamedTemporaryFile(mode="wb") as f:
@@ -39,12 +40,7 @@ def gui_loop(gui_uuid: str, close_event):
             mujoco.mj_step(model, data)
             viewer.sync()
             gui_client.sync()
-            next_frame_time += FRAME_DURATION
-            sleep_duration = next_frame_time - time.perf_counter()
-            if sleep_duration > 0:
-                time.sleep(sleep_duration)
-            else:
-                next_frame_time = time.perf_counter()
+            frame_rate()
 
 
 class Sim(_Sim):
