@@ -1,6 +1,5 @@
 import atexit
 import multiprocessing as mp
-import time
 import uuid
 from logging import getLogger
 from multiprocessing.synchronize import Event as EventClass
@@ -35,7 +34,6 @@ def gui_loop(gui_uuid: str, close_event):
     gui_client.set_model_and_data(model._address, data._address)
     mujoco.mj_step(model, data)
     with mujoco.viewer.launch_passive(model, data) as viewer:
-        next_frame_time = time.perf_counter()
         while not close_event.is_set():
             mujoco.mj_step(model, data)
             viewer.sync()

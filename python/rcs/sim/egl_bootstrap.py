@@ -1,3 +1,10 @@
+"""
+Load the EGL library, create a persistent GLContext, and register it with the C++ backend.
+
+Globals prevent the library and context from being garbage-collected.  
+Call `bootstrap()` to complete initialization.
+"""
+
 import ctypes
 import ctypes.util
 import os
