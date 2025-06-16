@@ -468,15 +468,21 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("collision_geoms_fingers",
                      &rcs::sim::SimGripperConfig::collision_geoms_fingers)
       .def_readwrite("joint", &rcs::sim::SimGripperConfig::joint)
+      .def_readwrite("max_joint_width",
+                     &rcs::sim::SimGripperConfig::max_joint_width)
+      .def_readwrite("min_joint_width",
+                     &rcs::sim::SimGripperConfig::min_joint_width)
       .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator)
+      .def_readwrite("max_actuator_width",
+                     &rcs::sim::SimGripperConfig::max_actuator_width)
+      .def_readwrite("min_actuator_width",
+                     &rcs::sim::SimGripperConfig::min_actuator_width)
       .def("add_id", &rcs::sim::SimGripperConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
       sim, "SimGripperState")
       .def(py::init<>())
       .def_readonly("last_commanded_width",
                     &rcs::sim::SimGripperState::last_commanded_width)
-      .def_readonly("max_unnormalized_width",
-                    &rcs::sim::SimGripperState::max_unnormalized_width)
       .def_readonly("is_moving", &rcs::sim::SimGripperState::is_moving)
       .def_readonly("last_width", &rcs::sim::SimGripperState::last_width)
       .def_readonly("collision", &rcs::sim::SimGripperState::collision);

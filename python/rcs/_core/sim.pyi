@@ -117,6 +117,10 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     epsilon_outer: float
     ignored_collision_geoms: list[str]
     joint: str
+    max_actuator_width: float
+    max_joint_width: float
+    min_actuator_width: float
+    min_joint_width: float
     seconds_between_callbacks: float
     def __init__(self) -> None: ...
     def add_id(self, id: str) -> None: ...
@@ -131,8 +135,6 @@ class SimGripperState(rcs._core.common.GripperState):
     def last_commanded_width(self) -> float: ...
     @property
     def last_width(self) -> float: ...
-    @property
-    def max_unnormalized_width(self) -> float: ...
 
 class SimRobot(rcs._core.common.Robot):
     def __init__(

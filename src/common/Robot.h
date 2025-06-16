@@ -26,7 +26,8 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
       {FR3,
        RobotMetaConfig{
            // q_home:
-           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2, M_PI_4)
+           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+            M_PI_4)
                .finished(),
            // dof:
            7,
@@ -61,7 +62,7 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
        RobotMetaConfig{
            // q_home (5‐vector):
            (VectorXd(5) << -9.40612320177057, -99.66130397967824,
-             99.9124726477024, 69.96996996996998, -9.095744680851055)
+            99.9124726477024, 69.96996996996998, -9.095744680851055)
                .finished(),
            // dof:
            5,
