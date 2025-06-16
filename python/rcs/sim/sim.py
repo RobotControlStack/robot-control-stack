@@ -11,21 +11,11 @@ from typing import Optional
 
 import mujoco as mj
 import mujoco.viewer
-import rcs.egl_bootstrap
+from rcs.sim import egl_bootstrap
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
-from rcs._core.sim import (
-    SimGripper,
-    SimGripperConfig,
-    SimGripperState,
-    SimRobot,
-    SimRobotConfig,
-    SimRobotState,
-)
 
-__all__ = ["Sim", "SimRobot", "SimRobotConfig", "SimRobotState", "SimGripper", "SimGripperConfig", "SimGripperState"]
-
-rcs.egl_bootstrap.bootstrap()
+egl_bootstrap.bootstrap()
 logger = getLogger(__name__)
 
 
