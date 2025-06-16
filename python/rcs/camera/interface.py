@@ -1,42 +1,12 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from time import sleep, time
 from typing import Any, Protocol
 
 from rcs._core.common import BaseCameraConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-class SimpleFrameRate:
-    def __init__(self, frame_rate: int | float):
-        self.t: float | None = None
-        self._last_print: float | None = None
-        self.frame_rate = frame_rate
-
-    def reset(self):
-        self.t = None
-
-    def __call__(self):
-        if self.t is None:
-            self.t = time()
-            self._last_print = self.t
-            sleep(1 / self.frame_rate if isinstance(self.frame_rate, int) else self.frame_rate)
-            return
-        sleep_time = (
-            1 / self.frame_rate - (time() - self.t)
-            if isinstance(self.frame_rate, int)
-            else self.frame_rate - (time() - self.t)
-        )
-        if sleep_time > 0:
-            sleep(sleep_time)
-        if self._last_print is None or time() - self._last_print > 10:
-            self._last_print = time()
-            logger.info(f"FPS: {1 / (time() - self.t)}")
-
-        self.t = time()
 
 
 @dataclass(kw_only=True)

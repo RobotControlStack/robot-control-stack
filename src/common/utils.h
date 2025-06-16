@@ -34,6 +34,9 @@ Eigen::Matrix<double, N, M, Eigen::ColMajor> array2eigen(
   Eigen::Matrix<double, N, M, Eigen::ColMajor> matrix(array.data());
   return matrix;
 }
+void bootstrap_egl(std::uintptr_t fn_addr, std::uintptr_t display,
+                   std::uintptr_t context);
+void ensure_current();
 
 }  // namespace common
 }  // namespace rcs

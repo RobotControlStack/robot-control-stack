@@ -12,6 +12,7 @@ import rcs._core.common
 __all__ = [
     "CameraType",
     "FrameSet",
+    "GuiClient",
     "Sim",
     "SimCameraConfig",
     "SimCameraSet",
@@ -24,7 +25,6 @@ __all__ = [
     "default_free",
     "fixed",
     "free",
-    "open_gui_window",
     "tracking",
 ]
 M = typing.TypeVar("M", bound=int)
@@ -72,6 +72,12 @@ class FrameSet:
     def depth_frames(self) -> dict[str, numpy.ndarray[M, numpy.dtype[numpy.float32]]]: ...
     @property
     def timestamp(self) -> float: ...
+
+class GuiClient:
+    def __init__(self, id: str) -> None: ...
+    def get_model_bytes(self) -> bytes: ...
+    def set_model_and_data(self, arg0: int, arg1: int) -> None: ...
+    def sync(self) -> None: ...
 
 class Sim:
     def __init__(self, mjmdl: int, mjdata: int) -> None: ...
@@ -169,8 +175,6 @@ class SimRobotState(rcs._core.common.RobotState):
     def previous_angles(self) -> numpy.ndarray[M, numpy.dtype[numpy.float64]]: ...
     @property
     def target_angles(self) -> numpy.ndarray[M, numpy.dtype[numpy.float64]]: ...
-
-def open_gui_window(uuid: str) -> None: ...
 
 default_free: CameraType  # value = <CameraType.default_free: 3>
 fixed: CameraType  # value = <CameraType.fixed: 2>

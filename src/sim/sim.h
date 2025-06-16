@@ -6,7 +6,6 @@
 #include <optional>
 #include <string>
 
-#include "GLFW/glfw3.h"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "gui.h"
 #include "mujoco/mujoco.h"
@@ -24,7 +23,7 @@ class Renderer {
 
  private:
   mjModel* m;
-  std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>> ctxs;
+  std::unordered_map<std::string, mjrContext*> ctxs;
 };
 
 struct Config {
