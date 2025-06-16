@@ -227,6 +227,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
            py::arg("max_duration_ms") = 300)
       .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
+           py::arg("tcp_offset") = rcs::common::Pose::Identity())
+      .def("forward", &rcs::common::IK::forward, py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
 
   py::enum_<rcs::common::RobotType>(common, "RobotType")
@@ -253,6 +255,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("robot_type"));
 
   py::class_<rcs::common::RobotConfig>(common, "RobotConfig")
+      .def(py::init<>())
       .def_readwrite("robot_type", &rcs::common::RobotConfig::robot_type)
       .def_readwrite("robot_platform",
                      &rcs::common::RobotConfig::robot_platform);
