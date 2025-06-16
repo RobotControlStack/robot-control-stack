@@ -81,21 +81,33 @@ SimGripperState *SimGripper::get_state() {
   *state = this->state;
   return state;
 }
+float to_rcs(const double r) {
+  return (r + 0.17453292519943295) / (2*0.17453292519943295);
+}
+
+float to_mjc(const double r) {
+  return r * 2 * 0.17453292519943295 - 0.17453292519943295;
+}
+
 void SimGripper::set_normalized_width(double width, double force) {
   if (width < 0 || width > 1 || force < 0) {
     throw std::invalid_argument(
         "width must be between 0 and 1, force must be positive");
   }
   this->state.last_commanded_width = width;
-  this->sim->d->ctrl[this->actuator_id] = (mjtNum)width * this->MAX_WIDTH;
+  this->sim->d->ctrl[this->actuator_id] = (mjtNum)width;
 
   // we ignore force for now
   // this->sim->d->actuator_force[this->gripper_id] = 0;
 }
+
 double SimGripper::get_normalized_width() {
   // TODO: maybe we should use the mujoco sensors? Not sure what the difference
   // is between reading out from qpos and reading from the sensors.
-  double width = this->sim->d->qpos[this->joint_id_1] / this->MAX_JOINT_WIDTH;
+  // double width = (this->sim->d->qpos[this->actuator_id] + 0.17453292519943295) / this->MAX_JOINT_WIDTH;
+  double width = to_rcs(this->sim->d->qpos[this->actuator_id]);
+
+
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
     width = 0;
@@ -154,12 +166,12 @@ void SimGripper::open() { this->set_normalized_width(1); }
 void SimGripper::shut() { this->set_normalized_width(0); }
 
 void SimGripper::m_reset() {
-  this->state = SimGripperState();
-  this->state.max_unnormalized_width = this->MAX_WIDTH;
-  // reset state hard
-  this->sim->d->qpos[this->joint_id_1] = this->MAX_JOINT_WIDTH;
-  this->sim->d->qpos[this->joint_id_2] = this->MAX_JOINT_WIDTH;
-  this->sim->d->ctrl[this->actuator_id] = this->MAX_WIDTH;
+  // this->state = SimGripperState();
+  // this->state.max_unnormalized_width = this->MAX_WIDTH;
+  // // reset state hard
+  // this->sim->d->qpos[this->actuator_id] = to_mjc(1.0);
+  // // this->sim->d->qpos[this->joint_id_2] = this->MAX_JOINT_WIDTH;
+  // this->sim->d->ctrl[this->actuator_id] = 1.0;
 }
 
 void SimGripper::reset() { this->m_reset(); }

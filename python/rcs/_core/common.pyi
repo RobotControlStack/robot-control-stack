@@ -30,6 +30,7 @@ __all__ = [
     "RobotState",
     "RobotType",
     "SIMULATION",
+    "SO101",
     "UR5e",
     "robots_meta_config",
 ]
@@ -207,13 +208,16 @@ class RobotType:
       FR3
 
       UR5e
+
+      SO101
     """
 
     FR3: typing.ClassVar[RobotType]  # value = <RobotType.FR3: 0>
+    SO101: typing.ClassVar[RobotType]  # value = <RobotType.SO101: 2>
     UR5e: typing.ClassVar[RobotType]  # value = <RobotType.UR5e: 1>
     __members__: typing.ClassVar[
         dict[str, RobotType]
-    ]  # value = {'FR3': <RobotType.FR3: 0>, 'UR5e': <RobotType.UR5e: 1>}
+    ]  # value = {'FR3': <RobotType.FR3: 0>, 'UR5e': <RobotType.UR5e: 1>, 'SO101': <RobotType.SO101: 2>}
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -238,4 +242,5 @@ def robots_meta_config(robot_type: RobotType) -> RobotMetaConfig: ...
 FR3: RobotType  # value = <RobotType.FR3: 0>
 HARDWARE: RobotPlatform  # value = <RobotPlatform.HARDWARE: 1>
 SIMULATION: RobotPlatform  # value = <RobotPlatform.SIMULATION: 0>
+SO101: RobotType  # value = <RobotType.SO101: 2>
 UR5e: RobotType  # value = <RobotType.UR5e: 1>

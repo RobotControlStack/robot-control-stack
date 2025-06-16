@@ -23,7 +23,7 @@ def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world", idx: str = "
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
     cfg.robot_type = rcs.common.RobotType.FR3
-    cfg.add_id(idx)
+    # cfg.add_id(idx)
     return cfg
 
 
@@ -64,7 +64,7 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
 
 def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     cfg = sim.SimGripperConfig()
-    cfg.add_id(idx)
+    # cfg.add_id(idx)
     return cfg
 
 

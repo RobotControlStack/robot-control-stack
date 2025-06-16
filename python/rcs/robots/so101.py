@@ -3,12 +3,13 @@ import typing
 import numpy as np
 from rcs._core import common
 from lerobot.common.robots.so101_follower.so101_follower import SO101Follower
-from rcs._core.common import IK, Gripper, Pose, Robot, RobotState
+from rcs._core.common import IK, Gripper, Pose, Robot, RobotConfig, RobotState
 
-class SO101(Robot):
+class SO101:
     def __init__(self, hf_robot: SO101Follower, urdf_path: str):
         self.ik = IK(urdf_path=urdf_path)
         self._hf_robot = hf_robot
+        self._hf_robot.connect()
 
     # def get_base_pose_in_world_coordinates(self) -> Pose: ...
     def get_cartesian_position(self) -> Pose:
@@ -34,7 +35,12 @@ class SO101(Robot):
         )
 
     def get_parameters(self):
-        return self._hf_robot.calibration
+        # return self._hf_robot.calibration
+        a = RobotConfig()
+        a.robot_platform = common.RobotPlatform.HARDWARE
+        a.robot_type = common.RobotType.SO101
+        return a
+
 
     def get_state(self) -> RobotState:
         return RobotState()
@@ -61,8 +67,8 @@ class SO101(Robot):
     # def to_pose_in_robot_coordinates(self, pose_in_world_coordinates: Pose) -> Pose: ...
     # def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
 
-
-class S0101Gripper(Gripper):
+# TODO: problem when we inherit from gripper then we also need to call init which doesnt exist
+class S0101Gripper:
     def __init__(self, hf_robot: SO101Follower):
         self._hf_robot = hf_robot
 
@@ -88,7 +94,8 @@ class S0101Gripper(Gripper):
         """
         self.set_normalized_width(1.0)
 
-    # def reset(self) -> None: ...
+    def reset(self) -> None:
+        pass
     def set_normalized_width(self, width: float, force: float = 0) -> None:
         """
         Set the gripper width to a normalized value between 0 and 1.

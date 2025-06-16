@@ -118,22 +118,62 @@ common::Pose SimRobot::get_cartesian_position() {
   return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
+
+common::VectorXd SimRobot::to_hf(const common::VectorXd& q) {
+  // mjc tange to (-100, 100) range
+  // create a copy of q
+  common::VectorXd q_copy = q;
+  q_copy[0] = (((q_copy[0] + 1.9198621771937616) / (2*1.9198621771937616)) * 200) -100;
+  q_copy[1] = (((q_copy[1] + 1.7453292519943269) / (2*1.7453292519943269)) * 200) -100;
+  q_copy[2] = (((q_copy[2] + 1.7453292519943295) / (1.7453292519943295 + 1.5707963267948966)) * 200) - 100;
+  q_copy[3] = (((q_copy[3] + 1.6580627969561903) / (2*1.6580627969561903)) * 200) - 100;
+  q_copy[4] = (((q_copy[4] + 2.7925268969992407) / (2*2.7925268969992407))* 200) - 100;
+  return q_copy;
+}
+
+common::VectorXd SimRobot::to_mjc(const common::VectorXd& q) {
+  // (-100, 100) range to mjc
+  // create a copy of q
+  common::VectorXd q_copy = q;
+  q_copy[0] = (q[0] + 100) / 200 * 2*1.9198621771937616 - 1.9198621771937616;
+  q_copy[1] = (q[1] + 100) / 200 * 2*1.7453292519943269 - 1.7453292519943269;
+  q_copy[2] = (q[2] + 100) / 200 * (1.7453292519943295 + 1.5707963267948966) - 1.7453292519943295;
+  q_copy[3] = (q[3] + 100) / 200 * 2*1.6580627969561903 - 1.6580627969561903;
+  q_copy[4] = (q[4] + 100) / 200 * 2*2.7925268969992407 - 2.7925268969992407;
+  return q_copy;
+}
+
 void SimRobot::set_joint_position(const common::VectorXd& q) {
-  this->state.target_angles = q;
-  this->state.previous_angles = this->get_joint_position();
+  auto q_mjc = this->to_mjc(q);
+  this->state.target_angles = q_mjc;
+  this->state.previous_angles = this->to_mjc(this->get_joint_position());
   this->state.is_moving = true;
   this->state.is_arrived = false;
+  // print joint 0
+  std::cout << "set_joint_position: "
+            << q_mjc[0] << std::endl;
   for (size_t i = 0; i < std::size(this->ids.actuators); ++i) {
-    this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
+    this->sim->d->ctrl[this->ids.actuators[i]] = q_mjc[i];
   }
+  // this->set_joints_hard(q);
+
 }
 
 common::VectorXd SimRobot::get_joint_position() {
   common::VectorXd q(std::size(this->cfg.joints));
+  // std::cout << "get_joint_position: " << std::size(this->cfg.joints)
+  //           << std::endl;
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
+    // std::cout << "get_joint_position[" << i << "]: " << q[i] << std::endl;
+    // print ids
+    // std::cout << "ids.joints[" << i << "]: " << this->ids.joints[i]
+    //           << std::endl;
   }
-  return q;
+  // std::cout << "get_joint_position: " << q.transpose() << std::endl;
+  auto a = to_hf(q);
+  // std::cout << "get_joint_position hf: " << a.transpose() << std::endl;
+  return a;
 }
 
 std::optional<std::shared_ptr<common::IK>> SimRobot::get_ik() {
@@ -189,17 +229,18 @@ bool SimRobot::convergence_callback() {
 }
 
 void SimRobot::m_reset() {
-  this->set_joints_hard(
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  // this->set_joints_hard(
+  //     common::robots_meta_config.at(this->cfg.robot_type).q_home);
 }
 
 void SimRobot::set_joints_hard(const common::VectorXd& q) {
-  for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
-    size_t jnt_id = this->ids.joints[i];
-    size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
-    this->sim->d->qpos[jnt_qposadr] = q[i];
-    this->sim->d->ctrl[this->ids.actuators[i]] = q[i];
-  }
+//  auto  q_mjc = to_mjc(q);
+//   for (size_t i = 0; i < std::size(this->ids.joints); ++i) {
+//     size_t jnt_id = this->ids.joints[i];
+//     size_t jnt_qposadr = this->sim->m->jnt_qposadr[jnt_id];
+//     this->sim->d->qpos[jnt_qposadr] = q_mjc[i];
+//     this->sim->d->ctrl[this->ids.actuators[i]] = q_mjc[i];
+//   }
 }
 
 common::Pose SimRobot::get_base_pose_in_world_coordinates() {

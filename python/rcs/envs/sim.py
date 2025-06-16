@@ -222,7 +222,8 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         c_env = RobotSimWrapper(c_env, simulation)
         if gripper:
             gripper_cfg = sim.SimGripperConfig()
-            gripper_cfg.add_id(id)
+            # 
+            # gripper_cfg.add_id(id)
             fh = sim.SimGripper(simulation, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)

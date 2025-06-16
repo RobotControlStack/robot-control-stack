@@ -1,10 +1,14 @@
 import logging
+from time import sleep
 
 import numpy as np
+from rcs import sim
+import rcs
 from rcs._core.common import RobotPlatform
 from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import FR3SimEnvCreator, RCSFR3EnvCreator
+from rcs.envs.so101_creators import SO101SimEnvCreator
 from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
@@ -63,27 +67,38 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = FR3SimEnvCreator()(
+            factory = SO101SimEnvCreator()
+            cfg = sim.SimRobotConfig()
+            cfg.robot_type = rcs.common.RobotType.SO101
+            env_rel = factory(
                 control_mode=ControlMode.JOINTS,
+                urdf_path="/home/tobi/coding/lerobot/so101_new_calib.urdf",
+                robot_cfg=cfg,
                 collision_guard=False,
-                robot_cfg=default_fr3_sim_robot_cfg(),
+                mjcf = "/home/tobi/coding/lerobot/SO-ARM100/Simulation/SO101/scene.xml",
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
-                cameras=default_mujoco_cameraset_cfg(),
-                max_relative_movement=np.deg2rad(5),
+                # camera_set_cfg=default_mujoco_cameraset_cfg(),
+                max_relative_movement=None,
+                # max_relative_movement=10.0,
+                # max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
         for _ in range(10):
             obs, info = env_rel.reset()
-            for _ in range(3):
+            for _ in range(100):
                 # sample random relative action and execute it
                 act = env_rel.action_space.sample()
+                print(act)
+                # act["gripper"] = 1.0
                 obs, reward, terminated, truncated, info = env_rel.step(act)
+                print(obs)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-                logger.info(act["gripper"], obs["gripper"])
+                logger.info(act["gripper"])
+                sleep(1.0)
 
 
 if __name__ == "__main__":
