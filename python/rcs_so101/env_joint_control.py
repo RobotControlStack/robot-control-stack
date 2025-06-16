@@ -28,13 +28,24 @@ def main():
     else:
         cfg = sim.SimRobotConfig()
         cfg.robot_type = rcs.common.RobotType.SO101
+        cfg.actuators = ["1", "2", "3", "4", "5"]
+        cfg.joints = ["1", "2", "3", "4", "5"]
+        cfg.arm_collision_geoms = []
+        cfg.attachment_site = "gripper"
+
+        grp_cfg = sim.SimGripperConfig()
+        grp_cfg.actuator = "6"
+        grp_cfg.joint = "6"
+        grp_cfg.collision_geoms = []
+        grp_cfg.collision_geoms_fingers = []
+
         env_rel = SO101SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
             urdf_path="/home/tobi/coding/lerobot/so101_new_calib.urdf",
             robot_cfg=cfg,
             collision_guard=False,
             mjcf="/home/tobi/coding/lerobot/SO-ARM100/Simulation/SO101/scene.xml",
-            gripper_cfg=default_fr3_sim_gripper_cfg(),
+            gripper_cfg=grp_cfg,
             # camera_set_cfg=default_mujoco_cameraset_cfg(),
             max_relative_movement=None,
             # max_relative_movement=10.0,
