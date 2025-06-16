@@ -21,15 +21,10 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
   }
   // this->tendon_id =
   //     mj_name2id(this->sim->m, mjOBJ_TENDON, ("split_" + id).c_str());
-  this->joint_id_1 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, this->cfg.joint1.c_str())];
-  if (this->joint_id_1 == -1) {
-    throw std::runtime_error(std::string("No joint named " + this->cfg.joint1));
-  }
-  this->joint_id_2 = this->sim->m->jnt_qposadr[mj_name2id(
-      this->sim->m, mjOBJ_JOINT, this->cfg.joint2.c_str())];
-  if (this->joint_id_2 == -1) {
-    throw std::runtime_error(std::string("No joint named " + this->cfg.joint2));
+  this->joint_id = this->sim->m->jnt_qposadr[mj_name2id(
+      this->sim->m, mjOBJ_JOINT, this->cfg.joint.c_str())];
+  if (this->joint_id == -1) {
+    throw std::runtime_error(std::string("No joint named " + this->cfg.joint));
   }
   // Collision geoms
   this->add_collision_geoms(this->cfg.collision_geoms, this->cgeom, false);
@@ -95,7 +90,7 @@ void SimGripper::set_normalized_width(double width, double force) {
 double SimGripper::get_normalized_width() {
   // TODO: maybe we should use the mujoco sensors? Not sure what the difference
   // is between reading out from qpos and reading from the sensors.
-  double width = this->sim->d->qpos[this->joint_id_1] / this->MAX_JOINT_WIDTH;
+  double width = this->sim->d->qpos[this->joint_id] / this->MAX_JOINT_WIDTH;
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
     width = 0;
@@ -157,8 +152,7 @@ void SimGripper::m_reset() {
   this->state = SimGripperState();
   this->state.max_unnormalized_width = this->MAX_WIDTH;
   // reset state hard
-  this->sim->d->qpos[this->joint_id_1] = this->MAX_JOINT_WIDTH;
-  this->sim->d->qpos[this->joint_id_2] = this->MAX_JOINT_WIDTH;
+  this->sim->d->qpos[this->joint_id] = this->MAX_JOINT_WIDTH;
   this->sim->d->ctrl[this->actuator_id] = this->MAX_WIDTH;
 }
 

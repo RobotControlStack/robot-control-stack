@@ -116,8 +116,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     epsilon_inner: float
     epsilon_outer: float
     ignored_collision_geoms: list[str]
-    joint1: str
-    joint2: str
+    joint: str
     seconds_between_callbacks: float
     def __init__(self) -> None: ...
     def add_id(self, id: str) -> None: ...

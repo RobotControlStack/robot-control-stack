@@ -23,8 +23,7 @@ struct SimGripperConfig : common::GripperConfig {
 
   std::vector<std::string> collision_geoms_fingers{"finger_0_left",
                                                    "finger_0_right"};
-  std::string joint1 = "finger_joint1";
-  std::string joint2 = "finger_joint2";
+  std::string joint = "finger_joint1";
   std::string actuator = "actuator8";
 
   void add_id(const std::string &id) {
@@ -37,8 +36,7 @@ struct SimGripperConfig : common::GripperConfig {
     for (auto &s : this->ignored_collision_geoms) {
       s = s + "_" + id;
     }
-    this->joint1 = this->joint1 + "_" + id;
-    this->joint2 = this->joint2 + "_" + id;
+    this->joint = this->joint + "_" + id;
     this->actuator = this->actuator + "_" + id;
   }
 };
@@ -58,8 +56,7 @@ class SimGripper : public common::Gripper {
   SimGripperConfig cfg;
   std::shared_ptr<Sim> sim;
   int actuator_id;
-  int joint_id_1;
-  int joint_id_2;
+  int joint_id;
   SimGripperState state;
   bool convergence_callback();
   bool collision_callback();

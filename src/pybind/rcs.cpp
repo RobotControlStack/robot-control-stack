@@ -467,8 +467,7 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimGripperConfig::collision_geoms)
       .def_readwrite("collision_geoms_fingers",
                      &rcs::sim::SimGripperConfig::collision_geoms_fingers)
-      .def_readwrite("joint1", &rcs::sim::SimGripperConfig::joint1)
-      .def_readwrite("joint2", &rcs::sim::SimGripperConfig::joint2)
+      .def_readwrite("joint", &rcs::sim::SimGripperConfig::joint)
       .def_readwrite("actuator", &rcs::sim::SimGripperConfig::actuator)
       .def("add_id", &rcs::sim::SimGripperConfig::add_id, py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
