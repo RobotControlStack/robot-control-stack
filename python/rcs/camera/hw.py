@@ -9,7 +9,8 @@ from time import sleep
 import cv2
 import numpy as np
 from rcs._core.common import BaseCameraConfig
-from rcs.camera.interface import BaseCameraSet, Frame, FrameSet, SimpleFrameRate
+from rcs.camera.interface import BaseCameraSet, Frame, FrameSet
+from rcs.utils import SimpleFrameRate
 
 
 class HardwareCamera(typing.Protocol):
