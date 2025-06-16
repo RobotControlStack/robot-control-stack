@@ -6,7 +6,7 @@ import numpy as np
 import rcs
 from rcs import sim
 from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
-from rcs.envs.space_utils import ActObsInfoWrapper, VecType
+from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.envs.utils import default_fr3_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
@@ -108,6 +108,8 @@ class GripperWrapperSim(ActObsInfoWrapper):
         state = self._gripper.get_state()
         if "collision" not in info or not info["collision"]:
             info["collision"] = state.collision
+        info["gripper_width"] = self._gripper.get_normalized_width()
+        info["is_grasped"] = self._gripper.get_normalized_width() > 0.01 and self._gripper.get_normalized_width() < 0.99
         return observation, info
 
 
@@ -258,9 +260,9 @@ class RandomCubePos(SimWrapper):
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
         if self.include_rotation:
-            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
         else:
-            self.sim.data.joint("box-joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
+            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
 
         return obs, info
 
@@ -280,7 +282,7 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         obs, reward, _, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("box-joint").qpos[2] > 0.15 + 0.852
+            self.sim.data.joint("box_joint").qpos[2] > 0.15 + 0.852
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
         info["success"] = success
@@ -288,9 +290,9 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             reward = 5
         else:
             tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint("box-joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+                self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
             )
-            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box-joint").qpos[:3] - self.EE_HOME)
+            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
 
             # old reward
             # reward = -obj_to_goal_dist - tcp_to_obj_dist
@@ -311,29 +313,3 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         # normalize
         reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
-
-
-class CamRobot(gym.Wrapper):
-    """Use this wrapper in lab setups where the second arm is used as a camera holder."""
-
-    def __init__(self, env, cam_robot_joints: VecType, scene: str = "lab_simple_pick_up_digit_hand"):
-        super().__init__(env)
-        self.unwrapped: RobotEnv
-        assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
-        self.sim = env.get_wrapper_attr("sim")
-        cfg = default_fr3_sim_robot_cfg(scene, "1")
-        self.cam_robot = rcs.sim.SimRobot(
-            self.sim, env.unwrapped.robot.get_ik(), cfg, register_convergence_callback=False
-        )
-        self.cam_robot.set_parameters(default_fr3_sim_robot_cfg(scene))
-        self.cam_robot_joints = cam_robot_joints
-
-    def step(self, action: dict):
-        self.cam_robot.set_joints_hard(self.cam_robot_joints)
-        obs, reward, done, truncated, info = super().step(action)
-        return obs, reward, done, truncated, info
-
-    def reset(self, *, seed=None, options=None):
-        re = super().reset(seed=seed, options=options)
-        self.cam_robot.reset()
-        return re
