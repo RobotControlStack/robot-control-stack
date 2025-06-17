@@ -42,10 +42,11 @@ DESK_PASSWORD=...
 ```
 
 ### Command Line Interface
-The package includes a command line interface which define useful commands to handle the FR3 robot without the need to use the Desk Website.
-To list all available subcommands use:
+Some modules include command line interfaces, e.g. rcs_fr3 defines useful commands to handle the FR3 robot without the need to use the Desk Website.
+You can see the available subcommands as follows:
 ```shell
-python -m rcs --help
+python -m rcs.fr3 --help
+python -m rcs.realsense --help
 ```
 
 ## Development
