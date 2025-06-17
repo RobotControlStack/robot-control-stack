@@ -8,7 +8,6 @@ import rcs
 from digit_interface import Digit
 from rcs import sim
 from rcs._core.common import BaseCameraConfig
-from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType, SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
 from rcs.hand.tilburg_hand import THConfig
@@ -17,31 +16,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def default_fr3_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
+def default_sim_robot_cfg(mjcf: str | Path = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     cfg = sim.SimRobotConfig()
     cfg.tcp_offset = get_tcp_offset(mjcf)
     cfg.realtime = False
     cfg.robot_type = rcs.common.RobotType.FR3
     cfg.add_id(idx)
     return cfg
-
-
-def default_fr3_hw_robot_cfg(async_control: bool = False) -> FR3Config:
-    robot_cfg = FR3Config()
-    robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-    robot_cfg.speed_factor = 0.1
-    robot_cfg.ik_solver = IKSolver.rcs_ik
-    robot_cfg.async_control = async_control
-    return robot_cfg
-
-
-def default_fr3_hw_gripper_cfg(async_control: bool = False) -> rcs.hw.FHConfig:
-    gripper_cfg = rcs.hw.FHConfig()
-    gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
-    gripper_cfg.speed = 0.1
-    gripper_cfg.force = 30
-    gripper_cfg.async_control = async_control
-    return gripper_cfg
 
 
 def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
@@ -51,7 +32,7 @@ def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
     return hand_cfg
 
 
-def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
+def default_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     cfg = sim.SimGripperConfig()
     cfg.add_id(idx)
     return cfg
@@ -86,6 +67,7 @@ def default_mujoco_cameraset_cfg() -> dict[str, SimCameraConfig]:
     }
 
 
+# TODO: franka hand offset needs to be removed here
 def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
     """Reads out tcp offset set in mjcf file.
 

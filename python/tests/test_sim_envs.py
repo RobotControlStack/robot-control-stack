@@ -11,22 +11,22 @@ from rcs.envs.base import (
     TQuatDictType,
     TRPYDictType,
 )
-from rcs.envs.creators import FR3SimEnvCreator
+from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import (
-    default_fr3_sim_gripper_cfg,
-    default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
+    default_sim_gripper_cfg,
+    default_sim_robot_cfg,
 )
 
 
 @pytest.fixture()
 def cfg():
-    return default_fr3_sim_robot_cfg()
+    return default_sim_robot_cfg()
 
 
 @pytest.fixture()
 def gripper_cfg():
-    return default_fr3_sim_gripper_cfg()
+    return default_sim_gripper_cfg()
 
 
 @pytest.fixture()
@@ -64,7 +64,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, cameras=cam_cfg, max_relative_movement=None
         )
         # Test double reset. Regression test. A lot can go wrong when resetting.
@@ -75,7 +75,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         """
         Test that a zero action does not change the state significantly
         """
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -88,7 +88,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -111,7 +111,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
     def test_relative_zero_action_trpy(self, cfg, gripper_cfg):
 
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
@@ -124,7 +124,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
     def test_relative_non_zero_action(self, cfg, gripper_cfg):
 
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=0.5
         )
         obs_initial, _ = env.reset()
@@ -142,7 +142,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=None
         )
         obs, _ = env.reset()
@@ -159,7 +159,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TRPY,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -192,7 +192,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -208,7 +208,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Test that a zero action does not change the state significantly in the tquat configuration
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None
         )
         obs_initial, _ = env.reset()
@@ -229,7 +229,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Test that a zero action does not change the state significantly in the tquat configuration
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None
         )
         obs_initial, info_ = env.reset()
@@ -240,7 +240,7 @@ class TestSimEnvsTquat(TestSimEnvs):
 
     def test_relative_zero_action_tquat(self, cfg, gripper_cfg):
         # env creation
-        env_rel = FR3SimEnvCreator()(
+        env_rel = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -258,7 +258,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -279,7 +279,7 @@ class TestSimEnvsTquat(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.CARTESIAN_TQuat,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -312,7 +312,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         # TODO:
         # - test initial pose after reset.
         # - test initial gripper config.
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, cameras=cam_cfg, max_relative_movement=None
         )
         # Test double reset. Regression test. A lot can go wrong when resetting.
@@ -324,7 +324,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = FR3SimEnvCreator()(ControlMode.JOINTS, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None)
+        env = SimEnvCreator()(ControlMode.JOINTS, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None)
         obs_initial, _ = env.reset()
         # action to be performed
         zero_action = JointsDictType(joints=np.array(obs_initial["joints"]))
@@ -338,7 +338,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         This is for testing that a certain action leads to the expected change in state
         """
         # env creation
-        env = FR3SimEnvCreator()(ControlMode.JOINTS, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None)
+        env = SimEnvCreator()(ControlMode.JOINTS, cfg, gripper_cfg=None, cameras=None, max_relative_movement=None)
         obs_initial, _ = env.reset()
         new_joint_vals = obs_initial["joints"] + np.array([0.1, 0.1, 0.1, 0.1, -0.1, -0.1, 0.1], dtype=np.float32)
         # action to be performed
@@ -353,7 +353,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=None
         )
         env.reset()
@@ -368,7 +368,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by sim
         """
         # env creation
-        env = FR3SimEnvCreator()(
+        env = SimEnvCreator()(
             ControlMode.JOINTS,
             cfg,
             gripper_cfg=gripper_cfg,
@@ -394,9 +394,7 @@ class TestSimEnvsJoints(TestSimEnvs):
         Check that an obvious collision is detected by the CollisionGuard
         """
         # env creation
-        env = FR3SimEnvCreator()(
-            ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=0.5
-        )
+        env = SimEnvCreator()(ControlMode.JOINTS, cfg, gripper_cfg=gripper_cfg, cameras=None, max_relative_movement=0.5)
         obs_initial, _ = env.reset()
         act = JointsDictType(joints=np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32))
         act.update(GripperDictType(gripper=1))

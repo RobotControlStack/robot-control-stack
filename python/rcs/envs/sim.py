@@ -6,8 +6,8 @@ import numpy as np
 import rcs
 from rcs import sim
 from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
-from rcs.envs.space_utils import ActObsInfoWrapper
-from rcs.envs.utils import default_fr3_sim_robot_cfg
+from rcs.envs.space_utils import ActObsInfoWrapper, VecType
+from rcs.envs.utils import default_sim_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -205,7 +205,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
         ik = rcs.common.RL(urdf, max_duration_ms=300)
-        cfg = default_fr3_sim_robot_cfg(mjmld, id)
+        cfg = default_sim_robot_cfg(mjmld, id)
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
