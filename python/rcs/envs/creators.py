@@ -21,7 +21,7 @@ from rcs.envs.base import (
     RelativeTo,
     RobotEnv,
 )
-from rcs.envs.hw import FR3HW
+from rcs_fr3.envs import FR3HW
 from rcs.envs.sim import (
     CollisionGuard,
     GripperWrapperSim,
