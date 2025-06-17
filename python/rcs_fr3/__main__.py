@@ -2,24 +2,18 @@ import logging
 from time import sleep
 from typing import Annotated
 
-import rcs
-import rcs.control.fr3_desk
+import rcs_fr3
 import typer
-from rcs.control.fr3_desk import load_creds_fr3_desk
+from rcs_fr3.desk import load_creds_fr3_desk
 
 logger = logging.getLogger(__name__)
 
-# MAIN CLI
-main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).", name="rcs")
-
 
 # FR3 CLI
-fr3_app = typer.Typer()
-main_app.add_typer(
-    fr3_app,
-    name="fr3",
+fr3_app = typer.Typer(
+    name="rcs.fr3",
     help=(
-        "Commands to control a Franka Research 3. "
+        "Commands to control a Franka Research 3 in RCS. "
         "This includes tools that you would usually do with Franka's Desk interface."
     ),
 )
@@ -33,7 +27,7 @@ def home(
 ):
     """Moves the FR3 to home position"""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.home(ip, user, pw, shut, unlock)
+    rcs_fr3.desk.home(ip, user, pw, shut, unlock)
 
 
 @fr3_app.command()
@@ -43,7 +37,7 @@ def info(
 ):
     """Prints info about the robots current joint position and end effector pose, optionally also the gripper."""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.info(ip, user, pw, include_gripper)
+    rcs_fr3.desk.info(ip, user, pw, include_gripper)
 
 
 @fr3_app.command()
@@ -52,7 +46,7 @@ def lock(
 ):
     """Locks the robot."""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.lock(ip, user, pw)
+    rcs_fr3.desk.lock(ip, user, pw)
 
 
 @fr3_app.command()
@@ -61,8 +55,8 @@ def unlock(
 ):
     """Prepares the robot by unlocking the joints and putting the robot into the FCI mode."""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.unlock(ip, user, pw)
-    with rcs.control.fr3_desk.Desk(ip, user, pw) as d:
+    rcs_fr3.desk.unlock(ip, user, pw)
+    with rcs_fr3.desk.Desk(ip, user, pw) as d:
         d.activate_fci()
 
 
@@ -75,12 +69,12 @@ def fci(
     """Puts the robot into FCI mode, optionally unlocks the robot. Waits for ctrl+c to exit."""
     user, pw = load_creds_fr3_desk()
     try:
-        with rcs.control.fr3_desk.FCI(rcs.control.fr3_desk.Desk(ip, user, pw), unlock=unlock, lock_when_done=False):
+        with rcs_fr3.desk.FCI(rcs_fr3.desk.Desk(ip, user, pw), unlock=unlock, lock_when_done=False):
             while True:
                 sleep(1)
     except KeyboardInterrupt:
         if shutdown:
-            rcs.control.fr3_desk.shutdown(ip, user, pw)
+            rcs_fr3.desk.shutdown(ip, user, pw)
 
 
 @fr3_app.command()
@@ -91,7 +85,7 @@ def guiding_mode(
 ):
     """Enables or disables guiding mode."""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.guiding_mode(ip, user, pw, disable, unlock)
+    rcs_fr3.desk.guiding_mode(ip, user, pw, disable, unlock)
 
 
 @fr3_app.command()
@@ -100,8 +94,8 @@ def shutdown(
 ):
     """Shuts the robot down"""
     user, pw = load_creds_fr3_desk()
-    rcs.control.fr3_desk.shutdown(ip, user, pw)
+    rcs_fr3.desk.shutdown(ip, user, pw)
 
 
-def main():
-    main_app()
+if __name__ == "__main__":
+    fr3_app()

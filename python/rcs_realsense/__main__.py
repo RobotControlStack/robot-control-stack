@@ -19,3 +19,7 @@ def serials():
     logger.info("Connected devices:")
     for device in devices.values():
         logger.info("  %s: %s", device.product_line, device.serial)
+
+
+if __name__ == "__main__":
+    realsense_app()
