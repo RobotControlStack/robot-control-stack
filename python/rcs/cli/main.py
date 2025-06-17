@@ -2,42 +2,15 @@ import logging
 from time import sleep
 from typing import Annotated
 
-import pyrealsense2 as rs
 import rcs
 import rcs.control.fr3_desk
 import typer
-from rcs.camera.realsense import RealSenseCameraSet
 from rcs.control.fr3_desk import load_creds_fr3_desk
 
 logger = logging.getLogger(__name__)
 
 # MAIN CLI
-main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).")
-
-
-# REALSENSE CLI
-realsense_app = typer.Typer()
-main_app.add_typer(
-    realsense_app,
-    name="realsense",
-    help=(
-        "Commands to access the intel realsense camera. "
-        "This includes tools such as reading out the serial numbers of connected devices."
-    ),
-)
-
-
-@realsense_app.command()
-def serials():
-    """Reads out the serial numbers of the connected realsense devices."""
-    context = rs.context()
-    devices = RealSenseCameraSet.enumerate_connected_devices(context)
-    if len(devices) == 0:
-        logger.warning("No realsense devices connected.")
-        return
-    logger.info("Connected devices:")
-    for device in devices.values():
-        logger.info("  %s: %s", device.product_line, device.serial)
+main_app = typer.Typer(help="CLI tool for the Robot Control Stack (RCS).", name="rcs")
 
 
 # FR3 CLI

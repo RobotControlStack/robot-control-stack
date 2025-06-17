@@ -11,7 +11,6 @@ from rcs._core.common import BaseCameraConfig
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType, SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
-from rcs.camera.realsense import RealSenseCameraSet
 from rcs.hand.tilburg_hand import THConfig
 
 logger = logging.getLogger(__name__)
@@ -50,16 +49,6 @@ def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
     hand_cfg.grasp_percentage = 1.0
     hand_cfg.calibration_file = str(file) if isinstance(file, PathLike) else file
     return hand_cfg
-
-
-def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
-    if name2id is None:
-        return None
-    cameras = {
-        name: BaseCameraConfig(identifier=id, resolution_width=1280, resolution_height=720, frame_rate=30)
-        for name, id in name2id.items()
-    }
-    return RealSenseCameraSet(cameras=cameras)
 
 
 def default_fr3_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
