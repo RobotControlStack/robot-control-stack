@@ -5,7 +5,6 @@ import rcs
 from rcs import sim
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.utils import default_fr3_sim_gripper_cfg
 from rcs_so101.creators import RCSSO101EnvCreator, SO101SimEnvCreator
 
 logger = logging.getLogger(__name__)
