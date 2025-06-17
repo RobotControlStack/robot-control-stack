@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcs._core.common import BaseCameraConfig
+from rcs import common
 from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
@@ -26,7 +26,7 @@ class RealSenseCameraSet(HardwareCamera):
 
     def __init__(
         self,
-        cameras: dict[str, BaseCameraConfig],
+        cameras: dict[str, common.BaseCameraConfig],
         enable_ir_emitter: bool = False,
         enable_ir: bool = False,
         laser_power: int = 330,
@@ -96,7 +96,7 @@ class RealSenseCameraSet(HardwareCamera):
         """Returns the names of the cameras in this set."""
         return self._camera_names
 
-    def config(self, camera_name) -> BaseCameraConfig:
+    def config(self, camera_name) -> common.BaseCameraConfig:
         return self.cameras[camera_name]
 
     def open(self):

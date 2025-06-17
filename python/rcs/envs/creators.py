@@ -35,7 +35,6 @@ from rcs.envs.utils import (
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
-    default_realsense,
 )
 from rcs.hand.tilburg_hand import TilburgHand
 
@@ -169,12 +168,9 @@ class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
         robot_ip: str,
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
-        camera_config: dict[str, str] | None = None,
+        camera_set: HardwareCameraSet | None = None,
         gripper: bool = True,
     ) -> gym.Env:
-        real_sense = default_realsense(camera_config)
-        camera_set_impl_list = [] if real_sense is None else [real_sense]
-        camera_set = HardwareCameraSet(cameras=camera_set_impl_list)
         return RCSFR3EnvCreator()(
             ip=robot_ip,
             camera_set=camera_set,
