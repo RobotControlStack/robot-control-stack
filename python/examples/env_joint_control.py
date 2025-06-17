@@ -3,15 +3,15 @@ import logging
 import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import FR3SimEnvCreator, RCSFR3EnvCreator
+from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import (
-    default_fr3_hw_gripper_cfg,
-    default_fr3_hw_robot_cfg,
-    default_fr3_sim_gripper_cfg,
-    default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
+    default_sim_gripper_cfg,
+    default_sim_robot_cfg,
 )
+from rcs_fr3.creators import RCSFR3EnvCreator
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -63,11 +63,11 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = FR3SimEnvCreator()(
+            env_rel = SimEnvCreator()(
                 control_mode=ControlMode.JOINTS,
                 collision_guard=False,
-                robot_cfg=default_fr3_sim_robot_cfg(),
-                gripper_cfg=default_fr3_sim_gripper_cfg(),
+                robot_cfg=default_sim_robot_cfg(),
+                gripper_cfg=default_sim_gripper_cfg(),
                 cameras=default_mujoco_cameraset_cfg(),
                 max_relative_movement=np.deg2rad(5),
                 relative_to=RelativeTo.LAST_STEP,
