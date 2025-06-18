@@ -1,4 +1,3 @@
-add_subdirectory(common)
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-add_subdirectory(sim)
+add_subdirectory(hw)
 add_subdirectory(pybind)

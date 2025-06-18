@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_realsense"
+version = "0.4.0"
+description="RCS realsense module"
+dependencies = [
+    "rcs==0.4.0",
+    "pyrealsense2~=2.55.1",
+]
+readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
+authors = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Pierre Krack", email = "pierre.krack@utn.de" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
+  "Programming Language :: Python :: 3",
+]
+
