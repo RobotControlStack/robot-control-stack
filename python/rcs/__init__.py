@@ -5,7 +5,7 @@ import site
 
 from gymnasium import register
 from rcs import camera, envs, hand, sim
-from rcs._core import __version__, common, hw
+from rcs._core import __version__, common
 from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
 
 # available mujoco scenes
@@ -18,7 +18,7 @@ scenes: dict[str, dict[str, pathlib.Path]] = {
 }
 
 # make submodules available
-__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "envs", "hand"]
+__all__ = ["__doc__", "__version__", "common", "sim", "camera", "scenes", "envs", "hand"]
 
 # register gymnasium environments
 register(

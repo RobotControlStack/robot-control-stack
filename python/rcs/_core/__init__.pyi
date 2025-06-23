@@ -13,7 +13,7 @@
 """
 from __future__ import annotations
 
-from . import common, hw, sim
+from . import common, sim
 
-__all__ = ["common", "hw", "sim"]
+__all__ = ["common", "sim"]
 __version__: str = "0.4.0"
