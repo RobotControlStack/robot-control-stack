@@ -6,6 +6,7 @@ from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs_fr3._core import hw
 
 import rcs
 from rcs import sim
@@ -94,17 +95,17 @@ def main():
         else:
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
             ik = rcs.common.RL(str(urdf_path))
-            robot = rcs.hw.FR3(ROBOT_IP, ik)
+            robot = hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             robot_cfg.ik_solver = IKSolver.rcs_ik
-            robot.set_parameters(robot_cfg)
+            robot.set_parameters(robot_cfg)  # type: ignore
 
-            gripper_cfg_hw = rcs.hw.FHConfig()
+            gripper_cfg_hw = hw.FHConfig()
             gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
             gripper_cfg_hw.speed = 0.1
             gripper_cfg_hw.force = 30
-            gripper = rcs.hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
+            gripper = hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
             input("the robot is going to move, press enter whenever you are ready")
 
         # move to home position and open gripper

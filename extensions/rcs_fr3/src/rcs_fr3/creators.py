@@ -20,6 +20,7 @@ from rcs.envs.sim import CollisionGuard
 from rcs.hand.tilburg_hand import TilburgHand
 from rcs_fr3.envs import FR3HW
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+from rcs_fr3 import hw
 
 import rcs
 
@@ -32,9 +33,9 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         self,
         ip: str,
         control_mode: ControlMode,
-        robot_cfg: rcs.hw.FR3Config,
+        robot_cfg: hw.FR3Config,
         collision_guard: str | PathLike | None = None,
-        gripper_cfg: rcs.hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
+        gripper_cfg: hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -65,14 +66,14 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         if urdf_path is None:
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
-        robot = rcs.hw.FR3(ip, ik)
+        robot = hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
 
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
         env = FR3HW(env)
-        if isinstance(gripper_cfg, rcs.hw.FHConfig):
-            gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
+        if isinstance(gripper_cfg, hw.FHConfig):
+            gripper = hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
         elif isinstance(gripper_cfg, rcs.hand.tilburg_hand.THConfig):
             hand = TilburgHand(gripper_cfg)
@@ -107,8 +108,8 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         ips: list[str],
         control_mode: ControlMode,
-        robot_cfg: rcs.hw.FR3Config,
-        gripper_cfg: rcs.hw.FHConfig | None = None,
+        robot_cfg: hw.FR3Config,
+        gripper_cfg: hw.FHConfig | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -117,9 +118,9 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
 
         urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
-        robots: dict[str, rcs.hw.FR3] = {}
+        robots: dict[str, hw.FR3] = {}
         for ip in ips:
-            robots[ip] = rcs.hw.FR3(ip, ik)
+            robots[ip] = hw.FR3(ip, ik)
             robots[ip].set_parameters(robot_cfg)
 
         envs = {}
@@ -127,7 +128,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
             env: gym.Env = RobotEnv(robots[ip], control_mode)
             env = FR3HW(env)
             if gripper_cfg is not None:
-                gripper = rcs.hw.FrankaHand(ip, gripper_cfg)
+                gripper = hw.FrankaHand(ip, gripper_cfg)
                 env = GripperWrapper(env, gripper, binary=True)
 
             if max_relative_movement is not None:
