@@ -1,11 +1,6 @@
 #ifndef RCS_FR3_H
 #define RCS_FR3_H
 
-#include "rcs/IK.h"
-#include "rcs/LinearPoseTrajInterpolator.h"
-#include "rcs/Pose.h"
-#include "rcs/Robot.h"
-#include "rcs/utils.h"
 #include <franka/robot.h>
 
 #include <cmath>
@@ -14,6 +9,12 @@
 #include <optional>
 #include <string>
 #include <thread>
+
+#include "rcs/IK.h"
+#include "rcs/LinearPoseTrajInterpolator.h"
+#include "rcs/Pose.h"
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 
 namespace rcs {
 namespace hw {

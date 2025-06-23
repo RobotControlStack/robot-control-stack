@@ -1,7 +1,3 @@
-#include "rcs/IK.h"
-#include "rcs/Pose.h"
-#include "rcs/Robot.h"
-#include "rcs/utils.h"
 #include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
@@ -13,6 +9,10 @@
 
 #include <memory>
 
+#include "rcs/IK.h"
+#include "rcs/Pose.h"
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 #include "rl/mdl/UrdfFactory.h"
 
 // TODO: define exceptions
@@ -148,5 +148,4 @@ PYBIND11_MODULE(_core, m) {
       hw_except, "FrankaRealtimeException", PyExc_RuntimeError);
   py::register_exception<franka::InvalidOperationException>(
       hw_except, "FrankaInvalidOperationException", PyExc_RuntimeError);
-
 }

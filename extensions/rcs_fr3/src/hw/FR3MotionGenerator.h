@@ -1,8 +1,6 @@
 #ifndef RCS_MOTION_GENERATOR_H
 #define RCS_MOTION_GENERATOR_H
 
-#include "rcs/Robot.h"
-#include "rcs/utils.h"
 #include <franka/control_types.h>
 #include <franka/duration.h>
 #include <franka/exception.h>
@@ -11,6 +9,9 @@
 
 #include <Eigen/Core>
 #include <array>
+
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 
 namespace rcs {
 namespace hw {
