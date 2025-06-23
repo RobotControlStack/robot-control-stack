@@ -2,9 +2,6 @@
 #include <common/Pose.h>
 #include <common/Robot.h>
 #include <common/utils.h>
-#include <franka/exception.h>
-#include <hw/FR3.h>
-#include <hw/FrankaHand.h>
 #include <pybind11/cast.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
