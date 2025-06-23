@@ -1,4 +1,4 @@
-#include "IK.h"
+#include "rcs/IK.h"
 
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>

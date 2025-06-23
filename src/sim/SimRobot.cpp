@@ -14,7 +14,7 @@
 #include <tuple>
 #include <utility>
 
-#include "common/Robot.h"
+#include "rcs/Robot.h"
 #include "mujoco/mjdata.h"
 #include "mujoco/mjmodel.h"
 #include "mujoco/mujoco.h"

@@ -1,7 +1,7 @@
-#include <common/IK.h>
-#include <common/Pose.h>
-#include <common/Robot.h>
-#include <common/utils.h>
+#include "rcs/IK.h"
+#include "rcs/Pose.h"
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 #include <franka/exception.h>
 #include <hw/FR3.h>
 #include <hw/FrankaHand.h>
@@ -10,10 +10,6 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <sim/SimGripper.h>
-#include <sim/SimRobot.h>
-#include <sim/camera.h>
-#include <sim/gui.h>
 
 #include <memory>
 

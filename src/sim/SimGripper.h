@@ -1,7 +1,7 @@
 #ifndef RCS_FRANKA_HAND_SIM_H
 #define RCS_FRANKA_HAND_SIM_H
 
-#include <common/Robot.h>
+#include "rcs/Robot.h"
 
 #include <Eigen/Core>
 #include <cmath>

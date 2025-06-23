@@ -15,7 +15,7 @@
 #include <thread>
 
 #include "FR3MotionGenerator.h"
-#include "common/Pose.h"
+#include "rcs/Pose.h"
 
 namespace rcs {
 namespace hw {

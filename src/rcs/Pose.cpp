@@ -1,4 +1,4 @@
-#include "Pose.h"
+#include "rcs/Pose.h"
 
 namespace rcs {
 namespace common {
