@@ -23,7 +23,6 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.space_utils import VecType
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 
 import rcs
