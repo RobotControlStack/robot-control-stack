@@ -3,9 +3,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcs import common
 from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
+
+from rcs import common
 
 
 @dataclass

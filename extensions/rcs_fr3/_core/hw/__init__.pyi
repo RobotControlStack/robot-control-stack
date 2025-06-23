@@ -60,9 +60,7 @@ class FR3(rcs._core.common.Robot):
     def double_tap_robot_to_continue(self) -> None: ...
     def get_parameters(self) -> FR3Config: ...
     def get_state(self) -> FR3State: ...
-    def osc_set_cartesian_position(
-        self, desired_pos_EE_in_base_frame: rcs._core.common.Pose
-    ) -> None: ...
+    def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcs._core.common.Pose) -> None: ...
     def set_cartesian_position_ik(
         self,
         pose: rcs._core.common.Pose,
@@ -98,12 +96,7 @@ class FR3Config(rcs._core.common.RobotConfig):
 
 class FR3Load:
     f_x_cload: numpy.ndarray[typing.Literal[3], numpy.dtype[numpy.float64]] | None
-    load_inertia: (
-        numpy.ndarray[
-            tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]
-        ]
-        | None
-    )
+    load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
     def __init__(self) -> None: ...
 

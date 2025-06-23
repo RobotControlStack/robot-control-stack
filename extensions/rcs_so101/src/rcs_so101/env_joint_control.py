@@ -1,11 +1,12 @@
 import logging
 from time import sleep
 
-import rcs
-from rcs import sim
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs_so101.creators import RCSSO101EnvCreator, SO101SimEnvCreator
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

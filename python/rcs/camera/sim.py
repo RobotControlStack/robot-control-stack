@@ -2,13 +2,14 @@ import logging
 from datetime import datetime
 
 import numpy as np
-import rcs
 
 # from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
+
+import rcs
 
 
 class SimCameraSet(_SimCameraSet):

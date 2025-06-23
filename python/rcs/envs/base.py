@@ -7,7 +7,6 @@ from typing import Annotated, Any, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
-from rcs import common
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
     ActObsInfoWrapper,
@@ -20,6 +19,8 @@ from rcs.envs.space_utils import (
     get_space_keys,
 )
 from rcs.hand.interface import BaseHand
+
+from rcs import common
 
 _logger = logging.getLogger(__name__)
 

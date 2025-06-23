@@ -1,5 +1,6 @@
-from rcs import common
 from rcs_realsense.camera import RealSenseCameraSet
+
+from rcs import common
 
 
 def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:

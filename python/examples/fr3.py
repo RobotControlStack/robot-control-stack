@@ -1,13 +1,14 @@
 import logging
 
 import numpy as np
-import rcs
-from rcs import sim
 from rcs._core.common import RobotPlatform
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+
+import rcs
+from rcs import sim
 
 ROBOT_IP = "192.168.101.1"
 ROBOT_INSTANCE = RobotPlatform.SIMULATION

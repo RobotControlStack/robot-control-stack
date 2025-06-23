@@ -3,11 +3,12 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-import rcs
-from rcs import sim
 from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
 from rcs.envs.space_utils import ActObsInfoWrapper, VecType
 from rcs.envs.utils import default_sim_robot_cfg
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

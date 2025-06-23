@@ -4,9 +4,7 @@ from typing import Type
 
 import gymnasium as gym
 import numpy as np
-import rcs
 from gymnasium.envs.registration import EnvCreator
-from rcs import sim
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.base import (
@@ -27,6 +25,9 @@ from rcs.envs.sim import (
 )
 from rcs.envs.space_utils import VecType
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

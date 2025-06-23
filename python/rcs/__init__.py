@@ -4,9 +4,10 @@ import pathlib
 import site
 
 from gymnasium import register
-from rcs import camera, envs, hand, sim
 from rcs._core import __version__, common
 from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
+
+from rcs import camera, envs, hand, sim
 
 # available mujoco scenes
 scenes: dict[str, dict[str, pathlib.Path]] = {
