@@ -55,7 +55,7 @@ classifiers = [
 
 [tool.scikit-build]
 build.verbose = true
-build.targets = ["_core", "scenes"]
+build.targets = ["_core", "scenes", "rcs"]
 logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["python/rcs"]
