@@ -1,11 +1,11 @@
 #ifndef RCS_FR3_H
 #define RCS_FR3_H
 
-#include <common/IK.h>
-#include <common/LinearPoseTrajInterpolator.h>
-#include <common/Pose.h>
-#include <common/Robot.h>
-#include <common/utils.h>
+#include "rcs/IK.h"
+#include "rcs/LinearPoseTrajInterpolator.h"
+#include "rcs/Pose.h"
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 #include <franka/robot.h>
 
 #include <cmath>

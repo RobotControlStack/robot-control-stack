@@ -8,3 +8,8 @@ set_target_properties(_core PROPERTIES
 )
 # in pip
 install(TARGETS _core rcs DESTINATION rcs COMPONENT python_package)
+install(
+  DIRECTORY  ${CMAKE_SOURCE_DIR}/include/rcs
+  DESTINATION  rcs/include
+  COMPONENT python_package
+)

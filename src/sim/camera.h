@@ -1,7 +1,7 @@
 #ifndef RCS_CAMSIM_H
 #define RCS_CAMSIM_H
-#include <common/Pose.h>
-#include <common/Robot.h>
+#include <rcs/Pose.h>
+#include <rcs/Robot.h>
 #include <mujoco/mujoco.h>
 
 #include <eigen3/Eigen/Eigen>
@@ -10,7 +10,7 @@
 #include <set>
 #include <unordered_map>
 
-#include "common/Camera.h"
+#include "rcs/Camera.h"
 #include "sim/sim.h"
 
 namespace rcs {

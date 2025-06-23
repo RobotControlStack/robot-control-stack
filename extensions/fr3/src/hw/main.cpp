@@ -1,4 +1,4 @@
-#include <common/IK.h>
+#include <rcs/IK.h>
 #include <franka/exception.h>
 #include <franka/gripper.h>
 #include <franka/robot.h>

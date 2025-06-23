@@ -1,9 +1,9 @@
 #ifndef RCS_FR3SIM_H
 #define RCS_FR3SIM_H
-#include <common/IK.h>
-#include <common/Pose.h>
-#include <common/Robot.h>
-#include <common/utils.h>
+#include <rcs/IK.h>
+#include <rcs/Pose.h>
+#include <rcs/Robot.h>
+#include <rcs/utils.h>
 #include <mujoco/mujoco.h>
 
 #include "sim/sim.h"

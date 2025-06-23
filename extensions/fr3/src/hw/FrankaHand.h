@@ -1,7 +1,7 @@
 #ifndef RCS_FRANKA_HAND_H
 #define RCS_FRANKA_HAND_H
 
-#include <common/Robot.h>
+#include "rcs/Robot.h"
 #include <franka/gripper.h>
 
 #include <Eigen/Core>
