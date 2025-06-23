@@ -1,7 +1,3 @@
-#include "rcs/IK.h"
-#include "rcs/Pose.h"
-#include "rcs/Robot.h"
-#include "rcs/utils.h"
 #include <pybind11/cast.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
@@ -14,6 +10,10 @@
 
 #include <memory>
 
+#include "rcs/IK.h"
+#include "rcs/Pose.h"
+#include "rcs/Robot.h"
+#include "rcs/utils.h"
 #include "rl/mdl/UrdfFactory.h"
 
 // TODO: define exceptions
@@ -304,7 +304,6 @@ PYBIND11_MODULE(_core, m) {
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Gripper::reset,
            py::call_guard<py::gil_scoped_release>());
-
 
   // SIM MODULE
   auto sim = m.def_submodule("sim", "sim module");

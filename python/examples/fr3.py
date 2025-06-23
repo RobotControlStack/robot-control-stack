@@ -5,8 +5,8 @@ from rcs._core.common import RobotPlatform
 from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
-from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs_fr3._core import hw
+from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 
 import rcs
 from rcs import sim

@@ -1,13 +1,14 @@
 #ifndef RCS_FRANKA_HAND_H
 #define RCS_FRANKA_HAND_H
 
-#include "rcs/Robot.h"
 #include <franka/gripper.h>
 
 #include <Eigen/Core>
 #include <cmath>
 #include <string>
 #include <thread>
+
+#include "rcs/Robot.h"
 
 // TODO: we need a common interface for the gripper, maybe we do use the hal
 // we need to create a robot class that has both the robot and the gripper

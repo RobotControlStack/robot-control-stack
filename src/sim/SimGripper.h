@@ -1,13 +1,12 @@
 #ifndef RCS_FRANKA_HAND_SIM_H
 #define RCS_FRANKA_HAND_SIM_H
 
-#include "rcs/Robot.h"
-
 #include <Eigen/Core>
 #include <cmath>
 #include <set>
 #include <string>
 
+#include "rcs/Robot.h"
 #include "sim/sim.h"
 
 namespace rcs {

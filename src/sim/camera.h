@@ -1,8 +1,8 @@
 #ifndef RCS_CAMSIM_H
 #define RCS_CAMSIM_H
+#include <mujoco/mujoco.h>
 #include <rcs/Pose.h>
 #include <rcs/Robot.h>
-#include <mujoco/mujoco.h>
 
 #include <eigen3/Eigen/Eigen>
 #include <mutex>
