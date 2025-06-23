@@ -13,10 +13,10 @@ from urllib import parse
 import requests
 from dotenv import load_dotenv
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg
+import rcs_fr3
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
-import rcs
 
 _logger = logging.getLogger("desk")
 
@@ -38,13 +38,13 @@ def load_creds_fr3_desk() -> tuple[str, str]:
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
-        f = rcs.hw.FR3(ip)
-        config = rcs.hw.FR3Config()
+        f = rcs_fr3.hw.FR3(ip)
+        config = rcs_fr3.hw.FR3Config()
         config.speed_factor = 0.2
-        config.ik_solver = rcs.hw.IKSolver.franka_ik
+        config.ik_solver = rcs_fr3.hw.IKSolver.franka_ik
         f.set_parameters(config)
-        config_hand = rcs.hw.FHConfig()
-        g = rcs.hw.FrankaHand(ip, config_hand)
+        config_hand = rcs_fr3.hw.FHConfig()
+        g = rcs_fr3.hw.FrankaHand(ip, config_hand)
         if shut:
             g.shut()
         else:
@@ -54,8 +54,8 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
-        f = rcs.hw.FR3(ip)
-        config = rcs.hw.FR3Config()
+        f = rcs_fr3.hw.FR3(ip)
+        config = rcs_fr3.hw.FR3Config()
         f.set_parameters(config)
         print("Robot info:")
         print("Current cartesian position:")
@@ -64,7 +64,7 @@ def info(ip: str, username: str, password: str, include_hand: bool = False):
         print(f.get_joint_position())
         if include_hand:
             config_hand = default_fr3_hw_gripper_cfg()
-            g = rcs.hw.FrankaHand(ip, config_hand)
+            g = rcs_fr3.hw.FrankaHand(ip, config_hand)
             print("Gripper info:")
             print("Current normalized width:")
             print(g.get_normalized_width())
