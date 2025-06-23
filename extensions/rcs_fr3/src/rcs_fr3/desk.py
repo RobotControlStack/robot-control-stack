@@ -10,12 +10,13 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 from urllib import parse
 
-import rcs
 import requests
 from dotenv import load_dotenv
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
+
+import rcs
 
 _logger = logging.getLogger("desk")
 

@@ -1,5 +1,6 @@
-from rcs import common
 from rcs_fr3._core import hw
+
+from rcs import common
 
 
 def default_fr3_hw_robot_cfg(async_control: bool = False) -> hw.FR3Config:

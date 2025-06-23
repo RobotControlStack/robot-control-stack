@@ -3,7 +3,6 @@ from os import PathLike
 
 import gymnasium as gym
 import numpy as np
-import rcs
 import rcs.hand.tilburg_hand
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
@@ -21,6 +20,8 @@ from rcs.envs.sim import CollisionGuard
 from rcs.hand.tilburg_hand import TilburgHand
 from rcs_fr3.envs import FR3HW
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+
+import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

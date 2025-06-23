@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Type
 
 import gymnasium as gym
-import rcs
 from gymnasium.envs.registration import EnvCreator
 from lerobot.common.robots import make_robot_from_config
 from lerobot.common.robots.so101_follower.config_so101_follower import (
@@ -15,7 +14,6 @@ from lerobot.common.teleoperators.so101_leader.config_so101_leader import (
 )
 from lerobot.common.teleoperators.so101_leader.so101_leader import SO101Leader
 from lerobot.common.teleoperators.utils import make_teleoperator_from_config
-from rcs import common, sim
 from rcs.camera.hw import HardwareCameraSet
 from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
@@ -30,6 +28,9 @@ from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs.envs.sim import CollisionGuard, GripperWrapperSim, RobotSimWrapper, SimWrapper
 from rcs.sim import SimCameraConfig, SimGripperConfig, SimRobotConfig
 from rcs_so101.hw import SO101, S0101Gripper
+
+import rcs
+from rcs import common, sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

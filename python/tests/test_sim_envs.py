@@ -2,7 +2,6 @@ from typing import cast
 
 import numpy as np
 import pytest
-import rcs
 from rcs.envs.base import (
     ControlMode,
     GripperDictType,
@@ -17,6 +16,8 @@ from rcs.envs.utils import (
     default_sim_gripper_cfg,
     default_sim_robot_cfg,
 )
+
+import rcs
 
 
 @pytest.fixture()

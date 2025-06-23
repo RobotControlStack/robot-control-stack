@@ -4,13 +4,14 @@ from pathlib import Path
 
 import mujoco as mj
 import numpy as np
-import rcs
 from digit_interface import Digit
-from rcs import sim
 from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import CameraType, SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
 from rcs.hand.tilburg_hand import THConfig
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
