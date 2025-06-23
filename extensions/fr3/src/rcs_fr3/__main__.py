@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 # FR3 CLI
 fr3_app = typer.Typer(
-    name="rcs.fr3",
     help=(
         "Commands to control a Franka Research 3 in RCS. "
         "This includes tools that you would usually do with Franka's Desk interface."

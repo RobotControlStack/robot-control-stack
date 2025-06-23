@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 project(
-    rcs
+    rcs_fr3
     LANGUAGES C CXX
     VERSION 0.4.0
     DESCRIPTION "RCS Libfranka integration"
@@ -45,7 +45,7 @@ include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-find_package(MuJoCo REQUIRED)
+find_package(rcs REQUIRED)
 
 FetchContent_Declare(
     libfranka

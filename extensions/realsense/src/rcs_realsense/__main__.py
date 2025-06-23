@@ -5,7 +5,7 @@ import typer
 from rcs_realsense.camera import RealSenseCameraSet
 
 logger = logging.getLogger(__name__)
-realsense_app = typer.Typer(help="CLI tool for the intel realsense module of rcs.", name="rcs.realsense")
+realsense_app = typer.Typer(help="CLI tool for the intel realsense module of rcs.")
 
 
 @realsense_app.command()
