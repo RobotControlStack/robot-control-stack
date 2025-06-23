@@ -2,7 +2,7 @@ if (NOT rcs_FOUND)
     if (NOT Python3_FOUND)
         set(rcs_FOUND FALSE)
         if (rcs_FIND_REQUIRED)
-            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip 1.")
+            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip.")
         endif()
         return()
     endif()
@@ -12,7 +12,7 @@ if (NOT rcs_FOUND)
     if (NOT EXISTS ${rcs_INCLUDE_DIRS})
         set(rcs_FOUND FALSE)
         if (rcs_FIND_REQUIRED)
-            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip 2.")
+            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip.")
         endif()
         return()
     endif()
@@ -23,22 +23,22 @@ if (NOT rcs_FOUND)
     if (NOT EXISTS ${rcs_library_path})
         set(rcs_FOUND FALSE)
         if (rcs_FIND_REQUIRED)
-            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip 3.")
+            message(FATAL_ERROR "Could not find rcs. Please install rcs using pip.")
         endif()
         return()
     endif()
 
     # Extract version from the library filename
-    file(GLOB rcs_dist_info "${Python3_SITELIB}/rcs-*.dist-info")
-    cmake_path(GET rcs_dist_info FILENAME rcs_library_filename)
-    string(REPLACE "rcs-" "" rcs_VERSION "${rcs_library_filename}")
-    string(REPLACE ".dist-info" "" rcs_VERSION "${rcs_VERSION}")
+    # file(GLOB rcs_dist_info "${Python3_SITELIB}/rcs-*.dist-info")
+    # cmake_path(GET rcs_dist_info FILENAME rcs_library_filename)
+    # string(REPLACE "rcs-" "" rcs_VERSION "${rcs_library_filename}")
+    # string(REPLACE ".dist-info" "" rcs_VERSION "${rcs_VERSION}")
 
     # Create the imported target
-    add_library(rcs::rcs SHARED IMPORTED)
-    target_include_directories(rcs::rcs INTERFACE ${rcs_INCLUDE_DIRS})
+    add_library(rcs SHARED IMPORTED)
+    target_include_directories(rcs INTERFACE ${rcs_INCLUDE_DIRS})
     set_target_properties(
-        rcs::rcs
+        rcs
         PROPERTIES
         IMPORTED_LOCATION "${rcs_library_path}"
     )
