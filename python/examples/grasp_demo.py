@@ -4,8 +4,8 @@ from typing import Any, cast
 import gymnasium as gym
 import mujoco
 import numpy as np
-from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
 from rcs._core.common import Pose
+from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
 from rcs.envs.base import GripperWrapper, RobotEnv
 
 logger = logging.getLogger(__name__)
