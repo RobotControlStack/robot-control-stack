@@ -8,8 +8,8 @@ from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
+from rcs import sim
 
-import rcs
 
 
 class SimCameraSet(_SimCameraSet):
@@ -19,7 +19,7 @@ class SimCameraSet(_SimCameraSet):
 
     def __init__(
         self,
-        sim: rcs.sim.Sim,
+        sim: sim.Sim,
         cameras: dict[str, SimCameraConfig],
         physical_units: bool = False,
         render_on_demand: bool = True,
@@ -29,7 +29,7 @@ class SimCameraSet(_SimCameraSet):
         self.physical_units = physical_units
 
         super().__init__(sim, cameras, render_on_demand=render_on_demand)
-        self._sim: rcs.sim.Sim
+        self._sim: sim.Sim
 
     def get_latest_frames(self) -> FrameSet | None:
         """Should return the latest frame from the camera with the given name."""
