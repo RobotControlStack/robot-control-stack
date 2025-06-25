@@ -40,7 +40,7 @@ class RL : public IK {
   } rl_data;
 
  public:
-  RL(const std::string& urdf_path, size_t max_duration_ms = 300);
+  RL(const std::string& path, size_t max_duration_ms = 300);
   std::optional<VectorXd> ik(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
@@ -59,7 +59,7 @@ class Pin : public IK {
   pinocchio::Data data;
 
  public:
-  Pin(const std::string& urdf_path, const std::string& frame_id);
+  Pin(const std::string& path, const std::string& frame_id, bool urdf);
   std::optional<VectorXd> ik(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;

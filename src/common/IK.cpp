@@ -17,6 +17,7 @@
 #include <pinocchio/algorithm/joint-configuration.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/parsers/urdf.hpp>
+#include <pinocchio/parsers/mjcf.hpp>
 
 namespace rcs {
 namespace common {
@@ -59,8 +60,12 @@ Pose RL::forward(const VectorXd& q0, const Pose& tcp_offset) {
   return pose * tcp_offset.inverse();
 }
 
-Pin::Pin(const std::string& urdf_path, const std::string& frame_id) : model() {
-  pinocchio::urdf::buildModel(urdf_path, this->model);
+Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true) : model() {
+  if (urdf) {
+    pinocchio::urdf::buildModel(path, this->model);
+  } else {
+    pinocchio::mjcf::buildModel(path, this->model);
+  }
   this->data = pinocchio::Data(this->model);
   this->FRAME_ID = model.getFrameId(frame_id);
   if (FRAME_ID == -1) {
