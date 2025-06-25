@@ -42,9 +42,9 @@ PYBIND11_MODULE(_core, m) {
   // HARDWARE MODULE
   auto hw = m.def_submodule("hw", "rcs fr3 module");
 
-  py::object robot_state = (py::object) py::module_::import("rcs").attr("common").attr("RobotState");
-  py::class_<rcs::hw::FR3State>(hw, "FR3State", robot_state)
-      .def(py::init<>());
+  py::object robot_state =
+      (py::object)py::module_::import("rcs").attr("common").attr("RobotState");
+  py::class_<rcs::hw::FR3State>(hw, "FR3State", robot_state).def(py::init<>());
   py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
       .def(py::init<>())
       .def_readwrite("load_mass", &rcs::hw::FR3Load::load_mass)
@@ -56,7 +56,8 @@ PYBIND11_MODULE(_core, m) {
       .value("rcs_ik", rcs::hw::IKSolver::rcs_ik)
       .export_values();
 
-  py::object robot_config = (py::object) py::module_::import("rcs").attr("common").attr("RobotConfig");
+  py::object robot_config =
+      (py::object)py::module_::import("rcs").attr("common").attr("RobotConfig");
   py::class_<rcs::hw::FR3Config>(hw, "FR3Config", robot_config)
       .def(py::init<>())
       .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
@@ -68,7 +69,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset)
       .def_readwrite("async_control", &rcs::hw::FR3Config::async_control);
 
-  py::object gripper_config = (py::object) py::module_::import("rcs").attr("common").attr("GripperConfig");
+  py::object gripper_config =
+      (py::object)py::module_::import("rcs").attr("common").attr(
+          "GripperConfig");
   py::class_<rcs::hw::FHConfig>(hw, "FHConfig", gripper_config)
       .def(py::init<>())
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
@@ -78,7 +81,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer)
       .def_readwrite("async_control", &rcs::hw::FHConfig::async_control);
 
-  py::object gripper_state = (py::object) py::module_::import("rcs").attr("common").attr("GripperState");
+  py::object gripper_state =
+      (py::object)py::module_::import("rcs").attr("common").attr(
+          "GripperState");
   py::class_<rcs::hw::FHState>(hw, "FHState", gripper_state)
       .def(py::init<>())
       .def_readonly("width", &rcs::hw::FHState::width)
@@ -91,9 +96,9 @@ PYBIND11_MODULE(_core, m) {
                     &rcs::hw::FHState::max_unnormalized_width)
       .def_readonly("temperature", &rcs::hw::FHState::temperature);
 
-  py::object robot = (py::object) py::module_::import("rcs").attr("common").attr("Robot");
-  py::class_<rcs::hw::FR3, std::shared_ptr<rcs::hw::FR3>>(
-      hw, "FR3", robot)
+  py::object robot =
+      (py::object)py::module_::import("rcs").attr("common").attr("Robot");
+  py::class_<rcs::hw::FR3, std::shared_ptr<rcs::hw::FR3>>(hw, "FR3", robot)
       .def(py::init<const std::string &,
                     std::optional<std::shared_ptr<rcs::common::IK>>>(),
            py::arg("ip"), py::arg("ik") = std::nullopt)
@@ -122,9 +127,10 @@ PYBIND11_MODULE(_core, m) {
            &rcs::hw::FR3::set_cartesian_position_internal, py::arg("pose"),
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 
-  py::object gripper = (py::object) py::module_::import("rcs").attr("common").attr("Gripper");
-  py::class_<rcs::hw::FrankaHand,
-             std::shared_ptr<rcs::hw::FrankaHand>>(hw, "FrankaHand", gripper)
+  py::object gripper =
+      (py::object)py::module_::import("rcs").attr("common").attr("Gripper");
+  py::class_<rcs::hw::FrankaHand, std::shared_ptr<rcs::hw::FrankaHand>>(
+      hw, "FrankaHand", gripper)
       .def(py::init<const std::string &, const rcs::hw::FHConfig &>(),
            py::arg("ip"), py::arg("cfg"))
       .def("get_parameters", &rcs::hw::FrankaHand::get_parameters)
