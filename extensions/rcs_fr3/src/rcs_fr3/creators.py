@@ -47,12 +47,12 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         Args:
             ip (str): IP address of the robot.
             control_mode (ControlMode): Control mode for the robot.
-            robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a built-in scene
-            robot_cfg (rcs.hw.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
                 or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
-            gripper_cfg (rcs.hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
+            gripper_cfg (hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
