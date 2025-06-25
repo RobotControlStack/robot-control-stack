@@ -7,7 +7,7 @@ set_target_properties(franka PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs_fr3"
+    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 # in pip
