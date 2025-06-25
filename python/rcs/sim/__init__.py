@@ -1,4 +1,5 @@
 from rcs._core.sim import (
+    SimCameraConfig,
     SimGripper,
     SimGripperConfig,
     SimGripperState,
@@ -17,4 +18,5 @@ __all__ = [
     "SimGripperConfig",
     "SimGripperState",
     "gui_loop",
+    "SimCameraConfig",
 ]

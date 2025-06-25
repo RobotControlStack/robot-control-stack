@@ -46,5 +46,14 @@ std::optional<VectorXd> IK::ik(const Pose& pose, const VectorXd& q0,
   }
 }
 
+Pose IK::forward(const VectorXd& q0, const Pose& tcp_offset) {
+  // pose is assumed to be in the robots coordinate frame
+  this->rl.kin->setPosition(q0);
+  this->rl.kin->forwardPosition();
+  rcs::common::Pose pose = this->rl.kin->getOperationalPosition(0);
+  // apply the tcp offset
+  return pose * tcp_offset.inverse();
+}
+
 }  // namespace common
 }  // namespace rcs

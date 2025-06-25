@@ -54,13 +54,18 @@ classifiers = [
 #     "mypy==1.4.1",
 # ]
 
+[project.optional-dependencies]
+so101 = [
+  "lerobot @ git+https://github.com/huggingface/lerobot.git",
+]
+
 
 [tool.scikit-build]
 build.verbose = true
 build.targets = ["_core", "scenes"]
 logging.level = "INFO"
 build-dir = "build"
-wheel.packages = ["python/rcs"]
+wheel.packages = ["python/rcs", "python/rcs_so101"]
 install.components = ["python_package"]
 
 [tool.ruff]
