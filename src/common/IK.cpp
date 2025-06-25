@@ -32,7 +32,7 @@ RL::RL(const std::string& urdf_path, size_t max_duration_ms) : rl_data() {
   this->rl_data.ik->setDuration(std::chrono::milliseconds(max_duration_ms));
 }
 
-std::optional<VectorXd> IK::ik(const Pose& pose, const VectorXd& q0,
+std::optional<VectorXd> RL::ik(const Pose& pose, const VectorXd& q0,
                                const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
   this->rl_data.kin->setPosition(q0);
@@ -50,6 +50,14 @@ std::optional<VectorXd> IK::ik(const Pose& pose, const VectorXd& q0,
     return std::nullopt;
   }
 }
+Pose RL::forward(const VectorXd& q0, const Pose& tcp_offset) {
+  // pose is assumed to be in the robots coordinate frame
+  this->rl_data.kin->setPosition(q0);
+  this->rl_data.kin->forwardPosition();
+  rcs::common::Pose pose = this->rl_data.kin->getOperationalPosition(0);
+  // apply the tcp offset
+  return pose * tcp_offset.inverse();
+}
 
 Pin::Pin(const std::string& urdf_path, const std::string& frame_id) : model() {
   pinocchio::urdf::buildModel(urdf_path, this->model);
@@ -61,10 +69,10 @@ Pin::Pin(const std::string& urdf_path, const std::string& frame_id) : model() {
   }
 }
 
-std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
+std::optional<VectorXd> Pin::ik(const Pose& pose, const VectorXd& q0,
                                 const Pose& tcp_offset) {
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();
-  Vector7d q(q0);
+  VectorXd q(q0);
   const pinocchio::SE3 oMdes(new_pose.rotation_m(), new_pose.translation());
   pinocchio::Data::Matrix6x J(6, model.nv);
   J.setZero();
@@ -101,11 +109,13 @@ std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
   }
 }
 
-Pose IK::forward(const VectorXd& q0, const Pose& tcp_offset) {
+Pose Pin::forward(const VectorXd& q0, const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
-  this->rl.kin->setPosition(q0);
-  this->rl.kin->forwardPosition();
-  rcs::common::Pose pose = this->rl.kin->getOperationalPosition(0);
+  pinocchio::forwardKinematics(model, data, q0);
+  pinocchio::updateFramePlacements(model, data);
+  rcs::common::Pose pose(data.oMf[this->FRAME_ID].rotation(),
+                         data.oMf[this->FRAME_ID].translation());
+
   // apply the tcp offset
   return pose * tcp_offset.inverse();
 }

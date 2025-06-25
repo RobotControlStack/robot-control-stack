@@ -60,7 +60,7 @@ def main():
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
-            ik = rcs.common.IK(str(urdf_path))
+            ik = rcs.common.RL(str(urdf_path))
             cfg = sim.SimRobotConfig()
             cfg.add_id("0")
             cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
@@ -92,7 +92,7 @@ def main():
 
         else:
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
-            ik = rcs.common.IK(str(urdf_path))
+            ik = rcs.common.RL(str(urdf_path))
             robot = rcs.hw.FR3(ROBOT_IP, ik)
             robot_cfg = FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())

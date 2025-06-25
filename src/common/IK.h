@@ -26,6 +26,7 @@ class IK {
   virtual std::optional<VectorXd> ik(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) = 0;
+  virtual Pose forward(const VectorXd& q0, const Pose& tcp_offset) = 0;
 };
 
 class RL : public IK {
@@ -43,6 +44,7 @@ class RL : public IK {
   std::optional<VectorXd> ik(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
+  Pose forward(const VectorXd& q0, const Pose& tcp_offset) override;
 };
 
 class Pin : public IK {
@@ -58,9 +60,10 @@ class Pin : public IK {
 
  public:
   Pin(const std::string& urdf_path, const std::string& frame_id);
-  std::optional<Vector7d> ik(
-      const Pose& pose, const Vector7d& q0,
+  std::optional<VectorXd> ik(
+      const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
+  Pose forward(const VectorXd& q0, const Pose& tcp_offset) override;
 };
 }  // namespace common
 }  // namespace rcs

@@ -21,12 +21,9 @@ __all__ = [
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
-    "NRobotsWithGripper",
     "Pin",
     "Pose",
-    "RConfig",
     "RL",
-    "Pose",
     "RPY",
     "Robot",
     "RobotConfig",
@@ -67,7 +64,6 @@ class GripperState:
     pass
 
 class IK:
-    def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...
     def forward(self, q0: numpy.ndarray[M, numpy.dtype[numpy.float64]], tcp_offset: Pose = ...) -> Pose: ...
     def ik(
         self, pose: Pose, q0: numpy.ndarray[M, numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
@@ -131,9 +127,6 @@ class Pose:
     def total_angle(self) -> float: ...
     def translation(self) -> numpy.ndarray[typing.Literal[3], numpy.dtype[numpy.float64]]: ...
     def xyzrpy(self) -> numpy.ndarray[typing.Literal[6], numpy.dtype[numpy.float64]]: ...
-
-class RConfig:
-    pass
 
 class RL(IK):
     def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...

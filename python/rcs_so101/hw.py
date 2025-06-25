@@ -7,7 +7,7 @@ from rcs import common
 
 class SO101(common.Robot):
     def __init__(self, hf_robot: SO101Follower, urdf_path: str):
-        self.ik = common.IK(urdf_path=urdf_path)
+        self.ik = common.RL(urdf_path=urdf_path)
         self._hf_robot = hf_robot
         self._hf_robot.connect()
 

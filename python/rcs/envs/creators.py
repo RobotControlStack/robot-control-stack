@@ -84,7 +84,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         """
         if urdf_path is None:
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
-        ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
+        ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
         robot = rcs.hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
 
@@ -136,7 +136,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
     ) -> gym.Env:
 
         urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
-        ik = rcs.common.IK(str(urdf_path)) if urdf_path is not None else None
+        ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
         robots: dict[str, rcs.hw.FR3] = {}
         for ip in ips:
             robots[ip] = rcs.hw.FR3(ip, ik)
@@ -232,7 +232,7 @@ class FR3SimEnvCreator(EnvCreator):
             mjcf = rcs.scenes[mjcf]["mjb"]
         simulation = sim.Sim(mjcf)
 
-        ik = rcs.common.IK(str(urdf_path))
+        ik = rcs.common.RL(str(urdf_path))
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = RobotSimWrapper(env, simulation, sim_wrapper)

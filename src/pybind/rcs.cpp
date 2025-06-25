@@ -239,10 +239,6 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const std::string &, const std::string &>(),
            py::arg("urdf_path"), py::arg("frame_id") = "fr3_link8");
 
-  py::class_<rcs::common::RConfig>(common, "RConfig");
-  py::class_<rcs::common::RState>(common, "RState");
-  py::class_<rcs::common::GConfig>(common, "GConfig");
-  py::class_<rcs::common::GState>(common, "GState");
   py::enum_<rcs::common::RobotType>(common, "RobotType")
       .value("FR3", rcs::common::RobotType::FR3)
       .value("UR5e", rcs::common::RobotType::UR5e)
