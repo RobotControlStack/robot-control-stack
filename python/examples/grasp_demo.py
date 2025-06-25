@@ -4,8 +4,8 @@ from typing import Any, cast
 import gymnasium as gym
 import mujoco
 import numpy as np
-from rcsss._core.common import Pose
-from rcsss.envs.base import FR3Env, GripperWrapper
+from rcs._core.common import Pose
+from rcs.envs.base import GripperWrapper, RobotEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 class PickUpDemo:
     def __init__(self, env: gym.Env):
         self.env = env
-        self.unwrapped: FR3Env = cast(FR3Env, self.env.unwrapped)
+        self.unwrapped: RobotEnv = cast(RobotEnv, self.env.unwrapped)
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
 
     def _action(self, pose: Pose, gripper: float) -> dict[str, Any]:
@@ -32,6 +32,7 @@ class PickUpDemo:
         for i in range(num_waypoints + 1):
             t = i / (num_waypoints + 1)
             waypoints.append(start_pose.interpolate(end_pose, t))
+        waypoints.append(end_pose)
         return waypoints
 
     def step(self, action: dict) -> dict:
@@ -81,10 +82,17 @@ class PickUpDemo:
 
 
 def main():
-    env = gym.make("rcs/SimplePickUpSim-v0", render_mode="human", delta_actions=True)
+    # compatilbe with rcs/SimplePickUpSimDigitHand-v0 and rcs/SimplePickUpSim-v0
+    env = gym.make(
+        "rcs/SimplePickUpSimDigitHand-v0",
+        render_mode="human",
+        delta_actions=True,
+    )
     env.reset()
+    print(env.unwrapped.robot.get_cartesian_position().translation())  # type: ignore
+    # assert False
     controller = PickUpDemo(env)
-    controller.pickup("yellow_box_geom")
+    controller.pickup("box_geom")
 
 
 if __name__ == "__main__":

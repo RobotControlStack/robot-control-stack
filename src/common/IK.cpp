@@ -32,7 +32,7 @@ RL::RL(const std::string& urdf_path, size_t max_duration_ms) : rl_data() {
   this->rl_data.ik->setDuration(std::chrono::milliseconds(max_duration_ms));
 }
 
-std::optional<Vector7d> RL::ik(const Pose& pose, const Vector7d& q0,
+std::optional<VectorXd> IK::ik(const Pose& pose, const VectorXd& q0,
                                const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
   this->rl_data.kin->setPosition(q0);
@@ -99,6 +99,15 @@ std::optional<Vector7d> Pin::ik(const Pose& pose, const Vector7d& q0,
   } else {
     return std::nullopt;
   }
+}
+
+Pose IK::forward(const VectorXd& q0, const Pose& tcp_offset) {
+  // pose is assumed to be in the robots coordinate frame
+  this->rl.kin->setPosition(q0);
+  this->rl.kin->forwardPosition();
+  rcs::common::Pose pose = this->rl.kin->getOperationalPosition(0);
+  // apply the tcp offset
+  return pose * tcp_offset.inverse();
 }
 
 }  // namespace common

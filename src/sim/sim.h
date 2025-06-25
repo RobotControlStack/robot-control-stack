@@ -6,7 +6,6 @@
 #include <optional>
 #include <string>
 
-#include "GLFW/glfw3.h"
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "gui.h"
 #include "mujoco/mujoco.h"
@@ -24,7 +23,7 @@ class Renderer {
 
  private:
   mjModel* m;
-  std::unordered_map<std::string, std::pair<GLFWwindow*, mjrContext*>> ctxs;
+  std::unordered_map<std::string, mjrContext*> ctxs;
 };
 
 struct Config {
@@ -98,8 +97,7 @@ class Sim {
       std::function<void(const std::string& id, mjrContext&, mjvScene&,
                          mjvOption&)>
           cb,
-      const std::string& id, mjtNum seconds_between_calls, size_t width,
-      size_t height);
+      const std::string& id, int frame_rate, size_t width, size_t height);
   void start_gui_server(const std::string& id);
   void stop_gui_server();
 };

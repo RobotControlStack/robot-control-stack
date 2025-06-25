@@ -33,7 +33,6 @@ static size_t calculate_shm_size(mjModel const* m, mjData const* d) {
       total_required_size * 0.1;  // 10% overhead estimation
   return total_required_size + estimated_overhead;
 }
-void open_gui_window(std::string& id);
 
 struct shm {
   struct {
@@ -64,6 +63,20 @@ class GuiServer {
   struct shm shm;
   mjModel* m;
   mjData* d;
+};
+
+class GuiClient {
+ public:
+  GuiClient(const std::string& id);
+  std::string get_model_bytes() const;
+  void set_model_and_data(mjModel* m, mjData* d);
+  void sync();
+
+ private:
+  mjModel* m;
+  mjData* d;
+  const std::string& id;
+  struct shm shm;
 };
 
 }  // namespace sim

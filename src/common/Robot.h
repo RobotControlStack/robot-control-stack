@@ -12,18 +12,83 @@
 namespace rcs {
 namespace common {
 
-struct RConfig {
-  virtual ~RConfig(){};
-};
-struct RState {
-  virtual ~RState(){};
+struct RobotMetaConfig {
+  VectorXd q_home;
+  int dof;
+  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits;
 };
 
-struct GConfig {
-  virtual ~GConfig(){};
+enum RobotType { FR3 = 0, UR5e, SO101 };
+enum RobotPlatform { SIMULATION = 0, HARDWARE };
+
+static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
+    {{// -------------- FR3 --------------
+      {FR3,
+       RobotMetaConfig{
+           // q_home:
+           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+            M_PI_4)
+               .finished(),
+           // dof:
+           7,
+           // joint_limits:
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+                // low 7‐tuple
+                -2.3093,
+            -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
+            // high 7‐tuple
+            2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+               .finished()}},
+
+      // -------------- UR5e --------------
+      {UR5e,
+       RobotMetaConfig{
+           // q_home (6‐vector):
+           (VectorXd(6) << -0.4488354, -2.02711196, 1.64630026, -1.18999615,
+            -1.57079762, -2.01963249)
+               .finished(),
+           // dof:
+           6,
+           // joint_limits (2×6):
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 6) <<
+                // low 6‐tuple
+                -2 * M_PI,
+            -2 * M_PI, -1 * M_PI, -2 * M_PI, -2 * M_PI, -2 * M_PI,
+            // high 6‐tuple
+            2 * M_PI, 2 * M_PI, 1 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI)
+               .finished()}},
+      // -------------- SO101 --------------
+      {SO101,
+       RobotMetaConfig{
+           // q_home (5‐vector):
+           (VectorXd(5) << -9.40612320177057, -99.66130397967824,
+            99.9124726477024, 69.96996996996998, -9.095744680851055)
+               .finished(),
+           // dof:
+           5,
+           // joint_limits (2×5):
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 5) <<
+                // low 5‐tuple
+                -100.0,
+            -100.0, -100.0, -100.0, -100.0,
+            // high 5‐tuple
+            100.0, 100.0, 100.0, 100.0, 100.0)
+               .finished()}}}};
+
+struct RobotConfig {
+  RobotType robot_type = RobotType::FR3;
+  RobotPlatform robot_platform = RobotPlatform::SIMULATION;
+  virtual ~RobotConfig(){};
 };
-struct GState {
-  virtual ~GState(){};
+struct RobotState {
+  virtual ~RobotState(){};
+};
+
+struct GripperConfig {
+  virtual ~GripperConfig(){};
+};
+struct GripperState {
+  virtual ~GripperState(){};
 };
 
 class Robot {
@@ -36,15 +101,15 @@ class Robot {
   // like
   // bool set_parameters(const RConfig& cfg);
 
-  virtual RConfig* get_parameters() = 0;
+  virtual RobotConfig* get_parameters() = 0;
 
-  virtual RState* get_state() = 0;
+  virtual RobotState* get_state() = 0;
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual void set_joint_position(const Vector7d& q) = 0;
+  virtual void set_joint_position(const VectorXd& q) = 0;
 
-  virtual Vector7d get_joint_position() = 0;
+  virtual VectorXd get_joint_position() = 0;
 
   virtual void move_home() = 0;
 
@@ -71,8 +136,8 @@ class Gripper {
   // a deduced config type
   // bool set_parameters(const GConfig& cfg);
 
-  virtual GConfig* get_parameters() = 0;
-  virtual GState* get_state() = 0;
+  virtual GripperConfig* get_parameters() = 0;
+  virtual GripperState* get_state() = 0;
 
   // set width of the gripper, 0 is closed, 1 is open
   virtual void set_normalized_width(double width, double force = 0) = 0;
@@ -91,18 +156,6 @@ class Gripper {
 
   // puts the gripper to max position
   virtual void reset() = 0;
-};
-
-class RobotWithGripper {
- public:
-  std::shared_ptr<Robot> robot;
-  std::optional<std::shared_ptr<Gripper>> gripper;
-
-  RobotWithGripper(std::shared_ptr<Robot> robot,
-                   std::optional<std::shared_ptr<Gripper>> gripper)
-      : robot(robot), gripper(gripper) {}
-
-  ~RobotWithGripper() {}
 };
 
 }  // namespace common

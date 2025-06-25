@@ -15,23 +15,23 @@ cpplint:
 gcccompile: 
 	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
-	cmake --build build
+	cmake --build build --target _core franka
 
 clangcompile: 
 	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
-	cmake --build build
+	cmake --build build --target _core franka
 
 # Auto generation of CPP binding stub files
 stubgen:
-	pybind11-stubgen -o python --numpy-array-use-type-var rcsss
+	pybind11-stubgen -o python --numpy-array-use-type-var rcs
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
-	find ./python -not -path "./python/rcsss/_core/*" -name '*.pyi' -delete
-	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
-	find ./python/rcsss/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
-	ruff check --fix python/rcsss/_core
-	isort python/rcsss/_core
-	black python/rcsss/_core
+	find ./python -not -path "./python/rcs/_core/*" -name '*.pyi' -delete
+	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
+	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
+	ruff check --fix python/rcs/_core
+	isort python/rcs/_core
+	black python/rcs/_core
 
 # Python
 pycheckformat:

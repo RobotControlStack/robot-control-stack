@@ -23,8 +23,8 @@ namespace common {
 class IK {
  public:
   virtual ~IK(){};
-  virtual std::optional<Vector7d> ik(
-      const Pose& pose, const Vector7d& q0,
+  virtual std::optional<VectorXd> ik(
+      const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) = 0;
 };
 
@@ -40,8 +40,8 @@ class RL : public IK {
 
  public:
   RL(const std::string& urdf_path, size_t max_duration_ms = 300);
-  std::optional<Vector7d> ik(
-      const Pose& pose, const Vector7d& q0,
+  std::optional<VectorXd> ik(
+      const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
 };
 

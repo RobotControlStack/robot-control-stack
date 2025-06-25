@@ -1,23 +1,22 @@
 import logging
 
-from rcsss.control.fr3_desk import FCI, Desk, DummyResourceManager
-from rcsss.control.utils import load_creds_fr3_desk
-from rcsss.envs.base import ControlMode, RelativeTo, RobotInstance
-from rcsss.envs.factories import (
+from rcs._core.common import RobotPlatform
+from rcs.control.fr3_desk import FCI, ContextManager, Desk, load_creds_fr3_desk
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.creators import FR3SimEnvCreator, RCSFR3EnvCreator
+from rcs.envs.utils import (
     default_fr3_hw_gripper_cfg,
     default_fr3_hw_robot_cfg,
     default_fr3_sim_gripper_cfg,
     default_fr3_sim_robot_cfg,
     default_mujoco_cameraset_cfg,
-    fr3_hw_env,
-    fr3_sim_env,
 )
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ROBOT_IP = "192.168.101.1"
-ROBOT_INSTANCE = RobotInstance.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 
 """
@@ -27,35 +26,35 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcsss fr3 unlock <ip>
+python -m rcs fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcsss fr3 guiding-mode <ip>
+python -m rcs fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcsss fr3 lock <ip>
+python -m rcs fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcsss fr3 shutdown <ip>
+python -m rcs fr3 shutdown <ip>
 """
 
 
 def main():
-    resource_manger: FCI | DummyResourceManager
-    if ROBOT_INSTANCE == RobotInstance.HARDWARE:
+    context_manger: ContextManager
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = DummyResourceManager()
+        context_manger = ContextManager()
 
-    with resource_manger:
-        if ROBOT_INSTANCE == RobotInstance.HARDWARE:
-            env_rel = fr3_hw_env(
+    with context_manger:
+        if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+            env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
-                control_mode=ControlMode.CARTESIAN_TQuart,
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
                 collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
@@ -63,12 +62,12 @@ def main():
                 relative_to=RelativeTo.LAST_STEP,
             )
         else:
-            env_rel = fr3_sim_env(
-                control_mode=ControlMode.CARTESIAN_TQuart,
+            env_rel = FR3SimEnvCreator()(
+                control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_sim_robot_cfg(),
                 collision_guard=False,
                 gripper_cfg=default_fr3_sim_gripper_cfg(),
-                camera_set_cfg=default_mujoco_cameraset_cfg(),
+                cameras=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -80,14 +79,14 @@ def main():
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquart": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquart": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
