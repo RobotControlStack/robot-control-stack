@@ -18,7 +18,7 @@ if (NOT pinocchio_FOUND)
     endif()
 
     # Check if the library file exists
-    cmake_path(APPEND Python3_SITELIB cmeel.prefix lib libpinocchio.so OUTPUT_VARIABLE pinocchio_library_path)
+    cmake_path(APPEND Python3_SITELIB cmeel.prefix lib libpinocchio_default.so OUTPUT_VARIABLE pinocchio_library_path)
     if (NOT EXISTS ${pinocchio_library_path})
         set(pinocchio_FOUND FALSE)
         if (pinocchio_FIND_REQUIRED)
