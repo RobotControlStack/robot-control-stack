@@ -32,8 +32,8 @@ stubgen:
 	pybind11-stubgen -o python --numpy-array-use-type-var rcs
 	find ./python -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
 	find ./python -not -path "./python/rcs/_core/*" -name '*.pyi' -delete
-	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
-	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
+	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/tuple\[typing\.Literal[\1]\]/g'
+	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/tuple\[\1\]/g'
 	ruff check --fix python/rcs/_core
 	pybind11-stubgen -o extensions --numpy-array-use-type-var rcs_fr3
 	find ./extensions/rcs_fr3 -not -path "./extensions/rcs_fr3/_core/*" -name '*.pyi' -delete

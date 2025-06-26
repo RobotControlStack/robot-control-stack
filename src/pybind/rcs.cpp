@@ -221,12 +221,21 @@ PYBIND11_MODULE(_core, m) {
           }));
 
   py::class_<rcs::common::IK, std::shared_ptr<rcs::common::IK>>(common, "IK")
-      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
-           py::arg("max_duration_ms") = 300)
       .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity())
       .def("forward", &rcs::common::IK::forward, py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
+
+  py::class_<rcs::common::RL, rcs::common::IK,
+             std::shared_ptr<rcs::common::RL>>(common, "RL")
+      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
+           py::arg("max_duration_ms") = 300);
+
+  py::class_<rcs::common::Pin, rcs::common::IK,
+             std::shared_ptr<rcs::common::Pin>>(common, "Pin")
+      .def(py::init<const std::string &, const std::string &, bool>(),
+           py::arg("path"), py::arg("frame_id") = "fr3_link8",
+           py::arg("urdf") = true);
 
   py::enum_<rcs::common::RobotType>(common, "RobotType")
       .value("FR3", rcs::common::RobotType::FR3)

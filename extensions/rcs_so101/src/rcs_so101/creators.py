@@ -119,7 +119,7 @@ class SO101SimEnvCreator(EnvCreator):
         """
         simulation = sim.Sim(mjcf)
 
-        ik = rcs.common.IK(str(urdf_path))
+        ik = rcs.common.RL(str(urdf_path))
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
         env = RobotSimWrapper(env, simulation, sim_wrapper)

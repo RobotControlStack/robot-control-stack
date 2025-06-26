@@ -6,5 +6,5 @@ target_link_libraries(
   PRIVATE math
 )
 
-add_executable(test_hw main.cpp)
-target_link_libraries(test_hw PRIVATE hw)
+# add_executable(test_hw main.cpp)
+# target_link_libraries(test_hw PRIVATE hw)

@@ -17,7 +17,7 @@ const string urdf_path = "models/urdf/fr3.urdf";
 
 int main() {
   try {
-    auto ik = make_shared<rcs::common::IK>(urdf_path);
+    auto ik = make_shared<rcs::common::RL>(urdf_path);
     rcs::hw::FR3 robot(ip, ik);
     robot.automatic_error_recovery();
     std::cout << "WARNING: This example will move the robot! "
