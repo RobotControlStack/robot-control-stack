@@ -18,7 +18,7 @@ class SO101(common.Robot):
     def get_ik(self) -> common.IK | None:
         return self.ik
 
-    def get_joint_position(self) -> np.ndarray[typing.Literal[5], np.dtype[np.float64]]:  # type: ignore
+    def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
         obs = self._hf_robot.get_observation()
         return np.array(
             [
@@ -43,7 +43,7 @@ class SO101(common.Robot):
 
     def move_home(self) -> None:
         home = typing.cast(
-            np.ndarray[typing.Literal[5], np.dtype[np.float64]],
+            np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
             common.robots_meta_config(common.RobotType.SO101).q_home,
         )
         self.set_joint_position(home)
@@ -56,7 +56,7 @@ class SO101(common.Robot):
         if joints is not None:
             self.set_joint_position(joints)
 
-    def set_joint_position(self, q: np.ndarray[typing.Literal[5], np.dtype[np.float64]]) -> None:  # type: ignore
+    def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._hf_robot.send_action(
             {
                 "shoulder_pan.pos": q[0],
