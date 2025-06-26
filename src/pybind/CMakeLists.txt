@@ -3,7 +3,7 @@ target_link_libraries(_core PRIVATE hw sim common)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "$ORIGIN;$ORIGIN/../mujoco"
+    INSTALL_RPATH "$ORIGIN;$ORIGIN/../mujoco;$ORIGIN/../cmeel.prefix/lib"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 set_target_properties(franka PROPERTIES

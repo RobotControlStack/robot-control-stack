@@ -204,7 +204,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
-        ik = rcs.common.IK(urdf, max_duration_ms=300)
+        ik = rcs.common.RL(urdf, max_duration_ms=300)
         cfg = default_fr3_sim_robot_cfg(mjmld, id)
         cfg.realtime = False
         if tcp_offset is not None:

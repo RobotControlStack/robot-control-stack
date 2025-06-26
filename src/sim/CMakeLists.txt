@@ -5,4 +5,4 @@ target_sources(sim
 target_link_libraries(sim PUBLIC common MuJoCo::MuJoCo)
 
 #add_executable(test_sim test.cpp sim.cpp)
-#target_link_libraries(test_sim PRIVATE sim MuJoCo::MuJoCo common egl)
+#target_link_libraries(test_sim PRIVATE sim MuJoCo::MuJoCo common egl pinocchio::pinocchio)

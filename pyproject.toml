@@ -24,7 +24,7 @@ dependencies = ["websockets>=11.0",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.2.6",
     # NOTE: Same for pinocchio (pin)
-    "pin==2.7.0",
+    "pin==3.7.0",
     "tilburg-hand",
     "digit-interface",
 ]

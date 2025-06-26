@@ -11,5 +11,5 @@ scikit-build-core>=0.3.3
 poetry-core>=2.1.3
 pybind11
 mujoco==3.2.6
-pin==2.7.0
+pin==3.7.0
 wheel
