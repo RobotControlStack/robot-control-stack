@@ -237,8 +237,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::Pin, rcs::common::IK,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
       .def(py::init<const std::string &, const std::string &, bool>(),
-           py::arg("path"), py::arg("frame_id") = "fr3_link8", py::arg("urdf") =
-               true);
+           py::arg("path"), py::arg("frame_id") = "fr3_link8",
+           py::arg("urdf") = true);
 
   py::enum_<rcs::common::RobotType>(common, "RobotType")
       .value("FR3", rcs::common::RobotType::FR3)
