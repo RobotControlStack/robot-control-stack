@@ -27,6 +27,16 @@ if (NOT pinocchio_FOUND)
         return()
     endif()
 
+    # Check if the library file exists
+    cmake_path(APPEND Python3_SITELIB cmeel.prefix lib libpinocchio_parsers.so OUTPUT_VARIABLE pinocchio_parsers_path)
+    if (NOT EXISTS ${pinocchio_parsers_path})
+        set(pinocchio_FOUND FALSE)
+        if (pinocchio_FIND_REQUIRED)
+            message(FATAL_ERROR "Could not find pinocchio parsers path. Please install pinocchio using pip.")
+        endif()
+        return()
+    endif()
+
     # Extract version from the library filename
     file(GLOB pinocchio_dist_info "${Python3_SITELIB}/pin-*.dist-info")
     cmake_path(GET pinocchio_dist_info FILENAME pinocchio_library_filename)
@@ -38,8 +48,17 @@ if (NOT pinocchio_FOUND)
     target_include_directories(pinocchio::pinocchio INTERFACE ${pinocchio_INCLUDE_DIRS})
     set_target_properties(
         pinocchio::pinocchio
-        PROPERTIES
+	PROPERTIES
         IMPORTED_LOCATION "${pinocchio_library_path}"
     )
+    
+    add_library(pinocchio_parsers SHARED IMPORTED)
+    target_include_directories(pinocchio_parsers INTERFACE ${pinocchio_INCLUDE_DIRS})
+    set_target_properties(
+        pinocchio_parsers
+	PROPERTIES
+        IMPORTED_LOCATION "${pinocchio_parsers_path}"
+    )
     set(pinocchio_FOUND TRUE)
+
 endif()
