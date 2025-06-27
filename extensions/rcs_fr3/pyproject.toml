@@ -8,7 +8,7 @@ version = "0.4.0"
 description="RCS libfranka integration"
 dependencies = [
     # NOTE: when changing the pin version, also change it in requirements_dev.txt
-    "pin==2.7.0",
+    "pin==3.7.0",
 ]
 readme = "../../README.md"
 maintainers = [

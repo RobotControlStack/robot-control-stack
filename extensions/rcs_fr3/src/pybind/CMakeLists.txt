@@ -1,5 +1,5 @@
 pybind11_add_module(_core MODULE rcs.cpp)
-target_link_libraries(_core PRIVATE hw rcs mdl)
+target_link_libraries(_core PRIVATE hw rcs mdl pinocchio::pinocchio pinocchio_parsers)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(franka PROPERTIES
@@ -7,7 +7,7 @@ set_target_properties(franka PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs"
+    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs;$ORIGIN/../cmeel.prefix/lib"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 # in pip
