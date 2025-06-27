@@ -38,8 +38,8 @@ stubgen:
 	pybind11-stubgen -o extensions --numpy-array-use-type-var rcs_fr3
 	find ./extensions/rcs_fr3 -not -path "./extensions/rcs_fr3/_core/*" -name '*.pyi' -delete
 	find ./extensions/rcs_fr3 -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
-	find ./extensions/rcs_fr3 -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/typing\.Literal[\1]/g'
-	find ./extensions/rcs_fr3 -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/\1/g'
+	find ./extensions/rcs_fr3 -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/tuple\[typing\.Literal[\1]\]/g'
+	find ./extensions/rcs_fr3 -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/tuple\[\1\]/g'
 	rm -r extensions/rcs_fr3/src/rcs_fr3/_core
 	mv extensions/rcs_fr3/_core/ extensions/rcs_fr3/src/rcs_fr3/
 	ruff check --fix extensions/rcs_fr3/src/rcs_fr3/_core

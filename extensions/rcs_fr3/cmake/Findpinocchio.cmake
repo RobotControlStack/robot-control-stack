@@ -46,18 +46,22 @@ if (NOT pinocchio_FOUND)
     # Create the imported target
     add_library(pinocchio::pinocchio SHARED IMPORTED)
     target_include_directories(pinocchio::pinocchio INTERFACE ${pinocchio_INCLUDE_DIRS})
-    set_target_properties(
-        pinocchio::pinocchio
-	    PROPERTIES
+    set_target_properties(pinocchio::pinocchio
+        PROPERTIES
         IMPORTED_LOCATION "${pinocchio_library_path}"
     )
-    
-    add_library(pinocchio_parsers SHARED IMPORTED)
-    target_include_directories(pinocchio_parsers INTERFACE ${pinocchio_INCLUDE_DIRS})
-    set_target_properties(
-        pinocchio_parsers
+
+    add_library(pinocchio::parsers SHARED IMPORTED)
+    target_include_directories(pinocchio::parsers INTERFACE ${pinocchio_INCLUDE_DIRS})
+    set_target_properties(pinocchio::parsers
         PROPERTIES
         IMPORTED_LOCATION "${pinocchio_parsers_path}"
+    )
+
+    add_library(pinocchio::all INTERFACE IMPORTED)
+    set_target_properties(pinocchio::all
+        PROPERTIES
+        INTERFACE_LINK_LIBRARIES "pinocchio::pinocchio;pinocchio::parsers"
     )
     set(pinocchio_FOUND TRUE)
 
