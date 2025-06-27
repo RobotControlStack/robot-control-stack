@@ -48,20 +48,20 @@ stubgen:
 
 # Python
 pycheckformat:
-	isort --check-only ${PYSRC} extensions
-	black --check ${PYSRC} extensions
+	isort --check-only ${PYSRC} extensions examples
+	black --check ${PYSRC} extensions examples
 
 pyformat:
-	isort ${PYSRC} extensions
-	black ${PYSRC} extensions
+	isort ${PYSRC} extensions examples
+	black ${PYSRC} extensions examples
 
 pylint: ruff mypy
 
 ruff:
-	ruff check ${PYSRC} extensions
+	ruff check ${PYSRC} extensions examples
 
 mypy:
-	mypy ${PYSRC} extensions --install-types --non-interactive --no-namespace-packages --exclude 'build'
+	mypy ${PYSRC} extensions examples --install-types --non-interactive --no-namespace-packages --exclude 'build'
 
 pytest:
 	pytest -vv

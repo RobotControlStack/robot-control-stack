@@ -26,7 +26,7 @@ Import the library in python:
 ```python
 import rcs
 ```
-Checkout the python examples that we provide in [python/examples](python/examples):
+Checkout the python examples that we provide in [examples](examples):
 - [fr3.py](python/examples/fr3.py) shows direct robot control with RCS's python bindings
 - [env_joint_control.py](python/examples/env_joint_control.py) and [env_cartesian_control.py](python/examples/env_cartesian_control.py) demonstrates RCS's high level [gymnasium](https://gymnasium.farama.org/) interface both for joint- and end effector space control
 All of these examples work both in the MuJoCo simulation as well as on your hardware FR3.
