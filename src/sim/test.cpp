@@ -8,7 +8,7 @@
 #include <memory>
 #include <thread>
 
-#include "common/Pose.h"
+#include "rcs/Pose.h"
 #include "sim.h"
 #include "sim/SimRobot.h"
 

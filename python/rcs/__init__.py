@@ -4,9 +4,10 @@ import pathlib
 import site
 
 from gymnasium import register
-from rcs import camera, control, envs, hand, sim
-from rcs._core import __version__, common, hw
+from rcs._core import __version__, common
 from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
+
+from rcs import camera, envs, hand, sim
 
 # available mujoco scenes
 scenes: dict[str, dict[str, pathlib.Path]] = {
@@ -18,7 +19,7 @@ scenes: dict[str, dict[str, pathlib.Path]] = {
 }
 
 # make submodules available
-__all__ = ["__doc__", "__version__", "common", "hw", "sim", "camera", "scenes", "control", "envs", "hand"]
+__all__ = ["__doc__", "__version__", "common", "sim", "camera", "scenes", "envs", "hand"]
 
 # register gymnasium environments
 register(
@@ -30,5 +31,5 @@ register(
 # cf. https://pybind11.readthedocs.io/en/stable/advanced/classes.html#deepcopy-support
 # register(
 #    id="rcs/FR3SimEnv-v0",
-#    entry_point=FR3SimEnvCreator(),
+#    entry_point=SimEnvCreator(),
 # )

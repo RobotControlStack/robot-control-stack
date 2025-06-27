@@ -1,10 +1,10 @@
-#include <common/utils.h>
 #include <mujoco/mjrender.h>
 #include <mujoco/mujoco.h>
 
 #include <iostream>
 #include <stdexcept>
 
+#include "rcs/utils.h"
 #include "sim/sim.h"
 namespace rcs {
 namespace sim {

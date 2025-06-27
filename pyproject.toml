@@ -15,12 +15,10 @@ dependencies = ["websockets>=11.0",
     "etils[epath]>=1.7.0",
     "glfw~=2.7",
     "pyopengl",
-    "pyrealsense2~=2.55.1",
     "pynput~=1.7.7",
     "pillow~=10.3",
     "python-dotenv==1.0.1",
     "opencv-python~=4.10.0.84",
-    "h5py~=3.13.0",
     # NOTE: when changing the mujoco version, also change it in requirements_dev.txt
     "mujoco==3.2.6",
     # NOTE: Same for pinocchio (pin)
@@ -54,18 +52,13 @@ classifiers = [
 #     "mypy==1.4.1",
 # ]
 
-[project.optional-dependencies]
-so101 = [
-  "lerobot @ git+https://github.com/huggingface/lerobot.git",
-]
-
 
 [tool.scikit-build]
 build.verbose = true
-build.targets = ["_core", "scenes"]
+build.targets = ["_core", "scenes", "rcs"]
 logging.level = "INFO"
 build-dir = "build"
-wheel.packages = ["python/rcs", "python/rcs_so101"]
+wheel.packages = ["python/rcs"]
 install.components = ["python_package"]
 
 [tool.ruff]
