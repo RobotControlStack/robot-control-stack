@@ -50,10 +50,10 @@ class PickUpDemo:
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
-        for i in range(1, len(waypoints)):
+        for i in range(len(waypoints)):
             # calculate delta action
-            delta_action = waypoints[i] * waypoints[i - 1].inverse()
-            obs = self.step(self._action(delta_action, gripper))
+            # delta_action = waypoints[i] * waypoints[i - 1].inverse()
+            obs = self.step(self._action(waypoints[i], gripper))
         return obs
 
     def approach(self, geom_name: str):
@@ -82,15 +82,13 @@ class PickUpDemo:
 
 
 def main():
-    # compatilbe with rcs/SimplePickUpSimDigitHand-v0 and rcs/SimplePickUpSim-v0
     env = gym.make(
-        "rcs/SimplePickUpSimDigitHand-v0",
+        "rcs/FR3SimplePickUpSim-v0",
         render_mode="human",
-        delta_actions=True,
+        delta_actions=False,
     )
     env.reset()
     print(env.unwrapped.robot.get_cartesian_position().translation())  # type: ignore
-    # assert False
     controller = PickUpDemo(env)
     controller.pickup("box_geom")
 

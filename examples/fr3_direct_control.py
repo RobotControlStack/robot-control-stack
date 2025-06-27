@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs._core.hw import FR3Config, IKSolver
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs_fr3._core import hw
@@ -32,19 +31,19 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcs.fr3 unlock <ip>
+python -m rcs_fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcs.fr3 guiding-mode <ip>
+python -m rcs_fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcs.fr3 lock <ip>
+python -m rcs_fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcs.fr3 shutdown <ip>
+python -m rcs_fr3 shutdown <ip>
 """
 
 
@@ -74,7 +73,7 @@ def main():
 
             # add camera to have a rendering gui
             cameras = {
-                "default_free": SimCameraConfig(
+                "default_free": sim.SimCameraConfig(
                     identifier="",
                     type=CameraType.default_free,
                     resolution_width=1280,
@@ -96,9 +95,9 @@ def main():
             urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
             ik = rcs.common.RL(str(urdf_path))
             robot = hw.FR3(ROBOT_IP, ik)
-            robot_cfg = FR3Config()
+            robot_cfg = hw.FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            robot_cfg.ik_solver = IKSolver.rcs_ik
+            robot_cfg.ik_solver = hw.IKSolver.rcs_ik
             robot.set_parameters(robot_cfg)  # type: ignore
 
             gripper_cfg_hw = hw.FHConfig()

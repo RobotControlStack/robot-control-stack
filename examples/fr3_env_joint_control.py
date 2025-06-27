@@ -27,19 +27,19 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcs.fr3 unlock <ip>
+python -m rcs_fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcs.fr3 guiding-mode <ip>
+python -m rcs_fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcs.fr3 lock <ip>
+python -m rcs_fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcs.fr3 shutdown <ip>
+python -m rcs_fr3 shutdown <ip>
 """
 
 
@@ -57,7 +57,7 @@ def main():
                 ip=ROBOT_IP,
                 control_mode=ControlMode.JOINTS,
                 robot_cfg=default_fr3_hw_robot_cfg(),
-                collision_guard="lab",
+                collision_guard=None,
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=np.deg2rad(5),
                 relative_to=RelativeTo.LAST_STEP,
@@ -76,14 +76,13 @@ def main():
 
         for _ in range(10):
             obs, info = env_rel.reset()
-            for _ in range(3):
+            for _ in range(10):
                 # sample random relative action and execute it
                 act = env_rel.action_space.sample()
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-                logger.info(act["gripper"], obs["gripper"])
 
 
 if __name__ == "__main__":

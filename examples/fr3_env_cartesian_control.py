@@ -7,11 +7,10 @@ from rcs.envs.utils import (
     default_mujoco_cameraset_cfg,
     default_sim_gripper_cfg,
     default_sim_robot_cfg,
-    default_tilburg_hw_hand_cfg,
 )
 from rcs_fr3.creators import RCSFR3EnvCreator
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
-from rcs_fr3.utils import default_fr3_hw_robot_cfg
+from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -27,37 +26,38 @@ FR3_PASSWORD=<password on franka desk>
 
 When you use a real FR3 you first need to unlock its joints using the following cli script:
 
-python -m rcs.fr3 unlock <ip>
+python -m rcs_fr3 unlock <ip>
 
 or put it into guiding mode using:
 
-python -m rcs.fr3 guiding-mode <ip>
+python -m rcs_fr3 guiding-mode <ip>
 
 When you are done you lock it again using:
 
-python -m rcs.fr3 lock <ip>
+python -m rcs_fr3 lock <ip>
 
 or even shut it down using:
 
-python -m rcs.fr3 shutdown <ip>
+python -m rcs_fr3 shutdown <ip>
 """
 
 
 def main():
-    resource_manger: FCI | ContextManager
+    context_manger: ContextManager
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         user, pw = load_creds_fr3_desk()
-        resource_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
+        context_manger = FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False)
     else:
-        resource_manger = ContextManager()
-    with resource_manger:
+        context_manger = ContextManager()
+
+    with context_manger:
         if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
             env_rel = RCSFR3EnvCreator()(
                 ip=ROBOT_IP,
                 control_mode=ControlMode.CARTESIAN_TQuat,
                 robot_cfg=default_fr3_hw_robot_cfg(),
-                collision_guard="lab",
-                gripper_cfg=default_tilburg_hw_hand_cfg(),
+                collision_guard=None,
+                gripper_cfg=default_fr3_hw_gripper_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
             )
@@ -75,23 +75,18 @@ def main():
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-        close_action = 0
-        open_action = 1
 
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "hand": close_action}
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-            from time import sleep
-
-            sleep(5)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "hand": open_action}
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
