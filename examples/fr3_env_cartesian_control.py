@@ -3,11 +3,7 @@ import logging
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
+from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs_fr3.creators import RCSFR3EnvCreator
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg

@@ -1,6 +1,5 @@
 import logging
 
-import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 
