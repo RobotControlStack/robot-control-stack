@@ -13,7 +13,7 @@ from rcs import camera, envs, hand, sim
 scenes: dict[str, dict[str, pathlib.Path]] = {
     path.stem: {
         "mjb": path / "scene.mjb",
-        "urdf": path / "fr3.urdf",
+        "urdf": path / "robot.urdf",
     }
     for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }

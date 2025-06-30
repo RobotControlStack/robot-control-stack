@@ -28,23 +28,30 @@ def main():
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
     env_rel = SimEnvCreator()(
-        control_mode=ControlMode.JOINTS,
+        control_mode=ControlMode.CARTESIAN_TQuat,
         collision_guard=False,
         robot_cfg=robot_cfg,
         gripper_cfg=None,
         # cameras=default_mujoco_cameraset_cfg(),
-        max_relative_movement=np.deg2rad(5),
+        max_relative_movement=0.5,
         relative_to=RelativeTo.LAST_STEP,
         mjcf=rcs.scenes["ur5e_empty_world"]["mjb"],
         urdf_path=rcs.scenes["ur5e_empty_world"]["urdf"],
     )
     env_rel.get_wrapper_attr("sim").open_gui()
+    env_rel.reset()
 
     for _ in range(10):
-        obs, info = env_rel.reset()
         for _ in range(10):
-            # sample random relative action and execute it
-            act = env_rel.action_space.sample()
+            # move 1cm in x direction (forward) and close gripper
+            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+            obs, reward, terminated, truncated, info = env_rel.step(act)
+            if truncated or terminated:
+                logger.info("Truncated or terminated!")
+                return
+        for _ in range(10):
+            # move 1cm in negative x direction (backward) and open gripper
+            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
