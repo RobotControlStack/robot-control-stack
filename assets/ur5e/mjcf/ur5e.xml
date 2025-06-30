@@ -122,12 +122,12 @@
   </worldbody>
 
   <actuator>
-    <general class="size3" name="shoulder_pan" joint="shoulder_pan_joint"/>
-    <general class="size3" name="shoulder_lift" joint="shoulder_lift_joint"/>
-    <general class="size3" name="elbow" joint="elbow_joint"/>
-    <general class="size1" name="wrist_1" joint="wrist_1_joint"/>
-    <general class="size1" name="wrist_2" joint="wrist_2_joint"/>
-    <general class="size1" name="wrist_3" joint="wrist_3_joint"/>
+    <position class="size3" name="shoulder_pan" joint="shoulder_pan_joint"   />
+    <position class="size3" name="shoulder_lift" joint="shoulder_lift_joint" />
+    <position class="size3" name="elbow" joint="elbow_joint"                 />
+    <position class="size1" name="wrist_1" joint="wrist_1_joint"             />
+    <position class="size1" name="wrist_2" joint="wrist_2_joint"             />
+    <position class="size1" name="wrist_3" joint="wrist_3_joint"             />
   </actuator>
 
   <keyframe>
