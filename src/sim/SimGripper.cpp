@@ -94,8 +94,8 @@ double SimGripper::get_normalized_width() {
   // TODO: maybe we should use the mujoco sensors? Not sure what the difference
   // is between reading out from qpos and reading from the sensors.
   double width =
-      (this->sim->d->qpos[this->joint_id] - this->cfg.min_actuator_width) /
-      (this->cfg.max_joint_width - this->cfg.min_actuator_width);
+      (this->sim->d->qpos[this->joint_id] + this->cfg.min_joint_width) /
+      (this->cfg.max_joint_width + this->cfg.min_joint_width);
   // sometimes the joint is slightly outside of the bounds
   if (width < 0) {
     width = 0;
@@ -159,7 +159,7 @@ void SimGripper::m_reset() {
   this->state = SimGripperState();
   // reset state hard
   this->sim->d->qpos[this->joint_id] = this->cfg.max_joint_width;
-  this->sim->d->ctrl[this->actuator_id] = this->cfg.max_joint_width;
+  this->sim->d->ctrl[this->actuator_id] = this->cfg.max_actuator_width;
 }
 
 void SimGripper::reset() { this->m_reset(); }
