@@ -59,6 +59,7 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
                .finished()}},
       // -------------- SO101 --------------
       {SO101,
+        // TODO: update this to angle values
        RobotMetaConfig{
            // q_home (5‐vector):
            (VectorXd(5) << -9.40612320177057, -99.66130397967824,

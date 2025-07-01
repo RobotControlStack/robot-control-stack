@@ -3,7 +3,7 @@ import logging
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from rcs.envs.utils import default_mujoco_cameraset_cfg, default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs_fr3.creators import RCSFR3EnvCreator
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
@@ -72,7 +72,7 @@ def main():
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
 
-        for _ in range(10):
+        for _ in range(100):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
                 act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
