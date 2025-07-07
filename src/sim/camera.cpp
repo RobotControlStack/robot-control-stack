@@ -86,12 +86,19 @@ std::optional<FrameSet> SimCameraSet::get_timestamp_frameset(float ts) {
 void SimCameraSet::render_all() {
   for (auto const& [id, cam] : this->cameras_cfg) {
     mjrContext* ctx = this->sim->renderer.get_context(id);
-    this->frame_callback(id, *ctx, this->sim->renderer.scene,
+    this->render_single(id, *ctx, this->sim->renderer.scene,
                          this->sim->renderer.opt);
   }
 }
 
 void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
+                                  mjvScene& scene, mjvOption& opt) {
+  if (!this->render_on_demand){
+  this->render_single(id, ctx, scene, opt);
+  }
+}
+
+void SimCameraSet::render_single(const std::string& id, mjrContext& ctx,
                                   mjvScene& scene, mjvOption& opt) {
   mjrRect viewport = mjr_maxViewport(&ctx);
   int W = viewport.width;
