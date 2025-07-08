@@ -9,6 +9,11 @@ from rcs._core.common import BaseCameraConfig
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+@dataclass(kw_only=True)
+class Calibration:
+    intrinsics: np.ndarray[tuple[Literal[3, 4]], np.dtype[np.float64]] | None = None
+    extrinsics: np.ndarray[tuple[Literal[4, 4]], np.dtype[np.float64]] | None = None
+
 
 @dataclass(kw_only=True)
 class DataFrame:
@@ -67,6 +72,12 @@ class BaseCameraSet(Protocol):
 
     def config(self, camera_name: str) -> BaseCameraConfig:
         """Returns the configuration object of the cameras."""
+
+    def get_calibration(self, camera_name) -> Calibration:
+        """Returns camera calibration"""
+
+    def calibrate(self, camera_name) -> bool:
+        """Calibrates the camera"""
 
     @property
     def camera_names(self) -> list[str]:

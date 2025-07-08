@@ -9,7 +9,7 @@ from time import sleep
 import cv2
 import numpy as np
 from rcs._core.common import BaseCameraConfig
-from rcs.camera.interface import BaseCameraSet, Frame, FrameSet
+from rcs.camera.interface import BaseCameraSet, Calibration, Frame, FrameSet
 from rcs.utils import SimpleFrameRate
 
 
@@ -34,6 +34,9 @@ class HardwareCamera(typing.Protocol):
     @property
     def camera_names(self) -> list[str]:
         """Returns the names of the cameras in this set."""
+
+    def intrinsics(self, camera_name: str) -> np.ndarray[tuple[typing.Literal[3, 4]], np.dtype[np.float64]]
+        """Returns camera intrinsics"""
 
 
 class HardwareCameraSet(BaseCameraSet):
@@ -177,6 +180,15 @@ class HardwareCameraSet(BaseCameraSet):
             for camera_name in self.camera_names:
                 self.poll_frame(camera_name)
             self.rate_limiter()
+
+    def get_calibration(self, camera_name) -> Calibration:
+        # get intrinsics from the camera and check that extrinsics had been calibrated
+        pass
+
+    def calibrate(self, camera_name) -> bool:
+        # calibrate extrinsics with aruca marker
+        # lets provide a calibration function
+        pass
 
     def polling_thread(self, warm_up: bool = True):
         for camera in self.cameras:

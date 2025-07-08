@@ -1,5 +1,7 @@
 import logging
 from dataclasses import dataclass
+import threading
+import typing
 
 import numpy as np
 import pyrealsense2 as rs
@@ -39,6 +41,8 @@ class RealSenseCameraSet(HardwareCamera):
         self.enable_imu = enable_imu
         self.cameras = cameras
         self._logger = logging.getLogger(__name__)
+        self._last_frameset: dict[rs.stream, rs.frame] | None = None
+        self._frameset_lock = threading.Lock()
         assert (
             len({camera.resolution_width for camera in self.cameras.values()}) == 1
             and len({camera.resolution_height for camera in self.cameras.values()}) == 1
@@ -209,6 +213,8 @@ class RealSenseCameraSet(HardwareCamera):
         streams = device.pipeline_profile.get_streams()
         frameset = device.pipeline.wait_for_frames()
         # frameset = device.pipeline.poll_for_frames()
+        with self._frameset_lock:
+            self._last_frameset = frameset
 
         color: DataFrame | None = None
         ir: DataFrame | None = None
@@ -346,3 +352,8 @@ class RealSenseCameraSet(HardwareCamera):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             if enable_ir_emitter:
                 sensor.set_option(rs.option.laser_power, self.laser_power)
+
+
+    def intrinsics(self, camera_name: str) -> np.ndarray[tuple[typing.Literal[3, 4]], np.dtype[np.float64]]:
+        with self._frameset_lock:
+            pass
