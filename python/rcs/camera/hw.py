@@ -35,7 +35,7 @@ class HardwareCamera(typing.Protocol):
     def camera_names(self) -> list[str]:
         """Returns the names of the cameras in this set."""
 
-    def intrinsics(self, camera_name: str) -> np.ndarray[tuple[typing.Literal[3, 4]], np.dtype[np.float64]]
+    def calibrate(self) -> dict[str, Calibration] | None:
         """Returns camera intrinsics"""
 
 
@@ -63,6 +63,7 @@ class HardwareCameraSet(BaseCameraSet):
         self._next_ring_index = 0
         self._buffer_len = 0
         self.writer: dict[str, cv2.VideoWriter] = {}
+        self._calibration: dict[str, Calibration] | None = None
 
     @property
     def camera_names(self) -> list[str]:
@@ -181,14 +182,20 @@ class HardwareCameraSet(BaseCameraSet):
                 self.poll_frame(camera_name)
             self.rate_limiter()
 
-    def get_calibration(self, camera_name) -> Calibration:
-        # get intrinsics from the camera and check that extrinsics had been calibrated
-        pass
+    def get_calibration(self) -> dict[str, Calibration] | None:
+        return self._calibration
 
-    def calibrate(self, camera_name) -> bool:
-        # calibrate extrinsics with aruca marker
-        # lets provide a calibration function
-        pass
+    def calibrate(self) -> bool:
+        self._calibration = None
+        cal = {}
+        for camera in self.cameras:
+            c = camera.calibrate()
+            if c is None:
+                return False
+            cal.update(cal)
+        self._calibration = cal
+        return True
+
 
     def polling_thread(self, warm_up: bool = True):
         for camera in self.cameras:

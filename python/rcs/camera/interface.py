@@ -73,11 +73,11 @@ class BaseCameraSet(Protocol):
     def config(self, camera_name: str) -> BaseCameraConfig:
         """Returns the configuration object of the cameras."""
 
-    def get_calibration(self, camera_name) -> Calibration:
-        """Returns camera calibration"""
+    def get_calibration(self) -> dict[str, Calibration] | None:
+        """Returns cameras' calibration. None if not calibrated or previous calibration failed."""
 
-    def calibrate(self, camera_name) -> bool:
-        """Calibrates the camera"""
+    def calibrate(self) -> bool:
+        """Calibrates the cameras. Returns calibration success"""
 
     @property
     def camera_names(self) -> list[str]:

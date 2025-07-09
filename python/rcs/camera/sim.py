@@ -108,10 +108,13 @@ class SimCameraSet(_SimCameraSet):
 
         return cam.inverse().pose_matrix()
 
-    def get_calibration(self, camera_name) -> Calibration:
-        return Calibration(intrinsics=self._intrinsics(camera_name), extrinsics=self._extrinsics(camera_name))
+    def get_calibration(self) -> dict[str, Calibration]:
+        return {
+            camera_name: Calibration(intrinsics=self._intrinsics(camera_name), extrinsics=self._extrinsics(camera_name))
+            for camera_name in self.camera_names
+        }
 
-    def calibrate(self, camera_name) -> bool:
+    def calibrate(self) -> bool:
         return True
 
     def config(self, camera_name: str) -> SimCameraConfig:

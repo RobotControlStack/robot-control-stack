@@ -5,6 +5,7 @@ import typing
 
 import numpy as np
 import pyrealsense2 as rs
+from rcs.camera.interface import Calibration
 from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
 
@@ -22,10 +23,12 @@ class RealSenseDevicePipeline:
     pipeline: rs.pipeline
     pipeline_profile: rs.pipeline_profile
     camera: RealSenseDeviceInfo
+    depth_scale: float | None = None
 
 
 class RealSenseCameraSet(HardwareCamera):
     TIMESTAMP_FACTOR = 1e-3
+    DEPTH_SCALE = 10000
 
     def __init__(
         self,
@@ -41,6 +44,7 @@ class RealSenseCameraSet(HardwareCamera):
         self.enable_imu = enable_imu
         self.cameras = cameras
         self._logger = logging.getLogger(__name__)
+        # TODO: safe the last 30 recorded frames
         self._last_frameset: dict[rs.stream, rs.frame] | None = None
         self._frameset_lock = threading.Lock()
         assert (
@@ -168,7 +172,9 @@ class RealSenseCameraSet(HardwareCamera):
         if sensor.supports(rs.option.emitter_enabled):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             sensor.set_option(rs.option.laser_power, self.laser_power)
-        self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(pipeline, pipeline_profile, device_info)
+        self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(
+            pipeline, pipeline_profile, device_info, depth_scale=sensor.get_depth_scale()
+        )
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
 
     @staticmethod
@@ -255,7 +261,12 @@ class RealSenseCameraSet(HardwareCamera):
             timestamps.append(to_ts(frame))
 
         assert color is not None, "Color frame not found"
-        cf = CameraFrame(color=color, ir=ir, depth=depth)
+        # TODO: check depth type (should be int16)
+        cf = CameraFrame(
+            color=color,
+            ir=ir,
+            depth=(depth.astype(np.float64) * device.depth_scale / self.DEPTH_SCALE).astype(np.int16),
+        )
         imu = IMUFrame(accel=accel, gyro=gyro)
         return Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
 
@@ -303,7 +314,7 @@ class RealSenseCameraSet(HardwareCamera):
                 device_intrinsics[device_name][key] = value.get_profile().as_video_stream_profile().get_intrinsics()
         return device_intrinsics
 
-    def get_depth_to_color_extrinsics(self, frames):
+    def get_depth_to_color_extrinsics(self, frames: dict[rs.stream, rs.frame]):
         """
         Get the extrinsics between the depth imager 1 and the color imager using its frame delivered by the realsense device
 
@@ -353,7 +364,25 @@ class RealSenseCameraSet(HardwareCamera):
             if enable_ir_emitter:
                 sensor.set_option(rs.option.laser_power, self.laser_power)
 
+    def calibrate(self) -> dict[str, Calibration] | None:
 
-    def intrinsics(self, camera_name: str) -> np.ndarray[tuple[typing.Literal[3, 4]], np.dtype[np.float64]]:
-        with self._frameset_lock:
-            pass
+        intrinsics = {}
+        for camera_name, camera_config in self.cameras:
+            serial = camera_config.identifier
+            device = self._enabled_devices[serial]
+            vp = device.pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
+            intrinsics[camera_name] = vp.get_intrinsics()
+
+        extrinsics = {}
+        for camera_name, camera_config in self.cameras:
+            serial = camera_config.identifier
+            device = self._enabled_devices[serial]
+            depth_vp = device.pipeline_profile.get_stream(rs.stream.depth).as_video_stream_profile()
+            color_vp = device.pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
+            depth_to_color = depth_vp.get_extrinsics_to(color_vp)
+
+            # calibrate strategy: save the last 30 frames and send it
+            # it can
+            # - ask for more new frames
+            # - calibration fail
+            # - calibration successful
