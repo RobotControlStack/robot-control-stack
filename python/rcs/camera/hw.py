@@ -4,12 +4,13 @@ import typing
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from queue import Queue
 from time import sleep
 
 import cv2
 import numpy as np
 from rcs._core.common import BaseCameraConfig
-from rcs.camera.interface import BaseCameraSet, Calibration, Frame, FrameSet
+from rcs.camera.interface import BaseCameraSet, Frame, FrameSet
 from rcs.utils import SimpleFrameRate
 
 
@@ -35,8 +36,44 @@ class HardwareCamera(typing.Protocol):
     def camera_names(self) -> list[str]:
         """Returns the names of the cameras in this set."""
 
-    def calibrate(self) -> dict[str, Calibration] | None:
+    def calibrate(self) -> bool:
         """Returns camera intrinsics"""
+
+
+N = typing.TypeVar("N", bound=int)
+H = typing.TypeVar("H", bound=int)
+W = typing.TypeVar("W", bound=int)
+
+
+class CalibrationStrategy(typing.Protocol):
+    """Implementation the hardware dependend calibration strategy."""
+
+    def calibrate(
+        self,
+        samples: Queue[Frame],
+        intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+    ) -> bool:
+        """Implements algorithm to calibrate the camera."""
+
+    def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
+        """
+        Returns the calibrated extrinsic, can also be cached. If not calibrated then it returns None.
+        It is urged to perform efficient caching for this method as it is called in each step.
+        """
+
+
+class DummyCalibrationStrategy(CalibrationStrategy):
+    """Always returns identity extrinsics."""
+
+    def calibrate(
+        self,
+        samples: Queue[Frame],
+        intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+    ) -> bool:
+        return True
+
+    def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
+        return np.eye(4)
 
 
 class HardwareCameraSet(BaseCameraSet):
@@ -63,7 +100,6 @@ class HardwareCameraSet(BaseCameraSet):
         self._next_ring_index = 0
         self._buffer_len = 0
         self.writer: dict[str, cv2.VideoWriter] = {}
-        self._calibration: dict[str, Calibration] | None = None
 
     @property
     def camera_names(self) -> list[str]:
@@ -182,20 +218,12 @@ class HardwareCameraSet(BaseCameraSet):
                 self.poll_frame(camera_name)
             self.rate_limiter()
 
-    def get_calibration(self) -> dict[str, Calibration] | None:
-        return self._calibration
-
     def calibrate(self) -> bool:
-        self._calibration = None
-        cal = {}
         for camera in self.cameras:
             c = camera.calibrate()
             if c is None:
                 return False
-            cal.update(cal)
-        self._calibration = cal
         return True
-
 
     def polling_thread(self, warm_up: bool = True):
         for camera in self.cameras:
@@ -240,3 +268,9 @@ class HardwareCameraSet(BaseCameraSet):
 
     def poll_frame(self, camera_name: str) -> Frame:
         return self.camera_dict[camera_name].poll_frame(camera_name)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, **kwargs):
+        self.close()

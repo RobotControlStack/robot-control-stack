@@ -9,6 +9,7 @@ description="RCS realsense module"
 dependencies = [
     "rcs==0.4.0",
     "pyrealsense2~=2.55.1",
+    "apriltag==0.0.16",
 ]
 readme = "README.md"
 maintainers = [

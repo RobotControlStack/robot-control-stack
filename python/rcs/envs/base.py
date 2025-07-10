@@ -118,39 +118,44 @@ class HandVecDictType(RCSpaceType):
     ]
 
 
+class CameraDataDictType(RCSpaceType):
+    data: Annotated[
+        np.ndarray,
+        # needs to be filled with values downstream
+        lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+            low=low,
+            high=high,
+            shape=(height, width, color_dim),
+            dtype=dtype,
+        ),
+        "frame",
+    ]
+    intrinsics: Annotated[
+        np.ndarray,
+        gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(3, 4),
+            dtype=np.float64,
+        ),
+    ]
+    extrinsics: Annotated[
+        np.ndarray,
+        gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(4, 4),
+            dtype=np.float64,
+        ),
+    ]
+
+
 class CameraDictType(RCSpaceType):
     frames: dict[
         Annotated[str, "camera_names"],
         dict[
             Annotated[str, "camera_type"],  # "rgb" or "depth"
-            Annotated[
-                np.ndarray,
-                # needs to be filled with values downstream
-                lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
-                    low=low,
-                    high=high,
-                    shape=(height, width, color_dim),
-                    dtype=dtype,
-                ),
-                "frame",
-            ],
-        ],
-    ]
-
-
-class DigitCameraDictType(RCSpaceType):
-    digit_frames: dict[
-        Annotated[str, "camera_names"],
-        Annotated[
-            np.ndarray,
-            # needs to be filled with values downstream
-            lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
-                low=low,
-                high=high,
-                shape=(height, width, color_dim),
-                dtype=dtype,
-            ),
-            "digit_frames",
+            CameraDataDictType,
         ],
     ]
 
@@ -602,9 +607,9 @@ class CameraSetWrapper(ActObsInfoWrapper):
                         "height": camera_set.config(name).resolution_height,
                         "width": camera_set.config(name).resolution_width,
                         "color_dim": 1,
-                        "dtype": np.float32,
-                        "low": 0.0,
-                        "high": 1.0,
+                        "dtype": np.uint16,
+                        "low": -np.inf,
+                        "high": np.inf,
                     }
                     for name in camera_set.camera_names
                 }
@@ -643,12 +648,20 @@ class CameraSetWrapper(ActObsInfoWrapper):
         frame_dict: dict[str, dict[str, np.ndarray]] = {
             camera_name: (
                 {
-                    self.RGB_KEY: frame.camera.color.data,
-                    self.DEPTH_KEY: frame.camera.depth.data,  # type: ignore
+                    self.RGB_KEY: CameraDataDictType(
+                        data=frame.camera.color.data,
+                        intrinsics=frame.camera.color.intrinsics,
+                        extrinsics=frame.camera.color.extrinsics,
+                    ),
+                    self.DEPTH_KEY: CameraDataDictType(data=frame.camera.depth.data, intrinsics=frame.camera.depth.intrinsics, extrinsics=frame.camera.depth.extrinsics),  # type: ignore
                 }
                 if check_depth(frame.camera.depth)
                 else {
-                    self.RGB_KEY: frame.camera.color.data,
+                    self.RGB_KEY: CameraDataDictType(
+                        data=frame.camera.color.data,
+                        intrinsics=frame.camera.color.intrinsics,
+                        extrinsics=frame.camera.color.extrinsics,
+                    ),
                 }
             )
             for camera_name, frame in frameset.frames.items()

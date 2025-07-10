@@ -9,19 +9,14 @@ from rcs._core.common import BaseCameraConfig
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-@dataclass(kw_only=True)
-class Calibration:
-    intrinsics: np.ndarray[tuple[Literal[3, 4]], np.dtype[np.float64]] | None = None
-    extrinsics: np.ndarray[tuple[Literal[4, 4]], np.dtype[np.float64]] | None = None
-
 
 @dataclass(kw_only=True)
 class DataFrame:
     data: Any
     # timestamp in posix time
     timestamp: float | None = None
-    intrinsics: np.ndarray[tuple[Literal[3, 4]], np.dtype[np.float64]] | None = None
-    extrinsics: np.ndarray[tuple[Literal[4, 4]], np.dtype[np.float64]] | None = None
+    intrinsics: np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]] | None = None
+    extrinsics: np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]] | None = None
 
 
 @dataclass(kw_only=True)
@@ -55,6 +50,8 @@ class FrameSet:
 class BaseCameraSet(Protocol):
     """Interface for a set of cameras for sim and hardware"""
 
+    DEPTH_SCALE = 1000
+
     def buffer_size(self) -> int:
         """Returns size of the internal buffer."""
 
@@ -72,9 +69,6 @@ class BaseCameraSet(Protocol):
 
     def config(self, camera_name: str) -> BaseCameraConfig:
         """Returns the configuration object of the cameras."""
-
-    def get_calibration(self) -> dict[str, Calibration] | None:
-        """Returns cameras' calibration. None if not calibrated or previous calibration failed."""
 
     def calibrate(self) -> bool:
         """Calibrates the cameras. Returns calibration success"""

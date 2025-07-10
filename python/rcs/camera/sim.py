@@ -10,7 +10,7 @@ from rcs._core import common
 from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
-from rcs.camera.interface import Calibration, CameraFrame, DataFrame, Frame, FrameSet
+from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
 
 from rcs import sim
 
@@ -74,10 +74,16 @@ class SimCameraSet(_SimCameraSet):
 
             cameraframe = CameraFrame(
                 color=DataFrame(
-                    data=color_np_frame, timestamp=cpp_frameset.timestamp
+                    data=color_np_frame,
+                    timestamp=cpp_frameset.timestamp,
+                    intrinsics=self._intrinsics(color_name),
+                    extrinsics=self._extrinsics(color_frame),
                 ),
                 depth=DataFrame(
-                    data=depth_np_frame, timestamp=cpp_frameset.timestamp
+                    data=depth_np_frame,
+                    timestamp=cpp_frameset.timestamp,
+                    intrinsics=self._intrinsics(depth_frame),
+                    extrinsics=self._extrinsics(depth_frame),
                 ),
             )
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
@@ -107,12 +113,6 @@ class SimCameraSet(_SimCameraSet):
         cam = cam * rotation_p
 
         return cam.inverse().pose_matrix()
-
-    def get_calibration(self) -> dict[str, Calibration]:
-        return {
-            camera_name: Calibration(intrinsics=self._intrinsics(camera_name), extrinsics=self._extrinsics(camera_name))
-            for camera_name in self.camera_names
-        }
 
     def calibrate(self) -> bool:
         return True

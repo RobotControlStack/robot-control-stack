@@ -1,13 +1,12 @@
 import logging
-from dataclasses import dataclass
-import threading
+import queue
 import typing
+from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcs.camera.interface import Calibration
-from rcs.camera.hw import HardwareCamera
-from rcs.camera.interface import CameraFrame, DataFrame, Frame, IMUFrame
+from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera
+from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, IMUFrame
 
 from rcs import common
 
@@ -24,15 +23,19 @@ class RealSenseDevicePipeline:
     pipeline_profile: rs.pipeline_profile
     camera: RealSenseDeviceInfo
     depth_scale: float | None = None
+    color_intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]] | None = None
+    depth_intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]] | None = None
+    depth_to_color: common.Pose | None = None
 
 
 class RealSenseCameraSet(HardwareCamera):
     TIMESTAMP_FACTOR = 1e-3
-    DEPTH_SCALE = 10000
+    CALIBRATION_FRAME_SIZE = 30
 
     def __init__(
         self,
         cameras: dict[str, common.BaseCameraConfig],
+        calibration_strategy: dict[str, CalibrationStrategy] | None = None,
         enable_ir_emitter: bool = False,
         enable_ir: bool = False,
         laser_power: int = 330,
@@ -43,10 +46,10 @@ class RealSenseCameraSet(HardwareCamera):
         self.laser_power = laser_power
         self.enable_imu = enable_imu
         self.cameras = cameras
+        if calibration_strategy is None:
+            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras.keys()}
+        self.calibration_strategy = calibration_strategy
         self._logger = logging.getLogger(__name__)
-        # TODO: safe the last 30 recorded frames
-        self._last_frameset: dict[rs.stream, rs.frame] | None = None
-        self._frameset_lock = threading.Lock()
         assert (
             len({camera.resolution_width for camera in self.cameras.values()}) == 1
             and len({camera.resolution_height for camera in self.cameras.values()}) == 1
@@ -56,6 +59,7 @@ class RealSenseCameraSet(HardwareCamera):
         self.resolution_width = sample_camera_config.resolution_width
         self.resolution_height = sample_camera_config.resolution_height
         self.frame_rate = sample_camera_config.frame_rate
+        self._frame_buffer: dict[str, queue.Queue] = {}
 
         self.D400_config = rs.config()
         self.D400_config.enable_stream(
@@ -143,9 +147,9 @@ class RealSenseCameraSet(HardwareCamera):
             assert (
                 device_serial in self._available_devices
             ), f"Device {device_name} not found. Check if it is connected."
-            self.enable_device(self._available_devices[device_serial], enable_ir_emitter)
+            self.enable_device(device_name, self._available_devices[device_serial], enable_ir_emitter)
 
-    def enable_device(self, device_info: RealSenseDeviceInfo, enable_ir_emitter: bool = False):
+    def enable_device(self, camera_name: str, device_info: RealSenseDeviceInfo, enable_ir_emitter: bool = False):
         """
         Enable an Intel RealSense Device
 
@@ -172,9 +176,36 @@ class RealSenseCameraSet(HardwareCamera):
         if sensor.supports(rs.option.emitter_enabled):
             sensor.set_option(rs.option.emitter_enabled, 1 if enable_ir_emitter else 0)
             sensor.set_option(rs.option.laser_power, self.laser_power)
-        self._enabled_devices[device_info.serial] = RealSenseDevicePipeline(
-            pipeline, pipeline_profile, device_info, depth_scale=sensor.get_depth_scale()
+
+        depth_vp = pipeline_profile.get_stream(rs.stream.depth).as_video_stream_profile()
+        color_vp = pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
+
+        rs_color_intrinsics = color_vp.get_intrinsics()
+        color_intrinsics = np.array([
+            [rs_color_intrinsics.fx, 0, (rs_color_intrinsics.width-1)/2, 0],
+            [0, rs_color_intrinsics.fy, (rs_color_intrinsics.height-1)/2, 0],
+            [0, 0, 1, 0],
+        ])
+        rs_depth_intrinsics = depth_vp.get_intrinsics()
+        depth_intrinsics = np.array([
+            [rs_depth_intrinsics.fx, 0, (rs_depth_intrinsics.width-1)/2, 0],
+            [0, rs_depth_intrinsics.fy, (rs_depth_intrinsics.height-1)/2, 0],
+            [0, 0, 1, 0],
+        ])
+
+        depth_to_color = depth_vp.get_extrinsics_to(color_vp)
+
+        self._enabled_devices[camera_name] = RealSenseDevicePipeline(
+            pipeline,
+            pipeline_profile,
+            device_info,
+            depth_scale=sensor.get_depth_scale(),
+            color_intrinsics=color_intrinsics,
+            depth_intrinsics=depth_intrinsics,
+            depth_to_color=common.Pose(translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)),
         )
+
+        self._frame_buffer[camera_name] = queue.Queue(maxsize=self.CALIBRATION_FRAME_SIZE)
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
 
     @staticmethod
@@ -205,22 +236,11 @@ class RealSenseCameraSet(HardwareCamera):
         return connect_device
 
     def poll_frame(self, camera_name: str) -> Frame:
-        # TODO(juelg): polling should be performed in a recorder thread
-        # (anyway needed to record trajectory data to disk)
-        # and this method should just access the latest frame from the recorder
-        # Perhaps there even has to be a separate recorder thread for each camera
-
-        # TODO(juelg): what is a "pose" (in frame) and how can we use it
-        # TODO(juelg): decide whether to use the poll method and to wait if devices get ready
         assert camera_name in self.camera_names, f"Camera {camera_name} not found in the enabled devices"
-        serial = self.cameras[camera_name].identifier
-        device = self._enabled_devices[serial]
+        device = self._enabled_devices[camera_name]
 
         streams = device.pipeline_profile.get_streams()
         frameset = device.pipeline.wait_for_frames()
-        # frameset = device.pipeline.poll_for_frames()
-        with self._frameset_lock:
-            self._last_frameset = frameset
 
         color: DataFrame | None = None
         ir: DataFrame | None = None
@@ -235,6 +255,10 @@ class RealSenseCameraSet(HardwareCamera):
             # convert to seconds
             return frame.get_timestamp() * RealSenseCameraSet.TIMESTAMP_FACTOR
 
+        color_extrinsics = self.calibration_strategy[camera_name].get_extrinsics()
+        depth_to_color = device.depth_to_color
+        depth_extrinsics = color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
+
         timestamps = []
         for stream in streams:
             if rs.stream.infrared == stream.stream_type():
@@ -242,10 +266,20 @@ class RealSenseCameraSet(HardwareCamera):
                 ir = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
             elif rs.stream.color == stream.stream_type():
                 frame = frameset.get_color_frame()
-                color = DataFrame(data=to_numpy(frame)[:, :, ::-1], timestamp=to_ts(frame))
+                color = DataFrame(
+                    data=to_numpy(frame)[:, :, ::-1],
+                    timestamp=to_ts(frame),
+                    intrinsics=device.color_intrinsics,
+                    extrinsics=color_extrinsics,
+                )
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
-                depth = DataFrame(data=to_numpy(frame), timestamp=to_ts(frame))
+                depth = DataFrame(
+                    data=(to_numpy(frame).astype(np.float64) * device.depth_scale / BaseCameraSet.DEPTH_SCALE).astype(np.int16),
+                    timestamp=to_ts(frame),
+                    intrinsics=device.depth_intrinsics,
+                    extrinsics=depth_extrinsics,
+                )
             elif rs.stream.accel == stream.stream_type():
                 frame = frameset.first(stream.stream_index())
                 md = frame.as_motion_frame().get_motion_data()
@@ -261,86 +295,15 @@ class RealSenseCameraSet(HardwareCamera):
             timestamps.append(to_ts(frame))
 
         assert color is not None, "Color frame not found"
-        # TODO: check depth type (should be int16)
         cf = CameraFrame(
             color=color,
             ir=ir,
-            depth=(depth.astype(np.float64) * device.depth_scale / self.DEPTH_SCALE).astype(np.int16),
+            depth=depth,
         )
         imu = IMUFrame(accel=accel, gyro=gyro)
-        return Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
-
-    def get_depth_shape(self):
-        """
-        Retruns width and height of the depth stream for one arbitrary device
-
-        Returns:
-        -----------
-        width : int
-        height: int
-        """
-        width = -1
-        height = -1
-        for device in self._enabled_devices.values():
-            for stream in device.pipeline_profile.get_streams():
-                if rs.stream.depth == stream.stream_type():
-                    width = stream.as_video_stream_profile().width()
-                    height = stream.as_video_stream_profile().height()
-        return width, height
-
-    def get_device_intrinsics(
-        self, frames: dict[str, dict[rs.stream, rs.frame]]
-    ) -> dict[str, dict[rs.stream, rs.intrinsics]]:
-        """
-        Get the intrinsics of the imager using its frame delivered by the realsense device
-
-        Parameters:
-        -----------
-        frames : rs::frame
-                 The frame grabbed from the imager inside the Intel RealSense for which the intrinsic is needed
-
-        Return:
-        -----------
-        device_intrinsics : dict
-        keys  : serial
-                Serial number of the device
-        values: [key]
-                Intrinsics of the corresponding device
-        """
-        device_intrinsics: dict[str, dict[rs.stream, rs.intrinsics]] = {}
-        for device_name, frameset in frames.items():
-            device_intrinsics[device_name] = {}
-            for key, value in frameset.items():
-                device_intrinsics[device_name][key] = value.get_profile().as_video_stream_profile().get_intrinsics()
-        return device_intrinsics
-
-    def get_depth_to_color_extrinsics(self, frames: dict[rs.stream, rs.frame]):
-        """
-        Get the extrinsics between the depth imager 1 and the color imager using its frame delivered by the realsense device
-
-        Parameters:
-        -----------
-        frames : rs::frame
-                 The frame grabbed from the imager inside the Intel RealSense for which the intrinsic is needed
-
-        Return:
-        -----------
-        device_intrinsics : dict
-        keys  : serial
-                Serial number of the device
-        values: [key]
-                Extrinsics of the corresponding device
-        """
-        device_extrinsics = {}
-        for dev_info, frameset in frames.items():
-            serial = dev_info[0]
-            device_extrinsics[serial] = (
-                frameset[rs.stream.depth]
-                .get_profile()
-                .as_video_stream_profile()
-                .get_extrinsics_to(frameset[rs.stream.color].get_profile())
-            )
-        return device_extrinsics
+        f = Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
+        self._frame_buffer[camera_name].put(f)
+        return f
 
     def disable_streams(self):
         self.D400_config.disable_all_streams()
@@ -364,25 +327,8 @@ class RealSenseCameraSet(HardwareCamera):
             if enable_ir_emitter:
                 sensor.set_option(rs.option.laser_power, self.laser_power)
 
-    def calibrate(self) -> dict[str, Calibration] | None:
-
-        intrinsics = {}
-        for camera_name, camera_config in self.cameras:
-            serial = camera_config.identifier
-            device = self._enabled_devices[serial]
-            vp = device.pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
-            intrinsics[camera_name] = vp.get_intrinsics()
-
-        extrinsics = {}
-        for camera_name, camera_config in self.cameras:
-            serial = camera_config.identifier
-            device = self._enabled_devices[serial]
-            depth_vp = device.pipeline_profile.get_stream(rs.stream.depth).as_video_stream_profile()
-            color_vp = device.pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
-            depth_to_color = depth_vp.get_extrinsics_to(color_vp)
-
-            # calibrate strategy: save the last 30 frames and send it
-            # it can
-            # - ask for more new frames
-            # - calibration fail
-            # - calibration successful
+    def calibrate(self) -> bool:
+        for camera_name in self.cameras:
+            self.calibration_strategy[camera_name].calibrate(
+                intrinsics=self._enabled_devices[camera_name].color_intrinsics, samples=self._frame_buffer
+            )
