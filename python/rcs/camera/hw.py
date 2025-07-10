@@ -50,10 +50,20 @@ class CalibrationStrategy(typing.Protocol):
 
     def calibrate(
         self,
-        samples: Queue[Frame],
+        samples: list[Frame],
         intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+        lock: threading.Lock,
     ) -> bool:
-        """Implements algorithm to calibrate the camera."""
+        """Implements algorithm to calibrate the camera.
+
+        Args:
+            samples: List of frames to use for calibration.
+            intrinsics: Intrinsic camera parameters, e.g. from a previous calibration.
+            lock: A lock to ensure thread safety during calibration as the samples might refresh in parallel.
+
+        Returns:
+            bool: True if calibration was successful, False otherwise.
+        """
 
     def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
         """
@@ -67,8 +77,9 @@ class DummyCalibrationStrategy(CalibrationStrategy):
 
     def calibrate(
         self,
-        samples: Queue[Frame],
+        samples: list[Frame],
         intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+        lock: threading.Lock,
     ) -> bool:
         return True
 
@@ -272,5 +283,5 @@ class HardwareCameraSet(BaseCameraSet):
     def __enter__(self):
         pass
 
-    def __exit__(self, **kwargs):
+    def __exit__(self, *args, **kwargs):
         self.close()

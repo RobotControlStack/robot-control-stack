@@ -1,5 +1,6 @@
+import copy
 import logging
-import queue
+import threading
 import typing
 from dataclasses import dataclass
 
@@ -59,7 +60,8 @@ class RealSenseCameraSet(HardwareCamera):
         self.resolution_width = sample_camera_config.resolution_width
         self.resolution_height = sample_camera_config.resolution_height
         self.frame_rate = sample_camera_config.frame_rate
-        self._frame_buffer: dict[str, queue.Queue] = {}
+        self._frame_buffer_lock: dict[str, threading.Lock] = {}
+        self._frame_buffer: dict[str, list] = {}
 
         self.D400_config = rs.config()
         self.D400_config.enable_stream(
@@ -181,17 +183,21 @@ class RealSenseCameraSet(HardwareCamera):
         color_vp = pipeline_profile.get_stream(rs.stream.color).as_video_stream_profile()
 
         rs_color_intrinsics = color_vp.get_intrinsics()
-        color_intrinsics = np.array([
-            [rs_color_intrinsics.fx, 0, (rs_color_intrinsics.width-1)/2, 0],
-            [0, rs_color_intrinsics.fy, (rs_color_intrinsics.height-1)/2, 0],
-            [0, 0, 1, 0],
-        ])
+        color_intrinsics = np.array(
+            [
+                [rs_color_intrinsics.fx, 0, (rs_color_intrinsics.width - 1) / 2, 0],
+                [0, rs_color_intrinsics.fy, (rs_color_intrinsics.height - 1) / 2, 0],
+                [0, 0, 1, 0],
+            ]
+        )
         rs_depth_intrinsics = depth_vp.get_intrinsics()
-        depth_intrinsics = np.array([
-            [rs_depth_intrinsics.fx, 0, (rs_depth_intrinsics.width-1)/2, 0],
-            [0, rs_depth_intrinsics.fy, (rs_depth_intrinsics.height-1)/2, 0],
-            [0, 0, 1, 0],
-        ])
+        depth_intrinsics = np.array(
+            [
+                [rs_depth_intrinsics.fx, 0, (rs_depth_intrinsics.width - 1) / 2, 0],
+                [0, rs_depth_intrinsics.fy, (rs_depth_intrinsics.height - 1) / 2, 0],
+                [0, 0, 1, 0],
+            ]
+        )
 
         depth_to_color = depth_vp.get_extrinsics_to(color_vp)
 
@@ -202,10 +208,13 @@ class RealSenseCameraSet(HardwareCamera):
             depth_scale=sensor.get_depth_scale(),
             color_intrinsics=color_intrinsics,
             depth_intrinsics=depth_intrinsics,
-            depth_to_color=common.Pose(translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)),
+            depth_to_color=common.Pose(
+                translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)
+            ),
         )
 
-        self._frame_buffer[camera_name] = queue.Queue(maxsize=self.CALIBRATION_FRAME_SIZE)
+        self._frame_buffer[camera_name] = []
+        self._frame_buffer_lock[camera_name] = threading.Lock()
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
 
     @staticmethod
@@ -257,7 +266,9 @@ class RealSenseCameraSet(HardwareCamera):
 
         color_extrinsics = self.calibration_strategy[camera_name].get_extrinsics()
         depth_to_color = device.depth_to_color
-        depth_extrinsics = color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
+        depth_extrinsics = (
+            color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
+        )
 
         timestamps = []
         for stream in streams:
@@ -275,7 +286,9 @@ class RealSenseCameraSet(HardwareCamera):
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
                 depth = DataFrame(
-                    data=(to_numpy(frame).astype(np.float64) * device.depth_scale / BaseCameraSet.DEPTH_SCALE).astype(np.int16),
+                    data=(to_numpy(frame).astype(np.float64) * device.depth_scale / BaseCameraSet.DEPTH_SCALE).astype(
+                        np.int16
+                    ),
                     timestamp=to_ts(frame),
                     intrinsics=device.depth_intrinsics,
                     extrinsics=depth_extrinsics,
@@ -302,7 +315,10 @@ class RealSenseCameraSet(HardwareCamera):
         )
         imu = IMUFrame(accel=accel, gyro=gyro)
         f = Frame(camera=cf, imu=imu, avg_timestamp=float(np.mean(timestamps)) if len(timestamps) > 0 else None)
-        self._frame_buffer[camera_name].put(f)
+        with self._frame_buffer_lock[camera_name]:
+            if len(self._frame_buffer[camera_name]) >= self.CALIBRATION_FRAME_SIZE:
+                self._frame_buffer[camera_name].pop(0)
+            self._frame_buffer[camera_name].append(copy.deepcopy(f))
         return f
 
     def disable_streams(self):
@@ -329,6 +345,12 @@ class RealSenseCameraSet(HardwareCamera):
 
     def calibrate(self) -> bool:
         for camera_name in self.cameras:
-            self.calibration_strategy[camera_name].calibrate(
-                intrinsics=self._enabled_devices[camera_name].color_intrinsics, samples=self._frame_buffer
-            )
+            if not self.calibration_strategy[camera_name].calibrate(
+                intrinsics=self._enabled_devices[camera_name].color_intrinsics,
+                samples=self._frame_buffer[camera_name],
+                lock=self._frame_buffer_lock[camera_name],
+            ):
+                self._logger.warning(f"Calibration of camera {camera_name} failed.")
+                return False
+        self._logger.info("Calibration successful.")
+        return True

@@ -1,11 +1,13 @@
 import logging
+import threading
 import typing
-from queue import Queue
 from time import sleep
 
 import apriltag
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw
+from rcs._core import common
 from rcs.camera.hw import CalibrationStrategy
 from rcs.camera.interface import Frame
 from tqdm import tqdm
@@ -20,39 +22,37 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         # base frame to camera, world to base frame
         self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = None
         self.camera_name = camera_name
-        self.world_to_tag = np.array(
-            [
-                [0, -1, 0, 0.2],
-                [-1, 0, 0, 0],
-                [0, 0, -1, 0],
-                [0, 0, 0, 1],
-            ]
-        )
+        self.tag_to_world = common.Pose(rpy_vector=[np.pi, 0, -np.pi / 2], translation=[0.2, 0, 0]).pose_matrix()
 
     def calibrate(
         self,
-        samples: Queue[Frame],
+        samples: list[Frame],
         intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+        lock: threading.Lock,
     ) -> bool:
         logger.info("Calibrating camera %s. Position it as you wish and press enter.", self.camera_name)
         input()
         tries = 3
-        while samples.qsize() < samples.maxsize - 1 and tries > 0:
+        while len(samples) < 10 and tries > 0:
             logger.info("not enought frames in recorded, waiting 2 seconds...")
             tries = -1
             sleep(2)
         if tries == 0:
             logger.warning("Calibration failed, not enough frames arrived.")
             return False
-        frames = []
-        for _ in samples.qsize():
-            frames.append(samples.get())
 
-        _, cam_to_tag, _ = get_average_marker_pose(
-            frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=False
+        frames = []
+        with lock:
+            for sample in samples:
+                frames.append(sample.camera.color.data.copy())
+        print(frames)
+
+        last_frame, tag_to_cam = get_average_marker_pose(
+            frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=True
         )
 
-        world_to_cam = self.world_to_tag @ np.linalg.inv(cam_to_tag)
+        cam_to_world = self.tag_to_world @ np.linalg.inv(tag_to_cam)
+        world_to_cam = np.linalg.inv(cam_to_world)
         self._extrinsics = world_to_cam
         return True
 
@@ -89,7 +89,7 @@ def get_average_marker_pose(
 
         last_frame = frame.copy()
 
-        camera_matrix = intrinsics
+        camera_matrix = intrinsics[:3, :3]
 
         if show_live_window:
             cv2.drawFrameAxes(frame, camera_matrix, None, pose[:3, :3], pose[:3, 3], 0.1)
@@ -109,9 +109,8 @@ def get_average_marker_pose(
     logger.info(f"Average pose: {avg_pose}")
 
     # paint avg pose on last frame
-    if show_live_window:
-        cv2.drawFrameAxes(last_frame, camera_matrix, None, avg_pose[:3, :3], avg_pose[:3, 3], 0.1)  # type: ignore
-    return last_frame, avg_pose, camera_matrix
+    # cv2.drawFrameAxes(last_frame, camera_matrix, None, avg_pose[:3, :3], avg_pose[:3, 3], 0.1)  # type: ignore
+    return last_frame, avg_pose
 
 
 def get_marker_pose(calib_tag_id, detector, intrinsics, frame):
