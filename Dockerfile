@@ -1,7 +1,6 @@
 # Base image with Python 3.10 and slim Debian system
 FROM python:3.10-slim
 
-# Avoid interactive prompts during apt install
 # System configuration
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -9,8 +8,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CMAKE_BUILD_PARALLEL_LEVEL=2 \
     SKBUILD_BUILD_OPTIONS="-j2" \
     MAKEFLAGS="-j2"
+#############################################################################
+# Explanation of environment variables:    
+# DEBIAN_FRONTEND=noninteractive: Disables interactive prompts during apt-get install.
+# PYTHONDONTWRITEBYTECODE=1: Prevents .pyc files, keeping the image clean.
+# PYTHONUNBUFFERED=1: Ensures logs are written directly (no buffering).
+# Parallel build settings for CMake, scikit-build, and make to improve build speed.
+#############################################################################
 
-# Optional: create a user (improves container security)
+# create a user to avoid running as root
 RUN useradd -ms /bin/bash devuser
 WORKDIR /home/devuser
 USER root
@@ -51,6 +57,8 @@ USER devuser
 
 # Set up virtual environment (Python)
 RUN python3 -m venv /home/devuser/.venv
+# prepend /home/devuser/.venv/bin to the existing PATH
+# This ensures that the virtual environment's Python and pip are used by default.
 ENV PATH="/home/devuser/.venv/bin:$PATH"
 
 # Copy project files into container
@@ -67,8 +75,41 @@ RUN pip install -r requirements_dev.txt
 # Install the package in editable mode (CMake + pybind11 + scikit-build-core triggered)
 RUN pip install -e . --no-cache-dir --verbose --no-build-isolation
 
-# Default command
+# Default command that runs when you start a container without specifying a command explicitly.
 CMD ["python3"]
 
-# docker build --memory=4g --memory-swap=6g . -t rcs-dev 
+######################################################################
+# Build the Docker image with the specified memory limits
+# To build the Docker image, run the following command in the terminal:
+# docker build --memory=4g --memory-swap=6g . -t rcs-dev
+######################################################################
+# --memory=4g	Limit build process to 4 GB RAM
+# --memory-swap=6g	Limit RAM + swap to 6 GB total
+# .	Use current directory for Docker context
+# -t rcs-dev	Tag the image as rcs-dev
+######################################################################
+# Run the Docker container interactively 
 # docker run -it --rm rcs-dev bash
+######################################################################
+# Optional: for GUI applications, you might need to set up X11 forwarding
+# Example command to run the container with GUI support
+# Note: Ensure your host system allows X11 connections from the container
+#  run the following command in the terminal:
+# xhost +local:docker
+######################################################################
+# Temporarily allows Docker containers (which run as separate users) to connect to your host's X11 display server and open GUI windows.
+# xhost: A Linux tool for managing access to the X11 display server.
+# +local:docker: Grants access
+######################################################################
+# docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev  bash
+######################################################################
+# Explanation of the command:
+# docker run	Starts a new Docker container.
+# -it	Interactive + TTY: Keeps the terminal session open and usable.
+# --rm	Automatically removes the container after it exits (no leftovers).
+# -e DISPLAY=$DISPLAY	Passes your host’s display address (usually :0) into the container, so it knows where to draw windows.
+# -v /tmp/.X11-unix:/tmp/.X11-unix	Mounts the Unix socket for X11 communication from host to container — this is how the GUI actually connects.
+# --shm-size=1g	Enlarges the container’s shared memory space (default is too small for MuJoCo rendering).
+# rcs-dev	The name of your Docker image to run — built using your Dockerfile.
+# bash	Starts a bash shell inside the container, allowing you to run commands interactively.
+######################################################################
