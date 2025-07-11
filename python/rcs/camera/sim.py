@@ -10,7 +10,7 @@ from rcs._core import common
 from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
-from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
+from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, FrameSet
 
 from rcs import sim
 
@@ -77,13 +77,15 @@ class SimCameraSet(_SimCameraSet):
                     data=color_np_frame,
                     timestamp=cpp_frameset.timestamp,
                     intrinsics=self._intrinsics(color_name),
-                    extrinsics=self._extrinsics(color_frame),
+                    extrinsics=self._extrinsics(color_name),
                 ),
                 depth=DataFrame(
-                    data=depth_np_frame,
+                    data= (depth_np_frame * BaseCameraSet.DEPTH_SCALE).astype(
+                        np.uint16
+                    ),
                     timestamp=cpp_frameset.timestamp,
-                    intrinsics=self._intrinsics(depth_frame),
-                    extrinsics=self._extrinsics(depth_frame),
+                    intrinsics=self._intrinsics(depth_name),
+                    extrinsics=self._extrinsics(depth_name),
                 ),
             )
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)

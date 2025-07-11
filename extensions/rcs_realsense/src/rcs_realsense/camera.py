@@ -286,8 +286,8 @@ class RealSenseCameraSet(HardwareCamera):
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
                 depth = DataFrame(
-                    data=(to_numpy(frame).astype(np.float64) * device.depth_scale / BaseCameraSet.DEPTH_SCALE).astype(
-                        np.int16
+                    data=(to_numpy(frame).astype(np.float64) * device.depth_scale * BaseCameraSet.DEPTH_SCALE).astype(
+                        np.uint16
                     ),
                     timestamp=to_ts(frame),
                     intrinsics=device.depth_intrinsics,

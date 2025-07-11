@@ -604,12 +604,13 @@ class CameraSetWrapper(ActObsInfoWrapper):
             params.update(
                 {
                     f"/{name}/{self.DEPTH_KEY}/frame": {
+                        # values metric but scaled with factor rcs.BaseCameraSet.DEPTH_SCALE to fit into uint16
                         "height": camera_set.config(name).resolution_height,
                         "width": camera_set.config(name).resolution_width,
                         "color_dim": 1,
                         "dtype": np.uint16,
-                        "low": -np.inf,
-                        "high": np.inf,
+                        "low": 0,
+                        "high": 65535,
                     }
                     for name in camera_set.camera_names
                 }
