@@ -50,7 +50,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libegl-dev \
     libegl1-mesa-dev \ 
     libglib2.0-dev \
+    mesa-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Remove root password so `su -` works from devuser
+RUN passwd -d root
+
 
 # Switch to non-root user
 USER devuser
@@ -101,6 +106,10 @@ CMD ["python3"]
 # xhost: A Linux tool for managing access to the X11 display server.
 # +local:docker: Grants access
 ######################################################################
+# with no GPU support  
+# This command runs the container with the current user's display settings, allowing GUI applications to render on your host machine.
+# Make sure your host's X11 server is configured to allow connections from the Docker container.
+######################################################################
 # docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev  bash
 ######################################################################
 # Explanation of the command:
@@ -113,3 +122,18 @@ CMD ["python3"]
 # rcs-dev	The name of your Docker image to run — built using your Dockerfile.
 # bash	Starts a bash shell inside the container, allowing you to run commands interactively.
 ######################################################################
+# If you want to run the container with NVIDIA GPU support, you can use the following command:
+# Make sure you have the NVIDIA Container Toolkit installed and configured.
+# This allows Docker to utilize the GPU resources of your host machine.
+# The command below assumes you have the NVIDIA runtime set up correctly.
+######################################################################
+# docker run -it --rm --gpus all --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev bash
+######################################################################
+# Explanation of the command:
+# --gpus all	Allows the container to access all available GPUs on the host.
+# --runtime=nvidia	Specifies the NVIDIA runtime for Docker, enabling GPU support.
+# -e NVIDIA_VISIBLE_DEVICES=all	Exposes all GPUs to the container.
+# -e NVIDIA_DRIVER_CAPABILITIES=all	Allows the container to use all NVIDIA driver capabilities, such as compute and graphics.
+# --shm-size=1g increases the shared memory size to 1 GB, which is often necessary for applications that require more memory for rendering or processing.
+
+
