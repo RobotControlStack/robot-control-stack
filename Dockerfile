@@ -84,56 +84,56 @@ RUN pip install -e . --no-cache-dir --verbose --no-build-isolation
 CMD ["python3"]
 
 ######################################################################
-# Build the Docker image with the specified memory limits
+# Build the Docker image with specified memory limits
 # To build the Docker image, run the following command in the terminal:
 # docker build --memory=4g --memory-swap=6g . -t rcs-dev
 ######################################################################
-# --memory=4g	Limit build process to 4 GB RAM
-# --memory-swap=6g	Limit RAM + swap to 6 GB total
-# .	Use current directory for Docker context
-# -t rcs-dev	Tag the image as rcs-dev
+# --memory=4g          Limit the build process to 4 GB of RAM
+# --memory-swap=6g     Limit total memory (RAM + swap) to 6 GB
+# .                    Use current directory as the Docker context
+# -t rcs-dev           Tag the built image as "rcs-dev"
 ######################################################################
-# Run the Docker container interactively 
+
+######################################################################
+# Run the Docker container interactively (without GUI)
 # docker run -it --rm rcs-dev bash
 ######################################################################
-# Optional: for GUI applications, you might need to set up X11 forwarding
-# Example command to run the container with GUI support
-# Note: Ensure your host system allows X11 connections from the container
-#  run the following command in the terminal:
+# -it                  Interactive mode with TTY
+# --rm                 Automatically remove container after exit
+# rcs-dev              Name of the Docker image to run
+# bash                 Start an interactive bash shell inside the container
+######################################################################
+
+######################################################################
+# Optional: Run GUI applications from inside the container
+# First, allow X11 connections from Docker containers:
+# Run this command on the host machine:
 # xhost +local:docker
 ######################################################################
-# Temporarily allows Docker containers (which run as separate users) to connect to your host's X11 display server and open GUI windows.
-# xhost: A Linux tool for managing access to the X11 display server.
-# +local:docker: Grants access
+# xhost                A utility to manage X11 display access control
+# +local:docker        Grant X11 access to Docker containers running locally
 ######################################################################
-# with no GPU support  
-# This command runs the container with the current user's display settings, allowing GUI applications to render on your host machine.
-# Make sure your host's X11 server is configured to allow connections from the Docker container.
+
 ######################################################################
-# docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev  bash
+# Run container with GUI support (no GPU)
+# docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev bash
 ######################################################################
-# Explanation of the command:
-# docker run	Starts a new Docker container.
-# -it	Interactive + TTY: Keeps the terminal session open and usable.
-# --rm	Automatically removes the container after it exits (no leftovers).
-# -e DISPLAY=$DISPLAY	Passes your host’s display address (usually :0) into the container, so it knows where to draw windows.
-# -v /tmp/.X11-unix:/tmp/.X11-unix	Mounts the Unix socket for X11 communication from host to container — this is how the GUI actually connects.
-# --shm-size=1g	Enlarges the container’s shared memory space (default is too small for MuJoCo rendering).
-# rcs-dev	The name of your Docker image to run — built using your Dockerfile.
-# bash	Starts a bash shell inside the container, allowing you to run commands interactively.
+# -e DISPLAY=$DISPLAY                  Pass display info to container
+# -v /tmp/.X11-unix:/tmp/.X11-unix    Mount X11 socket for GUI apps
+# --shm-size=1g                        Increase shared memory for rendering (useful for tools like MuJoCo)
 ######################################################################
-# If you want to run the container with NVIDIA GPU support, you can use the following command:
-# Make sure you have the NVIDIA Container Toolkit installed and configured.
-# This allows Docker to utilize the GPU resources of your host machine.
-# The command below assumes you have the NVIDIA runtime set up correctly.
+
 ######################################################################
+# Run container with NVIDIA GPU support
+# Make sure NVIDIA Container Toolkit is installed and configured
+# For more info: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 # docker run -it --rm --gpus all --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=1g rcs-dev bash
 ######################################################################
-# Explanation of the command:
-# --gpus all	Allows the container to access all available GPUs on the host.
-# --runtime=nvidia	Specifies the NVIDIA runtime for Docker, enabling GPU support.
-# -e NVIDIA_VISIBLE_DEVICES=all	Exposes all GPUs to the container.
-# -e NVIDIA_DRIVER_CAPABILITIES=all	Allows the container to use all NVIDIA driver capabilities, such as compute and graphics.
-# --shm-size=1g increases the shared memory size to 1 GB, which is often necessary for applications that require more memory for rendering or processing.
+# --gpus all                         Enable all available GPUs
+# --runtime=nvidia                   Use NVIDIA runtime for GPU access
+# -e NVIDIA_VISIBLE_DEVICES=all     Expose all GPUs inside container
+# -e NVIDIA_DRIVER_CAPABILITIES=all Enable all GPU features (e.g., graphics, compute)
+# Other flags same as GUI setup above
+######################################################################
 
 
