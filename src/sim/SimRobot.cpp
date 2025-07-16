@@ -142,8 +142,10 @@ std::optional<std::shared_ptr<common::IK>> SimRobot::get_ik() {
 
 void SimRobot::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
+  auto q = this->get_joint_position();
+  std::cout << q << std::endl;
   auto joint_vals =
-      this->m_ik->ik(pose, this->get_joint_position(), this->cfg.tcp_offset);
+      this->m_ik->ik(pose, q, this->cfg.tcp_offset);
   if (joint_vals.has_value()) {
     this->state.ik_success = true;
     this->set_joint_position(joint_vals.value());
@@ -189,8 +191,8 @@ bool SimRobot::convergence_callback() {
 }
 
 void SimRobot::m_reset() {
-  this->set_joints_hard(
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  // this->set_joints_hard(
+  //     common::robots_meta_config.at(this->cfg.robot_type).q_home);
 }
 
 void SimRobot::set_joints_hard(const common::VectorXd& q) {

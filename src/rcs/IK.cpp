@@ -60,15 +60,20 @@ Pose RL::forward(const VectorXd& q0, const Pose& tcp_offset) {
   return pose * tcp_offset.inverse();
 }
 
+// TODO: add base id
 Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true)
     : model() {
   if (urdf) {
     pinocchio::urdf::buildModel(path, this->model);
   } else {
+    std::cout << "asdf1" << std::endl;
+    // pinocchio::JointModelFreeFlyerTpl<double,0> root_joint;
     pinocchio::mjcf::buildModel(path, this->model);
+    std::cout << "asdf2" << std::endl;
   }
   this->data = pinocchio::Data(this->model);
-  this->FRAME_ID = model.getFrameId(frame_id);
+  // this->FRAME_ID = model.getFrameId(frame_id);
+  this->FRAME_ID = model.getFrameId(frame_id, pinocchio::FrameType::OP_FRAME);
   if (FRAME_ID == -1) {
     throw std::runtime_error(
         frame_id + " frame id could not be found in the provided URDF");
@@ -78,7 +83,10 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true)
 std::optional<VectorXd> Pin::ik(const Pose& pose, const VectorXd& q0,
                                 const Pose& tcp_offset) {
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();
-  VectorXd q(q0);
+  // VectorXd q(q0);
+  std::cout << model.nq << " " << model.nv << " " << model.njoints << std::endl;
+  VectorXd q = VectorXd::Zero(model.nq);
+  q.head(q0.size()) = q0;
   const pinocchio::SE3 oMdes(new_pose.rotation_m(), new_pose.translation());
   pinocchio::Data::Matrix6x J(6, model.nv);
   J.setZero();

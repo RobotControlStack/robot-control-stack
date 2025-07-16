@@ -79,11 +79,17 @@ class SimEnvCreator(EnvCreator):
         if mjcf in rcs.scenes:
             assert isinstance(mjcf, str)
             mjcf = rcs.scenes[mjcf]["mjb"]
+        print(mjcf)
         simulation = sim.Sim(mjcf)
+        print("fdas")
 
-        ik = rcs.common.RL(str(urdf_path))
+        ik = rcs.common.Pin(str(urdf_path), frame_id="gripper", urdf=False)
+        # ik = rcs.common.Pin(str(mjcf), frame_id="gripper", urdf=False)
+        # ik = rcs.common.Pin("/home/tobi/coding/rcs_clones/prs/assets/scenes/so101_empty_world/so101.xml", frame_id="gripper", urdf=False)
+        # ik = rcs.common.RL(str(urdf_path))
+
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
-        env: gym.Env = RobotEnv(robot, control_mode)
+        env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
         env = RobotSimWrapper(env, simulation, sim_wrapper)
 
         if cameras is not None:

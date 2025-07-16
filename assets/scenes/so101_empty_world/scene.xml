@@ -1,5 +1,6 @@
 <mujoco model="scene">
     <include file="so101.xml" />
+    <!-- <option  gravity="0 0 0"/> -->
 
     <visual>
         <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
