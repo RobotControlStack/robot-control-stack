@@ -22,7 +22,7 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         # base frame to camera, world to base frame
         self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = None
         self.camera_name = camera_name
-        self.tag_to_world = common.Pose(rpy_vector=[np.pi, 0, -np.pi / 2], translation=[0.2, 0, 0]).pose_matrix()
+        self.tag_to_world = common.Pose(rpy_vector=[np.pi, 0, -np.pi / 2], translation=[0.145, 0, 0]).pose_matrix()
 
     def calibrate(
         self,
@@ -73,6 +73,7 @@ def get_average_marker_pose(
     # make while loop with tqdm
     poses = []
 
+    last_frame = None
     for frame in tqdm(samples):
 
         # detect tags
@@ -99,6 +100,9 @@ def get_average_marker_pose(
             # wait for key press
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+    if last_frame is None:
+        msg = "No frames were processed, cannot calculate average pose. Check if the tag is visible."
+        raise ValueError(msg)
 
     if show_live_window:
         cv2.destroyAllWindows()
