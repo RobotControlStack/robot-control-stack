@@ -42,6 +42,7 @@ void Renderer::register_context(const std::string& id, size_t width,
 
 mjrContext* Renderer::get_context(const std::string& id) {
   common::ensure_current();
+  mjr_setBuffer(mjFB_OFFSCREEN, this->ctxs[id]);
   return this->ctxs[id];
 }
 }  // namespace sim
