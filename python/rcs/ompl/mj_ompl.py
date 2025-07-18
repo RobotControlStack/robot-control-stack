@@ -3,11 +3,13 @@ from ompl import util as ou
 from ompl import base as ob
 from ompl import geometric as og
 from copy import deepcopy
+import numpy as np
 from rcs.envs.base import GripperWrapper, RobotEnv
 import sys
 import os
 import warnings
 import xml.etree.ElementTree as ET
+from rcs._core.common import Pose
 
 print("OMPL modules imported successfully.")
 DEFAULT_PLANNING_TIME = 5.0  # Default time allowed for planning in seconds
@@ -47,6 +49,16 @@ def get_collision_bodies(xml_file, robot_name):
 
 class MjORobot():
 
+    franka_hand_tcp = Pose(pose_matrix=np.array([[ 0.707, 0.707, 0, 0     ],
+                                                 [-0.707, 0.707, 0, 0     ],
+                                                 [ 0,     0,     1, 0.1034],
+                                                 [ 0,     0,     0, 1     ]]))
+    
+    digit_hand_tcp = Pose(pose_matrix=np.array([[ 0.707, 0.707, 0, 0     ],
+                                                [-0.707, 0.707, 0, 0     ],
+                                                [ 0,     0,     1, 0.15  ],
+                                                [ 0,     0,     0, 1     ]]))
+    
     def __init__(self, 
                  robot_name: str, 
                  env: RobotEnv, 
@@ -85,10 +97,9 @@ class MjORobot():
             f"Robot XML file {robot_xml_name} does not exist. Please provide a valid path."
         
         self.robot_name = robot_name
-        self.env = env 
+        self.env = env
         self.model = self.env.get_wrapper_attr("sim").model
         self.data = self.env.get_wrapper_attr("sim").data
-        
         # Get the robot's collision geometries from the XML file
         self.robot_body_names = get_collision_bodies(robot_xml_name, robot_root_name)
 
@@ -207,6 +218,21 @@ class MjORobot():
         # Deepcopy might not be necessary 
         return [deepcopy(self.data.qpos[joint_id]) for joint_id in self.joint_ids]
 
+    def ik(self, pose, q0=None, tcp_offset=None):
+        """
+        Perform inverse kinematics to find joint positions that achieve the desired pose.
+        
+        Args:
+            pose (Pose): Desired end-effector pose.
+            q0 (numpy.ndarray, optional): Initial guess for joint positions.
+            tcp_offset (Pose, optional): Offset from the end-effector to the TCP.
+        
+        Returns:
+            numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
+        """
+        tcp_offset = tcp_offset if tcp_offset is not None else self.franka_hand_tcp
+        return self.env.robot.get_ik().ik(pose, q0, tcp_offset)
+
 
 class MjOStateSpace(ob.RealVectorStateSpace):
     def __init__(self, num_dim) -> None:
@@ -303,28 +329,29 @@ class MjOMPL():
 
         self.ss.setPlanner(self.planner)
     
-    def plan(self, goal:list, start:list=None, allowed_time:float = DEFAULT_PLANNING_TIME):
+    def plan(self, goal:np.ndarray, start:np.ndarray=None, allowed_time:float = DEFAULT_PLANNING_TIME):
         '''
         Plan a path to goal from current robot state.
-        
+        Can be combined with `ik_pose` to plan a path to a desired pose.
+        e.g. plan(goal=ik_pose(goal_pose), ...)
         Args:
-            goal (list): List of joint positions to reach.
-            start (list=None): List of joint positions to start from.
+            goal (np.ndarray): List of joint positions to reach.
+            start (np.ndarray=None): List of joint positions to start from.
                              If None, it will use the current robot state.
             allowed_time (float=5.0): Time allowed for planning in seconds.
         '''
         start = self.robot.get_joint_positions() if start is None else start
         return self._plan_start_goal(start, goal, allowed_time=allowed_time)
     
-    def _plan_start_goal(self, start, goal, allowed_time = DEFAULT_PLANNING_TIME):
+    def _plan_start_goal(self, start: np.ndarray, goal: np.ndarray, allowed_time = DEFAULT_PLANNING_TIME):
         '''
         Plan a path to goal from the given robot start state.
         If a path is found, it will try to interpolate the path according to 
         the number of segments specified by self.interpolate_num.
         
         Args:
-            start (list): List of joint positions to start from.
-            goal (list): List of joint positions to reach.
+            start (np.ndarray): List of joint positions to start from.
+            goal (np.ndarray): List of joint positions to reach.
             allowed_time (float=5.0): Time allowed for planning in seconds.
         
         Returns:
@@ -333,8 +360,6 @@ class MjOMPL():
         '''
         print("start_planning")
         print(self.planner.params())
-
-        orig_robot_state = self.robot.get_joint_positions()
 
         # set the start and goal states;
         s = ob.State(self.space)
@@ -368,6 +393,23 @@ class MjOMPL():
         # self.robot.set_state(orig_robot_state)
         return res, sol_path_list
 
+    def ik(self, pose:Pose, q0:np.ndarray=None, tcp_offset:Pose=None):
+        """
+        Perform inverse kinematics to find joint positions that achieve the desired pose.
+        
+        Args:
+            pose (Pose): Desired end-effector pose.
+            q0 (numpy.ndarray, optional): Initial guess for joint positions.
+            tcp_offset (Pose, optional): Offset from the end-effector to the TCP.
+                    if not provided, it will use the default Franka Hand TCP pose.
+        
+        Returns:
+            numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
+        """
+        if q0 is None:
+            q0 = self.robot.get_joint_positions()
+        return self.robot.ik(pose, q0, tcp_offset)
+    
     def state_to_list(self, state):
         """
         Convert an OMPL state to a list of joint positions.
