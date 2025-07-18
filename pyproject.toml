@@ -25,6 +25,7 @@ dependencies = ["websockets>=11.0",
     "pin==3.7.0",
     "tilburg-hand",
     "digit-interface",
+    "ompl>=1.7.0",
 ]
 readme = "README.md"
 maintainers = [
