@@ -70,6 +70,8 @@ class SimCameraSet {
   std::mutex buffer_lock;
   mjtNum last_ts = 0;
   void render_all();
+  void render_single(const std::string& id, mjrContext& ctx, mjvScene& scene,
+                     mjvOption& opt);
 };
 }  // namespace sim
 }  // namespace rcs

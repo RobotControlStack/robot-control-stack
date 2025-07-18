@@ -101,6 +101,7 @@ ignore = [
   "PT018",   # assertion should be broken down into multiple parts
   "NPY002",
   "G004",   # Logging format string does not contain any placeholders
+  "ARG002",
 ]
 
 [tool.pylint.format]

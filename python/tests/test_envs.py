@@ -39,6 +39,55 @@ class SimpleNestedSpace(RCSpaceType):
     ]
 
 
+class SimpleTypeNestedSpace(RCSpaceType):
+    robots_joints: dict[
+        Annotated[str, "robots"],
+        SimpleSpace,
+    ]
+
+
+class CameraSpace(RCSpaceType):
+    data: Annotated[
+        np.ndarray,
+        # needs to be filled with values downstream
+        lambda height, width, color_dim=3, dtype=np.uint8, low=0, high=255: gym.spaces.Box(
+            low=low,
+            high=high,
+            shape=(height, width, color_dim),
+            dtype=dtype,
+        ),
+        "frame",
+    ]
+    intrinsics: Annotated[
+        np.ndarray,
+        gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(3, 4),
+            dtype=np.float64,
+        ),
+    ]
+    extrinsics: Annotated[
+        np.ndarray,
+        gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(4, 4),
+            dtype=np.float64,
+        ),
+    ]
+
+
+class AdvancedTypeNestedSpace(RCSpaceType):
+    frames: dict[
+        Annotated[str, "camera_names"],
+        dict[
+            Annotated[str, "camera_type"],  # "rgb" or "depth"
+            CameraSpace,
+        ],
+    ]
+
+
 class AdvancedNestedSpace(RCSpaceType):
     frames: dict[
         Annotated[str, "cams"],
@@ -100,6 +149,91 @@ class TestGetSpace:
                     {
                         "robot1": gym.spaces.Box(low=-np.pi, high=np.pi, shape=(7,), dtype=np.float32),
                         "robot2": gym.spaces.Box(low=-np.pi, high=np.pi, shape=(7,), dtype=np.float32),
+                    }
+                ),
+            }
+        )
+
+    def test_simple_type_nested_space(self):
+        assert get_space(SimpleTypeNestedSpace, child_dict_keys_to_unfold={"robots": ["robot1"]}) == gym.spaces.Dict(
+            {
+                "robots_joints": gym.spaces.Dict(
+                    {
+                        "robot1": gym.spaces.Dict(
+                            {
+                                "my_int": gym.spaces.Discrete(1),
+                                "my_float": gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+                            }
+                        ),
+                    }
+                ),
+            }
+        )
+
+    def test_advanced_type_nested_space(self):
+        assert get_space(
+            AdvancedTypeNestedSpace,
+            child_dict_keys_to_unfold={"camera_names": ["cam1"], "camera_type": ["depth", "rgb"]},
+            params={
+                "/cam1/rgb/frame": {
+                    "height": 480,
+                    "width": 640,
+                    "dtype": np.uint8,
+                    "low": 0,
+                    "high": 255,
+                    "color_dim": 3,
+                },
+                "/cam1/depth/frame": {
+                    "height": 480,
+                    "width": 640,
+                    "dtype": np.uint16,
+                    "low": 0,
+                    "high": 65535,
+                    "color_dim": 1,
+                },
+            },
+        ) == gym.spaces.Dict(
+            {
+                "frames": gym.spaces.Dict(
+                    {
+                        "cam1": gym.spaces.Dict(
+                            {
+                                "depth": gym.spaces.Dict(
+                                    {
+                                        "data": gym.spaces.Box(low=0, high=65535, shape=(480, 640, 1), dtype=np.uint16),
+                                        "intrinsics": gym.spaces.Box(
+                                            low=-np.inf,
+                                            high=np.inf,
+                                            shape=(3, 4),
+                                            dtype=np.float64,
+                                        ),
+                                        "extrinsics": gym.spaces.Box(
+                                            low=-np.inf,
+                                            high=np.inf,
+                                            shape=(4, 4),
+                                            dtype=np.float64,
+                                        ),
+                                    }
+                                ),
+                                "rgb": gym.spaces.Dict(
+                                    {
+                                        "data": gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint16),
+                                        "intrinsics": gym.spaces.Box(
+                                            low=-np.inf,
+                                            high=np.inf,
+                                            shape=(3, 4),
+                                            dtype=np.float64,
+                                        ),
+                                        "extrinsics": gym.spaces.Box(
+                                            low=-np.inf,
+                                            high=np.inf,
+                                            shape=(4, 4),
+                                            dtype=np.float64,
+                                        ),
+                                    }
+                                ),
+                            }
+                        ),
                     }
                 ),
             }

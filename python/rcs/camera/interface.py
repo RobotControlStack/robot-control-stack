@@ -1,8 +1,9 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
+import numpy as np
 from rcs._core.common import BaseCameraConfig
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,8 @@ class DataFrame:
     data: Any
     # timestamp in posix time
     timestamp: float | None = None
+    intrinsics: np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]] | None = None
+    extrinsics: np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]] | None = None
 
 
 @dataclass(kw_only=True)
@@ -47,6 +50,8 @@ class FrameSet:
 class BaseCameraSet(Protocol):
     """Interface for a set of cameras for sim and hardware"""
 
+    DEPTH_SCALE: int = 1000
+
     def buffer_size(self) -> int:
         """Returns size of the internal buffer."""
 
@@ -64,6 +69,9 @@ class BaseCameraSet(Protocol):
 
     def config(self, camera_name: str) -> BaseCameraConfig:
         """Returns the configuration object of the cameras."""
+
+    def calibrate(self) -> bool:
+        """Calibrates the cameras. Returns calibration success"""
 
     @property
     def camera_names(self) -> list[str]:

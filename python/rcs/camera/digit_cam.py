@@ -51,3 +51,7 @@ class DigitCam(HardwareCamera):
 
     def config(self, camera_name) -> BaseCameraConfig:
         return self.cameras[camera_name]
+
+    def calibrate(self) -> bool:
+        """No calibration needed for DIGIT cameras."""
+        return True

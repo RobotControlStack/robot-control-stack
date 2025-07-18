@@ -1,13 +1,16 @@
 import logging
 from datetime import datetime
+from typing import Literal
 
+import mujoco
 import numpy as np
 
 # from rcs._core.common import BaseCameraConfig
+from rcs._core import common
 from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
-from rcs.camera.interface import CameraFrame, DataFrame, Frame, FrameSet
+from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, FrameSet
 
 from rcs import sim
 
@@ -68,13 +71,51 @@ class SimCameraSet(_SimCameraSet):
                 near = self._sim.model.vis.map.znear * extent
                 far = self._sim.model.vis.map.zfar * extent
                 depth_np_frame = near / (1 - depth_np_frame * (1 - near / far))
+
             cameraframe = CameraFrame(
-                color=DataFrame(data=color_np_frame, timestamp=cpp_frameset.timestamp),
-                depth=DataFrame(data=depth_np_frame, timestamp=cpp_frameset.timestamp),
+                color=DataFrame(
+                    data=color_np_frame,
+                    timestamp=cpp_frameset.timestamp,
+                    intrinsics=self._intrinsics(color_name),
+                    extrinsics=self._extrinsics(color_name),
+                ),
+                depth=DataFrame(
+                    data=(depth_np_frame * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
+                    timestamp=cpp_frameset.timestamp,
+                    intrinsics=self._intrinsics(depth_name),
+                    extrinsics=self._extrinsics(depth_name),
+                ),
             )
             frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
             frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
+
+    def _intrinsics(self, camera_name) -> np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]]:
+        cam_id = mujoco.mj_name2id(self._sim.model, mujoco.mjtObj.mjOBJ_CAMERA, self.cameras[camera_name].identifier)
+        fovy = self._sim.model.cam_fovy[cam_id]
+        fx = fy = 0.5 * self.cameras[camera_name].resolution_height / np.tan(fovy * np.pi / 360)
+        return np.array(
+            [
+                [fx, 0, (self.cameras[camera_name].resolution_width - 1) / 2, 0],
+                [0, fy, (self.cameras[camera_name].resolution_height - 1) / 2, 0],
+                [0, 0, 1, 0],
+            ]
+        )
+
+    def _extrinsics(self, camera_name) -> np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]:
+        cam_id = mujoco.mj_name2id(self._sim.model, mujoco.mjtObj.mjOBJ_CAMERA, self.cameras[camera_name].identifier)
+        xpos = self._sim.data.cam_xpos[cam_id]
+        xmat = self._sim.data.cam_xmat[cam_id].reshape(3, 3)
+
+        cam = common.Pose(rotation=xmat, translation=xpos)
+        # put z axis infront
+        rotation_p = common.Pose(rpy_vector=np.array([np.pi, 0, 0]), translation=np.array([0, 0, 0]))
+        cam = cam * rotation_p
+
+        return cam.inverse().pose_matrix()
+
+    def calibrate(self) -> bool:
+        return True
 
     def config(self, camera_name: str) -> SimCameraConfig:
         """Should return the configuration of the camera with the given name."""

@@ -200,6 +200,11 @@ def get_space(
                 {key: value(get_args(t)[1], f"{path}/{key}") for key in child_dict_keys_to_unfold[unfold_key]}
             )
 
+        if not hasattr(t, "__metadata__"):
+            return gym.spaces.Dict(
+                {name: value(sub_t, path) for name, sub_t in get_type_hints(t, include_extras=True).items()}
+            )
+
         if len(t.__metadata__) == 2 and callable(t.__metadata__[0]):
             # space can be parametrized and is a function
             assert params is not None, "No params given."

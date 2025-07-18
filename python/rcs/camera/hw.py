@@ -35,6 +35,56 @@ class HardwareCamera(typing.Protocol):
     def camera_names(self) -> list[str]:
         """Returns the names of the cameras in this set."""
 
+    def calibrate(self) -> bool:
+        """Returns camera intrinsics"""
+
+
+N = typing.TypeVar("N", bound=int)
+H = typing.TypeVar("H", bound=int)
+W = typing.TypeVar("W", bound=int)
+
+
+class CalibrationStrategy(typing.Protocol):
+    """Implementation the hardware dependend calibration strategy."""
+
+    def calibrate(
+        self,
+        samples: list[Frame],
+        intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+        lock: threading.Lock,
+    ) -> bool:
+        """Implements algorithm to calibrate the camera.
+
+        Args:
+            samples: List of frames to use for calibration.
+            intrinsics: Intrinsic camera parameters, e.g. from a previous calibration.
+            lock: A lock to ensure thread safety during calibration as the samples might refresh in parallel.
+
+        Returns:
+            bool: True if calibration was successful, False otherwise.
+        """
+
+    def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
+        """
+        Returns the calibrated extrinsic, can also be cached. If not calibrated then it returns None.
+        It is urged to perform efficient caching for this method as it is called in each step.
+        """
+
+
+class DummyCalibrationStrategy(CalibrationStrategy):
+    """Always returns identity extrinsics."""
+
+    def calibrate(
+        self,
+        samples: list[Frame],
+        intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
+        lock: threading.Lock,
+    ) -> bool:
+        return True
+
+    def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
+        return np.eye(4)
+
 
 class HardwareCameraSet(BaseCameraSet):
     """This base class polls in a separate thread for all cameras and stores them in a buffer.
@@ -178,6 +228,13 @@ class HardwareCameraSet(BaseCameraSet):
                 self.poll_frame(camera_name)
             self.rate_limiter()
 
+    def calibrate(self) -> bool:
+        for camera in self.cameras:
+            c = camera.calibrate()
+            if c is None:
+                return False
+        return True
+
     def polling_thread(self, warm_up: bool = True):
         for camera in self.cameras:
             camera.open()
@@ -221,3 +278,9 @@ class HardwareCameraSet(BaseCameraSet):
 
     def poll_frame(self, camera_name: str) -> Frame:
         return self.camera_dict[camera_name].poll_frame(camera_name)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args, **kwargs):
+        self.close()

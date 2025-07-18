@@ -1,4 +1,5 @@
 import logging
+import typing
 from os import PathLike
 from pathlib import Path
 from typing import Type
@@ -15,6 +16,7 @@ from lerobot.common.teleoperators.so101_leader.config_so101_leader import (
 from lerobot.common.teleoperators.so101_leader.so101_leader import SO101Leader
 from lerobot.common.teleoperators.utils import make_teleoperator_from_config
 from rcs.camera.hw import HardwareCameraSet
+from rcs.camera.interface import BaseCameraSet
 from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -125,7 +127,9 @@ class SO101SimEnvCreator(EnvCreator):
         env = RobotSimWrapper(env, simulation, sim_wrapper)
 
         if cameras is not None:
-            camera_set = SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
+            camera_set = typing.cast(
+                BaseCameraSet, SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
+            )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, SimGripperConfig):
