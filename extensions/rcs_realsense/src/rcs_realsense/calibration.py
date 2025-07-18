@@ -6,7 +6,6 @@ from time import sleep
 import apriltag
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw
 from rcs._core import common
 from rcs.camera.hw import CalibrationStrategy
 from rcs.camera.interface import Frame
@@ -131,7 +130,8 @@ def get_marker_pose(calib_tag_id, detector, intrinsics, frame):
         marker_det = det
 
     if n_det > 1:
-        raise ValueError("Expected 1 detection of tag id " f"{calib_tag_id}, got {n_det}.")
+        msg = f"Expected 1 detection of tag id {calib_tag_id}, got {n_det}."
+        raise ValueError(msg)
 
     if marker_det is None:
         return None, None

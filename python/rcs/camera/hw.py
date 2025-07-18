@@ -4,7 +4,6 @@ import typing
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from queue import Queue
 from time import sleep
 
 import cv2

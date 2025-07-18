@@ -87,19 +87,19 @@ void SimCameraSet::render_all() {
   for (auto const& [id, cam] : this->cameras_cfg) {
     mjrContext* ctx = this->sim->renderer.get_context(id);
     this->render_single(id, *ctx, this->sim->renderer.scene,
-                         this->sim->renderer.opt);
+                        this->sim->renderer.opt);
   }
 }
 
 void SimCameraSet::frame_callback(const std::string& id, mjrContext& ctx,
                                   mjvScene& scene, mjvOption& opt) {
-  if (!this->render_on_demand){
-  this->render_single(id, ctx, scene, opt);
+  if (!this->render_on_demand) {
+    this->render_single(id, ctx, scene, opt);
   }
 }
 
 void SimCameraSet::render_single(const std::string& id, mjrContext& ctx,
-                                  mjvScene& scene, mjvOption& opt) {
+                                 mjvScene& scene, mjvOption& opt) {
   mjrRect viewport = mjr_maxViewport(&ctx);
   int W = viewport.width;
   int H = viewport.height;
