@@ -90,7 +90,7 @@ class SimCameraSet(_SimCameraSet):
             frames[color_name] = frame
         return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
 
-    def _intrinsics(self, camera_name) -> np.ndarray[tuple[Literal[3, 4]], np.dtype[np.float64]]:
+    def _intrinsics(self, camera_name) -> np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]]:
         cam_id = mujoco.mj_name2id(self._sim.model, mujoco.mjtObj.mjOBJ_CAMERA, self.cameras[camera_name].identifier)
         fovy = self._sim.model.cam_fovy[cam_id]
         fx = fy = 0.5 * self.cameras[camera_name].resolution_height / np.tan(fovy * np.pi / 360)
@@ -102,14 +102,14 @@ class SimCameraSet(_SimCameraSet):
             ]
         )
 
-    def _extrinsics(self, camera_name) -> np.ndarray[tuple[Literal[4, 4]], np.dtype[np.float64]]:
+    def _extrinsics(self, camera_name) -> np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]:
         cam_id = mujoco.mj_name2id(self._sim.model, mujoco.mjtObj.mjOBJ_CAMERA, self.cameras[camera_name].identifier)
         xpos = self._sim.data.cam_xpos[cam_id]
         xmat = self._sim.data.cam_xmat[cam_id].reshape(3, 3)
 
         cam = common.Pose(rotation=xmat, translation=xpos)
         # put z axis infront
-        rotation_p = common.Pose(rpy_vector=[np.pi, 0, 0], translation=[0, 0, 0])
+        rotation_p = common.Pose(rpy_vector=np.array([np.pi, 0, 0]), translation=np.array([0, 0, 0]))
         cam = cam * rotation_p
 
         return cam.inverse().pose_matrix()

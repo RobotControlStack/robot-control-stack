@@ -48,7 +48,7 @@ class RealSenseCameraSet(HardwareCamera):
         self.enable_imu = enable_imu
         self.cameras = cameras
         if calibration_strategy is None:
-            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras.keys()}
+            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
         self.calibration_strategy = calibration_strategy
         self._logger = logging.getLogger(__name__)
         assert (
@@ -122,16 +122,6 @@ class RealSenseCameraSet(HardwareCamera):
 
     def update_available_devices(self):
         self._available_devices = self.enumerate_connected_devices(rs.context())
-
-    def enable_all_devices(self, enable_ir_emitter: bool = False):
-        """
-        Enable all the Intel RealSense Devices which are connected to the PC
-
-        """
-        self._logger.debug("%i devices have been found", len(self._available_devices))
-
-        for device_info in self._available_devices.values():
-            self.enable_device(device_info, enable_ir_emitter)
 
     def enable_devices(self, devices_to_enable: dict[str, str], enable_ir_emitter: bool = False):
         """
@@ -209,7 +199,7 @@ class RealSenseCameraSet(HardwareCamera):
             color_intrinsics=color_intrinsics,
             depth_intrinsics=depth_intrinsics,
             depth_to_color=common.Pose(
-                translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)
+                translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)  # type: ignore
             ),
         )
 
@@ -266,6 +256,7 @@ class RealSenseCameraSet(HardwareCamera):
 
         color_extrinsics = self.calibration_strategy[camera_name].get_extrinsics()
         depth_to_color = device.depth_to_color
+        assert depth_to_color is not None, "Depth to color extrinsics not found"
         depth_extrinsics = (
             color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
         )
@@ -285,6 +276,7 @@ class RealSenseCameraSet(HardwareCamera):
                 )
             elif rs.stream.depth == stream.stream_type():
                 frame = frameset.get_depth_frame()
+                assert device.depth_scale is not None, "Depth scale not found"
                 depth = DataFrame(
                     data=(to_numpy(frame).astype(np.float64) * device.depth_scale * BaseCameraSet.DEPTH_SCALE).astype(
                         np.uint16
@@ -345,8 +337,10 @@ class RealSenseCameraSet(HardwareCamera):
 
     def calibrate(self) -> bool:
         for camera_name in self.cameras:
+            color_intrinsics = self._enabled_devices[camera_name].color_intrinsics
+            assert color_intrinsics is not None, f"Color intrinsics for camera {camera_name} not found"
             if not self.calibration_strategy[camera_name].calibrate(
-                intrinsics=self._enabled_devices[camera_name].color_intrinsics,
+                intrinsics=color_intrinsics,
                 samples=self._frame_buffer[camera_name],
                 lock=self._frame_buffer_lock[camera_name],
             ):

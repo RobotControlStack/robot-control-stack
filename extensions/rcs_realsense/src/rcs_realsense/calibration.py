@@ -21,7 +21,9 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         # base frame to camera, world to base frame
         self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = None
         self.camera_name = camera_name
-        self.tag_to_world = common.Pose(rpy_vector=[np.pi, 0, -np.pi / 2], translation=[0.145, 0, 0]).pose_matrix()
+        self.tag_to_world = common.Pose(
+            rpy_vector=np.array([np.pi, 0, -np.pi / 2]), translation=np.array([0.145, 0, 0])
+        ).pose_matrix()
 
     def calibrate(
         self,
@@ -46,13 +48,11 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
                 frames.append(sample.camera.color.data.copy())
         print(frames)
 
-        last_frame, tag_to_cam = get_average_marker_pose(
-            frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=True
-        )
+        _, tag_to_cam = get_average_marker_pose(frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=False)
 
         cam_to_world = self.tag_to_world @ np.linalg.inv(tag_to_cam)
         world_to_cam = np.linalg.inv(cam_to_world)
-        self._extrinsics = world_to_cam
+        self._extrinsics = world_to_cam  # type: ignore
         return True
 
     def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
@@ -82,8 +82,7 @@ def get_average_marker_pose(
             continue
 
         for corner in marker_det.corners:
-            corner = corner.astype(int)
-            cv2.circle(frame, tuple(corner), 5, (0, 0, 255), -1)
+            cv2.circle(frame, tuple(corner.astype(int)), 5, (0, 0, 255), -1)
 
         poses.append(pose)
 
@@ -92,7 +91,7 @@ def get_average_marker_pose(
         camera_matrix = intrinsics[:3, :3]
 
         if show_live_window:
-            cv2.drawFrameAxes(frame, camera_matrix, None, pose[:3, :3], pose[:3, 3], 0.1)
+            cv2.drawFrameAxes(frame, camera_matrix, None, pose[:3, :3], pose[:3, 3], 0.1)  # type: ignore
             # show frame
             cv2.imshow("frame", frame)
 
@@ -107,12 +106,9 @@ def get_average_marker_pose(
         cv2.destroyAllWindows()
 
     # calculate the average marker pose
-    poses = np.array(poses)
     avg_pose = np.mean(poses, axis=0)
     logger.info(f"Average pose: {avg_pose}")
 
-    # paint avg pose on last frame
-    # cv2.drawFrameAxes(last_frame, camera_matrix, None, avg_pose[:3, :3], avg_pose[:3, 3], 0.1)  # type: ignore
     return last_frame, avg_pose
 
 

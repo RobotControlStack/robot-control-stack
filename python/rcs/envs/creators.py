@@ -1,4 +1,5 @@
 import logging
+import typing
 from os import PathLike
 from typing import Type
 
@@ -6,6 +7,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium.envs.registration import EnvCreator
 from rcs._core.sim import CameraType
+from rcs.camera.interface import BaseCameraSet
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -87,7 +89,9 @@ class SimEnvCreator(EnvCreator):
         env = RobotSimWrapper(env, simulation, sim_wrapper)
 
         if cameras is not None:
-            camera_set = SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
+            camera_set = typing.cast(
+                BaseCameraSet, SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
+            )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):

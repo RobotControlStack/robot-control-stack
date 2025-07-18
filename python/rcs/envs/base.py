@@ -3,7 +3,7 @@
 import copy
 import logging
 from enum import Enum, auto
-from typing import Annotated, Any, TypeAlias, cast
+from typing import Annotated, Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -131,7 +131,7 @@ class CameraDataDictType(RCSpaceType):
         "frame",
     ]
     intrinsics: Annotated[
-        np.ndarray,
+        np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]] | None,
         gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -140,7 +140,7 @@ class CameraDataDictType(RCSpaceType):
         ),
     ]
     extrinsics: Annotated[
-        np.ndarray,
+        np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]] | None,
         gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -646,7 +646,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
                 raise ValueError(msg)
             return self.include_depth
 
-        frame_dict: dict[str, dict[str, np.ndarray]] = {
+        frame_dict: dict[str, dict[str, CameraDataDictType]] = {
             camera_name: (
                 {
                     self.RGB_KEY: CameraDataDictType(

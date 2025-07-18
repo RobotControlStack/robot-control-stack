@@ -50,7 +50,7 @@ class FrameSet:
 class BaseCameraSet(Protocol):
     """Interface for a set of cameras for sim and hardware"""
 
-    DEPTH_SCALE = 1000
+    DEPTH_SCALE: int = 1000
 
     def buffer_size(self) -> int:
         """Returns size of the internal buffer."""
