@@ -30,6 +30,7 @@ import rcs
 from rcs import sim
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
+from time import sleep
 simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
 urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
 ik = rcs.common.RL(str(urdf_path))
@@ -42,23 +43,18 @@ gripper_cfg_sim = sim.SimGripperConfig()
 gripper_cfg_sim.add_id("0")
 gripper = sim.SimGripper(simulation, gripper_cfg_sim)
 
-# add camera to have a rendering gui
-cameras = {
-    "wrist": SimCameraConfig(
-        identifier="wrist_0",
-        type=CameraType.fixed,
-        resolution_width=640,
-        resolution_height=480,
-        frame_rate=30,
-    ),
-}
-camera_set = SimCameraSet(simulation, cameras)
+camera_set = SimCameraSet(simulation, {})
 simulation.open_gui()
+# wait for gui
+sleep(5)
+# step the robot 10 cm in x direction
 robot.set_cartesian_position(
-    robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))
+    robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.1, 0, 0]))
 )
+# close gripper
 gripper.grasp()
 simulation.step_until_convergence()
+input("press enter to close")
 ```
 ### Gym Env Interface
 ```python
@@ -80,7 +76,7 @@ env_rel = SimEnvCreator()(
 )
 env_rel.get_wrapper_attr("sim").open_gui()
 
-for _ in range(10):
+for _ in range(100):
     obs, info = env_rel.reset()
     for _ in range(10):
         # sample random relative action and execute it
@@ -110,8 +106,8 @@ For more details real the readme file of the respective extension.
 After the required hardware extensions are installed the examples also above work on real hardware:
 Switch to hardware by setting the following flag:
 ```python
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+# ROBOT_INSTANCE = RobotPlatform.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 ```
 
 #### Command Line Interface
