@@ -12,6 +12,14 @@ sudo apt install $(cat debian_deps.txt)
 ```shell
 python3 -m venv .venv
 source .venv/bin/activate
+``` 
+alternatively, with Conda:
+```shell
+conda create -n rcs python=3.11 # Version ensures that python is installed to the environment
+conda activate rcs
+```
+Then, install the package:
+```shell
 pip install -r requirements_dev.txt
 pip config --site set global.no-build-isolation false
 ```
