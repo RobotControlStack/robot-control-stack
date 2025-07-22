@@ -135,6 +135,8 @@ CMD ["python3"]
 # -e NVIDIA_DRIVER_CAPABILITIES=all Enable all GPU features (e.g., graphics, compute)
 # Other flags same as GUI setup above
 ######################################################################
+# Run the container with NVIDIA GPU support and hardware access:
+# docker run -it --rm --gpus all --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix --shm-size=2g --network host --privileged --cap-add=SYS_NICE --ulimit rtprio=99 --ulimit rttime=-1 --ulimit memlock=8428281856 -v /dev:/dev rcs-dev bash
 # Optional flags for running the container with hardware access:
 #   --network host \                             # Use the host's network stack (needed for low-latency ROS comms)
 #   --privileged \                               # Grant full device and kernel access (required for hardware control)
@@ -142,5 +144,4 @@ CMD ["python3"]
 #   --ulimit rtprio=99 \                         # Enable real-time priority up to 99
 #   --ulimit rttime=-1 \                         # Disable CPU time limit for real-time threads
 #   --ulimit memlock=8428281856 \                # Lock ~8GB of RAM to prevent memory swapping
-#   -v /tmp/.X11-unix:/tmp/.X11-unix \           # Mount X11 socket to enable GUI rendering from container
 #   -v /dev:/dev \                               # Mount all host devices for hardware access (e.g., Franka arm)  
