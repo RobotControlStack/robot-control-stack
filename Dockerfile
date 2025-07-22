@@ -135,5 +135,12 @@ CMD ["python3"]
 # -e NVIDIA_DRIVER_CAPABILITIES=all Enable all GPU features (e.g., graphics, compute)
 # Other flags same as GUI setup above
 ######################################################################
-
-
+# Optional flags for running the container with hardware access:
+#   --network host \                             # Use the host's network stack (needed for low-latency ROS comms)
+#   --privileged \                               # Grant full device and kernel access (required for hardware control)
+#   --cap-add=SYS_NICE \                         # Allow processes to raise their scheduling priority
+#   --ulimit rtprio=99 \                         # Enable real-time priority up to 99
+#   --ulimit rttime=-1 \                         # Disable CPU time limit for real-time threads
+#   --ulimit memlock=8428281856 \                # Lock ~8GB of RAM to prevent memory swapping
+#   -v /tmp/.X11-unix:/tmp/.X11-unix \           # Mount X11 socket to enable GUI rendering from container
+#   -v /dev:/dev \                               # Mount all host devices for hardware access (e.g., Franka arm)  
