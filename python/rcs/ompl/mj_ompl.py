@@ -455,6 +455,7 @@ class MjOMPL():
 
         # reset robot state
         # self.robot.set_state(orig_robot_state)
+        sol_path_list = [np.array(sol_path, dtype=np.float32) for sol_path in sol_path_list]
         return res, sol_path_list
 
     def ik(self, pose:Pose, q0:np.ndarray=None, tcp_offset:Pose=None):
