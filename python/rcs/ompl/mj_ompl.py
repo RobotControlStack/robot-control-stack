@@ -11,7 +11,6 @@ import warnings
 import xml.etree.ElementTree as ET
 from rcs._core.common import Pose
 
-print("OMPL modules imported successfully.")
 DEFAULT_PLANNING_TIME = 5.0  # Default time allowed for planning in seconds
 INTERPOLATE_NUM = 500 # Number of points to interpolate between start and goal states
 
@@ -67,7 +66,8 @@ class MjORobot():
                  robot_root_name:str="base_0",
                  robot_joint_name:str="fr3_joint#_0",
                  robot_actuator_name:str="fr3_joint#_0",
-                 obstacle_body_names: list = None):
+                 obstacle_body_names: list = None,
+                 obstacle_geom_names: list = None):
         '''
         Initialize the robot object with the given parameters.
         It is essentially a thin wrapper around the RobotEnv (i.e. MuJoCo variables), 
@@ -79,14 +79,14 @@ class MjORobot():
         - env: The RobotEnv environment in which the robot operates.
         - njoints: Number of joints in the robot.
         - robot_xml_name: Path to the robot's XML file. 
-                          This file will be used to query the <body>s of the robot.
+                          This file will be used to query the <body>s of the robot to get collision checking info.
         - robot_root_name: Name of the root body of the robot, 
                            i.e. the top level <body>'s name.
         - robot_joint_name: Pattern of the robot's joints to be controlled, 
                             where # will be replaced by 1 to njoints.
         - robot_actuator_name: Pattern of the robot's actuators to be controlled, 
                                where # will be replaced by 1 to njoints.
-                               Actuators are not controlled, but is used to validate
+                               Actuators are not controlled, but is used to validate 
                                that the number of joints and actuators match.
         - obstacle_body_names: List of names of other <body>s to be checked for collision.
                                If None, it will be set to an empty list.
@@ -117,24 +117,16 @@ class MjORobot():
         self.actuator_ids = [mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name) \
                              for name in self.actuator_names \
                              if mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name) > -1]
-        self._set_obstacle_body_ids(obstacle_body_names)
+        self.obstacle_body_ids = set()
+        self.obstacle_geom_ids = set()
+        self._add_obstacle_body_ids(obstacle_body_names)
+        self._add_obstacle_geom_ids(obstacle_geom_names)
 
         # Check if the number of joints, links, and actuators match
         assert len(self.joint_ids) == len(self.actuator_ids), \
             f"Mismatch in number of joints and actuators for robot {robot_name}."
         
         self.njoints = len(self.joint_ids)
-        
-    def _set_obstacle_body_ids(self, obstacle_body_names: list):
-        """
-        Set the obstacle bodies for the robot.
-        
-        Args:
-            obstacle_body_names (list): List of names of other bodies to be checked for path planning.
-        """
-        self.obstacle_body_ids = set([mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, name) \
-                                   for name in obstacle_body_names \
-                                   if mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, name) > -1])
         
     def _remove_obstacle_body_ids(self, obstacle_body_names: list|str):
         """
@@ -143,13 +135,15 @@ class MjORobot():
         Args:
             obstacle_body_names (list): List of names of bodies to be removed from obstacle checks.
         """
+        if obstacle_body_names is None:
+            return
         obstacle_body_names = obstacle_body_names if isinstance(obstacle_body_names, list) else [obstacle_body_names]
         for name in obstacle_body_names:
             body_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, name)
             if body_id in self.obstacle_body_ids:
                 self.obstacle_body_ids.remove(body_id)
             else:
-                warnings.warn(f"obstacle body name {name} does not exist in the model. Skipping removal.")
+                raise RuntimeError(f"_remove_obstacle_body_ids: obstacle body name {name} does not exist in the set.")
 
     def _add_obstacle_body_ids(self, obstacle_body_names: list|str):
         """
@@ -158,14 +152,50 @@ class MjORobot():
         Args:
             obstacle_body_names (list): List of names of bodies to be added to obstacle checks.
         """
+        if obstacle_body_names is None:
+            return
         obstacle_body_names = obstacle_body_names if isinstance(obstacle_body_names, list) else [obstacle_body_names]
         for name in obstacle_body_names:
             body_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, name)
             if body_id > -1:
                 self.obstacle_body_ids.add(body_id)
             else:
-                warnings.warn("obstacle body name {name} does not exist in the model. Skipping addition.")
+                raise RuntimeError(f"_add_obstacle_body_ids: obstacle body name {name} does not exist in the model.")
 
+    def _add_obstacle_geom_ids(self, obstacle_geom_names: list|str):
+        """
+        Add specified obstacle geoms to the robot's obstacle checks, given their names.
+
+        Args:
+            obstacle_geom_names (list): List of names of geoms to be added to obstacle checks.
+        """
+        if obstacle_geom_names is None:
+            return
+        obstacle_geom_names = obstacle_geom_names if isinstance(obstacle_geom_names, list) else [obstacle_geom_names]
+        for name in obstacle_geom_names:
+            geom_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_GEOM, name)
+            if geom_id > -1:
+                self.obstacle_geom_ids.add(geom_id)
+            else:
+                raise RuntimeError(f"_add_obstacle_geom_ids: obstacle geom name {name} does not exist in the model.")
+
+    def _remove_obstacle_geom_ids(self, obstacle_geom_names: list|str):
+        """
+        Remove specified obstacle geoms from the robot's obstacle checks, given their names.
+
+        Args:
+            obstacle_geom_names (list): List of names of geoms to be removed from obstacle checks.
+        """
+        if obstacle_geom_names is None:
+            return
+        obstacle_geom_names = obstacle_geom_names if isinstance(obstacle_geom_names, list) else [obstacle_geom_names]
+        for name in obstacle_geom_names:
+            geom_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_GEOM, name)
+            if geom_id in self.obstacle_geom_ids:
+                self.obstacle_geom_ids.remove(geom_id)
+            else:
+                raise RuntimeError(f"_remove_obstacle_geom_ids: obstacle geom name {name} does not exist in the set.")
+            
     def check_collision(self, qpos: ob.State):
         '''
         Checks for collisions when the robot is set to the given joint positions.
@@ -201,6 +231,11 @@ class MjORobot():
                 (b1 in self.robot_body_ids and b2 in self.robot_body_ids):
                 has_collision = True
                 break
+            # Check for collisions with geoms
+            if (c.geom1 in self.obstacle_geom_ids or c.geom2 in self.obstacle_geom_ids) and \
+               (b1 in self.robot_body_ids or b2 in self.robot_body_ids):
+                has_collision = True
+                break
 
         # Reset the simulation
         self.data.qpos = qpos_init
@@ -231,7 +266,7 @@ class MjORobot():
             numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
         """
         tcp_offset = tcp_offset if tcp_offset is not None else self.franka_hand_tcp
-        return self.env.robot.get_ik().ik(pose, q0, tcp_offset)
+        return self.env.unwrapped.robot.get_ik().ik(pose, q0, tcp_offset)
 
 
 class MjOStateSpace(ob.RealVectorStateSpace):
@@ -259,32 +294,64 @@ class MjOStateSpace(ob.RealVectorStateSpace):
 
 class MjOMPL():
     def __init__(self, 
-                 robot:MjORobot=None, 
-                 robot_name:str=None,
-                 robot_xml_name:str=None,
-                 robot_root_name:str=None,
-                 robot_joint_name:str=None,
-                 robot_actuator_name:str=None,
-                 njoints:int=None,
-                 robot_env: RobotEnv = None,
-                 obstacle_body_names: list = None):
+                 robot_env: RobotEnv,
+                 robot_name:str,
+                 robot_xml_name:str,
+                 robot_root_name:str,
+                 robot_joint_name:str,
+                 robot_actuator_name:str,
+                 njoints:int,
+                 obstacle_body_names: list = None,
+                 obstacle_geom_names: list = None,
+                 interpolate_num:int=INTERPOLATE_NUM,
+                 default_planning_time:float=DEFAULT_PLANNING_TIME):
+        '''
+        Initialize the OMPL planner with the given parameters.
+        Besides setting up the OMPL planning context, it instantiates an MjORobot instance,
+        which is a thin wrapper around the RobotEnv (i.e. MuJoCo variables),
+        for easily extracting the relevant bodies, joints, etc. from the MuJoCo model.
         
-        if(robot is None):
-            if robot_name is None or robot_xml_name is None or robot_root_name is None or \
-               robot_joint_name is None or robot_actuator_name is None or njoints is None:
-                raise ValueError("If robot is not provided, all parameters must be provided.")
-            # Create a new MjORobot instance
-            robot = MjORobot(robot_name, 
-                             robot_env, 
-                             njoints=njoints, 
-                             robot_xml_name=robot_xml_name,
-                             robot_root_name=robot_root_name,
-                             robot_joint_name=robot_joint_name,
-                             robot_actuator_name=robot_actuator_name,
-                             obstacle_body_names=obstacle_body_names)
-        
+
+        Parameters:
+        - robot_env: The RobotEnv environment in which the robot operates.
+        - robot_name: Name of the robot.
+
+        - robot_xml_name: Path to the robot's XML file. 
+                          This file will be used to query the <body>s of the robot to get collision checking info.
+        - robot_root_name: Name of the root body of the robot, 
+                           i.e. the top level <body>'s name.
+        - robot_joint_name: Pattern of the robot's joints to be controlled, 
+                            where # will be replaced by 1 to njoints.
+        - robot_actuator_name: Pattern of the robot's actuators to be controlled, 
+                               where # will be replaced by 1 to njoints.
+                               Actuators are not controlled, but is used to validate
+                               that the number of joints and actuators match.
+        - njoints: Number of joints in the robot.
+        - obstacle_body_names: List of names of other mjOBJ_BODYs to be checked for collision.
+                               If None, it will be set to an empty list.
+        - obstacle_geom_names: List of names of other mjOBJ_GEOMs to be checked for collision.
+                               If None, it will be set to an empty list.
+        - interpolate_num=100 (optional): Number of points to interpolate between start and goal states.
+        - default_planning_time=5.0 (optional): Default time allowed for planning in seconds.
+
+        '''
+        if robot_name is None or robot_xml_name is None or robot_root_name is None or \
+            robot_joint_name is None or robot_actuator_name is None or njoints is None:
+            raise ValueError("Initialization values are missing.")
+        # Create a new MjORobot instance
+        robot = MjORobot(robot_name, 
+                            robot_env, 
+                            njoints=njoints, 
+                            robot_xml_name=robot_xml_name,
+                            robot_root_name=robot_root_name,
+                            robot_joint_name=robot_joint_name,
+                            robot_actuator_name=robot_actuator_name,
+                            obstacle_body_names=obstacle_body_names,
+                            obstacle_geom_names=obstacle_geom_names)
+
         self.robot = robot
-        self.interpolate_num = INTERPOLATE_NUM
+        self.interpolate_num = interpolate_num
+        self.default_planning_time = default_planning_time
 
         # Create the planning space
         self.space = MjOStateSpace(robot.njoints)
@@ -358,8 +425,7 @@ class MjOMPL():
             res (bool): True if a solution was found, False otherwise.
             sol_path_list (list): List of joint positions in the solution path, if found.
         '''
-        print("start_planning")
-        print(self.planner.params())
+        print("Planner params: \n", self.planner.params())
 
         # set the start and goal states;
         s = ob.State(self.space)
@@ -381,8 +447,6 @@ class MjOMPL():
             sol_path_geometric.interpolate(self.interpolate_num)
             sol_path_states = sol_path_geometric.getStates()
             sol_path_list = [self.state_to_list(state) for state in sol_path_states]
-            # print(len(sol_path_list))
-            # print(sol_path_list)
             for sol_path in sol_path_list:
                 self.is_state_valid(sol_path)
             res = True
@@ -427,26 +491,39 @@ class MjOMPL():
     def add_collision_bodies(self, obstacle_body_names: list|str):
         """
         Add specified obstacle bodies to the robot's obstacle checks.
+        Prints a warning if the body name does not exist in the model.
         
         Args:
             obstacle_body_names (list|str): List of names of bodies to be added to obstacle checks.
         """
         self.robot._add_obstacle_body_ids(obstacle_body_names)
+
+    def add_collision_geoms(self, obstacle_geom_names: list|str):
+        """
+        Add specified obstacle geometries to the robot's obstacle checks.
+        Prints a warning if the geometry name does not exist in the model.
+
+        Args:
+            obstacle_geom_names (list|str): List of names of geometries to be added to obstacle checks.
+        """
+        self.robot._add_obstacle_geom_ids(obstacle_geom_names)
     
     def remove_collision_bodies(self, obstacle_body_names: list|str):
         """
         Remove specified obstacle bodies from the robot's obstacle checks.
+        Prints a warning if the body name does not exist in the current set of obstacles.
         
         Args:
             obstacle_body_names (list|str): List of names of bodies to be removed from obstacle checks.
         """
         self.robot._remove_obstacle_body_ids(obstacle_body_names)
     
-    def set_collision_bodies(self, obstacle_body_names: list|str):
+    def remove_collision_geoms(self, obstacle_geom_names: list|str):
         """
-        Set the obstacle bodies for the robot.
-        
+        Remove specified obstacle geometries from the robot's obstacle checks.
+        Prints a warning if the geometry name does not exist in the current set of obstacles.
+
         Args:
-            obstacle_body_names (list|str): List of names of bodies to be set as obstacles.
+            obstacle_geom_names (list|str): List of names of geometries to be removed from obstacle checks.
         """
-        self.robot._set_obstacle_body_ids(obstacle_body_names)
+        self.robot._remove_obstacle_geom_ids(obstacle_geom_names)
