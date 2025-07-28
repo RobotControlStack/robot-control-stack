@@ -423,7 +423,7 @@ class MjOMPL():
         
         Returns:
             res (bool): True if a solution was found, False otherwise.
-            sol_path_list (list): List of joint positions in the solution path, if found.
+            sol_path_list (list[np.ndarray]): List of joint positions in the solution path, if found.
         '''
         print("Planner params: \n", self.planner.params())
 
