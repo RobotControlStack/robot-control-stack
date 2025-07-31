@@ -37,7 +37,7 @@ logger.setLevel(logging.INFO)
 def default_fr3_hw_robot_cfg():
     robot_cfg = FR3Config()
     robot_cfg.tcp_offset = rcsss.common.Pose(rcsss.common.FrankaHandTCPOffset())
-    robot_cfg.speed_factor = 0.1
+    robot_cfg.speed_factor = 0.2
     robot_cfg.controller = IKController.robotics_library
     return robot_cfg
 
@@ -46,7 +46,7 @@ def default_fr3_hw_gripper_cfg():
     gripper_cfg = rcsss.hw.FHConfig()
     gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
     gripper_cfg.speed = 0.1
-    gripper_cfg.force = 30
+    gripper_cfg.force = 50
     return gripper_cfg
 
 

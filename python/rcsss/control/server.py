@@ -42,7 +42,7 @@ class Server(rpyc.Service):
                 ip=robot_ip,
                 control_mode=ControlMode.CARTESIAN_TRPY,
                 robot_cfg=default_fr3_hw_robot_cfg(),
-                collision_guard="lab",
+                #collision_guard="lab",
                 gripper_cfg=default_fr3_hw_gripper_cfg(),
             )
         else:
@@ -57,13 +57,15 @@ class Server(rpyc.Service):
             
         self.env_rel = env_rel
         
-        utn_gripper_offset = -0.068 # length of the fingers in meters
-        
+        utn_gripper_offset = -0.062
+        #length of the fingers in meters
+        #utn_gripper_offset = 0
+
         # transformation: 0.2 in x direction, no rotation
         self.fingertip_T_tcp = np.array([
-            [1,0,0,utn_gripper_offset],
+            [1,0,0,0],
             [0,1,0,0],
-            [0,0,1,0],
+            [0,0,1,utn_gripper_offset],
             [0,0,0,1],
         ])
         logger.warning("utn finger dimensions hard coded in pyhton code!")
@@ -88,6 +90,11 @@ class Server(rpyc.Service):
         # execute the action
         self.obs, reward, terminated, truncated, info = self.env_rel.step(action)
         
+        obs_temp = self.get_corrected_observation(self.obs)
+        
+        return obs_temp, reward, terminated, truncated, info
+
+    def get_corrected_observation(self, obs):
         # get the new pose and correct it to be in the fingertip frame
         new_xyzrpy = self.env_rel.get_obs()["xyzrpy"]
         new_pose = Pose(rpy_vector=new_xyzrpy[3:], translation=new_xyzrpy[:3])
@@ -95,9 +102,11 @@ class Server(rpyc.Service):
         new_world_T_fingertip = new_world_T_tcp @ np.linalg.inv(self.fingertip_T_tcp) # thus tcp needs to be here
         
         new_xyzrpy = Pose(pose_matrix=new_world_T_fingertip).xyzrpy()
-        self.obs["xyzrpy"] = new_xyzrpy
         
-        return self.obs, reward, terminated, truncated, info
+        obs_temp = copy.deepcopy(self.obs)
+        obs_temp["xyzrpy"] = new_xyzrpy
+        
+        return obs_temp
 
     @rpyc.exposed
     def reset(self):
@@ -108,12 +117,14 @@ class Server(rpyc.Service):
         
     @rpyc.exposed
     def get_obs(self):        
-        return self.obs
+        return self.get_corrected_observation(self.obs)
 
     def start(self):
+        import time
         while True:
             t = OneShotServer(self, port=18861)
             t.start()
+            time.sleep(1)
         
     def __del__(self):
         self.resource_manger.__exit__()
