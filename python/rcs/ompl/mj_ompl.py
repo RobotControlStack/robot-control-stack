@@ -281,7 +281,7 @@ class MjORobot:
             numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
         """
         tcp_offset = tcp_offset if tcp_offset is not None else self.franka_hand_tcp
-        return self.env.unwrapped.robot.get_ik().ik(pose, q0, tcp_offset) # type: ignore[attr-defined]
+        return self.env.unwrapped.robot.get_ik().ik(pose, q0, tcp_offset)  # type: ignore[attr-defined]
 
 
 class MjOStateSpace(ob.RealVectorStateSpace):
