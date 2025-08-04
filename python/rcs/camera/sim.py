@@ -80,9 +80,7 @@ class SimCameraSet(_SimCameraSet):
                     extrinsics=self._extrinsics(color_name),
                 ),
                 depth=DataFrame(
-                    data= (depth_np_frame * BaseCameraSet.DEPTH_SCALE).astype(
-                        np.uint16
-                    ),
+                    data=(depth_np_frame * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
                     timestamp=cpp_frameset.timestamp,
                     intrinsics=self._intrinsics(depth_name),
                     extrinsics=self._extrinsics(depth_name),
