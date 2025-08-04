@@ -40,7 +40,7 @@ def get_collision_bodies(xml_file, robot_name):
     for g in collision_bodies:
         name = g.get("name")
         if name is None:
-            error_msg = f"Body {ET.tostring(g).rstrip()}'s name is None. Please give it a name in the XML file."
+            error_msg = f"Body {ET.tostring(g).rstrip()!r}'s name is None. Please give it a name in the XML file."
             raise ValueError(error_msg)
         names.append(name)
 
@@ -125,8 +125,8 @@ class MjORobot:
             for name in self.actuator_names
             if mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name) > -1
         ]
-        self.obstacle_body_ids = set()
-        self.obstacle_geom_ids = set()
+        self.obstacle_body_ids: set[int] = set()
+        self.obstacle_geom_ids: set[int] = set()
         self._add_obstacle_body_ids(obstacle_body_names)
         self._add_obstacle_geom_ids(obstacle_geom_names)
 
@@ -155,7 +155,7 @@ class MjORobot:
                 error_msg = f"_remove_obstacle_body_ids: obstacle body name {name} does not exist in the set."
                 raise RuntimeError(error_msg)
 
-    def _add_obstacle_body_ids(self, obstacle_body_names: list | str):
+    def _add_obstacle_body_ids(self, obstacle_body_names: list | None):
         """
         Add specified obstacle bodies to the robot's obstacle checks, given their names.
 
@@ -173,7 +173,7 @@ class MjORobot:
                 error_msg = f"_add_obstacle_body_ids: obstacle body name {name} does not exist in the model."
                 raise RuntimeError(error_msg)
 
-    def _add_obstacle_geom_ids(self, obstacle_geom_names: list | str):
+    def _add_obstacle_geom_ids(self, obstacle_geom_names: list | None):
         """
         Add specified obstacle geoms to the robot's obstacle checks, given their names.
 
@@ -281,7 +281,7 @@ class MjORobot:
             numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
         """
         tcp_offset = tcp_offset if tcp_offset is not None else self.franka_hand_tcp
-        return self.env.unwrapped.robot.get_ik().ik(pose, q0, tcp_offset)
+        return self.env.unwrapped.robot.get_ik().ik(pose, q0, tcp_offset) # type: ignore[attr-defined]
 
 
 class MjOStateSpace(ob.RealVectorStateSpace):
@@ -423,7 +423,7 @@ class MjOMPL:
 
         self.ss.setPlanner(self.planner)
 
-    def plan(self, goal: np.ndarray, start: np.ndarray = None, allowed_time: float = DEFAULT_PLANNING_TIME):
+    def plan(self, goal: np.ndarray, start: np.ndarray | None = None, allowed_time: float = DEFAULT_PLANNING_TIME):
         """
         Plan a path to goal from current robot state.
         Can be combined with `ik_pose` to plan a path to a desired pose.
@@ -485,7 +485,7 @@ class MjOMPL:
         sol_path_list = [np.array(sol_path, dtype=np.float32) for sol_path in sol_path_list]
         return res, sol_path_list
 
-    def ik(self, pose: Pose, q0: np.ndarray = None, tcp_offset: Pose = None):
+    def ik(self, pose: Pose, q0: np.ndarray | None = None, tcp_offset: Pose | None = None):
         """
         Perform inverse kinematics to find joint positions that achieve the desired pose.
 
@@ -516,7 +516,7 @@ class MjOMPL:
     def set_state_sampler(self, state_sampler):
         self.space.set_state_sampler(state_sampler)
 
-    def add_collision_bodies(self, obstacle_body_names: list | str):
+    def add_collision_bodies(self, obstacle_body_names: list):
         """
         Add specified obstacle bodies to the robot's obstacle checks.
         Prints a warning if the body name does not exist in the model.
@@ -526,7 +526,7 @@ class MjOMPL:
         """
         self.robot._add_obstacle_body_ids(obstacle_body_names)
 
-    def add_collision_geoms(self, obstacle_geom_names: list | str):
+    def add_collision_geoms(self, obstacle_geom_names: list):
         """
         Add specified obstacle geometries to the robot's obstacle checks.
         Prints a warning if the geometry name does not exist in the model.
