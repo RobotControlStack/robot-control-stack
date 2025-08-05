@@ -1,11 +1,12 @@
 import copy
+import enum
 import logging
 from dataclasses import dataclass
 from time import sleep
 
+from rcs._core import common
 import numpy as np
 from rcs.envs.space_utils import Vec18Type
-from rcs.hand.interface import BaseHand
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit
 
 # Setup logger
@@ -15,16 +16,26 @@ logger.disabled = False
 
 
 @dataclass(kw_only=True)
-class THConfig:
+class THConfig(common.HandConfig):
     """Config for the Tilburg hand"""
 
     calibration_file: str | None = None
     grasp_percentage: float = 1.0
     control_unit: Unit = Unit.NORMALIZED
     hand_orientation: str = "right"
+    def __post_init__(self):
+        # 👇 satisfy pybind11 by actually calling the C++ constructor
+        super().__init__()
 
 
-class TilburgHand(BaseHand):
+class GRASP_TYPES(enum.Enum):
+    """Grasp types for the Tilburg Hand"""
+    POWER_GRASP = "power_grasp"
+    PRECISION_GRASP = "precision_grasp"
+    LATERAL_GRASP = "lateral_grasp"
+    TRIPOD_GRASP = "tripod_grasp"
+
+class TilburgHand(common.Hand):
     """
     Tilburg Hand Class
     This class provides an interface for controlling the Tilburg Hand.
@@ -35,10 +46,35 @@ class TilburgHand(BaseHand):
         [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
     )
 
+    # TODO: Control mode for position control and pos+effort control 
+
+
+    POWER_GRASP_VALUES = np.array(
+        [
+            0.5, 0.5, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.5, 0.5, 1.0, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.5, 0.5, 1.0, 0.3,
+            0.5, 0.5, 1.0, 0.0,
+            0.0, 0.0
+        ]
+    )
+    OPEN_VALUES = np.array(
+        [
+            0.0, 0.0, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.2, 0.2, 0.2, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.2, 0.2, 0.2, 0.3,
+            0.2, 0.2, 0.2, 0.0,
+            0.0, 0.0,
+        ]
+    )
+
+    GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+
     def __init__(self, cfg: THConfig, verbose: bool = False):
         """
         Initializes the Tilburg Hand interface.
         """
+        super().__init__()
         self._cfg = cfg
 
         self._motors = TilburgHandMotorInterface(
@@ -115,9 +151,13 @@ class TilburgHand(BaseHand):
         return self._motors.get_encoder_single(finger_joint, self._cfg.control_unit)
 
     def _grasp(self):
-        pos_normalized = self._cfg.grasp_percentage * self.MAX_GRASP_JOINTS_VALS
+        if(self.GRASP_TYPE == GRASP_TYPES.POWER_GRASP):
+            pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
+        else:
+            logger.warning(f"Grasp type {self.GRASP_TYPE.value} is not implemented. Defaulting to power grasp.")
+            pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
         self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
-        logger.info(f"Grasp command sent with value: {self._cfg.grasp_percentage:.2f}")
+        logger.info(f"Performing {self.GRASP_TYPE.value} grasp with intensity: {self._cfg.grasp_percentage:.2f}")
 
     def auto_recovery(self):
         if not np.array(self._motors.check_enabled_motors()).all():
@@ -127,6 +167,28 @@ class TilburgHand(BaseHand):
             re = self._motors.connect()
             assert re >= 0, "Failed to reconnect to the motors' board."
 
+    def set_grasp_type(self, grasp_type: GRASP_TYPES):
+        """
+        Sets the grasp type for the hand.
+        """
+        if not isinstance(grasp_type, GRASP_TYPES):
+            raise ValueError(f"Invalid grasp type: {grasp_type}. Must be an instance of GRASP_TYPES.")
+        if grasp_type == GRASP_TYPES.POWER_GRASP:
+            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+        elif grasp_type == GRASP_TYPES.PRECISION_GRASP:
+            logger.warning("Precision grasp is not implemented yet. Defaulting to power grasp.")
+            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+        elif grasp_type == GRASP_TYPES.LATERAL_GRASP:
+            logger.warning("Lateral grasp is not implemented yet. Defaulting to power grasp.")
+            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+        elif grasp_type == GRASP_TYPES.TRIPOD_GRASP:
+            logger.warning("Tripod grasp is not implemented yet. Defaulting to power grasp.")
+            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+        else:
+            raise ValueError(f"Unknown grasp type: {grasp_type}.")
+        
+        logger.info(f"Grasp type set to: {self.GRASP_TYPE.value}")
+    
     #### BaseHandControl Interface methods ####
 
     def grasp(self):
@@ -136,7 +198,7 @@ class TilburgHand(BaseHand):
         self._grasp()
 
     def open(self):
-        self.set_zero_pos()
+        self._motors.set_pos_vector(self.OPEN_VALUES, unit=self._cfg.control_unit)
 
     def reset(self):
         """

@@ -18,7 +18,7 @@ from rcs.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-from rcs.hand.interface import BaseHand
+from rcs._core.common import Hand
 
 from rcs import common
 
@@ -749,7 +749,7 @@ class HandWrapper(ActObsInfoWrapper):
     BINARY_HAND_CLOSED = 0
     BINARY_HAND_OPEN = 1
 
-    def __init__(self, env, hand: BaseHand, binary: bool = True):
+    def __init__(self, env, hand: Hand, binary: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
