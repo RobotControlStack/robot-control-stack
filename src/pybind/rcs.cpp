@@ -117,6 +117,52 @@ class PyGripper : public rcs::common::Gripper {
   }
 };
 
+/**
+ * @brief Hand trampoline class for python bindings
+ */
+class PyHand : public rcs::common::Hand {
+ public:
+  using rcs::common::Hand::Hand;  // Inherit constructors
+
+  rcs::common::HandConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandConfig *, rcs::common::Hand,
+                           get_parameters, );
+  }
+
+  rcs::common::HandState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandState *, rcs::common::Hand,
+                           get_state, );
+  }
+
+  void set_normalized_joint_poses(const rcs::common::VectorXd &q) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, set_normalized_joint_poses,
+                           q);
+  }
+
+  rcs::common::VectorXd get_normalized_joint_poses() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::VectorXd, rcs::common::Hand, get_normalized_joint_poses, );
+  }
+
+  bool is_grasped() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Hand, is_grasped, );
+  }
+
+  void grasp() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, grasp, );
+  }
+
+  void open() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, open, );
+  }
+
+  void shut() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, shut, );
+  }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, reset, );
+  }
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
         Robot Control Stack Python Bindings
@@ -270,6 +316,10 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::RobotState>(common, "RobotState");
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig");
   py::class_<rcs::common::GripperState>(common, "GripperState");
+  py::class_<rcs::common::HandConfig>(common, "HandConfig")
+      .def(py::init<>());
+  py::class_<rcs::common::HandState>(common, "HandState")
+      .def(py::init<>());
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
@@ -313,6 +363,24 @@ PYBIND11_MODULE(_core, m) {
       .def("shut", &rcs::common::Gripper::shut,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Gripper::reset,
+           py::call_guard<py::gil_scoped_release>());
+
+  py::class_<rcs::common::Hand, PyHand,
+             std::shared_ptr<rcs::common::Hand>>(common, "Hand")
+      .def(py::init<>())
+      .def("get_parameters", &rcs::common::Hand::get_parameters)
+      .def("get_state", &rcs::common::Hand::get_state)
+      .def("set_normalized_joint_poses", &rcs::common::Hand::set_normalized_joint_poses,
+           py::arg("q"))
+      .def("get_normalized_joint_poses", &rcs::common::Hand::get_normalized_joint_poses)
+      .def("grasp", &rcs::common::Hand::grasp,
+           py::call_guard<py::gil_scoped_release>())
+      .def("is_grasped", &rcs::common::Hand::is_grasped)
+      .def("open", &rcs::common::Hand::open,
+           py::call_guard<py::gil_scoped_release>())
+      .def("shut", &rcs::common::Hand::shut,
+           py::call_guard<py::gil_scoped_release>())
+      .def("reset", &rcs::common::Hand::reset,
            py::call_guard<py::gil_scoped_release>());
 
   // SIM MODULE

@@ -103,6 +103,13 @@ struct GripperState {
   virtual ~GripperState(){};
 };
 
+struct HandConfig {
+  virtual ~HandConfig(){};
+};
+struct HandState {
+  virtual ~HandState(){};
+};
+
 class Robot {
  public:
   virtual ~Robot(){};
@@ -167,6 +174,36 @@ class Gripper {
   virtual void shut() = 0;
 
   // puts the gripper to max position
+  virtual void reset() = 0;
+};
+
+class Hand {
+ public:
+  virtual ~Hand(){};
+  // TODO: Add low-level control interface for the hand with internal state updates
+  // Also add an implementation specific set_parameters function that takes
+  // a deduced config type
+  // bool set_parameters(const GConfig& cfg);
+
+  virtual HandConfig* get_parameters() = 0;
+  virtual HandState* get_state() = 0;
+
+  // set width of the hand, 0 is closed, 1 is open
+  virtual void set_normalized_joint_poses(const VectorXd& q) = 0;
+  virtual VectorXd get_normalized_joint_poses() = 0;
+
+  virtual bool is_grasped() = 0;
+
+  // close hand with force, return true if the object is grasped successfully
+  virtual void grasp() = 0;
+
+  // open hand
+  virtual void open() = 0;
+
+  // close hand without applying force
+  virtual void shut() = 0;
+
+  // puts the hand to max position
   virtual void reset() = 0;
 };
 
