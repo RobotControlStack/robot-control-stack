@@ -53,18 +53,7 @@ python -m rcs_fr3 shutdown <ip>
 
 def main():
 
-    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        # env_rel = RCSFR3EnvCreator()(
-        #     ip=ROBOT_IP,
-        #     control_mode=ControlMode.JOINTS,
-        #     robot_cfg=default_fr3_hw_robot_cfg(),
-        #     collision_guard=None,
-        #     gripper_cfg=default_fr3_hw_gripper_cfg(),
-        #     max_relative_movement=np.deg2rad(5),
-        #     relative_to=RelativeTo.LAST_STEP,
-        # )
-        return
-    else:
+    if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
             collision_guard=False,
@@ -77,15 +66,15 @@ def main():
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
-    for _ in range(10):
-        obs, info = env_rel.reset()
         for _ in range(10):
-            # sample random relative action and execute it
-            act = env_rel.action_space.sample()
-            obs, reward, terminated, truncated, info = env_rel.step(act)
-            if truncated or terminated:
-                logger.info("Truncated or terminated!")
-                return
+            obs, info = env_rel.reset()
+            for _ in range(10):
+                # sample random relative action and execute it
+                act = env_rel.action_space.sample()
+                obs, reward, terminated, truncated, info = env_rel.step(act)
+                if truncated or terminated:
+                    logger.info("Truncated or terminated!")
+                    return
 
 
 if __name__ == "__main__":

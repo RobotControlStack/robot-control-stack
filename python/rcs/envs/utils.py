@@ -40,8 +40,7 @@ def default_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
 
 
 def default_sim_tilburg_hand_cfg() -> sim.SimTilburgHandConfig:
-    cfg = sim.SimTilburgHandConfig()
-    return cfg
+    return sim.SimTilburgHandConfig()
 
 
 def default_digit(name2id: dict[str, str] | None, stream_name: str = "QVGA") -> DigitCam | None:
