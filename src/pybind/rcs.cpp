@@ -315,6 +315,12 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::RobotState>(common, "RobotState");
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig");
   py::class_<rcs::common::GripperState>(common, "GripperState");
+  py::enum_<rcs::common::GraspType>(common, "GraspType")
+      .value("POWER_GRASP", rcs::common::GraspType::POWER_GRASP)
+      .value("PRECISION_GRASP", rcs::common::GraspType::PRECISION_GRASP)
+      .value("LATERAL_GRASP", rcs::common::GraspType::LATERAL_GRASP)
+      .value("TRIPOD_GRASP", rcs::common::GraspType::TRIPOD_GRASP)
+      .export_values();
   py::class_<rcs::common::HandConfig>(common, "HandConfig")
       .def(py::init<>());
   py::class_<rcs::common::HandState>(common, "HandState")

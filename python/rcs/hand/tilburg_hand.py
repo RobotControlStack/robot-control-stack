@@ -23,17 +23,11 @@ class THConfig(common.HandConfig):
     grasp_percentage: float = 1.0
     control_unit: Unit = Unit.NORMALIZED
     hand_orientation: str = "right"
+    grasp_type: common.GraspType = common.GraspType.POWER_GRASP
+
     def __post_init__(self):
         # 👇 satisfy pybind11 by actually calling the C++ constructor
         super().__init__()
-
-
-class GRASP_TYPES(enum.Enum):
-    """Grasp types for the Tilburg Hand"""
-    POWER_GRASP = "power_grasp"
-    PRECISION_GRASP = "precision_grasp"
-    LATERAL_GRASP = "lateral_grasp"
-    TRIPOD_GRASP = "tripod_grasp"
 
 class TilburgHand(common.Hand):
     """
@@ -68,7 +62,6 @@ class TilburgHand(common.Hand):
         ]
     )
 
-    GRASP_TYPE = GRASP_TYPES.POWER_GRASP
 
     def __init__(self, cfg: THConfig, verbose: bool = False):
         """
@@ -151,13 +144,13 @@ class TilburgHand(common.Hand):
         return self._motors.get_encoder_single(finger_joint, self._cfg.control_unit)
 
     def _grasp(self):
-        if(self.GRASP_TYPE == GRASP_TYPES.POWER_GRASP):
+        if(self._cfg.grasp_type == common.GraspType.POWER_GRASP):
             pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
         else:
-            logger.warning(f"Grasp type {self.GRASP_TYPE.value} is not implemented. Defaulting to power grasp.")
+            logger.warning(f"Grasp type {self._cfg.grasp_type} is not implemented. Defaulting to power grasp.")
             pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
         self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
-        logger.info(f"Performing {self.GRASP_TYPE.value} grasp with intensity: {self._cfg.grasp_percentage:.2f}")
+        logger.info(f"Performing {self._cfg.grasp_type} grasp with intensity: {self._cfg.grasp_percentage:.2f}")
 
     def auto_recovery(self):
         if not np.array(self._motors.check_enabled_motors()).all():
@@ -167,27 +160,27 @@ class TilburgHand(common.Hand):
             re = self._motors.connect()
             assert re >= 0, "Failed to reconnect to the motors' board."
 
-    def set_grasp_type(self, grasp_type: GRASP_TYPES):
+    def set_grasp_type(self, grasp_type: common.GraspType):
         """
         Sets the grasp type for the hand.
         """
-        if not isinstance(grasp_type, GRASP_TYPES):
-            raise ValueError(f"Invalid grasp type: {grasp_type}. Must be an instance of GRASP_TYPES.")
-        if grasp_type == GRASP_TYPES.POWER_GRASP:
-            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
-        elif grasp_type == GRASP_TYPES.PRECISION_GRASP:
+        if not isinstance(grasp_type, common.GraspType):
+            raise ValueError(f"Invalid grasp type: {grasp_type}. Must be an instance of common.GraspType.")
+        if grasp_type == common.GraspType.POWER_GRASP:
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.PRECISION_GRASP:
             logger.warning("Precision grasp is not implemented yet. Defaulting to power grasp.")
-            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
-        elif grasp_type == GRASP_TYPES.LATERAL_GRASP:
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.LATERAL_GRASP:
             logger.warning("Lateral grasp is not implemented yet. Defaulting to power grasp.")
-            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
-        elif grasp_type == GRASP_TYPES.TRIPOD_GRASP:
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.TRIPOD_GRASP:
             logger.warning("Tripod grasp is not implemented yet. Defaulting to power grasp.")
-            self.GRASP_TYPE = GRASP_TYPES.POWER_GRASP
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
         else:
             raise ValueError(f"Unknown grasp type: {grasp_type}.")
         
-        logger.info(f"Grasp type set to: {self.GRASP_TYPE.value}")
+        logger.info(f"Grasp type set to: {self._cfg.grasp_type}")
     
     #### BaseHandControl Interface methods ####
 
