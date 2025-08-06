@@ -43,13 +43,14 @@ class SimEnvCreator(EnvCreator):
         self,
         control_mode: ControlMode,
         robot_cfg: rcs.sim.SimRobotConfig,
+        robot_kinematics_path: str | PathLike,
+        mjcf: str | PathLike,
+        kinematics_frame_id: str = "attachment_site",
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         cameras: dict[str, SimCameraConfig] | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
-        urdf_path: str | PathLike | None = None,
-        mjcf: str | PathLike = "fr3_empty_world",
         sim_wrapper: Type[SimWrapper] | None = None,
     ) -> gym.Env:
         """
@@ -64,9 +65,11 @@ class SimEnvCreator(EnvCreator):
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
+            kinematics_frame_id (str): Frame name of the flange. Defaults to "attachment_site". Note: if name doesnt exist
+                then pinocchio just segfaults.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            urdf_path (str | PathLike | None): Path to the URDF file. If None, the URDF file is automatically deduced
-                which requires a UTN compatible lab scene to be present.
+            robot_kinematics_path (str | PathLike | None): Path to either urdf or mjcf file that describes the robot kinematic.
+                This is used for ik.
             mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
             sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
                 for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
@@ -74,8 +77,6 @@ class SimEnvCreator(EnvCreator):
         Returns:
             gym.Env: The configured simulation environment for the FR3 robot.
         """
-        if urdf_path is None:
-            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
         if mjcf not in rcs.scenes:
             logger.info("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
         if mjcf in rcs.scenes:
@@ -83,9 +84,9 @@ class SimEnvCreator(EnvCreator):
             mjcf = rcs.scenes[mjcf]["mjb"]
         simulation = sim.Sim(mjcf)
 
-        # ik = rcs.common.Pin("/home/juelg/code/internal_rcs/assets/scenes/fr3_empty_world/fr3_0.xml", "attachment_site_0", urdf=False)
-        # ik = rcs.common.Pin(str(urdf_path))
-        ik = rcs.common.RL(str(urdf_path))
+        ik = rcs.common.Pin(
+            str(robot_kinematics_path), kinematics_frame_id, urdf=robot_kinematics_path.endswith(".urdf")
+        )
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
@@ -106,7 +107,7 @@ class SimEnvCreator(EnvCreator):
             env = CollisionGuard.env_from_xml_paths(
                 env,
                 str(rcs.scenes.get(str(mjcf), mjcf)),
-                str(urdf_path),
+                str(robot_kinematics_path),
                 gripper=gripper_cfg is not None,
                 check_home_collision=False,
                 control_mode=control_mode,
@@ -132,14 +133,15 @@ class SimTaskEnvCreator(EnvCreator):
 
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
-            robot_cfg=default_sim_robot_cfg(mjcf),
+            robot_cfg=default_sim_robot_cfg(rcs.scenes[mjcf]["mjcf_scene"]),
             collision_guard=False,
             gripper_cfg=default_sim_gripper_cfg(),
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf=mjcf,
+            mjcf=rcs.scenes[mjcf]["mjcf_scene"],
             sim_wrapper=RandomCubePos,
+            robot_kinematics_path=rcs.scenes[mjcf]["mjcf_robot"],
         )
         env_rel = PickCubeSuccessWrapper(env_rel)
         if render_mode == "human":
