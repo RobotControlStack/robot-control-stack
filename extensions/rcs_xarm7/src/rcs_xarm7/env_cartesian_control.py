@@ -22,7 +22,7 @@ def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         env_rel = RCSXArm7EnvCreator()(
-            control_mode=ControlMode.JOINTS,
+            control_mode=ControlMode.CARTESIAN_TQuat,
             ip=ROBOT_IP,
             relative_to=RelativeTo.LAST_STEP,
             max_relative_movement=np.deg2rad(3)
@@ -57,22 +57,28 @@ def main():
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
+    env_rel.reset()
+    act = {"tquat": [0.1, 0, 0, 0, 0, 0, 1], "gripper": 0}
+    obs, reward, terminated, truncated, info = env_rel.step(act)
 
     with cm:
         for _ in range(10):
-            obs, info = env_rel.reset()
-            for _ in range(3):
-                # sample random relative action and execute it
-                act = env_rel.action_space.sample()
-                print(act)
-                # act["gripper"] = 1.0
+            for _ in range(10):
+                # move 1cm in x direction (forward) and close gripper
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
-                print(obs)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-                # logger.info(act["gripper"])
-                sleep(2.0)
+                print(obs)
+                #sleep(2.0)
+            for _ in range(10):
+                # move 1cm in negative x direction (backward) and open gripper
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                obs, reward, terminated, truncated, info = env_rel.step(act)
+                if truncated or terminated:
+                    logger.info("Truncated or terminated!")
+                    return
 
 
 if __name__ == "__main__":
