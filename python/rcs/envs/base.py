@@ -778,7 +778,7 @@ class HandWrapper(ActObsInfoWrapper):
                 self._last_hand_cmd if self._last_hand_cmd is not None else self.BINARY_HAND_OPEN
             )
         else:
-            observation[self.hand_key] = self._hand.get_normalized_joints_poses()
+            observation[self.hand_key] = self._hand.get_normalized_joint_poses()
 
         info = {}
         return observation, info
@@ -798,7 +798,7 @@ class HandWrapper(ActObsInfoWrapper):
                 else:
                     self._hand.open()
         else:
-            self._hand.set_normalized_joints_poses(hand_action)
+            self._hand.set_normalized_joint_poses(hand_action)
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action

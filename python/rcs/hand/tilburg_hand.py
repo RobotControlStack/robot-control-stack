@@ -214,8 +214,8 @@ class TilburgHand(common.Hand):
         self.disconnect()
         logger.info("Hand control interface closed.")
 
-    def get_normalized_joints_poses(self) -> np.ndarray:
+    def get_normalized_joint_poses(self) -> np.ndarray:
         return self.get_pos_vector()
 
-    def set_normalized_joints_poses(self, values: np.ndarray):
+    def set_normalized_joint_poses(self, values: np.ndarray):
         self.set_pos_vector(values)
