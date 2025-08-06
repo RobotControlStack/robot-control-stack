@@ -1,4 +1,10 @@
 <mujoco>
+    <!-- custom tcp offset -->
+    <custom>
+		<numeric name="tcp_offset_translation" data="0.0 0.0 0.1034"/>
+        <!-- rotation matrix is row major -->
+		<numeric name="tcp_offset_rotation_matrix" data="0.707 0.707 0 -0.707 0.707 0 0 0 1"/>
+    </custom>
     <default>
         <default class="fr3">
             <joint armature="0.1" damping="1"/>
