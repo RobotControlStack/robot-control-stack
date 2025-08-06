@@ -121,7 +121,7 @@ class HandWrapperSim(ActObsInfoWrapper):
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         if(len(action["hand"]) == 18):
             action["hand"] = action["hand"][:16]
-        assert len(action["hand"]) == 16, "Hand action must be of length 16"
+        assert (len(action["hand"]) == 16 or len(action["hand"]) == 1), "Hand action must be of length 16 or 1"
         return action
     
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
