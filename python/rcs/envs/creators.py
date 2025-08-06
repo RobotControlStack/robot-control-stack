@@ -30,7 +30,6 @@ from rcs.envs.sim import (
 from rcs.envs.utils import (
     default_sim_gripper_cfg,
     default_sim_robot_cfg,
-    default_sim_tilburg_hand_cfg,
 )
 
 import rcs
@@ -148,13 +147,30 @@ class SimTaskEnvCreator(EnvCreator):
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
         cameras: dict[str, SimCameraConfig] | None = None,
+        hand_cfg: dict | None = None,
+        gripper_cfg: dict | None = None,
     ) -> gym.Env:
-
+        mode = "gripper"
+        if(gripper_cfg is None and hand_cfg is None):
+            _gripper_cfg = default_sim_gripper_cfg()
+            _hand_cfg = None
+            logger.info("Using default gripper configuration.")
+        elif(hand_cfg is not None):
+            _gripper_cfg = None
+            _hand_cfg = hand_cfg
+            mode = "hand"
+            logger.info("Using hand configuration.")
+        else:
+            # Either both cfgs are set, or only gripper_cfg is set
+            _gripper_cfg = gripper_cfg
+            _hand_cfg = None
+            logger.info("Using gripper configuration.")
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=default_sim_robot_cfg(rcs.scenes[mjcf]["mjcf_scene"]),
             collision_guard=False,
-            gripper_cfg=default_sim_gripper_cfg(),
+            gripper_cfg=_gripper_cfg,
+            hand_cfg=_hand_cfg,
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
@@ -162,7 +178,9 @@ class SimTaskEnvCreator(EnvCreator):
             sim_wrapper=RandomCubePos,
             robot_kinematics_path=rcs.scenes[mjcf]["mjcf_robot"],
         )
-        env_rel = PickCubeSuccessWrapper(env_rel)
+        if(mode == "gripper"):
+            env_rel = PickCubeSuccessWrapper(env_rel)
+            
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
 
