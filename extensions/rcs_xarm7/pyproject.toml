@@ -13,10 +13,10 @@ dependencies = [
 readme = "README.md"
 maintainers = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Ken Nakahara", email = "knakahara@lasr.org" },
 ]
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
-  { name = "Pierre Krack", email = "pierre.krack@utn.de" },
   { name = "Ken Nakahara", email = "knakahara@lasr.org" },
 ]
 requires-python = ">=3.10"

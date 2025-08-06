@@ -33,8 +33,8 @@ logger.setLevel(logging.INFO)
 class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
+        control_mode: ControlMode,
         ip: str,
-        urdf_path: str,
         calibration_dir: PathLike | str | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
@@ -42,8 +42,9 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
     ) -> gym.Env:
         if isinstance(calibration_dir, str):
             calibration_dir = Path(calibration_dir)
-        robot = XArm7(ip=ip, urdf_path=urdf_path)
-        env: gym.Env = RobotEnv(robot, ControlMode.JOINTS)
+        robot = XArm7(ip=ip)
+        # env: gym.Env = RobotEnv(robot, ControlMode.JOINTS, home_on_reset=True)
+        env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 
         if camera_set is not None:
             camera_set.start()
