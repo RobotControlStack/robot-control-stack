@@ -73,12 +73,12 @@ if __name__ == "__main__":
     print("power_grasp_radians=[", ", ".join(f"{rad:.2f}" for rad in rads), "]")
     print("min_joints_radians=[", ", ".join(f"{rad:.2f}" for rad in min_joints_radians), "]")
     print("max_joints_radians=[", ", ".join(f"{rad:.2f}" for rad in max_joints_radians), "]")
-    config = THConfig(
+    hand_cfg = THConfig(
         calibration_file="/home/sbien/Documents/Development/RCS/robot-control-stack/python/rcs/hand/calibration_og.json",
         grasp_percentage=1,
         hand_orientation="right",
     )
-    hand = TilburgHand(cfg=config, verbose=True)
+    hand = TilburgHand(cfg=hand_cfg, verbose=True)
     hand.set_grasp_type(GraspType.POWER_GRASP)
     hand.grasp()
     sleep(2)

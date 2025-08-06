@@ -1,5 +1,4 @@
 import copy
-import enum
 import logging
 from dataclasses import dataclass
 from time import sleep
@@ -27,6 +26,13 @@ class THConfig(common.HandConfig):
 
     def __post_init__(self):
         # 👇 satisfy pybind11 by actually calling the C++ constructor
+        super().__init__()
+
+@dataclass
+class TilburgHandState(common.HandState):
+    joint_positions: Vec18Type
+
+    def __post_init__(self):
         super().__init__()
 
 
@@ -190,7 +196,8 @@ class TilburgHand(common.Hand):
         Sets the grasp type for the hand.
         """
         if not isinstance(grasp_type, common.GraspType):
-            raise ValueError(f"Invalid grasp type: {grasp_type}. Must be an instance of common.GraspType.")
+            error_msg = f"Invalid grasp type: {grasp_type}. Must be an instance of common.GraspType."
+            raise ValueError(error_msg)
         if grasp_type == common.GraspType.POWER_GRASP:
             self._cfg.grasp_type = common.GraspType.POWER_GRASP
         elif grasp_type == common.GraspType.PRECISION_GRASP:
@@ -203,7 +210,8 @@ class TilburgHand(common.Hand):
             logger.warning("Tripod grasp is not implemented yet. Defaulting to power grasp.")
             self._cfg.grasp_type = common.GraspType.POWER_GRASP
         else:
-            raise ValueError(f"Unknown grasp type: {grasp_type}.")
+            error_msg = f"Unknown grasp type: {grasp_type}."
+            raise ValueError(error_msg)
 
         logger.info(f"Grasp type set to: {self._cfg.grasp_type}")
 
@@ -226,11 +234,11 @@ class TilburgHand(common.Hand):
         self.set_zero_pos()
         logger.info("Hand reset to initial state.")
 
-    def get_state(self) -> np.ndarray:
+    def get_state(self) -> TilburgHandState:
         """
         Returns the current state of the hand.
         """
-        return self.get_pos_vector()
+        return TilburgHandState(joint_positions=self.get_pos_vector())
 
     def close(self):
         """
