@@ -113,6 +113,25 @@ class GripperWrapperSim(ActObsInfoWrapper):
         info["is_grasped"] = self._gripper.get_normalized_width() > 0.01 and self._gripper.get_normalized_width() < 0.99
         return observation, info
 
+class HandWrapperSim(ActObsInfoWrapper):
+    def __init__(self, env, hand: sim.SimTilburgHand):
+        super().__init__(env)
+        self._hand = hand
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if(len(action["hand"]) == 18):
+            action["hand"] = action["hand"][:16]
+        assert len(action["hand"]) == 16, "Hand action must be of length 16"
+        return action
+    
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        state = self._hand.get_state()
+        if "collision" not in info or not info["collision"]:
+            info["collision"] = state.collision
+        info["hand_position"] = self._hand.get_normalized_joint_poses()
+        # info["is_grasped"] = self._hand.get_normalized_joint_poses() > 0.01 and self._hand.get_normalized_joint_poses() < 0.99
+        return observation, info
+
 
 class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
     """
