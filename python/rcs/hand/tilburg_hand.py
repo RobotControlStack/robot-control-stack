@@ -4,8 +4,8 @@ import logging
 from dataclasses import dataclass
 from time import sleep
 
-from rcs._core import common
 import numpy as np
+from rcs._core import common
 from rcs.envs.space_utils import Vec18Type
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit
 
@@ -29,6 +29,7 @@ class THConfig(common.HandConfig):
         # 👇 satisfy pybind11 by actually calling the C++ constructor
         super().__init__()
 
+
 class TilburgHand(common.Hand):
     """
     Tilburg Hand Class
@@ -40,28 +41,52 @@ class TilburgHand(common.Hand):
         [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
     )
 
-    # TODO: Control mode for position control and pos+effort control 
-
+    # TODO: Control mode for position control and pos+effort control
 
     POWER_GRASP_VALUES = np.array(
         [
-            0.5, 0.5, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.5, 0.5, 1.0, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.5, 0.5, 1.0, 0.3,
-            0.5, 0.5, 1.0, 0.0,
-            0.0, 0.0
+            0.5,
+            0.5,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.5,
+            0.5,
+            1.0,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.5,
+            0.5,
+            1.0,
+            0.3,
+            0.5,
+            0.5,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
         ]
     )
     OPEN_VALUES = np.array(
         [
-            0.0, 0.0, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.2, 0.2, 0.2, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.2, 0.2, 0.2, 0.3,
-            0.2, 0.2, 0.2, 0.0,
-            0.0, 0.0,
+            0.0,
+            0.0,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.2,
+            0.2,
+            0.2,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.2,
+            0.2,
+            0.2,
+            0.3,
+            0.2,
+            0.2,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
         ]
     )
-
 
     def __init__(self, cfg: THConfig, verbose: bool = False):
         """
@@ -144,7 +169,7 @@ class TilburgHand(common.Hand):
         return self._motors.get_encoder_single(finger_joint, self._cfg.control_unit)
 
     def _grasp(self):
-        if(self._cfg.grasp_type == common.GraspType.POWER_GRASP):
+        if self._cfg.grasp_type == common.GraspType.POWER_GRASP:
             pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
         else:
             logger.warning(f"Grasp type {self._cfg.grasp_type} is not implemented. Defaulting to power grasp.")
@@ -179,9 +204,9 @@ class TilburgHand(common.Hand):
             self._cfg.grasp_type = common.GraspType.POWER_GRASP
         else:
             raise ValueError(f"Unknown grasp type: {grasp_type}.")
-        
+
         logger.info(f"Grasp type set to: {self._cfg.grasp_type}")
-    
+
     #### BaseHandControl Interface methods ####
 
     def grasp(self):

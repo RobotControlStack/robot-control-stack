@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+from rcs._core.common import Hand
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
     ActObsInfoWrapper,
@@ -18,7 +19,6 @@ from rcs.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-from rcs._core.common import Hand
 
 from rcs import common
 

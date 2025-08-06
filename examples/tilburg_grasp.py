@@ -4,12 +4,7 @@ import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_tilburg_hw_hand_cfg,
-    default_sim_robot_cfg,
-    default_sim_tilburg_hand_cfg,
-)
+from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -41,7 +36,7 @@ python -m rcs_fr3 shutdown <ip>
 """
 
 
-'''
+"""
         else:
             env_rel = SimEnvCreator()(
                 control_mode=ControlMode.JOINTS,
@@ -53,7 +48,9 @@ python -m rcs_fr3 shutdown <ip>
                 relative_to=RelativeTo.LAST_STEP,
             )
             env_rel.get_wrapper_attr("sim").open_gui()
-'''
+"""
+
+
 def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
@@ -66,7 +63,7 @@ def main():
         #     max_relative_movement=np.deg2rad(5),
         #     relative_to=RelativeTo.LAST_STEP,
         # )
-        return 
+        return
     else:
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
