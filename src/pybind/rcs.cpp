@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/SimGripper.h>
+#include <sim/SimTilburgHand.h>
 #include <sim/SimRobot.h>
 #include <sim/camera.h>
 #include <sim/gui.h>
@@ -492,6 +493,46 @@ PYBIND11_MODULE(_core, m) {
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("get_state", &rcs::sim::SimRobot::get_state);
+  
+  // SimTilburgHandState
+  py::class_<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
+      sim, "SimTilburgHandState")
+      .def(py::init<>())
+      .def_readonly("last_commanded_qpos",
+                    &rcs::sim::SimTilburgHandState::last_commanded_qpos)
+      .def_readonly("is_moving", &rcs::sim::SimTilburgHandState::is_moving)
+      .def_readonly("last_qpos", &rcs::sim::SimTilburgHandState::last_qpos)
+      .def_readonly("collision", &rcs::sim::SimTilburgHandState::collision);
+  // SimTilburgHandConfig
+  py::class_<rcs::sim::SimTilburgHandConfig, rcs::common::HandConfig>(
+      sim, "SimTilburgHandConfig")
+      .def(py::init<>())
+      .def_readwrite("max_joint_position",
+                     &rcs::sim::SimTilburgHandConfig::max_joint_position)
+      .def_readwrite("min_joint_position",
+                     &rcs::sim::SimTilburgHandConfig::min_joint_position)
+      .def_readwrite("ignored_collision_geoms",
+                     &rcs::sim::SimTilburgHandConfig::ignored_collision_geoms)
+      .def_readwrite("collision_geoms",
+                     &rcs::sim::SimTilburgHandConfig::collision_geoms)
+      .def_readwrite("collision_geoms_fingers",
+                     &rcs::sim::SimTilburgHandConfig::collision_geoms_fingers)
+      .def_readwrite("joints", &rcs::sim::SimTilburgHandConfig::joints)
+      .def_readwrite("actuators", &rcs::sim::SimTilburgHandConfig::actuators)
+      .def_readwrite("grasp_type",
+                     &rcs::sim::SimTilburgHandConfig::grasp_type)
+      .def_readwrite("seconds_between_callbacks",
+                     &rcs::sim::SimTilburgHandConfig::seconds_between_callbacks)
+      .def("add_id", &rcs::sim::SimTilburgHandConfig::add_id, py::arg("id"));
+  // SimTilburgHand
+  py::class_<rcs::sim::SimTilburgHand, rcs::common::Hand,
+             std::shared_ptr<rcs::sim::SimTilburgHand>>(sim, "SimTilburgHand")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    const rcs::sim::SimTilburgHandConfig &>(),
+           py::arg("sim"), py::arg("cfg"))
+      .def("set_parameters", &rcs::sim::SimTilburgHand::set_parameters,
+           py::arg("cfg"));
+
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
       .value("tracking", rcs::sim::CameraType::tracking)
