@@ -78,7 +78,9 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true)
 std::optional<VectorXd> Pin::ik(const Pose& pose, const VectorXd& q0,
                                 const Pose& tcp_offset) {
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();
-  VectorXd q(q0);
+  VectorXd q(model.nq);
+  q.setZero();
+  q.head(q0.size()) = q0;
   const pinocchio::SE3 oMdes(new_pose.rotation_m(), new_pose.translation());
   pinocchio::Data::Matrix6x J(6, model.nv);
   J.setZero();
@@ -117,8 +119,10 @@ std::optional<VectorXd> Pin::ik(const Pose& pose, const VectorXd& q0,
 
 Pose Pin::forward(const VectorXd& q0, const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
-  pinocchio::forwardKinematics(model, data, q0);
-  pinocchio::updateFramePlacements(model, data);
+  VectorXd q(model.nq);
+  q.setZero();
+  q.head(q0.size()) = q0;
+  pinocchio::framesForwardKinematics(model, data, q);
   rcs::common::Pose pose(data.oMf[this->FRAME_ID].rotation(),
                          data.oMf[this->FRAME_ID].translation());
 
