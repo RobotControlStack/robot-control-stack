@@ -103,6 +103,10 @@ struct GripperState {
   virtual ~GripperState(){};
 };
 
+enum GraspType {  POWER_GRASP = 0, 
+                  PRECISION_GRASP,
+                  LATERAL_GRASP,
+                  TRIPOD_GRASP  };
 struct HandConfig {
   virtual ~HandConfig(){};
 };
