@@ -71,7 +71,6 @@ def default_mujoco_cameraset_cfg() -> dict[str, SimCameraConfig]:
     }
 
 
-# TODO: franka hand offset needs to be removed here
 def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
     """Reads out tcp offset set in mjcf file.
 
@@ -97,8 +96,8 @@ def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
     try:
         tcp_offset = np.array(model.numeric("tcp_offset").data)
         pose_offset = rcs.common.Pose(translation=tcp_offset)
-        return rcs.common.Pose(rcs.common.FrankaHandTCPOffset()) * pose_offset
+        return pose_offset
     except KeyError:
         msg = "No tcp offset found in the model. Using the default tcp offset."
         logging.info(msg)
-    return rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+    return rcs.common.Pose()
