@@ -5,9 +5,6 @@ from typing import Type
 
 import gymnasium as gym
 from gymnasium.envs.registration import EnvCreator
-
-from xarm.wrapper import XArmAPI
-
 from rcs.camera.hw import HardwareCameraSet
 from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
@@ -22,6 +19,7 @@ from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs.envs.sim import CollisionGuard, GripperWrapperSim, RobotSimWrapper, SimWrapper
 from rcs.sim import SimCameraConfig, SimGripperConfig, SimRobotConfig
 from rcs_xarm7.hw import XArm7
+from xarm.wrapper import XArmAPI
 
 import rcs
 from rcs import common, sim
