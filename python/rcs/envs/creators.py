@@ -27,8 +27,11 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg, default_sim_tilburg_hand_cfg
-
+from rcs.envs.utils import (
+    default_sim_gripper_cfg,
+    default_sim_robot_cfg,
+    default_sim_tilburg_hand_cfg,
+)
 
 import rcs
 from rcs import sim
@@ -104,9 +107,10 @@ class SimEnvCreator(EnvCreator):
             )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
-        assert not (hand_cfg is not None and gripper_cfg is not None), \
-            "Hand and gripper configurations cannot be used together."
-        
+        assert not (
+            hand_cfg is not None and gripper_cfg is not None
+        ), "Hand and gripper configurations cannot be used together."
+
         if hand_cfg is not None and isinstance(hand_cfg, rcs.sim.SimTilburgHandConfig):
             hand = sim.SimTilburgHand(simulation, hand_cfg)
             env = HandWrapper(env, hand, binary=True)

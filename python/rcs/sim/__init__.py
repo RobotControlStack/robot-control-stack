@@ -3,12 +3,12 @@ from rcs._core.sim import (
     SimGripper,
     SimGripperConfig,
     SimGripperState,
-    SimTilburgHand,
-    SimTilburgHandConfig,
-    SimTilburgHandState,
     SimRobot,
     SimRobotConfig,
     SimRobotState,
+    SimTilburgHand,
+    SimTilburgHandConfig,
+    SimTilburgHandState,
 )
 from rcs.sim.sim import Sim, gui_loop
 
