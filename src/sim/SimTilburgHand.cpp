@@ -153,24 +153,24 @@ bool SimTilburgHand::collision_callback() {
   return this->state.collision;
 }
 
-// bool SimTilburgHand::is_grasped() {
-//   double width = this->get_normalized_width();
+bool SimTilburgHand::is_grasped() {
+  // double width = this->get_normalized_width();
 
-//   if (this->state.last_commanded_width - this->cfg.epsilon_inner < width &&
-//       width < this->state.last_commanded_width + this->cfg.epsilon_outer) {
-//     // this is the libfranka logic to decide whether an object is grasped
-//     return true;
-//   }
-//   return false;
-// }
+  // if (this->state.last_commanded_width - this->cfg.epsilon_inner < width &&
+  //     width < this->state.last_commanded_width + this->cfg.epsilon_outer) {
+  //   // this is the libfranka logic to decide whether an object is grasped
+  //   return true;
+  // }
+  return false;
+}
 
 bool SimTilburgHand::convergence_callback() {
   auto qpos = get_normalized_joint_poses();
   this->state.is_moving =
-      (this->state.last_commanded_qpos - qpos).norm() >
+      (this->state.last_qpos - qpos).norm() >
       0.001 * (this->cfg.max_joint_position - this->cfg.min_joint_position)
                   .norm();  // 0.1% tolerance
-  this->state.last_commanded_qpos = qpos;
+  this->state.last_qpos = qpos;
   return not this->state.is_moving;
 }
 

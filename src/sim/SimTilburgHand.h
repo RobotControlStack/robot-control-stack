@@ -1,5 +1,5 @@
-#ifndef RCS_FRANKA_HAND_SIM_H
-#define RCS_FRANKA_HAND_SIM_H
+#ifndef RCS_TILBURG_HAND_SIM_H
+#define RCS_TILBURG_HAND_SIM_H
 
 #include <Eigen/Core>
 #include <cmath>
@@ -62,7 +62,7 @@ struct SimTilburgHandConfig : common::HandConfig {
 struct SimTilburgHandState : common::HandState {
   rcs::common::VectorXd last_commanded_qpos = rcs::common::VectorXd::Zero(16);
   bool is_moving = false;
-  rcs::common::VectorXd last_width = rcs::common::VectorXd::Zero(16);
+  rcs::common::VectorXd last_qpos = rcs::common::VectorXd::Zero(16);
   bool collision = false;
 };
 
@@ -117,4 +117,4 @@ class SimTilburgHand : public common::Hand {
 };
 }  // namespace sim
 }  // namespace rcs
-#endif  // RCS_FRANKA_HAND_SIM_H
+#endif  // RCS_TILBURG_HAND_SIM_H
