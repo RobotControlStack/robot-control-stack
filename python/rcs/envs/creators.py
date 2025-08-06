@@ -13,6 +13,7 @@ from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
+    HandWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -20,12 +21,14 @@ from rcs.envs.base import (
 from rcs.envs.sim import (
     CollisionGuard,
     GripperWrapperSim,
+    HandWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg, default_sim_tilburg_hand_cfg
+
 
 import rcs
 from rcs import sim
@@ -45,6 +48,7 @@ class SimEnvCreator(EnvCreator):
         robot_cfg: rcs.sim.SimRobotConfig,
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         cameras: dict[str, SimCameraConfig] | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -60,6 +64,9 @@ class SimEnvCreator(EnvCreator):
             robot_cfg (rcs.sim.SimRobotConfig): Configuration for the FR3 robot.
             collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
             gripper_cfg (rcs.sim.SimGripperConfig | None): Configuration for the gripper. If None, no gripper is used.
+                                                           Cannot be used together with hand_cfg.
+            hand_cfg (rcs.sim.SimHandConfig | None): Configuration for the hand. If None, no hand is used.
+                                                     Cannot be used together with gripper_cfg.
             camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
@@ -93,6 +100,14 @@ class SimEnvCreator(EnvCreator):
                 BaseCameraSet, SimCameraSet(simulation, cameras, physical_units=True, render_on_demand=True)
             )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
+
+        assert not (hand_cfg is not None and gripper_cfg is not None), \
+            "Hand and gripper configurations cannot be used together."
+        
+        if hand_cfg is not None and isinstance(hand_cfg, rcs.sim.SimTilburgHandConfig):
+            hand = sim.SimTilburgHand(simulation, hand_cfg)
+            env = HandWrapper(env, hand, binary=True)
+            env = HandWrapperSim(env, hand)
 
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)
