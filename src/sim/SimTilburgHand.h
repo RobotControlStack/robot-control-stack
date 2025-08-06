@@ -13,12 +13,16 @@ namespace rcs {
 namespace sim {
 
 struct SimTilburgHandConfig : common::HandConfig {
-  rcs::common::VectorXd max_joint_position = (rcs::common::VectorXd(16) <<
-      1.66, 1.57, 1.75, 1.57, 1.66, 1.66, 1.66, 0.44,
-      1.66, 1.66, 1.66, 0.44, 1.66, 1.66, 1.66, 0.44).finished();
-  rcs::common::VectorXd min_joint_position = (rcs::common::VectorXd(16) <<
-      -0.09, 0.00,  0.00, 0.00,  -0.09, -0.09, 0.00, -0.44,
-      -0.09, -0.09, 0.00, -0.44, -0.09, -0.09, 0.00, -0.44).finished();
+  rcs::common::VectorXd max_joint_position =
+      (rcs::common::VectorXd(16) << 1.6581, 1.5708, 0.0000, 1.5708, 1.6581,
+       1.6581, 1.6581, 0.4363, 1.6581, 1.6581, 1.6581, 0.4363, 1.6581, 1.6581,
+       1.6581, 0.4363)
+          .finished();
+  rcs::common::VectorXd min_joint_position =
+      (rcs::common::VectorXd(16) << 0.0000, 0.0000, -1.7453, 0.0000, -0.0873,
+       -0.0873, -0.0873, -0.4363, -0.0873, -0.0873, -0.0873, -0.4363, -0.0873,
+       -0.0873, -0.0873, -0.4363)
+          .finished();
   std::vector<std::string> ignored_collision_geoms = {};
   std::vector<std::string> collision_geoms =
       {};  //{"hand_c", "d435i_collision",
@@ -26,17 +30,19 @@ struct SimTilburgHandConfig : common::HandConfig {
 
   std::vector<std::string> collision_geoms_fingers = {};  //{"finger_0_left",
                                                           //"finger_0_right"};
+  // following the real robot motor order convention
   std::vector<std::string> joints = {
-      "thumb_cmc",        "thumb_mcp_rot", "thumb_mcp",  "thumb_ip",
-      "index_mcp_abadd",  "index_mcp",     "index_pip",  "index_dip",
-      "middle_mcp_abadd", "middle_mcp",    "middle_pip", "middle_dip",
-      "ring_mcp_abadd",   "ring_mcp",      "ring_pip",   "ring_dip"};
+      "thumb_ip",   "thumb_mcp",  "thumb_mcp_rot", "thumb_cmc",
+      "index_dip",  "index_pip",  "index_mcp",     "index_mcp_abadd",
+      "middle_dip", "middle_pip", "middle_mcp",    "middle_mcp_abadd",
+      "ring_dip",   "ring_pip",   "ring_mcp",      "ring_mcp_abadd"};
   std::vector<std::string> actuators = {
-      "thumb_cmc",        "thumb_mcp_rot", "thumb_mcp",  "thumb_ip",
-      "index_mcp_abadd",  "index_mcp",     "index_pip",  "index_dip",
-      "middle_mcp_abadd", "middle_mcp",    "middle_pip", "middle_dip",
-      "ring_mcp_abadd",   "ring_mcp",      "ring_pip",   "ring_dip"};
-  
+      // following the real robot motor order convention
+      "thumb_ip",   "thumb_mcp",  "thumb_mcp_rot", "thumb_cmc",
+      "index_dip",  "index_pip",  "index_mcp",     "index_mcp_abadd",
+      "middle_dip", "middle_pip", "middle_mcp",    "middle_mcp_abadd",
+      "ring_dip",   "ring_pip",   "ring_mcp",      "ring_mcp_abadd"};
+
   common::GraspType grasp_type = common::GraspType::POWER_GRASP;
 
   double seconds_between_callbacks = 0.0167;  // 60 Hz
