@@ -1,48 +1,6 @@
 <mujoco model="fr3">
     <compiler angle="radian" meshdir="assets"/>
-
     <option integrator="implicitfast" impratio="20" noslip_iterations="5" cone="elliptic"/>
-
-    <default>
-        <default class="fr3">
-            <joint armature="0.1" damping="1"/>
-            <position inheritrange="1"/>
-            <default class="finger">
-                <joint axis="0 1 0" type="slide" range="0 0.04"/>
-            </default>
-            <default class="visual">
-                <geom type="mesh" group="2" contype="0" conaffinity="0"/>
-            </default>
-            <default class="collision">
-                <geom type="mesh" group="3" mass="0" density="0"/>
-                <default class="fingertip_pad_collision_1">
-                    <geom type="box" size="0.0085 0.004 0.0085" pos="0 0.0055 0.0445"/>
-                </default>
-                <default class="fingertip_pad_collision_2">
-                    <geom type="box" size="0.003 0.002 0.003" pos="0.0055 0.002 0.05"/>
-                </default>
-                <default class="fingertip_pad_collision_3">
-                    <geom type="box" size="0.003 0.002 0.003" pos="-0.0055 0.002 0.05"/>
-                </default>
-                <default class="fingertip_pad_collision_4">
-                    <geom type="box" size="0.003 0.002 0.0035" pos="0.0055 0.002 0.0395"/>
-                </default>
-                <default class="fingertip_pad_collision_5">
-                    <geom type="box" size="0.003 0.002 0.0035" pos="-0.0055 0.002 0.0395"/>
-                </default>
-            </default>
-            <site size="0.001" rgba="0.5 0.5 0.5 0.3" group="4"/>
-        </default>
-        <default class="d435i">
-            <material specular="0" shininess="0.25"/>
-            <default class="visual_d435i">
-                <geom group="2" type="mesh" contype="0" conaffinity="0" mass="0"/>
-            </default>
-            <default class="collision_d435i">
-                <geom group="3" type="mesh" mass="0"/>
-            </default>
-        </default>
-    </default>
 
     <asset>
         <material name="black" rgba=".2 .2 .2 1"/>
