@@ -12,6 +12,8 @@ from rcs_fr3.creators import RCSFR3EnvCreator
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_fr3_desk
 from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
 
+import rcs
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -64,19 +66,22 @@ def main():
         else:
             env_rel = SimEnvCreator()(
                 control_mode=ControlMode.CARTESIAN_TQuat,
-                robot_cfg=default_sim_robot_cfg(),
+                robot_cfg=default_sim_robot_cfg(mjcf=rcs.scenes["fr3_empty_world"]["mjcf_scene"]),
                 collision_guard=False,
                 gripper_cfg=default_sim_gripper_cfg(),
                 cameras=default_mujoco_cameraset_cfg(),
                 max_relative_movement=0.5,
                 relative_to=RelativeTo.LAST_STEP,
+                mjcf=rcs.scenes["fr3_empty_world"]["mjb"],
+                robot_kinematics_path=rcs.scenes["fr3_empty_world"]["mjcf_robot"],
+                kinematics_frame_id="attachment_site_0",
             )
             env_rel.get_wrapper_attr("sim").open_gui()
 
         env_rel.reset()
         print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
 
-        for _ in range(10):
+        for _ in range(100):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
                 act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}

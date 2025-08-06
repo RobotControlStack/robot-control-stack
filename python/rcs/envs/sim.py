@@ -202,6 +202,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
+        # TODO: remove urdf and use mjcf
         # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
