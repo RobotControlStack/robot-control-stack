@@ -3,9 +3,9 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
+from rcs.envs.base import ControlMode, GripperWrapper, HandWrapper, MultiRobotWrapper, RobotEnv
 from rcs.envs.space_utils import ActObsInfoWrapper
-from rcs.envs.utils import default_sim_robot_cfg
+from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
 
 import rcs
 from rcs import sim
@@ -213,9 +213,10 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cls,
         env: gym.Env,
         mjmld: str,
-        urdf: str,
+        cg_kinematics_path: str,
         id: str = "0",
         gripper: bool = True,
+        hand: bool = False,
         check_home_collision: bool = True,
         tcp_offset: rcs.common.Pose | None = None,
         control_mode: ControlMode | None = None,
@@ -226,7 +227,7 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
-        ik = rcs.common.RL(urdf, max_duration_ms=300)
+        ik = rcs.common.Pin(cg_kinematics_path, "attachment_site", False)
         cfg = default_sim_robot_cfg(mjmld, id)
         cfg.realtime = False
         if tcp_offset is not None:
@@ -250,6 +251,13 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             fh = sim.SimGripper(simulation, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)
+        if hand:
+            hand_cfg = default_sim_tilburg_hand_cfg()
+            # hand_cfg.add_id(id)
+            th = sim.SimTilburgHand(simulation, hand_cfg)
+            c_env = HandWrapper(c_env, th)
+            c_env = HandWrapperSim(c_env, th)
+
         return cls(
             env=env,
             simulation=simulation,
