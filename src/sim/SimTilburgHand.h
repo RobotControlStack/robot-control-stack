@@ -120,7 +120,7 @@ class SimTilburgHand : public common::Hand {
   void grasp() override;
   void open() override;
   void shut() override;
-  void close() override{};
+  void close() override {};
 };
 }  // namespace sim
 }  // namespace rcs

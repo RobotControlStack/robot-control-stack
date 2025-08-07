@@ -60,7 +60,14 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
       // -------------- XArm7 --------------
       {XArm7, RobotMetaConfig{
         // q_home (7‐vector):
-        (VectorXd(7) << 0, 0, 0, 0, 0, 0, 0).finished(),
+        (VectorXd(7) << 0,
+          -45. / 180. * M_PI,
+          0,
+          15. / 180. * M_PI,
+          0,
+          -25. / 180. * M_PI,
+          0
+        ).finished(),
         // dof:
         7,
         // joint_limits (2×7):

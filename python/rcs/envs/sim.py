@@ -3,7 +3,13 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ControlMode, GripperWrapper, HandWrapper, MultiRobotWrapper, RobotEnv
+from rcs.envs.base import (
+    ControlMode,
+    GripperWrapper,
+    HandWrapper,
+    MultiRobotWrapper,
+    RobotEnv,
+)
 from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
 
@@ -120,6 +126,8 @@ class HandWrapperSim(ActObsInfoWrapper):
         self._hand = hand
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if isinstance(action["hand"], int | float):
+            return action
         if len(action["hand"]) == 18:
             action["hand"] = action["hand"][:16]
         assert len(action["hand"]) == 16 or len(action["hand"]) == 1, "Hand action must be of length 16 or 1"
