@@ -1,14 +1,14 @@
 import logging
-from time import sleep
 
+import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_fr3.desk import ContextManager
+from rcs.envs.creators import SimEnvCreator
+from rcs.envs.utils import get_tcp_offset
 from rcs_xarm7.creators import RCSXArm7EnvCreator, XArm7SimEnvCreator
 
 import rcs
 from rcs import sim
-import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,43 +25,51 @@ def main():
             control_mode=ControlMode.CARTESIAN_TQuat,
             ip=ROBOT_IP,
             relative_to=RelativeTo.LAST_STEP,
-            max_relative_movement=np.deg2rad(3)
+            max_relative_movement=np.deg2rad(3),
         )
-        cm = env_rel.unwrapped.robot
     else:
-        cm = ContextManager()
-        cfg = sim.SimRobotConfig()
-        cfg.robot_type = rcs.common.RobotType.XArm7
-        cfg.actuators = ["1", "2", "3", "4", "5"]
-        cfg.joints = ["1", "2", "3", "4", "5"]
-        cfg.arm_collision_geoms = []
-        cfg.attachment_site = "gripper"
-
-        grp_cfg = sim.SimGripperConfig()
-        grp_cfg.actuator = "6"
-        grp_cfg.joint = "6"
-        grp_cfg.collision_geoms = []
-        grp_cfg.collision_geoms_fingers = []
-
-        env_rel = XArm7SimEnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            urdf_path="/home/tobi/coding/lerobot/so101_new_calib.urdf",
-            robot_cfg=cfg,
+        robot_cfg = sim.SimRobotConfig()
+        robot_cfg.actuators = [
+            "act1",
+            "act2",
+            "act3",
+            "act4",
+            "act5",
+            "act6",
+            "act7",
+        ]
+        robot_cfg.joints = [
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7",
+        ]
+        robot_cfg.base = "base"
+        robot_cfg.robot_type = rcs.common.RobotType.XArm7
+        robot_cfg.attachment_site = "attachment_site"
+        robot_cfg.arm_collision_geoms = []
+        robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"]["mjcf_robot"])
+        env_rel = SimEnvCreator()(
+            control_mode=ControlMode.CARTESIAN_TQuat,
             collision_guard=False,
-            mjcf="/home/tobi/coding/lerobot/SO-ARM100/Simulation/XArm7/scene.xml",
-            gripper_cfg=grp_cfg,
-            # camera_set_cfg=default_mujoco_cameraset_cfg(),
-            max_relative_movement=None,
-            # max_relative_movement=10.0,
-            # max_relative_movement=0.5,
+            robot_cfg=robot_cfg,
+            gripper_cfg=None,
+            # cameras=default_mujoco_cameraset_cfg(),
+            max_relative_movement=0.5,
             relative_to=RelativeTo.LAST_STEP,
+            mjcf=rcs.scenes["xarm7_empty_world"]["mjb"],
+            robot_kinematics_path=rcs.scenes["xarm7_empty_world"]["mjcf_robot"],
         )
         env_rel.get_wrapper_attr("sim").open_gui()
+
     env_rel.reset()
     act = {"tquat": [0.1, 0, 0, 0, 0, 0, 1], "gripper": 0}
     obs, reward, terminated, truncated, info = env_rel.step(act)
 
-    with cm:
+    with env_rel:
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper

@@ -113,6 +113,7 @@ class FR3 : public common::Robot {
   common::Pose get_base_pose_in_world_coordinates() override;
 
   void reset() override;
+  void close() override{};
 };
 }  // namespace hw
 }  // namespace rcs

@@ -1,7 +1,5 @@
 import logging
-from time import sleep
 
-import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import get_tcp_offset

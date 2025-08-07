@@ -186,7 +186,7 @@ class SimTilburgHand(rcs._core.common.Hand):
     def get_state(self) -> SimTilburgHandState: ...
     def set_parameters(self, cfg: SimTilburgHandConfig) -> bool: ...
 
-class SimTilburgHandConfig(rcs._core.common.HandConfig, typing.Generic[M]):
+class SimTilburgHandConfig(rcs._core.common.HandConfig):
     actuators: list[str]
     collision_geoms: list[str]
     collision_geoms_fingers: list[str]

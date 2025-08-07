@@ -302,7 +302,7 @@ class RobotEnv(gym.Env):
         return self.get_obs(), {}
 
     def close(self):
-        super().close()
+        self.robot.close()
 
 
 class MultiRobotWrapper(gym.Env):
@@ -802,3 +802,6 @@ class HandWrapper(ActObsInfoWrapper):
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action
+
+    def close(self):
+        self._hand.close()
