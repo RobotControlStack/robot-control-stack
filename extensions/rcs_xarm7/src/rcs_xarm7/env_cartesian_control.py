@@ -70,8 +70,6 @@ def main():
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
-                print(obs)
-                #sleep(2.0)
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
                 act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
