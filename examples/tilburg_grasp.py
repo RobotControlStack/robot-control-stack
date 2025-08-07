@@ -11,8 +11,9 @@ logger.setLevel(logging.INFO)
 
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
+
 def main():
-    mjcf = "/home/sbien/Documents/Development/RCS/models/scenes/fr3_tilburg_empty_world/scene.xml",
+    mjcf = "/home/sbien/Documents/Development/RCS/models/scenes/fr3_tilburg_empty_world/scene.xml"
     if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
         env_rel = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
