@@ -27,10 +27,7 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.utils import (
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
+from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 
 import rcs
 from rcs import sim
@@ -150,11 +147,11 @@ class SimTaskEnvCreator(EnvCreator):
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
     ) -> gym.Env:
         mode = "gripper"
-        if(gripper_cfg is None and hand_cfg is None):
+        if gripper_cfg is None and hand_cfg is None:
             _gripper_cfg = default_sim_gripper_cfg()
             _hand_cfg = None
             logger.info("Using default gripper configuration.")
-        elif(hand_cfg is not None):
+        elif hand_cfg is not None:
             _gripper_cfg = None
             _hand_cfg = hand_cfg
             mode = "hand"
@@ -176,9 +173,9 @@ class SimTaskEnvCreator(EnvCreator):
             mjcf=mjcf,
             sim_wrapper=RandomCubePos,
         )
-        if(mode == "gripper"):
+        if mode == "gripper":
             env_rel = PickCubeSuccessWrapper(env_rel)
-            
+
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
 
