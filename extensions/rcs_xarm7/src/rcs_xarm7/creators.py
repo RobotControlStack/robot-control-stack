@@ -11,10 +11,12 @@ from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
+    HandWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
 )
+from rcs.hand.tilburg_hand import TilburgHand, THConfig
 from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs.envs.sim import CollisionGuard, GripperWrapperSim, RobotSimWrapper, SimWrapper
 from rcs.sim import SimCameraConfig, SimGripperConfig, SimRobotConfig
@@ -34,6 +36,7 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
         ip: str,
         calibration_dir: PathLike | str | None = None,
         camera_set: HardwareCameraSet | None = None,
+        hand_cfg: THConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
     ) -> gym.Env:
@@ -48,6 +51,9 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
+        if hand_cfg is not None and isinstance(hand_cfg, THConfig):
+            hand = TilburgHand(cfg=hand_cfg, verbose=True)
+            env = HandWrapper(env, hand, True)
 
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)

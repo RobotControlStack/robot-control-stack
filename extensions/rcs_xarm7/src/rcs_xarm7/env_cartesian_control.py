@@ -6,7 +6,7 @@ from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import get_tcp_offset
 from rcs_xarm7.creators import RCSXArm7EnvCreator, XArm7SimEnvCreator
-
+from rcs.hand.tilburg_hand import THConfig
 import rcs
 from rcs import sim
 
@@ -21,9 +21,15 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+        hand_cfg = THConfig(
+            calibration_file="/home/ken/tilburg_hand/calibration.json",
+            grasp_percentage=1,
+            hand_orientation="right"
+        )
         env_rel = RCSXArm7EnvCreator()(
             control_mode=ControlMode.CARTESIAN_TQuat,
             ip=ROBOT_IP,
+            hand_cfg=hand_cfg,
             relative_to=RelativeTo.LAST_STEP,
             max_relative_movement=np.deg2rad(3),
         )
@@ -66,21 +72,21 @@ def main():
         env_rel.get_wrapper_attr("sim").open_gui()
 
     env_rel.reset()
-    act = {"tquat": [0.1, 0, 0, 0, 0, 0, 1], "gripper": 0}
-    obs, reward, terminated, truncated, info = env_rel.step(act)
+    # act = {"tquat": [0.1, 0, 0, 0, 0, 0, 1], "gripper": 0}
+    # obs, reward, terminated, truncated, info = env_rel.step(act)
 
     with env_rel:
         for _ in range(10):
             for _ in range(10):
                 # move 1cm in x direction (forward) and close gripper
-                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+                act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "hand": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
                     return
             for _ in range(10):
                 # move 1cm in negative x direction (backward) and open gripper
-                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 1}
+                act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "hand": 0}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
                 if truncated or terminated:
                     logger.info("Truncated or terminated!")
