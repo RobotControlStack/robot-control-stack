@@ -52,47 +52,21 @@ class TilburgHand(common.Hand):
 
     POWER_GRASP_VALUES = np.array(
         [
-            0.5,
-            0.5,
-            0.5,
-            1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.5,
-            0.5,
-            1.0,
-            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.5,
-            0.5,
-            1.0,
-            0.3,
-            0.5,
-            0.5,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-        ]
+            0.5, 0.5, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.5, 0.5, 1.0, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.5, 0.5, 1.0, 0.3,
+            0.5, 0.5, 1.0, 0.0,
+            0, 0
+        ], dtype=np.float32
     )
     OPEN_VALUES = np.array(
         [
-            0.0,
-            0.0,
-            0.5,
-            1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.2,
-            0.2,
-            0.2,
-            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.2,
-            0.2,
-            0.2,
-            0.3,
-            0.2,
-            0.2,
-            0.2,
-            0.0,
-            0.0,
-            0.0,
-        ]
+            0.0, 0.0, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.2, 0.2, 0.2, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.2, 0.2, 0.2, 0.3,
+            0.2, 0.2, 0.2, 0.0,
+            0, 0
+        ], dtype=np.float32
     )
 
     def __init__(self, cfg: THConfig, verbose: bool = False):
@@ -129,25 +103,23 @@ class TilburgHand(common.Hand):
         """
         Sets the position vector for the motors.
         """
-        assert len(pos_vector) == len(
-            self._motors.n_motors
-        ), f"Invalid position vector length: {len(pos_vector)}. Expected: {len(self._motors.n_motors)}"
+        assert len(pos_vector) == (self._motors.n_motors), \
+            f"Invalid position vector length: {len(pos_vector)}. Expected: {self._motors.n_motors}"
         self._motors.set_pos_vector(copy.deepcopy(pos_vector), unit=self._cfg.control_unit)
-        logger.info(f"Set pose vector: {pos_vector}")
 
     def set_zero_pos(self):
         """
         Sets all finger joint positions to zero.
         """
         pos_normalized = 0 * self.MAX_GRASP_JOINTS_VALS
-        self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
+        self.set_pos_vector(pos_normalized)
         logger.info("All joints reset to zero position.")
 
     def set_joint_pos(self, finger_joint: Finger, pos_value: float):
         """
         Sets a single joint to a specific normalized position.
         """
-        self._motors.set_pos_single(finger_joint, pos_value, unit=self._cfg.control_unit)
+        self._motors.set_pos_single(finger_joint, copy.deepcopy(pos_value), unit=self._cfg.control_unit)
 
     def reset_joint_pos(self, finger_joint: Finger):
         """
@@ -181,8 +153,7 @@ class TilburgHand(common.Hand):
         else:
             logger.warning(f"Grasp type {self._cfg.grasp_type} is not implemented. Defaulting to power grasp.")
             pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
-        self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
-        logger.info(f"Performing {self._cfg.grasp_type} grasp with intensity: {self._cfg.grasp_percentage:.2f}")
+        self.set_pos_vector(pos_normalized)
 
     def auto_recovery(self):
         if not np.array(self._motors.check_enabled_motors()).all():
@@ -225,14 +196,14 @@ class TilburgHand(common.Hand):
         self._grasp()
 
     def open(self):
-        self._motors.set_pos_vector(self.OPEN_VALUES, unit=self._cfg.control_unit)
+        self.set_pos_vector(self.OPEN_VALUES)
 
     def reset(self):
         """
         Resets the hand to its initial state.
         """
         self.auto_recovery()
-        self.set_zero_pos()
+        self.open()
         logger.info("Hand reset to initial state.")
 
     def get_state(self) -> TilburgHandState:
