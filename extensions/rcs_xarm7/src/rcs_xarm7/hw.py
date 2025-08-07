@@ -7,8 +7,6 @@ from xarm.wrapper import XArmAPI
 
 from rcs import common
 
-from scipy.spatial.transform import Rotation as R
-
 
 @dataclass(kw_only=True)
 class XArm7Config(common.RobotConfig):
@@ -37,21 +35,16 @@ class XArm7():
             center_of_gravity=self._config.payload_tcp,
             wait=True,
         )
-
-    # def get_base_pose_in_world_coordinates(self) -> Pose: ...
     
     def get_cartesian_position(self) -> common.Pose:
         code, xyzrpy = self._xarm.get_position(is_radian=True)
         if code != 0:
             raise RuntimeError("couldn't get cartesian position from xarm")
 
-        translation = np.array(xyzrpy[:3], dtype=np.float64).reshape((3, 1)) * 0.001
+        translation_meter = np.array(xyzrpy[:3], dtype=np.float64) * 0.001
         rpy = xyzrpy[3:]
-        quat = R.from_euler('xyz', rpy).as_quat()  # [x, y, z, w]
-        quat = np.array(quat, dtype=np.float64).reshape((4, 1))
 
-        # return common.Pose(quaternion=quat, translation=translation)
-        return common.Pose(rpy_vector=rpy, translation=translation)
+        return common.Pose(rpy_vector=rpy, translation=translation_meter)
 
     def get_ik(self) -> common.IK | None:
         return self.ik
@@ -92,8 +85,3 @@ class XArm7():
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._xarm.disconnect()
-
-
-    # def to_pose_in_robot_coordinates(self, pose_in_world_coordinates: Pose) -> Pose: ...
-    # def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
-
