@@ -83,7 +83,7 @@ class DummyCalibrationStrategy(CalibrationStrategy):
         return True
 
     def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
-        return np.eye(4)
+        return np.eye(4) # type: ignore[return-value]
 
 
 class HardwareCameraSet(BaseCameraSet):
