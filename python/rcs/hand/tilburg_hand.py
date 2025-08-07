@@ -28,6 +28,7 @@ class THConfig(common.HandConfig):
         # 👇 satisfy pybind11 by actually calling the C++ constructor
         super().__init__()
 
+
 @dataclass
 class TilburgHandState(common.HandState):
     joint_positions: Vec18Type
