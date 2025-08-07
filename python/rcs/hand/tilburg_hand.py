@@ -52,21 +52,49 @@ class TilburgHand(common.Hand):
 
     POWER_GRASP_VALUES = np.array(
         [
-            0.5, 0.5, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.5, 0.5, 1.0, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.5, 0.5, 1.0, 0.3,
-            0.5, 0.5, 1.0, 0.0,
-            0, 0
-        ], dtype=np.float32
+            0.5,
+            0.5,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.5,
+            0.5,
+            1.0,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.5,
+            0.5,
+            1.0,
+            0.3,
+            0.5,
+            0.5,
+            1.0,
+            0.0,
+            0,
+            0,
+        ],
+        dtype=np.float32,
     )
     OPEN_VALUES = np.array(
         [
-            0.0, 0.0, 0.5, 1.4,  # THUMB_(IP, MCP, ABD, CMC)
-            0.2, 0.2, 0.2, 0.7,  # INDEX_(DIP, PIP, MCP, ABD)
-            0.2, 0.2, 0.2, 0.3,
-            0.2, 0.2, 0.2, 0.0,
-            0, 0
-        ], dtype=np.float32
+            0.0,
+            0.0,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.2,
+            0.2,
+            0.2,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.2,
+            0.2,
+            0.2,
+            0.3,
+            0.2,
+            0.2,
+            0.2,
+            0.0,
+            0,
+            0,
+        ],
+        dtype=np.float32,
     )
 
     def __init__(self, cfg: THConfig, verbose: bool = False):
@@ -103,8 +131,9 @@ class TilburgHand(common.Hand):
         """
         Sets the position vector for the motors.
         """
-        assert len(pos_vector) == (self._motors.n_motors), \
-            f"Invalid position vector length: {len(pos_vector)}. Expected: {self._motors.n_motors}"
+        assert len(pos_vector) == (
+            self._motors.n_motors
+        ), f"Invalid position vector length: {len(pos_vector)}. Expected: {self._motors.n_motors}"
         self._motors.set_pos_vector(copy.deepcopy(pos_vector), unit=self._cfg.control_unit)
 
     def set_zero_pos(self):
