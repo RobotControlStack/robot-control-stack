@@ -802,6 +802,6 @@ class HandWrapper(ActObsInfoWrapper):
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action
-
+    
     def close(self):
         self._hand.close()
