@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/SimGripper.h>
+#include <sim/SimTilburgHand.h>
 #include <sim/SimRobot.h>
 #include <sim/camera.h>
 #include <sim/gui.h>
@@ -114,6 +115,52 @@ class PyGripper : public rcs::common::Gripper {
   }
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, reset, );
+  }
+};
+
+/**
+ * @brief Hand trampoline class for python bindings
+ */
+class PyHand : public rcs::common::Hand {
+ public:
+  using rcs::common::Hand::Hand;  // Inherit constructors
+
+  rcs::common::HandConfig *get_parameters() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandConfig *, rcs::common::Hand,
+                           get_parameters, );
+  }
+
+  rcs::common::HandState *get_state() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::HandState *, rcs::common::Hand,
+                           get_state, );
+  }
+
+  void set_normalized_joint_poses(const rcs::common::VectorXd &q) override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, set_normalized_joint_poses,
+                           q);
+  }
+
+  rcs::common::VectorXd get_normalized_joint_poses() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::VectorXd, rcs::common::Hand, get_normalized_joint_poses, );
+  }
+
+  bool is_grasped() override {
+    PYBIND11_OVERRIDE_PURE(bool, rcs::common::Hand, is_grasped, );
+  }
+
+  void grasp() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, grasp, );
+  }
+
+  void open() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, open, );
+  }
+
+  void shut() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, shut, );
+  }
+  void reset() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, reset, );
   }
 };
 
@@ -270,6 +317,16 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::RobotState>(common, "RobotState");
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig");
   py::class_<rcs::common::GripperState>(common, "GripperState");
+  py::enum_<rcs::common::GraspType>(common, "GraspType")
+      .value("POWER_GRASP", rcs::common::GraspType::POWER_GRASP)
+      .value("PRECISION_GRASP", rcs::common::GraspType::PRECISION_GRASP)
+      .value("LATERAL_GRASP", rcs::common::GraspType::LATERAL_GRASP)
+      .value("TRIPOD_GRASP", rcs::common::GraspType::TRIPOD_GRASP)
+      .export_values();
+  py::class_<rcs::common::HandConfig>(common, "HandConfig")
+      .def(py::init<>());
+  py::class_<rcs::common::HandState>(common, "HandState")
+      .def(py::init<>());
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
@@ -313,6 +370,24 @@ PYBIND11_MODULE(_core, m) {
       .def("shut", &rcs::common::Gripper::shut,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Gripper::reset,
+           py::call_guard<py::gil_scoped_release>());
+
+  py::class_<rcs::common::Hand, PyHand,
+             std::shared_ptr<rcs::common::Hand>>(common, "Hand")
+      .def(py::init<>())
+      .def("get_parameters", &rcs::common::Hand::get_parameters)
+      .def("get_state", &rcs::common::Hand::get_state)
+      .def("set_normalized_joint_poses", &rcs::common::Hand::set_normalized_joint_poses,
+           py::arg("q"))
+      .def("get_normalized_joint_poses", &rcs::common::Hand::get_normalized_joint_poses)
+      .def("grasp", &rcs::common::Hand::grasp,
+           py::call_guard<py::gil_scoped_release>())
+      .def("is_grasped", &rcs::common::Hand::is_grasped)
+      .def("open", &rcs::common::Hand::open,
+           py::call_guard<py::gil_scoped_release>())
+      .def("shut", &rcs::common::Hand::shut,
+           py::call_guard<py::gil_scoped_release>())
+      .def("reset", &rcs::common::Hand::reset,
            py::call_guard<py::gil_scoped_release>());
 
   // SIM MODULE
@@ -418,6 +493,48 @@ PYBIND11_MODULE(_core, m) {
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("get_state", &rcs::sim::SimRobot::get_state);
+  
+  // SimTilburgHandState
+  py::class_<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
+      sim, "SimTilburgHandState")
+      .def(py::init<>())
+      .def_readonly("last_commanded_qpos",
+                    &rcs::sim::SimTilburgHandState::last_commanded_qpos)
+      .def_readonly("is_moving", &rcs::sim::SimTilburgHandState::is_moving)
+      .def_readonly("last_qpos", &rcs::sim::SimTilburgHandState::last_qpos)
+      .def_readonly("collision", &rcs::sim::SimTilburgHandState::collision);
+  // SimTilburgHandConfig
+  py::class_<rcs::sim::SimTilburgHandConfig, rcs::common::HandConfig>(
+      sim, "SimTilburgHandConfig")
+      .def(py::init<>())
+      .def_readwrite("max_joint_position",
+                     &rcs::sim::SimTilburgHandConfig::max_joint_position)
+      .def_readwrite("min_joint_position",
+                     &rcs::sim::SimTilburgHandConfig::min_joint_position)
+      .def_readwrite("ignored_collision_geoms",
+                     &rcs::sim::SimTilburgHandConfig::ignored_collision_geoms)
+      .def_readwrite("collision_geoms",
+                     &rcs::sim::SimTilburgHandConfig::collision_geoms)
+      .def_readwrite("collision_geoms_fingers",
+                     &rcs::sim::SimTilburgHandConfig::collision_geoms_fingers)
+      .def_readwrite("joints", &rcs::sim::SimTilburgHandConfig::joints)
+      .def_readwrite("actuators", &rcs::sim::SimTilburgHandConfig::actuators)
+      .def_readwrite("grasp_type",
+                     &rcs::sim::SimTilburgHandConfig::grasp_type)
+      .def_readwrite("seconds_between_callbacks",
+                     &rcs::sim::SimTilburgHandConfig::seconds_between_callbacks)
+      .def("add_id", &rcs::sim::SimTilburgHandConfig::add_id, py::arg("id"));
+  // SimTilburgHand
+  py::class_<rcs::sim::SimTilburgHand, rcs::common::Hand,
+             std::shared_ptr<rcs::sim::SimTilburgHand>>(sim, "SimTilburgHand")
+      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
+                    const rcs::sim::SimTilburgHandConfig &>(),
+           py::arg("sim"), py::arg("cfg"))
+      .def("get_parameters", &rcs::sim::SimTilburgHand::get_parameters)
+      .def("get_state", &rcs::sim::SimTilburgHand::get_state)
+      .def("set_parameters", &rcs::sim::SimTilburgHand::set_parameters,
+           py::arg("cfg"));
+
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
       .value("tracking", rcs::sim::CameraType::tracking)

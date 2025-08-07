@@ -13,14 +13,21 @@ __all__ = [
     "BaseCameraConfig",
     "FR3",
     "FrankaHandTCPOffset",
+    "GraspType",
     "Gripper",
     "GripperConfig",
     "GripperState",
     "HARDWARE",
+    "Hand",
+    "HandConfig",
+    "HandState",
     "IK",
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
+    "LATERAL_GRASP",
+    "POWER_GRASP",
+    "PRECISION_GRASP",
     "Pin",
     "Pose",
     "RL",
@@ -33,6 +40,7 @@ __all__ = [
     "RobotType",
     "SIMULATION",
     "SO101",
+    "TRIPOD_GRASP",
     "UR5e",
     "XArm7",
     "robots_meta_config",
@@ -46,6 +54,41 @@ class BaseCameraConfig:
     resolution_height: int
     resolution_width: int
     def __init__(self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int) -> None: ...
+
+class GraspType:
+    """
+    Members:
+
+      POWER_GRASP
+
+      PRECISION_GRASP
+
+      LATERAL_GRASP
+
+      TRIPOD_GRASP
+    """
+
+    LATERAL_GRASP: typing.ClassVar[GraspType]  # value = <GraspType.LATERAL_GRASP: 2>
+    POWER_GRASP: typing.ClassVar[GraspType]  # value = <GraspType.POWER_GRASP: 0>
+    PRECISION_GRASP: typing.ClassVar[GraspType]  # value = <GraspType.PRECISION_GRASP: 1>
+    TRIPOD_GRASP: typing.ClassVar[GraspType]  # value = <GraspType.TRIPOD_GRASP: 3>
+    __members__: typing.ClassVar[
+        dict[str, GraspType]
+    ]  # value = {'POWER_GRASP': <GraspType.POWER_GRASP: 0>, 'PRECISION_GRASP': <GraspType.PRECISION_GRASP: 1>, 'LATERAL_GRASP': <GraspType.LATERAL_GRASP: 2>, 'TRIPOD_GRASP': <GraspType.TRIPOD_GRASP: 3>}
+    def __eq__(self, other: typing.Any) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: typing.Any) -> bool: ...
+    def __repr__(self) -> str: ...
+    def __setstate__(self, state: int) -> None: ...
+    def __str__(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def value(self) -> int: ...
 
 class Gripper:
     def get_normalized_width(self) -> float: ...
@@ -63,6 +106,24 @@ class GripperConfig:
 
 class GripperState:
     pass
+
+class Hand:
+    def __init__(self) -> None: ...
+    def get_normalized_joint_poses(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+    def get_parameters(self) -> HandConfig: ...
+    def get_state(self) -> HandState: ...
+    def grasp(self) -> None: ...
+    def is_grasped(self) -> bool: ...
+    def open(self) -> None: ...
+    def reset(self) -> None: ...
+    def set_normalized_joint_poses(self, q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
+    def shut(self) -> None: ...
+
+class HandConfig:
+    def __init__(self) -> None: ...
+
+class HandState:
+    def __init__(self) -> None: ...
 
 class IK:
     def forward(self, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...) -> Pose: ...
@@ -256,7 +317,11 @@ def robots_meta_config(robot_type: RobotType) -> RobotMetaConfig: ...
 
 FR3: RobotType  # value = <RobotType.FR3: 0>
 HARDWARE: RobotPlatform  # value = <RobotPlatform.HARDWARE: 1>
+LATERAL_GRASP: GraspType  # value = <GraspType.LATERAL_GRASP: 2>
+POWER_GRASP: GraspType  # value = <GraspType.POWER_GRASP: 0>
+PRECISION_GRASP: GraspType  # value = <GraspType.PRECISION_GRASP: 1>
 SIMULATION: RobotPlatform  # value = <RobotPlatform.SIMULATION: 0>
 SO101: RobotType  # value = <RobotType.SO101: 2>
+TRIPOD_GRASP: GraspType  # value = <GraspType.TRIPOD_GRASP: 3>
 UR5e: RobotType  # value = <RobotType.UR5e: 1>
 XArm7: RobotType  # value = <RobotType.XArm7: 3>

@@ -22,6 +22,9 @@ __all__ = [
     "SimRobot",
     "SimRobotConfig",
     "SimRobotState",
+    "SimTilburgHand",
+    "SimTilburgHandConfig",
+    "SimTilburgHandState",
     "default_free",
     "fixed",
     "free",
@@ -176,6 +179,36 @@ class SimRobotState(rcs._core.common.RobotState):
     def previous_angles(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
     @property
     def target_angles(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+
+class SimTilburgHand(rcs._core.common.Hand):
+    def __init__(self, sim: Sim, cfg: SimTilburgHandConfig) -> None: ...
+    def get_parameters(self) -> SimTilburgHandConfig: ...
+    def get_state(self) -> SimTilburgHandState: ...
+    def set_parameters(self, cfg: SimTilburgHandConfig) -> bool: ...
+
+class SimTilburgHandConfig(rcs._core.common.HandConfig, typing.Generic[M]):
+    actuators: list[str]
+    collision_geoms: list[str]
+    collision_geoms_fingers: list[str]
+    grasp_type: rcs._core.common.GraspType
+    ignored_collision_geoms: list[str]
+    joints: list[str]
+    max_joint_position: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    min_joint_position: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    seconds_between_callbacks: float
+    def __init__(self) -> None: ...
+    def add_id(self, id: str) -> None: ...
+
+class SimTilburgHandState(rcs._core.common.HandState):
+    def __init__(self) -> None: ...
+    @property
+    def collision(self) -> bool: ...
+    @property
+    def is_moving(self) -> bool: ...
+    @property
+    def last_commanded_qpos(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+    @property
+    def last_qpos(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
 
 default_free: CameraType  # value = <CameraType.default_free: 3>
 fixed: CameraType  # value = <CameraType.fixed: 2>

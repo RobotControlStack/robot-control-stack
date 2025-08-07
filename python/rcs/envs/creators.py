@@ -13,6 +13,7 @@ from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
     GripperWrapper,
+    HandWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotEnv,
@@ -20,6 +21,7 @@ from rcs.envs.base import (
 from rcs.envs.sim import (
     CollisionGuard,
     GripperWrapperSim,
+    HandWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
     RobotSimWrapper,
@@ -48,6 +50,7 @@ class SimEnvCreator(EnvCreator):
         kinematics_frame_id: str = "attachment_site",
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         cameras: dict[str, SimCameraConfig] | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -61,6 +64,9 @@ class SimEnvCreator(EnvCreator):
             robot_cfg (rcs.sim.SimRobotConfig): Configuration for the FR3 robot.
             collision_guard (bool): Whether to use collision guarding. If True, the same mjcf scene is used for collision guarding.
             gripper_cfg (rcs.sim.SimGripperConfig | None): Configuration for the gripper. If None, no gripper is used.
+                                                           Cannot be used together with hand_cfg.
+            hand_cfg (rcs.sim.SimHandConfig | None): Configuration for the hand. If None, no hand is used.
+                                                     Cannot be used together with gripper_cfg.
             camera_set_cfg (SimCameraSetConfig | None): Configuration for the camera set. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
@@ -98,6 +104,15 @@ class SimEnvCreator(EnvCreator):
             )
             env = CameraSetWrapper(env, camera_set, include_depth=True)
 
+        assert not (
+            hand_cfg is not None and gripper_cfg is not None
+        ), "Hand and gripper configurations cannot be used together."
+
+        if hand_cfg is not None and isinstance(hand_cfg, rcs.sim.SimTilburgHandConfig):
+            hand = sim.SimTilburgHand(simulation, hand_cfg)
+            env = HandWrapper(env, hand, binary=True)
+            env = HandWrapperSim(env, hand)
+
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
@@ -129,13 +144,30 @@ class SimTaskEnvCreator(EnvCreator):
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
         cameras: dict[str, SimCameraConfig] | None = None,
+        hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
+        gripper_cfg: rcs.sim.SimGripperConfig | None = None,
     ) -> gym.Env:
-
+        mode = "gripper"
+        if gripper_cfg is None and hand_cfg is None:
+            _gripper_cfg = default_sim_gripper_cfg()
+            _hand_cfg = None
+            logger.info("Using default gripper configuration.")
+        elif hand_cfg is not None:
+            _gripper_cfg = None
+            _hand_cfg = hand_cfg
+            mode = "hand"
+            logger.info("Using hand configuration.")
+        else:
+            # Either both cfgs are set, or only gripper_cfg is set
+            _gripper_cfg = gripper_cfg
+            _hand_cfg = None
+            logger.info("Using gripper configuration.")
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=default_sim_robot_cfg(rcs.scenes[mjcf]["mjcf_scene"]),
             collision_guard=False,
-            gripper_cfg=default_sim_gripper_cfg(),
+            gripper_cfg=_gripper_cfg,
+            hand_cfg=_hand_cfg,
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
@@ -143,7 +175,9 @@ class SimTaskEnvCreator(EnvCreator):
             sim_wrapper=RandomCubePos,
             robot_kinematics_path=rcs.scenes[mjcf]["mjcf_robot"],
         )
-        env_rel = PickCubeSuccessWrapper(env_rel)
+        if mode == "gripper":
+            env_rel = PickCubeSuccessWrapper(env_rel)
+
         if render_mode == "human":
             env_rel.get_wrapper_attr("sim").open_gui()
 

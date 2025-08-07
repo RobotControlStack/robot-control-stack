@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from time import sleep
 
 import numpy as np
+from rcs._core import common
 from rcs.envs.space_utils import Vec18Type
-from rcs.hand.interface import BaseHand
 from tilburg_hand import Finger, TilburgHandMotorInterface, Unit
 
 # Setup logger
@@ -15,16 +15,29 @@ logger.disabled = False
 
 
 @dataclass(kw_only=True)
-class THConfig:
+class THConfig(common.HandConfig):
     """Config for the Tilburg hand"""
 
     calibration_file: str | None = None
     grasp_percentage: float = 1.0
     control_unit: Unit = Unit.NORMALIZED
     hand_orientation: str = "right"
+    grasp_type: common.GraspType = common.GraspType.POWER_GRASP
+
+    def __post_init__(self):
+        # 👇 satisfy pybind11 by actually calling the C++ constructor
+        super().__init__()
 
 
-class TilburgHand(BaseHand):
+@dataclass
+class TilburgHandState(common.HandState):
+    joint_positions: Vec18Type
+
+    def __post_init__(self):
+        super().__init__()
+
+
+class TilburgHand(common.Hand):
     """
     Tilburg Hand Class
     This class provides an interface for controlling the Tilburg Hand.
@@ -35,10 +48,58 @@ class TilburgHand(BaseHand):
         [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]
     )
 
+    # TODO: Control mode for position control and pos+effort control
+
+    POWER_GRASP_VALUES = np.array(
+        [
+            0.5,
+            0.5,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.5,
+            0.5,
+            1.0,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.5,
+            0.5,
+            1.0,
+            0.3,
+            0.5,
+            0.5,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+        ]
+    )
+    OPEN_VALUES = np.array(
+        [
+            0.0,
+            0.0,
+            0.5,
+            1.4,  # THUMB_(IP, MCP, ABD, CMC)
+            0.2,
+            0.2,
+            0.2,
+            0.7,  # INDEX_(DIP, PIP, MCP, ABD)
+            0.2,
+            0.2,
+            0.2,
+            0.3,
+            0.2,
+            0.2,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
+        ]
+    )
+
     def __init__(self, cfg: THConfig, verbose: bool = False):
         """
         Initializes the Tilburg Hand interface.
         """
+        super().__init__()
         self._cfg = cfg
 
         self._motors = TilburgHandMotorInterface(
@@ -115,9 +176,13 @@ class TilburgHand(BaseHand):
         return self._motors.get_encoder_single(finger_joint, self._cfg.control_unit)
 
     def _grasp(self):
-        pos_normalized = self._cfg.grasp_percentage * self.MAX_GRASP_JOINTS_VALS
+        if self._cfg.grasp_type == common.GraspType.POWER_GRASP:
+            pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
+        else:
+            logger.warning(f"Grasp type {self._cfg.grasp_type} is not implemented. Defaulting to power grasp.")
+            pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
         self._motors.set_pos_vector(pos_normalized, unit=self._cfg.control_unit)
-        logger.info(f"Grasp command sent with value: {self._cfg.grasp_percentage:.2f}")
+        logger.info(f"Performing {self._cfg.grasp_type} grasp with intensity: {self._cfg.grasp_percentage:.2f}")
 
     def auto_recovery(self):
         if not np.array(self._motors.check_enabled_motors()).all():
@@ -126,6 +191,30 @@ class TilburgHand(BaseHand):
             sleep(1)
             re = self._motors.connect()
             assert re >= 0, "Failed to reconnect to the motors' board."
+
+    def set_grasp_type(self, grasp_type: common.GraspType):
+        """
+        Sets the grasp type for the hand.
+        """
+        if not isinstance(grasp_type, common.GraspType):
+            error_msg = f"Invalid grasp type: {grasp_type}. Must be an instance of common.GraspType."
+            raise ValueError(error_msg)
+        if grasp_type == common.GraspType.POWER_GRASP:
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.PRECISION_GRASP:
+            logger.warning("Precision grasp is not implemented yet. Defaulting to power grasp.")
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.LATERAL_GRASP:
+            logger.warning("Lateral grasp is not implemented yet. Defaulting to power grasp.")
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        elif grasp_type == common.GraspType.TRIPOD_GRASP:
+            logger.warning("Tripod grasp is not implemented yet. Defaulting to power grasp.")
+            self._cfg.grasp_type = common.GraspType.POWER_GRASP
+        else:
+            error_msg = f"Unknown grasp type: {grasp_type}."
+            raise ValueError(error_msg)
+
+        logger.info(f"Grasp type set to: {self._cfg.grasp_type}")
 
     #### BaseHandControl Interface methods ####
 
@@ -136,7 +225,7 @@ class TilburgHand(BaseHand):
         self._grasp()
 
     def open(self):
-        self.set_zero_pos()
+        self._motors.set_pos_vector(self.OPEN_VALUES, unit=self._cfg.control_unit)
 
     def reset(self):
         """
@@ -146,11 +235,11 @@ class TilburgHand(BaseHand):
         self.set_zero_pos()
         logger.info("Hand reset to initial state.")
 
-    def get_state(self) -> np.ndarray:
+    def get_state(self) -> TilburgHandState:
         """
         Returns the current state of the hand.
         """
-        return self.get_pos_vector()
+        return TilburgHandState(joint_positions=self.get_pos_vector())
 
     def close(self):
         """
@@ -159,8 +248,8 @@ class TilburgHand(BaseHand):
         self.disconnect()
         logger.info("Hand control interface closed.")
 
-    def get_normalized_joints_poses(self) -> np.ndarray:
+    def get_normalized_joint_poses(self) -> np.ndarray:
         return self.get_pos_vector()
 
-    def set_normalized_joints_poses(self, values: np.ndarray):
+    def set_normalized_joint_poses(self, values: np.ndarray):
         self.set_pos_vector(values)
