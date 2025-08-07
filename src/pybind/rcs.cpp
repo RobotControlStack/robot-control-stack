@@ -529,6 +529,8 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimTilburgHandConfig &>(),
            py::arg("sim"), py::arg("cfg"))
+      .def("get_parameters", &rcs::sim::SimTilburgHand::get_parameters)
+      .def("get_state", &rcs::sim::SimTilburgHand::get_state)
       .def("set_parameters", &rcs::sim::SimTilburgHand::set_parameters,
            py::arg("cfg"));
 

@@ -146,8 +146,8 @@ class SimTaskEnvCreator(EnvCreator):
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
         cameras: dict[str, SimCameraConfig] | None = None,
-        hand_cfg: dict | None = None,
-        gripper_cfg: dict | None = None,
+        hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
+        gripper_cfg: rcs.sim.SimGripperConfig | None = None,
     ) -> gym.Env:
         mode = "gripper"
         if(gripper_cfg is None and hand_cfg is None):
