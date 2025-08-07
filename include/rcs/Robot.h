@@ -138,6 +138,8 @@ class Robot {
 
   virtual void reset() = 0;
 
+  virtual void close() = 0;
+
   virtual void set_cartesian_position(const Pose& pose) = 0;
 
   virtual std::optional<std::shared_ptr<IK>> get_ik() = 0;
@@ -179,6 +181,9 @@ class Gripper {
 
   // puts the gripper to max position
   virtual void reset() = 0;
+
+  // closes connection to gripper
+  virtual void close() = 0;
 };
 
 class Hand {
@@ -209,6 +214,9 @@ class Hand {
 
   // puts the hand to max position
   virtual void reset() = 0;
+
+  // closes connection
+  virtual void close() = 0;
 };
 
 }  // namespace common

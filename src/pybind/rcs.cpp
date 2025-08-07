@@ -4,8 +4,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sim/SimGripper.h>
-#include <sim/SimTilburgHand.h>
 #include <sim/SimRobot.h>
+#include <sim/SimTilburgHand.h>
 #include <sim/camera.h>
 #include <sim/gui.h>
 
@@ -66,6 +66,10 @@ class PyRobot : public rcs::common::Robot {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, reset, );
   }
 
+  void close() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, close, );
+  }
+
   void set_cartesian_position(const rcs::common::Pose &pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
                            pose);
@@ -116,6 +120,9 @@ class PyGripper : public rcs::common::Gripper {
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, reset, );
   }
+  void close() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Gripper, close, );
+  }
 };
 
 /**
@@ -141,7 +148,8 @@ class PyHand : public rcs::common::Hand {
   }
 
   rcs::common::VectorXd get_normalized_joint_poses() override {
-    PYBIND11_OVERRIDE_PURE(rcs::common::VectorXd, rcs::common::Hand, get_normalized_joint_poses, );
+    PYBIND11_OVERRIDE_PURE(rcs::common::VectorXd, rcs::common::Hand,
+                           get_normalized_joint_poses, );
   }
 
   bool is_grasped() override {
@@ -161,6 +169,9 @@ class PyHand : public rcs::common::Hand {
   }
   void reset() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, reset, );
+  }
+  void close() override {
+    PYBIND11_OVERRIDE_PURE(void, rcs::common::Hand, close, );
   }
 };
 
@@ -323,10 +334,8 @@ PYBIND11_MODULE(_core, m) {
       .value("LATERAL_GRASP", rcs::common::GraspType::LATERAL_GRASP)
       .value("TRIPOD_GRASP", rcs::common::GraspType::TRIPOD_GRASP)
       .export_values();
-  py::class_<rcs::common::HandConfig>(common, "HandConfig")
-      .def(py::init<>());
-  py::class_<rcs::common::HandState>(common, "HandState")
-      .def(py::init<>());
+  py::class_<rcs::common::HandConfig>(common, "HandConfig").def(py::init<>());
+  py::class_<rcs::common::HandState>(common, "HandState").def(py::init<>());
 
   // holder type should be smart pointer as we deal with smart pointer
   // instances of this class
@@ -342,6 +351,7 @@ PYBIND11_MODULE(_core, m) {
       .def("move_home", &rcs::common::Robot::move_home,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Robot::reset)
+      .def("close", &rcs::common::Robot::close)
       .def("set_cartesian_position",
            &rcs::common::Robot::set_cartesian_position, py::arg("pose"),
            py::call_guard<py::gil_scoped_release>())
@@ -369,23 +379,28 @@ PYBIND11_MODULE(_core, m) {
            py::call_guard<py::gil_scoped_release>())
       .def("shut", &rcs::common::Gripper::shut,
            py::call_guard<py::gil_scoped_release>())
+      .def("close", &rcs::common::Gripper::close,
+           py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Gripper::reset,
            py::call_guard<py::gil_scoped_release>());
 
-  py::class_<rcs::common::Hand, PyHand,
-             std::shared_ptr<rcs::common::Hand>>(common, "Hand")
+  py::class_<rcs::common::Hand, PyHand, std::shared_ptr<rcs::common::Hand>>(
+      common, "Hand")
       .def(py::init<>())
       .def("get_parameters", &rcs::common::Hand::get_parameters)
       .def("get_state", &rcs::common::Hand::get_state)
-      .def("set_normalized_joint_poses", &rcs::common::Hand::set_normalized_joint_poses,
-           py::arg("q"))
-      .def("get_normalized_joint_poses", &rcs::common::Hand::get_normalized_joint_poses)
+      .def("set_normalized_joint_poses",
+           &rcs::common::Hand::set_normalized_joint_poses, py::arg("q"))
+      .def("get_normalized_joint_poses",
+           &rcs::common::Hand::get_normalized_joint_poses)
       .def("grasp", &rcs::common::Hand::grasp,
            py::call_guard<py::gil_scoped_release>())
       .def("is_grasped", &rcs::common::Hand::is_grasped)
       .def("open", &rcs::common::Hand::open,
            py::call_guard<py::gil_scoped_release>())
       .def("shut", &rcs::common::Hand::shut,
+           py::call_guard<py::gil_scoped_release>())
+      .def("close", &rcs::common::Hand::close,
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &rcs::common::Hand::reset,
            py::call_guard<py::gil_scoped_release>());
@@ -493,7 +508,7 @@ PYBIND11_MODULE(_core, m) {
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("get_state", &rcs::sim::SimRobot::get_state);
-  
+
   // SimTilburgHandState
   py::class_<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
       sim, "SimTilburgHandState")
@@ -519,8 +534,7 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimTilburgHandConfig::collision_geoms_fingers)
       .def_readwrite("joints", &rcs::sim::SimTilburgHandConfig::joints)
       .def_readwrite("actuators", &rcs::sim::SimTilburgHandConfig::actuators)
-      .def_readwrite("grasp_type",
-                     &rcs::sim::SimTilburgHandConfig::grasp_type)
+      .def_readwrite("grasp_type", &rcs::sim::SimTilburgHandConfig::grasp_type)
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimTilburgHandConfig::seconds_between_callbacks)
       .def("add_id", &rcs::sim::SimTilburgHandConfig::add_id, py::arg("id"));

@@ -78,7 +78,7 @@ bool SimTilburgHand::set_parameters(const SimTilburgHandConfig &cfg) {
   return true;
 }
 
-bool SimTilburgHand::set_grasp_type(common::GraspType grasp_type){
+bool SimTilburgHand::set_grasp_type(common::GraspType grasp_type) {
   switch (grasp_type) {
     case common::GraspType::POWER_GRASP:
       this->cfg.grasp_type = common::GraspType::POWER_GRASP;

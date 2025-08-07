@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
 import typing
+from dataclasses import dataclass, field
 from typing import List
 
 import numpy as np
@@ -13,13 +13,14 @@ class XArm7Config(common.RobotConfig):
     # some_custom_config: str = "default_value"
     payload_weight: float = 0.624
     payload_tcp: List[float] = field(default_factory=lambda: [-4.15, 5.24, 76.38])
+
     def __post_init__(self):
         super().__init__()
 
 
-class XArm7():
+class XArm7:
     def __init__(self, ip: str):
-        self.ik = None #common.RL(urdf_path=urdf_path)
+        self.ik = None  # common.RL(urdf_path=urdf_path)
         self._config = XArm7Config()
         self._config.robot_platform = common.RobotPlatform.HARDWARE
         self._config.robot_type = common.RobotType.XArm7
@@ -35,11 +36,12 @@ class XArm7():
             center_of_gravity=self._config.payload_tcp,
             wait=True,
         )
-    
+
     def get_cartesian_position(self) -> common.Pose:
         code, xyzrpy = self._xarm.get_position(is_radian=True)
         if code != 0:
-            raise RuntimeError("couldn't get cartesian position from xarm")
+            msg = "couldn't get cartesian position from xarm"
+            raise RuntimeError(msg)
 
         translation_meter = np.array(xyzrpy[:3], dtype=np.float64) * 0.001
         rpy = xyzrpy[3:]
@@ -55,7 +57,7 @@ class XArm7():
 
     def get_parameters(self) -> XArm7Config:
         return self._config
-    
+
     def set_parameters(self, robot_cfg: XArm7Config) -> None:
         self._config = robot_cfg
 
@@ -80,8 +82,5 @@ class XArm7():
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._xarm.set_servo_angle(angle=q, is_radian=True, wait=True)
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
+    def close(self):
         self._xarm.disconnect()
