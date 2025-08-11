@@ -64,7 +64,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             gym.Env: The configured hardware environment for the FR3 robot.
         """
         if urdf_path is None:
-            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+            urdf_path = rcs.scenes["fr3_empty_world"].urdf
         ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
         robot = hw.FR3(ip, ik)
         robot.set_parameters(robot_cfg)
@@ -85,19 +85,19 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
 
-        if collision_guard is not None:
-            assert urdf_path is not None
-            env = CollisionGuard.env_from_xml_paths(
-                env,
-                str(rcs.scenes.get(str(collision_guard), collision_guard)),
-                str(urdf_path),
-                gripper=True,
-                check_home_collision=False,
-                control_mode=control_mode,
-                tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
-                sim_gui=True,
-                truncate_on_collision=False,
-            )
+        # if collision_guard is not None:
+        #     assert urdf_path is not None
+        #     env = CollisionGuard.env_from_xml_paths(
+        #         env,
+        #         str(rcs.scenes.get(str(collision_guard), collision_guard)),
+        #         str(urdf_path),
+        #         gripper=True,
+        #         check_home_collision=False,
+        #         control_mode=control_mode,
+        #         tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
+        #         sim_gui=True,
+        #         truncate_on_collision=False,
+        #     )
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
@@ -116,7 +116,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
 
-        urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+        urdf_path = rcs.scenes["fr3_empty_world"].urdf
         ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
         robots: dict[str, hw.FR3] = {}
         for ip in ips:

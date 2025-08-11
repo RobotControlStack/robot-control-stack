@@ -8,8 +8,6 @@ from rcs.envs.utils import (
     default_sim_robot_cfg,
 )
 
-import rcs
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -18,14 +16,12 @@ def main():
 
     env_rel = SimEnvCreator()(
         control_mode=ControlMode.CARTESIAN_TQuat,
-        robot_cfg=default_sim_robot_cfg(mjcf=rcs.scenes["fr3_empty_world"]["mjcf_scene"]),
+        robot_cfg=default_sim_robot_cfg(scene="fr3_empty_world"),
         collision_guard=False,
         gripper_cfg=default_sim_gripper_cfg(),
         cameras=default_mujoco_cameraset_cfg(),
         max_relative_movement=0.5,
         relative_to=RelativeTo.LAST_STEP,
-        mjcf=rcs.scenes["fr3_empty_world"]["mjb"],
-        robot_kinematics=rcs.scenes["fr3_empty_world"]["mjcf_robot"],
     )
     env_rel.get_wrapper_attr("sim").open_gui()
 

@@ -1,6 +1,5 @@
 import logging
 import typing
-from os import PathLike
 from typing import Type
 
 import gymnasium as gym
@@ -19,7 +18,6 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.sim import (
-    CollisionGuard,
     GripperWrapperSim,
     HandWrapperSim,
     PickCubeSuccessWrapper,
@@ -27,7 +25,7 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.utils import default_sim_gripper_cfg, get_tcp_offset
+from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 
 import rcs
 from rcs import sim
@@ -230,13 +228,6 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
                 frame_rate=frame_rate,
             ),
         }
-        scene = rcs.scenes["fr3_simple_pick_up"]
-        robot_cfg = sim.SimRobotConfig()
-        robot_cfg.tcp_offset = get_tcp_offset(scene["mjcf_scene"])
-        robot_cfg.realtime = False
-        robot_cfg.robot_type = rcs.common.RobotType.FR3
-        robot_cfg.add_id("0")
-        robot_cfg.mjcf_scene_path = scene["mjcf_scene"]
-        robot_cfg.kinematic_model_path = scene["mjcf_robot"]  # scene["urdf"]
+        robot_cfg = default_sim_robot_cfg(scene="fr3_simple_pick_up")
 
-        return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, cameras)
+        return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
