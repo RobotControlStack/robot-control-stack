@@ -323,6 +323,11 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::RobotConfig>(common, "RobotConfig")
       .def(py::init<>())
       .def_readwrite("robot_type", &rcs::common::RobotConfig::robot_type)
+      .def_readwrite("kinematic_model_path",
+                     &rcs::common::RobotConfig::kinematic_model_path)
+      .def_readwrite("attachment_site",
+                     &rcs::sim::SimRobotConfig::attachment_site)
+      .def_readwrite("tcp_offset", &rcs::sim::SimRobotConfig::tcp_offset)
       .def_readwrite("robot_platform",
                      &rcs::common::RobotConfig::robot_platform);
   py::class_<rcs::common::RobotState>(common, "RobotState");
@@ -410,20 +415,18 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(
       sim, "SimRobotConfig")
       .def(py::init<>())
-      .def_readwrite("tcp_offset", &rcs::sim::SimRobotConfig::tcp_offset)
       .def_readwrite("joint_rotational_tolerance",
                      &rcs::sim::SimRobotConfig::joint_rotational_tolerance)
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimRobotConfig::seconds_between_callbacks)
       .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
+      .def_readwrite("mjcf_scene_path",
+                     &rcs::sim::SimRobotConfig::mjcf_scene_path)
       .def_readwrite("trajectory_trace",
                      &rcs::sim::SimRobotConfig::trajectory_trace)
-      .def_readwrite("robot_type", &rcs::sim::SimRobotConfig::robot_type)
       .def_readwrite("arm_collision_geoms",
                      &rcs::sim::SimRobotConfig::arm_collision_geoms)
       .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
-      .def_readwrite("attachment_site",
-                     &rcs::sim::SimRobotConfig::attachment_site)
       .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators)
       .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
       .def("add_id", &rcs::sim::SimRobotConfig::add_id, py::arg("id"));

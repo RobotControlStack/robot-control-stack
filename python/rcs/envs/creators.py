@@ -45,8 +45,6 @@ class SimEnvCreator(EnvCreator):
         self,
         control_mode: ControlMode,
         robot_cfg: rcs.sim.SimRobotConfig,
-        robot_kinematics: str | PathLike,
-        mjcf: str | PathLike,
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
@@ -71,33 +69,20 @@ class SimEnvCreator(EnvCreator):
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            robot_kinematics (str | PathLike | None): Path to either urdf or mjcf file that describes the robot kinematic.
-                This is used for ik.
-            mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
             sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
                 for reset management e.g. resetting objects in the scene with correct observations. Defaults to None.
 
         Returns:
             gym.Env: The configured simulation environment for the FR3 robot.
         """
-        if mjcf not in rcs.scenes:
-            logger.info("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
-        if mjcf in rcs.scenes:
-            assert isinstance(mjcf, str)
-            mjcf = str(rcs.scenes[mjcf]["mjb"])
-        simulation = sim.Sim(mjcf)
+        simulation = sim.Sim(robot_cfg.mjcf_scene_path)
 
-        if robot_kinematics in rcs.scenes:
-            robot_kinematics = str(rcs.scenes[robot_kinematics]["mjcf_robot"])
-        else:
-            logger.info(
-                "robot_kinematics not found as key in scenes, interpreting robot_kinematics as path to the robot kinematics file"
-            )
-            robot_kinematics = str(robot_kinematics)
-
-        print(robot_cfg.attachment_site)
-        ik = rcs.common.Pin(robot_kinematics, robot_cfg.attachment_site, urdf=robot_kinematics.endswith(".urdf"))
-        # ik = rcs.common.RL(robot_kinematics)
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        # ik = rcs.common.RL(robot_cfg.kinematic_model_path)
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
@@ -123,18 +108,19 @@ class SimEnvCreator(EnvCreator):
             env = GripperWrapper(env, gripper, binary=True)
             env = GripperWrapperSim(env, gripper)
 
-        if collision_guard:
-            env = CollisionGuard.env_from_xml_paths(
-                env,
-                mjcf,
-                robot_kinematics,
-                gripper=gripper_cfg is not None,
-                check_home_collision=False,
-                control_mode=control_mode,
-                tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
-                sim_gui=True,
-                truncate_on_collision=True,
-            )
+        # TODO: collision guard not working atm
+        # if collision_guard:
+        #     env = CollisionGuard.env_from_xml_paths(
+        #         env,
+        #         mjcf,
+        #         robot_kinematics,
+        #         gripper=gripper_cfg is not None,
+        #         check_home_collision=False,
+        #         control_mode=control_mode,
+        #         tcp_offset=rcs.common.Pose(rcs.common.FrankaHandTCPOffset()),
+        #         sim_gui=True,
+        #         truncate_on_collision=True,
+        #     )
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
 
@@ -144,9 +130,7 @@ class SimEnvCreator(EnvCreator):
 class SimTaskEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
-        mjcf: str,
-        robot_kinematics: str | PathLike,
-        robot_type: rcs.common.RobotType = rcs.common.RobotType.FR3,
+        robot_cfg: rcs.sim.SimRobotConfig,
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
@@ -170,13 +154,6 @@ class SimTaskEnvCreator(EnvCreator):
             _hand_cfg = None
             logger.info("Using gripper configuration.")
 
-        robot_cfg = sim.SimRobotConfig()
-        robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes[mjcf]["mjcf_scene"] if mjcf in rcs.scenes else mjcf)
-        robot_cfg.realtime = False
-        robot_cfg.robot_type = robot_type
-        if robot_cfg.robot_type == rcs.common.RobotType.FR3:
-            robot_cfg.add_id("0")
-
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=robot_cfg,
@@ -186,9 +163,7 @@ class SimTaskEnvCreator(EnvCreator):
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf=mjcf,
             sim_wrapper=RandomCubePos,
-            robot_kinematics=rcs.scenes[robot_kinematics]["mjcf_robot"] if robot_kinematics in rcs.scenes else robot_kinematics,
         )
         if mode == "gripper":
             env_rel = PickCubeSuccessWrapper(env_rel)
@@ -255,5 +230,13 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
                 frame_rate=frame_rate,
             ),
         }
+        scene = rcs.scenes["fr3_simple_pick_up"]
+        robot_cfg = sim.SimRobotConfig()
+        robot_cfg.tcp_offset = get_tcp_offset(scene["mjcf_scene"])
+        robot_cfg.realtime = False
+        robot_cfg.robot_type = rcs.common.RobotType.FR3
+        robot_cfg.add_id("0")
+        robot_cfg.mjcf_scene_path = scene["mjcf_scene"]
+        robot_cfg.kinematic_model_path = scene["mjcf_robot"]  # scene["urdf"]
 
         return SimTaskEnvCreator()("fr3_simple_pick_up", render_mode, control_mode, delta_actions, cameras)
