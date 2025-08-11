@@ -27,7 +27,7 @@ from rcs.envs.sim import (
     RobotSimWrapper,
     SimWrapper,
 )
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from rcs.envs.utils import default_sim_gripper_cfg, get_tcp_offset
 
 import rcs
 from rcs import sim
@@ -45,9 +45,8 @@ class SimEnvCreator(EnvCreator):
         self,
         control_mode: ControlMode,
         robot_cfg: rcs.sim.SimRobotConfig,
-        robot_kinematics_path: str | PathLike,
+        robot_kinematics: str | PathLike,
         mjcf: str | PathLike,
-        kinematics_frame_id: str = "attachment_site",
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
@@ -71,10 +70,8 @@ class SimEnvCreator(EnvCreator):
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
-            kinematics_frame_id (str): Frame name of the flange. Defaults to "attachment_site". Note: if name doesnt exist
-                then pinocchio just segfaults.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            robot_kinematics_path (str | PathLike | None): Path to either urdf or mjcf file that describes the robot kinematic.
+            robot_kinematics (str | PathLike | None): Path to either urdf or mjcf file that describes the robot kinematic.
                 This is used for ik.
             mjcf (str | PathLike): Path to the Mujoco scene XML file. Defaults to "fr3_empty_world".
             sim_wrapper (Type[SimWrapper] | None): Wrapper to be applied before the simulation wrapper. This is useful
@@ -87,12 +84,20 @@ class SimEnvCreator(EnvCreator):
             logger.info("mjcf not found as key in scenes, interpreting mjcf as path the mujoco scene xml")
         if mjcf in rcs.scenes:
             assert isinstance(mjcf, str)
-            mjcf = rcs.scenes[mjcf]["mjb"]
+            mjcf = str(rcs.scenes[mjcf]["mjb"])
         simulation = sim.Sim(mjcf)
 
-        ik = rcs.common.Pin(
-            str(robot_kinematics_path), kinematics_frame_id, urdf=robot_kinematics_path.endswith(".urdf")
-        )
+        if robot_kinematics in rcs.scenes:
+            robot_kinematics = str(rcs.scenes[robot_kinematics]["mjcf_robot"])
+        else:
+            logger.info(
+                "robot_kinematics not found as key in scenes, interpreting robot_kinematics as path to the robot kinematics file"
+            )
+            robot_kinematics = str(robot_kinematics)
+
+        print(robot_cfg.attachment_site)
+        ik = rcs.common.Pin(robot_kinematics, robot_cfg.attachment_site, urdf=robot_kinematics.endswith(".urdf"))
+        # ik = rcs.common.RL(robot_kinematics)
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
@@ -121,8 +126,8 @@ class SimEnvCreator(EnvCreator):
         if collision_guard:
             env = CollisionGuard.env_from_xml_paths(
                 env,
-                str(rcs.scenes.get(str(mjcf), mjcf)),
-                str(robot_kinematics_path),
+                mjcf,
+                robot_kinematics,
                 gripper=gripper_cfg is not None,
                 check_home_collision=False,
                 control_mode=control_mode,
@@ -140,6 +145,8 @@ class SimTaskEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
         mjcf: str,
+        robot_kinematics: str | PathLike,
+        robot_type: rcs.common.RobotType = rcs.common.RobotType.FR3,
         render_mode: str = "human",
         control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         delta_actions: bool = True,
@@ -162,18 +169,26 @@ class SimTaskEnvCreator(EnvCreator):
             _gripper_cfg = gripper_cfg
             _hand_cfg = None
             logger.info("Using gripper configuration.")
+
+        robot_cfg = sim.SimRobotConfig()
+        robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes[mjcf]["mjcf_scene"] if mjcf in rcs.scenes else mjcf)
+        robot_cfg.realtime = False
+        robot_cfg.robot_type = robot_type
+        if robot_cfg.robot_type == rcs.common.RobotType.FR3:
+            robot_cfg.add_id("0")
+
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
-            robot_cfg=default_sim_robot_cfg(rcs.scenes[mjcf]["mjcf_scene"]),
+            robot_cfg=robot_cfg,
             collision_guard=False,
             gripper_cfg=_gripper_cfg,
             hand_cfg=_hand_cfg,
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            mjcf=rcs.scenes[mjcf]["mjcf_scene"],
+            mjcf=mjcf,
             sim_wrapper=RandomCubePos,
-            robot_kinematics_path=rcs.scenes[mjcf]["mjcf_robot"],
+            robot_kinematics=rcs.scenes[robot_kinematics]["mjcf_robot"] if robot_kinematics in rcs.scenes else robot_kinematics,
         )
         if mode == "gripper":
             env_rel = PickCubeSuccessWrapper(env_rel)
