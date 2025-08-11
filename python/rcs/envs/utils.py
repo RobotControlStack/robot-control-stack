@@ -101,6 +101,6 @@ def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
             translation=tcp_offset_translation, rotation=tcp_offset_rotation_matrix.reshape((3, 3))  # type: ignore
         )
     except KeyError:
-        msg = "No tcp offset found in the model. Using the default tcp offset."
-        logging.info(msg)
+        msg = "No tcp offset found in the model. Using an identity transform as tcp offset."
+        logging.warning(msg)
     return rcs.common.Pose()
