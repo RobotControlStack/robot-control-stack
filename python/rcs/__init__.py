@@ -1,5 +1,6 @@
 """Robot control stack python bindings."""
 
+import os
 import pathlib
 import site
 
@@ -13,9 +14,9 @@ from rcs import camera, envs, hand, sim
 scenes: dict[str, dict[str, pathlib.Path]] = {
     path.stem: {
         "mjb": path / "scene.mjb",
-        "urdf": f"assets/scenes/{path.stem}/robot.urdf",
-        "mjcf_scene": f"assets/scenes/{path.stem}/scene.xml",
-        "mjcf_robot": f"assets/scenes/{path.stem}/robot.xml",
+        "urdf": os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", path.stem, "robot.urdf"),
+        "mjcf_scene": os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", path.stem, "scene.xml"),
+        "mjcf_robot": os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", path.stem, "robot.xml"),
     }
     for path in (pathlib.Path(site.getsitepackages()[0]) / "rcs" / "scenes").glob("*")
 }
