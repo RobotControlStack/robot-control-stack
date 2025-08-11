@@ -39,7 +39,6 @@ struct FR3Config : common::RobotConfig {
   std::optional<FR3Load> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
-  common::Pose tcp_offset = common::Pose::Identity();
   bool async_control = false;
 };
 

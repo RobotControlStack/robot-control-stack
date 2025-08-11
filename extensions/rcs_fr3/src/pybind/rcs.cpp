@@ -66,7 +66,6 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FR3Config::nominal_end_effector_frame)
       .def_readwrite("world_to_robot", &rcs::hw::FR3Config::world_to_robot)
-      .def_readwrite("tcp_offset", &rcs::hw::FR3Config::tcp_offset)
       .def_readwrite("async_control", &rcs::hw::FR3Config::async_control);
 
   py::object gripper_config =
