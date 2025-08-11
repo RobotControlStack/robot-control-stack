@@ -16,9 +16,9 @@ from rcs.envs.base import (
     RelativeTo,
     RobotEnv,
 )
-from rcs.hand.tilburg_hand import TilburgHand, THConfig
 from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs.envs.sim import CollisionGuard, GripperWrapperSim, RobotSimWrapper, SimWrapper
+from rcs.hand.tilburg_hand import THConfig, TilburgHand
 from rcs.sim import SimCameraConfig, SimGripperConfig, SimRobotConfig
 from rcs_xarm7.hw import XArm7
 

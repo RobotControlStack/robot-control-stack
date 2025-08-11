@@ -45,8 +45,9 @@ def sim_env():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"]["mjcf_robot"])
+    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
     env_rel = SimEnvCreator()(
+        robot_cfg=robot_cfg,
         control_mode=ControlMode.JOINTS,
         collision_guard=False,
         robot_cfg=robot_cfg,
@@ -55,9 +56,6 @@ def sim_env():
         # cameras=default_mujoco_cameraset_cfg(),
         # max_relative_movement=0.5,
         relative_to=RelativeTo.LAST_STEP,
-        # mjcf=rcs.scenes["xarm7_empty_world"]["mjb"],
-        robot_kinematics_path=rcs.scenes["xarm7_empty_world"]["mjcf_robot"],
-        mjcf="/home/ken/robot-control-stack/models/scenes/xarm7_tilburg/scene.xml",
     )
     env_rel.get_wrapper_attr("sim").open_gui()
     return env_rel

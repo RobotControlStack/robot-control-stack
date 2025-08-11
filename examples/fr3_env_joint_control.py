@@ -19,13 +19,11 @@ def main():
     env_rel = SimEnvCreator()(
         control_mode=ControlMode.JOINTS,
         collision_guard=False,
-        robot_cfg=default_sim_robot_cfg(mjcf=rcs.scenes["fr3_empty_world"]["mjcf_scene"]),
+        robot_cfg=default_sim_robot_cfg("fr3_empty_world"),
         gripper_cfg=default_sim_gripper_cfg(),
         cameras=default_mujoco_cameraset_cfg(),
         max_relative_movement=np.deg2rad(5),
         relative_to=RelativeTo.LAST_STEP,
-        mjcf=rcs.scenes["fr3_empty_world"]["mjb"],
-        robot_kinematics_path=rcs.scenes["fr3_empty_world"]["mjcf_robot"],
     )
     env_rel.get_wrapper_attr("sim").open_gui()
 

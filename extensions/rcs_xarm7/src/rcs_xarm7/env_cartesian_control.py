@@ -5,8 +5,9 @@ from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import default_sim_tilburg_hand_cfg, get_tcp_offset
-from rcs_xarm7.creators import RCSXArm7EnvCreator, XArm7SimEnvCreator
 from rcs.hand.tilburg_hand import THConfig
+from rcs_xarm7.creators import RCSXArm7EnvCreator
+
 import rcs
 from rcs import sim
 
@@ -16,6 +17,7 @@ logger.setLevel(logging.INFO)
 ROBOT_IP = "192.168.1.245"
 # ROBOT_INSTANCE = RobotPlatform.SIMULATION
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
+
 
 def sim_env():
     robot_cfg = sim.SimRobotConfig()
@@ -41,8 +43,11 @@ def sim_env():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"]["mjcf_robot"])
+    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
+    robot_cfg.mjcf_scene_path = rcs.scenes["xarm7_empty_world"].mjb
+    robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
     env_rel = SimEnvCreator()(
+        robot_cfg=robot_cfg,
         control_mode=ControlMode.CARTESIAN_TQuat,
         collision_guard=False,
         robot_cfg=robot_cfg,
@@ -51,19 +56,16 @@ def sim_env():
         # cameras=default_mujoco_cameraset_cfg(),
         max_relative_movement=0.5,
         relative_to=RelativeTo.LAST_STEP,
-        mjcf=rcs.scenes["xarm7_empty_world"]["mjb"],
-        robot_kinematics_path=rcs.scenes["xarm7_empty_world"]["mjcf_robot"],
     )
     env_rel.get_wrapper_attr("sim").open_gui()
     return env_rel
+
 
 def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         hand_cfg = THConfig(
-            calibration_file="/home/ken/tilburg_hand/calibration.json",
-            grasp_percentage=1,
-            hand_orientation="right"
+            calibration_file="/home/ken/tilburg_hand/calibration.json", grasp_percentage=1, hand_orientation="right"
         )
         env_rel = RCSXArm7EnvCreator()(
             control_mode=ControlMode.CARTESIAN_TQuat,
@@ -76,12 +78,10 @@ def main():
         )
     else:
         env_rel = sim_env()
-    
 
     twin_env = sim_env()
     twin_robot = twin_env.unwrapped.robot
     twin_sim = twin_env.get_wrapper_attr("sim")
-        
 
     env_rel.reset()
     # act = {"tquat": [0.1, 0, 0, 0, 0, 0, 1], "gripper": 0}

@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import get_tcp_offset
+from rcs.envs.utils import default_sim_robot_cfg, get_tcp_offset
 
 import rcs
 from rcs import sim
@@ -36,17 +36,17 @@ def main():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"]["mjcf_robot"])
+    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
+    robot_cfg.mjcf_scene_path = rcs.scenes["xarm7_empty_world"].mjb
+    robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
     env_rel = SimEnvCreator()(
+        robot_cfg=robot_cfg,
         control_mode=ControlMode.JOINTS,
         collision_guard=False,
-        robot_cfg=robot_cfg,
         gripper_cfg=None,
         # cameras=default_mujoco_cameraset_cfg(),
         max_relative_movement=np.deg2rad(5),
         relative_to=RelativeTo.LAST_STEP,
-        mjcf=rcs.scenes["xarm7_empty_world"]["mjb"],
-        robot_kinematics_path=rcs.scenes["xarm7_empty_world"]["mjcf_robot"],
     )
     env_rel.get_wrapper_attr("sim").open_gui()
 
