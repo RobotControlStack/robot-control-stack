@@ -232,8 +232,11 @@ class Robot:
     def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
 
 class RobotConfig:
+    attachment_site: str
+    kinematic_model_path: str
     robot_platform: RobotPlatform
     robot_type: RobotType
+    tcp_offset: Pose
     def __init__(self) -> None: ...
 
 class RobotMetaConfig:

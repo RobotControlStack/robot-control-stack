@@ -151,14 +151,12 @@ class SimRobot(rcs._core.common.Robot):
 class SimRobotConfig(rcs._core.common.RobotConfig):
     actuators: list[str]
     arm_collision_geoms: list[str]
-    attachment_site: str
     base: str
     joint_rotational_tolerance: float
     joints: list[str]
+    mjcf_scene_path: str
     realtime: bool
-    robot_type: rcs._core.common.RobotType
     seconds_between_callbacks: float
-    tcp_offset: rcs._core.common.Pose
     trajectory_trace: bool
     def __init__(self) -> None: ...
     def add_id(self, id: str) -> None: ...

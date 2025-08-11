@@ -97,6 +97,9 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
+  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
+  std::string attachment_site = "attachment_site";
+  std::string kinematic_model_path = "assets/scenes/fr3_empty_world/robot.xml";
   virtual ~RobotConfig(){};
 };
 struct RobotState {
