@@ -96,7 +96,7 @@
         <inertial pos="-0.0002 0.02905 -0.01233" quat="0.978953 -0.202769 -0.00441617 -0.0227264"
           mass="2.382"
           diaginertia="0.00569127 0.00533384 0.00293865" />
-        <joint name="joint1" class="size1" />
+        <joint name="joint1" class="size1" actuatorgravcomp="true" />
         <geom mesh="link1_ring" material="brushed_aluminum_gray" class="visual" />
         <geom mesh="link1_trunk" class="visual" />
         <geom mesh="link1_convex" class="collision"/>
@@ -104,7 +104,7 @@
           <inertial pos="0.00022 -0.12856 0.01735" quat="0.50198 0.86483 -0.00778841 0.00483285"
             mass="1.869"
             diaginertia="0.00959898 0.00937717 0.00201315" />
-          <joint name="joint2" range="-2.059 2.0944" class="size1" />
+          <joint name="joint2" range="-2.059 2.0944" class="size1" actuatorgravcomp="true" />
           <geom mesh="link2_ring" material="brushed_aluminum_gray" class="visual"/>
           <geom mesh="link2_trunk" class="visual"/>
           <geom mesh="link2_convex" class="collision"/>
@@ -112,7 +112,7 @@
             <inertial pos="0.0466 -0.02463 -0.00768" quat="0.913819 0.289775 0.281481 -0.0416455"
               mass="1.6383"
               diaginertia="0.00351721 0.00294089 0.00195868" />
-            <joint name="joint3" class="size2" />
+            <joint name="joint3" class="size2" actuatorgravcomp="true" />
             <geom mesh="link3_ring" material="brushed_aluminum_gray" class="visual"/>
             <geom mesh="link3_trunk" class="visual"/>
             <geom mesh="link3_convex" class="collision"/>
@@ -120,7 +120,7 @@
               <inertial pos="0.07047 -0.11575 0.012" quat="0.422108 0.852026 -0.126025 0.282832"
                 mass="1.7269"
                 diaginertia="0.00657137 0.00647948 0.00186763" />
-              <joint name="joint4" range="-0.19198 3.927" class="size2" />
+              <joint name="joint4" range="-0.19198 3.927" class="size2" actuatorgravcomp="true" />
             <geom mesh="link4_ring" material="brushed_aluminum_gray" class="visual"/>
             <geom mesh="link4_trunk" class="visual"/>
               <geom mesh="link4_convex" class="collision"/>
@@ -128,7 +128,7 @@
                 <inertial pos="-0.00032 0.01604 -0.026"
                   quat="0.999311 -0.0304457 0.000577067 0.0212082" mass="1.3203"
                   diaginertia="0.00534729 0.00499076 0.0013489" />
-                <joint name="joint5" class="size2" />
+                <joint name="joint5" class="size2" actuatorgravcomp="true" />
                 <geom mesh="link5_ring" material="brushed_aluminum_gray" class="visual"/>
                 <geom mesh="link5_trunk" class="visual"/>
                 <geom mesh="link5_convex" class="collision"/>
@@ -136,7 +136,7 @@
                   <inertial pos="0.06469 0.03278 0.02141" quat="-0.217672 0.772419 0.16258 0.574069"
                     mass="1.325"
                     diaginertia="0.00245421 0.00221646 0.00107273" />
-                  <joint name="joint6" range="-1.69297 3.14159" class="size3" />
+                  <joint name="joint6" range="-1.69297 3.14159" class="size3" actuatorgravcomp="true" />
                   <geom mesh="link6_ring" material="brushed_aluminum_gray" class="visual"/>
                   <geom mesh="link6_trunk" class="visual"/>
                   <geom mesh="link6_convex" class="collision"/>
@@ -144,7 +144,7 @@
                     <inertial pos="0 -0.00677 -0.01098" quat="0.487612 0.512088 -0.512088 0.487612"
                       mass="0.17"
                       diaginertia="0.000132176 9.3e-05 5.85236e-05" />
-                    <joint name="joint7" class="size3" />
+                    <joint name="joint7" class="size3" actuatorgravcomp="true" />
                     <geom material="brushed_aluminum_gray" mesh="link7" class="visual"/>
                     <geom mesh="end_tool_convex" class="collision"/>
                     <site name="attachment_site" />
