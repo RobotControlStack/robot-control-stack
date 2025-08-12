@@ -2,8 +2,8 @@
 
 import os
 import site
+from dataclasses import dataclass
 
-from attr import dataclass
 from gymnasium import register
 from rcs._core import __version__, common
 from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
