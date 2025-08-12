@@ -67,6 +67,17 @@ scenes: dict[str, Scene] = {
         urdf=os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", "xarm7_empty_world", "robot.urdf"),
         robot_type=common.RobotType.FR3,
     ),
+    "so101_empty_world": Scene(
+        mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "so101_empty_world", "scene.mjb"),
+        mjcf_scene=os.path.join(
+            os.path.dirname(__file__), "..", "..", "assets", "scenes", "so101_empty_world", "scene.xml"
+        ),
+        mjcf_robot=os.path.join(
+            os.path.dirname(__file__), "..", "..", "assets", "scenes", "so101_empty_world", "robot.xml"
+        ),
+        urdf=os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", "so101_empty_world", "robot.urdf"),
+        robot_type=common.RobotType.FR3,
+    ),
 }
 
 # make submodules available
