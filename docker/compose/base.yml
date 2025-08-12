@@ -3,7 +3,7 @@ services:
   dev:
     build:
       context: ${PWD}              # run commands from the repo root
-      dockerfile: Docker/Dockerfile
+      dockerfile: docker/Dockerfile
     image: rcs-dev
     user: root
     tty: true
