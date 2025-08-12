@@ -75,7 +75,7 @@ void SimRobot::init_ids() {
   // Joints
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     name = this->cfg.joints[i];
-    this->ids.joints[i] = mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str());
+    this->ids.joints.push_back(mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str()));
     if (this->ids.joints[i] == -1) {
       throw std::runtime_error(std::string("No joint named " + name));
     }
@@ -83,8 +83,8 @@ void SimRobot::init_ids() {
   // Actuators
   for (size_t i = 0; i < std::size(this->cfg.actuators); ++i) {
     name = this->cfg.actuators[i];
-    this->ids.actuators[i] =
-        mj_name2id(this->sim->m, mjOBJ_ACTUATOR, name.c_str());
+    this->ids.actuators.push_back(
+        mj_name2id(this->sim->m, mjOBJ_ACTUATOR, name.c_str()));
     if (this->ids.actuators[i] == -1) {
       throw std::runtime_error(std::string("No actuator named " + name));
     }

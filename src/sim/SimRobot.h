@@ -84,9 +84,8 @@ class SimRobot : public common::Robot {
   struct {
     std::set<size_t> cgeom;
     int attachment_site;
-    std::array<int, 7> joints;
-    std::array<int, 7> ctrl;
-    std::array<int, 7> actuators;
+    std::vector<int> joints;
+    std::vector<int> actuators;
     int base;
   } ids;
   void is_moving_callback();
