@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import threading
 import typing
 from time import sleep
@@ -10,6 +11,7 @@ from rcs._core import common
 from rcs.camera.hw import CalibrationStrategy
 from rcs.camera.interface import Frame
 from tqdm import tqdm
+import diskcache as dc
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,8 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
 
     def __init__(self, camera_name: str):
         # base frame to camera, world to base frame
-        self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = None
+        self._cache = dc.Cache(Path.home() / ".cache" / "rcs")
+        self._extrinsics: np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None = self._cache.get(f"{camera_name}_extrinsics")  # None
         self.camera_name = camera_name
         self.tag_to_world = common.Pose(
             rpy_vector=np.array([np.pi, 0, -np.pi / 2]), translation=np.array([0.145, 0, 0])
@@ -53,6 +56,7 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         cam_to_world = self.tag_to_world @ np.linalg.inv(tag_to_cam)
         world_to_cam = np.linalg.inv(cam_to_world)
         self._extrinsics = world_to_cam  # type: ignore
+        self._cache.set(f"{self.camera_name}_extrinsics", world_to_cam, expire=3600)
         return True
 
     def get_extrinsics(self) -> np.ndarray[tuple[typing.Literal[4], typing.Literal[4]], np.dtype[np.float64]] | None:
