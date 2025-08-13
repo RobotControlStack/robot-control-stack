@@ -75,9 +75,11 @@ class XArm7:
         pass
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
+        self._xarm.set_mode(7)
+        self._xarm.set_state(0)
         x, y, z, roll, pitch, yaw = pose.xyzrpy()
         x_mm, y_mm, z_mm = 1000 * x, 1000 * y, 1000 * z
-        self._xarm.set_position(x_mm, y_mm, z_mm, roll, pitch, yaw, is_radian=True, wait=True)
+        self._xarm.set_position(x_mm, y_mm, z_mm, roll, pitch, yaw, is_radian=True, wait=False)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._xarm.set_servo_angle(angle=q, is_radian=True, wait=True)
