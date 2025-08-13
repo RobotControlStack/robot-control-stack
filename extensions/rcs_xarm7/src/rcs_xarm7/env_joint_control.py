@@ -59,7 +59,6 @@ def main():
             robot_cfg=robot_cfg,
             control_mode=ControlMode.JOINTS,
             collision_guard=False,
-            robot_cfg=robot_cfg,
             gripper_cfg=None,
             # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=np.deg2rad(5),
