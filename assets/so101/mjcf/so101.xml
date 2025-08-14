@@ -52,7 +52,8 @@
   </asset>
   <worldbody>
     <!-- Link base -->
-    <body name="base" pos="0 0 -0.03" quat="1 0 0 0" childclass="so101_new_calib" gravcomp="1">
+    <body name="base" pos="0 0 -0.03" quat="1 0 0 0" gravcomp="1">
+    <body name="base2" pos="0 0 0" quat="0.70710678 0 0 0.70710678" childclass="so101_new_calib" gravcomp="1">
       <inertial pos="0.020739 0.00204287 0.065966" mass="0.147" fullinertia="0.000136117 0.000114686 0.000130364 4.59787e-07 9.75275e-08 -4.97151e-06"/>
       <!-- Part base_motor_holder_so101_v1 -->
       <geom type="mesh" class="visual" pos="0.0206915 0.0221255 0.0300817" quat="0.707107 0.707107 7.85046e-16 8.68107e-16" mesh="base_motor_holder_so101_v1" material="base_motor_holder_so101_v1_material"/>
@@ -141,6 +142,7 @@
           </body>
         </body>
       </body>
+    </body>
     </body>
   </worldbody>
 
