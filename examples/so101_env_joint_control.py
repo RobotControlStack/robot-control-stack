@@ -30,21 +30,21 @@ def main():
     robot_cfg.mjcf_scene_path = rcs.scenes["so101_empty_world"].mjb
     robot_cfg.kinematic_model_path = rcs.scenes["so101_empty_world"].mjcf_robot
 
-    # gripper_cfg = sim.SimGripperConfig()
-    # gripper_cfg.min_actuator_width = -0.17453292519943295
-    # gripper_cfg.max_actuator_width = 1.7453292519943295
-    # gripper_cfg.min_joint_width = -0.17453292519943295
-    # gripper_cfg.max_joint_width = 1.7453292519943295
-    # gripper_cfg.actuator = "6"
-    # gripper_cfg.joint = "6"
-    # gripper_cfg.collision_geoms = []
-    # gripper_cfg.collision_geoms_fingers = []
+    gripper_cfg = sim.SimGripperConfig()
+    gripper_cfg.min_actuator_width = -0.17453292519943295
+    gripper_cfg.max_actuator_width = 1.7453292519943295
+    gripper_cfg.min_joint_width = -0.17453292519943295
+    gripper_cfg.max_joint_width = 1.7453292519943295
+    gripper_cfg.actuator = "6"
+    gripper_cfg.joint = "6"
+    gripper_cfg.collision_geoms = []
+    gripper_cfg.collision_geoms_fingers = []
+
     env_rel = SimEnvCreator()(
         robot_cfg=robot_cfg,
         control_mode=ControlMode.JOINTS,
         collision_guard=False,
-        # gripper_cfg=gripper_cfg,
-        # cameras=default_mujoco_cameraset_cfg(),
+        gripper_cfg=gripper_cfg,
         max_relative_movement=np.deg2rad(5),
         relative_to=RelativeTo.LAST_STEP,
     )
