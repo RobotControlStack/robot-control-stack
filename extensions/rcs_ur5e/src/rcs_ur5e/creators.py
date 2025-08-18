@@ -30,7 +30,7 @@ class RCSUR5eEnvCreator(RCSHardwareEnvCreator):
         robot = UR5e(ip, urdf_path=urdf_path)
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS)
 
-        gripper = RobtiQGripper()
+        gripper = RobtiQGripper(ip)
         env = GripperWrapper(env, gripper, binary=False)
 
         if camera_set is not None:

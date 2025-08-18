@@ -5,9 +5,16 @@ import numpy as np
 
 from rcs import common
 
+import rtde_control
+import robotiq_gripper
+
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
-    some_custom_config: str = "default_value"
+    lookahead_time: float = 0.05
+    gain: float = 300.0
+    max_velocity: float = 0.5
+    max_acceleration: float = 0.5
+
     def __post_init__(self):
         super().__init__()
 
@@ -24,21 +31,24 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
         self.ik = common.RL(urdf_path=urdf_path)
         self._config = UR5eConfig() # with default values
         self._config.robot_platform = common.RobotPlatform.HARDWARE
-        self._config.robot_type = common.RobotType.SO101
 
-        # TODO initialize the robot with the ip
+        self.ur_control = rtde_control.RTDEControlInterface(ip)
+        self.ur_receive = rtde_control.RTDEReceiveInterface(ip)
+
+        self._config.robot_type = common.RobotType.UR5e
+
+        if not self.ur_control.isConnected():
+            raise ConnectionError(f"Could not connect to UR5e at {ip}. Please check the IP address and connection.")
+
 
     def get_cartesian_position(self) -> common.Pose:
-        # TODO: remove code below and return the cartesian position from the robot
-        return self.ik.forward(self.get_joint_position()) 
+        return self.ur_receive.getActualTCPPose()
 
     def get_ik(self) -> common.IK | None:
         return self.ik
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:  # type: ignore
-        # TODO: remove code below and return the joint position from the robot
-        return np.zeros(6)
-      
+        return self.ur_receive.getActualQ()
 
     def get_parameters(self) -> UR5eConfig:
         return self._config
@@ -51,43 +61,43 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
 
     def move_home(self) -> None:
         # TODO: check that the q_home in include/rcs/Robot.h is correct
+        # TODO: This function is currently blocking. Is that ok?
         home = typing.cast(
             np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]],
             common.robots_meta_config(common.RobotType.SO101).q_home,
         )
-        self.set_joint_position(home)
+        self.moveJ(home, self._config.speed, self._config.acceleration)
 
     def reset(self) -> None:
-        # TODO: any reset stuff
-        pass
+        self.ur_control.stopL()
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        # TODO: remove code below and use robots way to set cartesian position
-        # or (configurable with the config) use impediance to move to the pose
-        joints = self.ik.ik(pose, q0=self.get_joint_position())
-        if joints is not None:
-            self.set_joint_position(joints)
+        target_pose = pose.xyzrpy()
+        self.ur_control.servoL(target_pose, lookahead_time=self._config.lookahead_time, gain=self._config.gain)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:  # type: ignore
-        # TODO
-        pass
+        # TODO: add safety checks
+        self.ur_control.servoJ(q, lookahead_time=self._config.lookahead_time, gain=self._config.gain)
      
 
 
-class RobtiQGripper: # (common.Gripper):
-    def __init__(self):
-        # TODO: initialize the gripper
-        pass
+class RobotiQGripper: # (common.Gripper):
+    def __init__(self,ip):
+        self.gripper = robotiq_gripper.RobotiqGripper()
+        self.gripper.connect(ip, 63352) # default port for Robotiq gripper
+        self.gripper.activate()
+        if not self.gripper.is_active():
+            raise RuntimeError("Failed to activate Robotiq gripper.")
 
     def get_normalized_width(self) -> float:
         # value between 0 and 1 (0 is closed)
-        return 0
+        return (self.gripper.getMaxPosition() - self.gripper.getCurrentPosition()) / self.gripper.getMaxPosition() #TODO: test this
 
     def grasp(self) -> None:
         """
         Close the gripper to grasp an object.
         """
-        self.shut()
+        self.gripper.move() # TODO: force, speed variable
 
     # def is_grasped(self) -> bool: ...
 
@@ -98,7 +108,6 @@ class RobtiQGripper: # (common.Gripper):
         self.set_normalized_width(1.0)
 
     def reset(self) -> None:
-        # TODO: any reset stuff
         pass
 
     def set_normalized_width(self, width: float, _: float = 0) -> None:
@@ -108,7 +117,8 @@ class RobtiQGripper: # (common.Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
-        # TODO: set gripper width
+        abs_width = (1-width) * self.gripper.getMaxPosition()
+        self.gripper.move(abs_width) #TODO force, speed
 
     def shut(self) -> None:
         """
