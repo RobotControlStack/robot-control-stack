@@ -15,6 +15,7 @@ class UR5eConfig(common.RobotConfig):
     gain: float = 300.0
     max_velocity: float = 1.0
     max_acceleration: float = 1.0
+    blocking: bool = True
 
     def __post_init__(self):
         super().__init__()
@@ -22,7 +23,6 @@ class UR5eConfig(common.RobotConfig):
 
 @dataclass(kw_only=True)
 class UR5eState(common.RobotState):
-    some_custom_state: float = 0.0 #TODO(j.hechtl): what to put here)
     def __post_init__(self):
         super().__init__()
 
@@ -68,17 +68,15 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
         return UR5eState
 
     def move_home(self) -> None:
-        # TODO: This function is currently blocking. Is that ok?
         home = typing.cast(
             np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]],
             common.robots_meta_config(common.RobotType.UR5e).q_home,
         )
         # check if home position is between -2*pi and 2*pi
         if np.any((home < -2*np.pi) | (home > 2*np.pi)):
-            print(f"Home position {home} is out of bounds.")
-        else:
-            print(f"Moving to home position: {home}")
-            self.ur_control.moveJ(home, self._config.max_velocity, self._config.max_acceleration, False)
+            raise ValueError(f"Home position {home} is out of bounds.")
+        print(f"Moving to home position: {home}")
+        self.ur_control.moveJ(home, self._config.max_velocity, self._config.max_acceleration, False)
 
     def reset(self) -> None:
         self.ur_control.stopL()
@@ -88,8 +86,10 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
         self.ur_control.servoL(target_pose, self._config.lookahead_time, self._config.gain)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:  # type: ignore
-        # TODO: add safety checks
-        self.ur_control.moveJ(q.tolist(), self._config.max_velocity, self._config.max_acceleration, False)
+        asynchronous = not self._config.blocking
+        if asynchronous:
+            self.ur_control.stopJ(self._config.max_acceleration, True)
+        self.ur_control.moveJ(q.tolist(), self._config.max_velocity, self._config.max_acceleration, asynchronous)
 
 
 
