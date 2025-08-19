@@ -38,7 +38,7 @@ pip install -ve .
 
 ### (GUI) allow X access (host)
 `export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}`  
-`xhost +si:localuser:root`
+`xhost +local:docker`
 
 ### Run container with GUI + GPU + HW and open a shell
 `docker-compose -f docker/compose/base.yml -f docker/compose/gui.yml -f docker/compose/gpu.yml -f docker/compose/hw.yml run --rm run bash`  
