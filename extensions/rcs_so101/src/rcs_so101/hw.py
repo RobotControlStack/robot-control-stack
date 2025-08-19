@@ -1,42 +1,72 @@
 import typing
+from pathlib import Path
 
 import numpy as np
-from lerobot.common.robots.so101_follower.so101_follower import SO101Follower
+from attr import dataclass
+from lerobot.robots import make_robot_from_config  # noqa: F401
+from lerobot.robots.so101_follower.config_so101_follower import SO101FollowerConfig
+from lerobot.robots.so101_follower.so101_follower import SO101Follower
 
 from rcs import common
 
 
-class SO101(common.Robot):
-    def __init__(self, hf_robot: SO101Follower, urdf_path: str):
-        self.ik = common.RL(urdf_path=urdf_path)
-        self._hf_robot = hf_robot
-        self._hf_robot.connect()
+@dataclass(kw_only=True)
+class SO101Config(common.RobotConfig):
+    id: str = "follower"
+    port: str = "/dev/ttyACM0"
+    calibration_dir: str = "."
 
-    # def get_base_pose_in_world_coordinates(self) -> Pose: ...
+    def __post_init__(self):
+        super().__init__()
+
+
+class SO101:
+    def __init__(self, robot_cfg: SO101Config, ik: common.IK):
+        self.ik = ik
+        cfg = SO101FollowerConfig(id=robot_cfg.id, calibration_dir=Path(robot_cfg.calibration_dir), port=robot_cfg.port)
+        self.hf_robot = make_robot_from_config(cfg)
+        self.hf_robot.connect()
+        # self._last_joint = self._get_joint_position()
+        # self._last_cart = self._get_cartesian_position()
+
     def get_cartesian_position(self) -> common.Pose:
-        return self.ik.forward(self.get_joint_position())
+        return self.ik.forward(self._get_joint_position())
+
+    def _get_cartesian_position(self) -> common.Pose:
+        return self._last_cart
 
     def get_ik(self) -> common.IK | None:
         return self.ik
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
-        obs = self._hf_robot.get_observation()
-        return typing.cast(
-            np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
-            np.array(
-                [
-                    obs["shoulder_pan.pos"],
-                    obs["shoulder_lift.pos"],
-                    obs["elbow_flex.pos"],
-                    obs["wrist_flex.pos"],
-                    obs["wrist_roll.pos"],
-                ],
-                dtype=np.float64,
-            ),
+        obs = self.hf_robot.get_observation()
+        joints = np.array(
+            [
+                obs["shoulder_pan.pos"],
+                obs["shoulder_lift.pos"],
+                obs["elbow_flex.pos"],
+                obs["wrist_flex.pos"],
+                obs["wrist_roll.pos"],
+            ],
+            dtype=np.float64,
         )
+        # print(obs)
+        joints_normalized = (joints + 100) / 200
+        joints_in_rad = (
+            joints_normalized
+            * (
+                common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
+                - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
+            )
+            + common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
+        )
+        return joints_in_rad
 
-    def get_parameters(self):
-        a = common.RobotConfig()
+    def _get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
+        return self._last_joint
+
+    def get_parameters(self) -> SO101Config:
+        a = SO101Config()
         a.robot_platform = common.RobotPlatform.HARDWARE
         a.robot_type = common.RobotType.SO101
         return a
@@ -55,32 +85,36 @@ class SO101(common.Robot):
         pass
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        joints = self.ik.ik(pose, q0=self.get_joint_position())
+        q0 = self.get_joint_position()
+        joints = self.ik.ik(pose, q0=q0)
         if joints is not None:
             self.set_joint_position(joints)
+            self._last_cart = pose
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
-        self._hf_robot.send_action(
+        self._last_joint = q
+        q_normalized = (q - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]) / (
+            common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
+            - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
+        )
+        q_hf = (q_normalized * 200) - 100
+        self.hf_robot.send_action(
             {
-                "shoulder_pan.pos": q[0],
-                "shoulder_lift.pos": q[1],
-                "elbow_flex.pos": q[2],
-                "wrist_flex.pos": q[3],
-                "wrist_roll.pos": q[4],
+                "shoulder_pan.pos": q_hf[0],
+                "shoulder_lift.pos": q_hf[1],
+                "elbow_flex.pos": q_hf[2],
+                "wrist_flex.pos": q_hf[3],
+                "wrist_roll.pos": q_hf[4],
             }
         )
 
-    # def to_pose_in_robot_coordinates(self, pose_in_world_coordinates: Pose) -> Pose: ...
-    # def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
 
-
-# TODO: problem when we inherit from gripper then we also need to call init which doesnt exist
-class S0101Gripper(common.Gripper):
+class S0101Gripper:
     def __init__(self, hf_robot: SO101Follower):
-        self._hf_robot = hf_robot
+        self.hf_robot = hf_robot
 
     def get_normalized_width(self) -> float:
-        obs = self._hf_robot.get_observation()
+        obs = self.hf_robot.get_observation()
         return obs["gripper.pos"] / 100.0
 
     # def get_parameters(self) -> GripperConfig: ...
@@ -112,7 +146,7 @@ class S0101Gripper(common.Gripper):
             raise ValueError(msg)
         # Convert normalized width to absolute position
         abs_width = width * 100.0
-        self._hf_robot.send_action({"gripper.pos": abs_width})
+        self.hf_robot.send_action({"gripper.pos": abs_width})
 
     def shut(self) -> None:
         """

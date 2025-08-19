@@ -13,7 +13,6 @@ from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 
@@ -26,13 +25,13 @@ def main():
         robot_cfg.calibration_dir = "/home/tobi/coding/lerobot"
         robot_cfg.kinematic_model_path = rcs.scenes["so101_empty_world"].mjcf_robot
         robot_cfg.attachment_site = "gripper"
-
         env_rel = RCSSO101EnvCreator()(
             robot_cfg=robot_cfg,
-            control_mode=ControlMode.JOINTS,
+            control_mode=ControlMode.CARTESIAN_TQuat,
             relative_to=RelativeTo.LAST_STEP,
-            max_relative_movement=np.deg2rad(10),
+            max_relative_movement=(0.05, np.deg2rad(3)),
         )
+
     else:
         robot_cfg = sim.SimRobotConfig()
         robot_cfg.actuators = ["1", "2", "3", "4", "5"]
@@ -62,29 +61,37 @@ def main():
 
         env_rel = SimEnvCreator()(
             robot_cfg=robot_cfg,
-            control_mode=ControlMode.JOINTS,
+            control_mode=ControlMode.CARTESIAN_TQuat,
             collision_guard=False,
             gripper_cfg=gripper_cfg,
-            max_relative_movement=np.deg2rad(5),
+            max_relative_movement=0.5,
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
+    obs, info = env_rel.reset()
 
-    for _ in range(10):
-        obs, info = env_rel.reset()
-        sleep(1.0)
-        for _ in range(3):
-            # sample random relative action and execute it
-            act = env_rel.action_space.sample()
-            print(act)
-            # act["gripper"] = 1.0
+    act = {"tquat": [0.03, 0, 0, 0, 0, 0, 1], "gripper": 1}
+    obs, reward, terminated, truncated, info = env_rel.step(act)
+    sleep(1)
+
+    for _ in range(100):
+        for _ in range(5):
+            # move 1cm in x direction (forward) and close gripper
+            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
             obs, reward, terminated, truncated, info = env_rel.step(act)
-            print(obs)
+            print(info, obs)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
                 return
-            logger.info(act["gripper"])
-            sleep(1.0)
+            sleep(1)
+        for _ in range(5):
+            # move 1cm in negative x direction (backward) and open gripper
+            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": 0}
+            obs, reward, terminated, truncated, info = env_rel.step(act)
+            if truncated or terminated:
+                logger.info("Truncated or terminated!")
+                return
+            sleep(1)
 
 
 if __name__ == "__main__":

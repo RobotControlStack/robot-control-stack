@@ -29,7 +29,7 @@ class Renderer {
 struct Config {
   bool async = false;
   bool realtime = false;
-  int max_convergence_steps = 5000;
+  int max_convergence_steps = 300;
 };
 
 struct Callback {
