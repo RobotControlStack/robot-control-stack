@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: rcs_tilburg_hand
+Version: 0.1.0
+Summary: A package for controlling the Tilburg Hand robot using the Robot Control Stack (RCS).
+Author-email: Khaled Gamal <khaled.gamal@utn.de>
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: rcs==0.4.0
+Requires-Dist: tilburg_hand
+Requires-Dist: numpy
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: pytest; extra == "dev"

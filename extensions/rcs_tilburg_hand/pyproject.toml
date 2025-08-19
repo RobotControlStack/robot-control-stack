@@ -1,0 +1,60 @@
+[project]
+name = "rcs_tilburg_hand"
+version = "0.1.0"
+description = "A package for controlling the Tilburg Hand robot using the Robot Control Stack (RCS)."
+authors = [
+    { name = "Khaled Gamal", email = "khaled.gamal@utn.de" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# Add your runtime dependencies here
+dependencies = [
+    "rcs==0.4.0",
+    "tilburg_hand",
+    "numpy"
+    # "requests>=2.25",
+]
+
+# Optional: include extra optional dependencies (e.g., for dev or testing)
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+    "pytest"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# This tells setuptools where your actual package code lives
+package-dir = { "" = "src" }
+
+# Optional: include other data files in the package (e.g., templates, configs)
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+#| Section                           | What it Does                                                  |
+#| --------------------------------- | ------------------------------------------------------------- |
+#| `[project.optional-dependencies]` | Optional installable dependency groups (`pip install .[dev]`) |
+#| `[build-system]`                  | Informs tools like `pip` how to build your project            |
+#| `[tool.setuptools]`               | Configures package directory and includes data files          |
+#| `[tool.setuptools.packages.find]` | Auto-discovers packages under the specified folder (`src/`)   |
+
+# one-time setup
+## pip install build twine
+
+# build wheel and sdist
+## python -m build
+
+# install locally (editable + dev tools)
+## pip install -e .[dev]
+
+# publish to PyPI
+## twine upload dist/*
