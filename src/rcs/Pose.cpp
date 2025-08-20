@@ -159,6 +159,14 @@ Vector6d Pose::xyzrpy() const {
   return xyzrpy;
 }
 
+Vector6d Pose::rotvec() const {
+  Eigen::AngleAxisd angle_axis(this->m_rotation);
+  Vector6d pose_rotvec;
+  pose_rotvec.head(3) = this->translation();
+  pose_rotvec.tail(3) = angle_axis.axis() * angle_axis.angle();
+  return pose_rotvec;
+}
+
 std::string Pose::str() const {
   std::stringstream ss;
 
