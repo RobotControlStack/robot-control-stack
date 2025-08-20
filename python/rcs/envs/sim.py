@@ -291,7 +291,7 @@ class RandomCubePos(SimWrapper):
         self.sim.step(1)
 
         iso_cube = np.array([0.498, 0.0, 0.226])
-        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))  # type: ignore
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
         pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1

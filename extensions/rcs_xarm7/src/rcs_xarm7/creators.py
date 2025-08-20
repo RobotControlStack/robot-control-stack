@@ -57,20 +57,19 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
             hand = TilburgHand(cfg=hand_cfg, verbose=True)
             env = HandWrapper(env, hand, True)
 
-        if collision_guard:
-            env = CollisionGuard.env_from_xml_paths(
-                env=env,
-                collision_guard=collision_guard,
-                cg_kinematics_path=cg_kinematics_path,
-                hand=True,
-                gripper=False,
-                check_home_collision=False,
-                control_mode=control_mode,
-                tcp_offset=rcs.common.Pose(),
-                sim_gui=True,
-                truncate_on_collision=True,
-                id="",
-            )
+        # if collision_guard:
+        #     env = CollisionGuard.env_from_xml_paths(
+        #         env=env,
+        #         cg_kinematics_path=cg_kinematics_path,
+        #         hand=True,
+        #         gripper=False,
+        #         check_home_collision=False,
+        #         control_mode=control_mode,
+        #         tcp_offset=rcs.common.Pose(),
+        #         sim_gui=True,
+        #         truncate_on_collision=True,
+        #         id="",
+        #     )
 
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
