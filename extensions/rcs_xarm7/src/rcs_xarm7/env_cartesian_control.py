@@ -92,7 +92,7 @@ def main():
                 # move 1cm in x direction (forward) and close gripper
                 act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "hand": 1}
                 obs, reward, terminated, truncated, info = env_rel.step(act)
-                joints = env_rel.unwrapped.robot.get_joint_position()
+                joints = env_rel.unwrapped.robot.get_joint_position()  # type: ignore
                 twin_robot.set_joints_hard(joints)
                 twin_sim.step(50)
                 if truncated or terminated:

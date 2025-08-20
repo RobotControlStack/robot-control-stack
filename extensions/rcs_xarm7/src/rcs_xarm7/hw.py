@@ -51,7 +51,7 @@ class XArm7(common.Robot):
     def get_ik(self) -> common.IK | None:
         return self.ik
 
-    def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]:
+    def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]:  # type: ignore
         return typing.cast(
             np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]],
             np.array(self._xarm.get_servo_angle(is_radian=True)[1]),

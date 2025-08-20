@@ -117,7 +117,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         )
         obs_initial, _ = env.reset()
         # action to be performed
-        zero_action = TRPYDictType(xyzrpy=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32))
+        zero_action = TRPYDictType(xyzrpy=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32))  # type: ignore
         zero_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env.step(zero_action)
         self.assert_no_pose_change(info, obs_initial, obs)
@@ -131,7 +131,7 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs_initial, _ = env.reset()
         # action to be performed
         x_pos_change = 0.2
-        non_zero_action = TRPYDictType(xyzrpy=np.array([x_pos_change, 0, 0, 0, 0, 0]))
+        non_zero_action = TRPYDictType(xyzrpy=np.array([x_pos_change, 0, 0, 0, 0, 0]))  # type: ignore
         non_zero_action.update(GripperDictType(gripper=0))
         expected_obs = obs_initial.copy()
         expected_obs["tquat"][0] += x_pos_change
@@ -249,7 +249,7 @@ class TestSimEnvsTquat(TestSimEnvs):
             max_relative_movement=0.5,
         )
         obs_initial, _ = env_rel.reset()
-        zero_rel_action = TQuatDictType(tquat=np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32))
+        zero_rel_action = TQuatDictType(tquat=np.array([0, 0, 0, 0, 0, 0, 1.0], dtype=np.float32))  # type: ignore
         zero_rel_action.update(GripperDictType(gripper=0))
         obs, _, _, _, info = env_rel.step(zero_rel_action)
         self.assert_no_pose_change(info, obs_initial, obs)
