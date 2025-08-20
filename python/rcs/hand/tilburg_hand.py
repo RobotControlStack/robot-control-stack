@@ -1,5 +1,6 @@
 import copy
 import logging
+import typing
 from dataclasses import dataclass
 from time import sleep
 
@@ -140,7 +141,7 @@ class TilburgHand(common.Hand):
         """
         Sets all finger joint positions to zero.
         """
-        pos_normalized = 0 * self.MAX_GRASP_JOINTS_VALS
+        pos_normalized = typing.cast(Vec18Type, 0 * self.MAX_GRASP_JOINTS_VALS)
         self.set_pos_vector(pos_normalized)
         logger.info("All joints reset to zero position.")
 
@@ -182,6 +183,7 @@ class TilburgHand(common.Hand):
         else:
             logger.warning(f"Grasp type {self._cfg.grasp_type} is not implemented. Defaulting to power grasp.")
             pos_normalized = self.POWER_GRASP_VALUES * self._cfg.grasp_percentage
+        pos_normalized = typing.cast(Vec18Type, pos_normalized)
         self.set_pos_vector(pos_normalized)
 
     def auto_recovery(self):
@@ -225,7 +227,7 @@ class TilburgHand(common.Hand):
         self._grasp()
 
     def open(self):
-        self.set_pos_vector(self.OPEN_VALUES)
+        self.set_pos_vector(typing.cast(Vec18Type, self.OPEN_VALUES))
 
     def reset(self):
         """

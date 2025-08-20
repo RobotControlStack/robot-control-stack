@@ -50,11 +50,11 @@ def get_collision_bodies(xml_file, robot_name):
 class MjORobot:
 
     franka_hand_tcp = Pose(
-        pose_matrix=np.array([[0.707, 0.707, 0, 0], [-0.707, 0.707, 0, 0], [0, 0, 1, 0.1034], [0, 0, 0, 1]])
+        pose_matrix=np.array([[0.707, 0.707, 0, 0], [-0.707, 0.707, 0, 0], [0, 0, 1, 0.1034], [0, 0, 0, 1]])  # type: ignore
     )
 
     digit_hand_tcp = Pose(
-        pose_matrix=np.array([[0.707, 0.707, 0, 0], [-0.707, 0.707, 0, 0], [0, 0, 1, 0.15], [0, 0, 0, 1]])
+        pose_matrix=np.array([[0.707, 0.707, 0, 0], [-0.707, 0.707, 0, 0], [0, 0, 1, 0.15], [0, 0, 0, 1]])  # type: ignore
     )
 
     def __init__(

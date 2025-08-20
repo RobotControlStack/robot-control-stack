@@ -21,16 +21,18 @@ class SO101(common.Robot):
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
         obs = self._hf_robot.get_observation()
-        return np.array(
-            [
-                obs["shoulder_pan.pos"],
-                obs["shoulder_lift.pos"],
-                obs["elbow_flex.pos"],
-                obs["wrist_flex.pos"],
-                obs["wrist_roll.pos"],
-                obs["gripper.pos"],
-            ],
-            dtype=np.float64,
+        return typing.cast(
+            np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
+            np.array(
+                [
+                    obs["shoulder_pan.pos"],
+                    obs["shoulder_lift.pos"],
+                    obs["elbow_flex.pos"],
+                    obs["wrist_flex.pos"],
+                    obs["wrist_roll.pos"],
+                ],
+                dtype=np.float64,
+            ),
         )
 
     def get_parameters(self):

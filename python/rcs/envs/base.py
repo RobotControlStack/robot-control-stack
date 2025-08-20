@@ -246,7 +246,7 @@ class RobotEnv(gym.Env):
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquat=np.concatenate(
-                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
+                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]  # type: ignore
             ),
             joints=self.robot.get_joint_position(),
             xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
@@ -516,12 +516,12 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
             )
             action.update(
                 TRPYDictType(
-                    xyzrpy=np.concatenate(
+                    xyzrpy=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_rpy().as_vector(),
@@ -560,13 +560,13 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 quaternion=(clipped_pose_offset * self._origin).rotation_q(),
             )
 
             action.update(
                 TQuatDictType(
-                    tquat=np.concatenate(
+                    tquat=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_q(),
