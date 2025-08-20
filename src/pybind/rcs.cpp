@@ -69,6 +69,14 @@ class PyRobot : public rcs::common::Robot {
   void close() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, close, );
   }
+  std::optional<std::shared_ptr<rcs::common::IK>> get_ik() override {
+    PYBIND11_OVERRIDE_PURE(std::optional<std::shared_ptr<rcs::common::IK>>,
+                           rcs::common::Robot, get_ik, );
+  }
+  rcs::common::Pose get_base_pose_in_world_coordinates() override {
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
+                           get_base_pose_in_world_coordinates, );
+  }
 
   void set_cartesian_position(const rcs::common::Pose &pose) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_cartesian_position,
@@ -346,6 +354,7 @@ PYBIND11_MODULE(_core, m) {
   // instances of this class
   py::class_<rcs::common::Robot, PyRobot, std::shared_ptr<rcs::common::Robot>>(
       common, "Robot")
+      .def(py::init<>())
       .def("get_parameters", &rcs::common::Robot::get_parameters)
       .def("get_state", &rcs::common::Robot::get_state)
       .def("get_cartesian_position",
@@ -372,6 +381,7 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
+      .def(py::init<>())
       .def("get_parameters", &rcs::common::Gripper::get_parameters)
       .def("get_state", &rcs::common::Gripper::get_state)
       .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width,
