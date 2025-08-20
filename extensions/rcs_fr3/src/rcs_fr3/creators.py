@@ -16,7 +16,6 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
-from rcs.envs.sim import CollisionGuard
 from rcs.hand.tilburg_hand import TilburgHand
 from rcs_fr3 import hw
 from rcs_fr3.envs import FR3HW

@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_robot_cfg, get_tcp_offset
+from rcs.envs.utils import get_tcp_offset
 
 import rcs
 from rcs import sim
