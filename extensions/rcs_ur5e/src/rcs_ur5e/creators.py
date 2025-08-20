@@ -11,8 +11,7 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
-
-from rcs_ur5e.hw import RobotiQGripper, UR5e
+from rcs_ur5e.hw import RobotiQGripper, UR5e, UR5eConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -22,16 +21,18 @@ class RCSUR5eEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
         ip: str,
-        urdf_path: str,
+        robot_cfg: UR5eConfig,
         camera_set: HardwareCameraSet | None = None,
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
     ) -> gym.Env:
-        robot = UR5e(ip, urdf_path=urdf_path)
-        env: gym.Env = RobotEnv(robot, ControlMode.JOINTS)
+        robot = UR5e(ip)
+        robot.set_parameters(robot_cfg)
+        env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 
         gripper = RobotiQGripper(ip)
-        env = GripperWrapper(env, gripper, binary=False)
+        env = GripperWrapper(env, gripper, binary=True)
 
         if camera_set is not None:
             camera_set.start()

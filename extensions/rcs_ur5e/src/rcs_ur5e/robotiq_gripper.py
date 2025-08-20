@@ -4,30 +4,33 @@ import socket
 import threading
 import time
 from enum import Enum
-from typing import Union, Tuple, OrderedDict
+from typing import OrderedDict, Tuple, Union
+
 
 class RobotiqGripper:
     """
     Communicates with the gripper directly, via socket with string commands, leveraging string names for variables.
     """
-    # WRITE VARIABLES (CAN ALSO READ)
-    ACT = 'ACT'  # act : activate (1 while activated, can be reset to clear fault status)
-    GTO = 'GTO'  # gto : go to (will perform go to with the actions set in pos, for, spe)
-    ATR = 'ATR'  # atr : auto-release (emergency slow move)
-    ADR = 'ADR'  # adr : auto-release direction (open(1) or close(0) during auto-release)
-    FOR = 'FOR'  # for : force (0-255)
-    SPE = 'SPE'  # spe : speed (0-255)
-    POS = 'POS'  # pos : position (0-255), 0 = open
-    # READ VARIABLES
-    STA = 'STA'  # status (0 = is reset, 1 = activating, 3 = active)
-    PRE = 'PRE'  # position request (echo of last commanded position)
-    OBJ = 'OBJ'  # object detection (0 = moving, 1 = outer grip, 2 = inner grip, 3 = no object at rest)
-    FLT = 'FLT'  # fault (0=ok, see manual for errors if not zero)
 
-    ENCODING = 'UTF-8'  # ASCII and UTF-8 both seem to work
+    # WRITE VARIABLES (CAN ALSO READ)
+    ACT = "ACT"  # act : activate (1 while activated, can be reset to clear fault status)
+    GTO = "GTO"  # gto : go to (will perform go to with the actions set in pos, for, spe)
+    ATR = "ATR"  # atr : auto-release (emergency slow move)
+    ADR = "ADR"  # adr : auto-release direction (open(1) or close(0) during auto-release)
+    FOR = "FOR"  # for : force (0-255)
+    SPE = "SPE"  # spe : speed (0-255)
+    POS = "POS"  # pos : position (0-255), 0 = open
+    # READ VARIABLES
+    STA = "STA"  # status (0 = is reset, 1 = activating, 3 = active)
+    PRE = "PRE"  # position request (echo of last commanded position)
+    OBJ = "OBJ"  # object detection (0 = moving, 1 = outer grip, 2 = inner grip, 3 = no object at rest)
+    FLT = "FLT"  # fault (0=ok, see manual for errors if not zero)
+
+    ENCODING = "UTF-8"  # ASCII and UTF-8 both seem to work
 
     class GripperStatus(Enum):
         """Gripper status reported by the gripper. The integer values have to match what the gripper sends."""
+
         RESET = 0
         ACTIVATING = 1
         # UNUSED = 2  # This value is currently not used by the gripper firmware
@@ -35,6 +38,7 @@ class RobotiqGripper:
 
     class ObjectStatus(Enum):
         """Object status reported by the gripper. The integer values have to match what the gripper sends."""
+
         MOVING = 0
         STOPPED_OUTER_OBJECT = 1
         STOPPED_INNER_OBJECT = 2
@@ -60,7 +64,6 @@ class RobotiqGripper:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(socket_timeout)
         self.socket.connect((hostname, port))
-        
 
     def disconnect(self) -> None:
         """Closes the connection with the gripper."""
@@ -76,7 +79,7 @@ class RobotiqGripper:
         cmd = "SET"
         for variable, value in var_dict.items():
             cmd += f" {variable} {str(value)}"
-        cmd += '\n'  # new line is required for the command to finish
+        cmd += "\n"  # new line is required for the command to finish
         # atomic commands send/rcv
         with self.command_lock:
             self.socket.sendall(cmd.encode(self.ENCODING))
@@ -114,7 +117,7 @@ class RobotiqGripper:
 
     @staticmethod
     def _is_ack(data: str):
-        return data == b'ack'
+        return data == b"ack"
 
     def _reset(self):
         """
@@ -135,11 +138,10 @@ class RobotiqGripper:
         """
         self._set_var(self.ACT, 0)
         self._set_var(self.ATR, 0)
-        while (not self._get_var(self.ACT) == 0 or not self._get_var(self.STA) == 0):
+        while not self._get_var(self.ACT) == 0 or not self._get_var(self.STA) == 0:
             self._set_var(self.ACT, 0)
             self._set_var(self.ATR, 0)
         time.sleep(0.5)
-
 
     def activate(self, auto_calibrate: bool = True):
         """Resets the activation flag in the gripper, and sets it back to one, clearing previous fault flags.
@@ -172,12 +174,12 @@ class RobotiqGripper:
         """
         if not self.is_active():
             self._reset()
-            while (not self._get_var(self.ACT) == 0 or not self._get_var(self.STA) == 0):
+            while not self._get_var(self.ACT) == 0 or not self._get_var(self.STA) == 0:
                 time.sleep(0.01)
 
             self._set_var(self.ACT, 1)
             time.sleep(1.0)
-            while (not self._get_var(self.ACT) == 1 or not self._get_var(self.STA) == 3):
+            while not self._get_var(self.ACT) == 1 or not self._get_var(self.STA) == 3:
                 time.sleep(0.01)
 
         # auto-calibrate position range if desired

@@ -88,7 +88,7 @@ class SimEnvCreator(EnvCreator):
         ik = rcs.common.RL(str(urdf_path))
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
-        env: gym.Env = RobotEnv(robot, control_mode)
+        env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
         env = RobotSimWrapper(env, simulation, sim_wrapper)
 
         if cameras is not None:

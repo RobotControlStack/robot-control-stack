@@ -1,13 +1,14 @@
-from dataclasses import dataclass
 import typing
+from dataclasses import dataclass
 
 import numpy as np
+import rtde_control
+import rtde_receive
 
 from rcs import common
 
-import rtde_control
-import rtde_receive
 from . import robotiq_gripper
+
 
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
@@ -16,6 +17,7 @@ class UR5eConfig(common.RobotConfig):
     max_velocity: float = 1.0
     max_acceleration: float = 1.0
     blocking: bool = True
+    async_control: bool = False
 
     def __post_init__(self):
         super().__init__()
@@ -27,10 +29,15 @@ class UR5eState(common.RobotState):
         super().__init__()
 
 
-class UR5e: #(common.Robot): # should inherit and implement common.Robot, but currently there is a bug that needs to be fixed
-    def __init__(self, ip: str, urdf_path: str):
-        # self.ik = common.RL(urdf_path=urdf_path)
-        self._config = UR5eConfig() # with default values
+class UR5e:  # (common.Robot): # should inherit and implement common.Robot, but currently there is a bug that needs to be fixed
+    def __init__(self, ip: str):
+        # self.ik = None common.RL(urdf_path=urdf_path)
+        # ik = rcs.common.Pin(
+        #     robot_cfg.kinematic_model_path,
+        #     robot_cfg.attachment_site,
+        #     urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        # )
+        self._config = UR5eConfig()  # with default values
         self._config.robot_platform = common.RobotPlatform.HARDWARE
 
         # TODO(j.hechtl): this is currently blocking if connection fails
@@ -42,18 +49,21 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
         if not self.ur_control.isConnected():
             raise ConnectionError(f"Could not connect to UR5e at {ip}. Please check the IP address and connection.")
 
-
     def get_cartesian_position(self) -> common.Pose:
         ur_pose = self.ur_receive.getActualTCPPose()
 
-        rpy = common.RPY(roll=ur_pose[3], pitch=ur_pose[4], yaw=ur_pose[5])
         trans = [ur_pose[0], ur_pose[1], ur_pose[2]]
-        pose = common.Pose(rpy, trans)
+        rotvec = common.RotVec(np.array(ur_pose[3:6]))
 
+        pose = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=trans)
+
+        pose = common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]).inverse() * pose
+        print(f"Current: {pose.xyzrpy()}")
         return pose
 
     def get_ik(self) -> common.IK | None:
-        return self.ik
+        # TODO return ik object with values from robot
+        return None
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:  # type: ignore
         return np.array(self.ur_receive.getActualQ())
@@ -73,31 +83,32 @@ class UR5e: #(common.Robot): # should inherit and implement common.Robot, but cu
             common.robots_meta_config(common.RobotType.UR5e).q_home,
         )
         # check if home position is between -2*pi and 2*pi
-        if np.any((home < -2*np.pi) | (home > 2*np.pi)):
+        if np.any((home < -2 * np.pi) | (home > 2 * np.pi)):
             raise ValueError(f"Home position {home} is out of bounds.")
         print(f"Moving to home position: {home}")
-        self.ur_control.moveJ(home, self._config.max_velocity, self._config.max_acceleration, False)
+        asynchronous = not self._config.blocking
+        self.ur_control.moveJ(home, self._config.max_velocity, self._config.max_acceleration, asynchronous)
 
     def reset(self) -> None:
         self.ur_control.stopL()
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        target_pose = pose.xyzrpy()
-        self.ur_control.servoL(target_pose, self._config.lookahead_time, self._config.gain)
+        asynchronous = not self._config.blocking
+        print(f"target: {pose.xyzrpy()}")
+        pose = common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]) * pose
+        target_pose = pose.rotvec()
+        self.ur_control.moveL(target_pose, self._config.max_velocity, self._config.max_acceleration, asynchronous)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:  # type: ignore
         asynchronous = not self._config.blocking
-        if asynchronous:
-            self.ur_control.stopJ(self._config.max_acceleration, True)
         self.ur_control.moveJ(q.tolist(), self._config.max_velocity, self._config.max_acceleration, asynchronous)
 
 
-
-class RobotiQGripper: # (common.Gripper):
-    def __init__(self,ip):
+class RobotiQGripper:  # (common.Gripper):
+    def __init__(self, ip):
         self.gripper = robotiq_gripper.RobotiqGripper()
         try:
-            self.gripper.connect(ip, 63352, socket_timeout=3.0) # default port for Robotiq gripper
+            self.gripper.connect(ip, 63352, socket_timeout=3.0)  # default port for Robotiq gripper
         except Exception as e:
             raise RuntimeError(f"Failed to connect to Robotiq gripper at {ip}: {e}")
         self.gripper.activate()
@@ -132,8 +143,8 @@ class RobotiQGripper: # (common.Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
-        abs_width = (1-width) * self.gripper.get_max_position()
-        #print(f"Setting gripper width to {width:.2f} (absolute: {abs_width:.2f})")
+        abs_width = (1 - width) * self.gripper.get_max_position()
+        # print(f"Setting gripper width to {width:.2f} (absolute: {abs_width:.2f})")
         self.gripper.move(int(abs_width), int(self.gripper._max_speed), int(self.gripper._max_force))
 
     def shut(self) -> None:
