@@ -40,6 +40,9 @@ class SimpleFrameRate:
 
         self.t = perf_counter()
 
+    def get_frame_time(self) -> float:
+        return 1 / self.frame_rate if isinstance(self.frame_rate, int) else self.frame_rate
+
 
 class ContextManager:
     def __enter__(self):

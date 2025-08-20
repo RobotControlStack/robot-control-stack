@@ -1,3 +1,4 @@
+import threading
 import typing
 from pathlib import Path
 
@@ -6,6 +7,8 @@ from attr import dataclass
 from lerobot.robots import make_robot_from_config  # noqa: F401
 from lerobot.robots.so101_follower.config_so101_follower import SO101FollowerConfig
 from lerobot.robots.so101_follower.so101_follower import SO101Follower
+from lerobot.robots.so101_follower.so101_follower import SO101Follower
+from rcs.utils import SimpleFrameRate
 
 from rcs import common
 
@@ -26,8 +29,11 @@ class SO101:
         cfg = SO101FollowerConfig(id=robot_cfg.id, calibration_dir=Path(robot_cfg.calibration_dir), port=robot_cfg.port)
         self.hf_robot = make_robot_from_config(cfg)
         self.hf_robot.connect()
-        # self._last_joint = self._get_joint_position()
-        # self._last_cart = self._get_cartesian_position()
+        self._thread = None
+        self._running = False
+        self._goal = None
+        self._goal_lock = threading.Lock()
+        self._rate_limiter = SimpleFrameRate(60, "teleop readout")
 
     def get_cartesian_position(self) -> common.Pose:
         return self.ik.forward(self._get_joint_position())
@@ -91,7 +97,7 @@ class SO101:
             self.set_joint_position(joints)
             self._last_cart = pose
 
-    def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
+    def _set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._last_joint = q
         q_normalized = (q - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]) / (
             common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
@@ -108,8 +114,49 @@ class SO101:
             }
         )
 
+    def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
+        if not self._running:
+            self.start_controller_thread()
+        with self._goal_lock:
+            self._goal = q
 
-class S0101Gripper:
+    def _controller(self):
+        if self._thread is not None and self._thread.is_alive():
+            return
+        while self._running:
+            self._rate_limiter()
+            with self._goal_lock:
+                goal = self._goal
+            if goal is None:
+                continue
+            current_pos = self.get_joint_position()
+            if np.allclose(current_pos, goal, atol=np.deg2rad(1)):
+                continue
+            # interpolate with max 10 degree / s
+            max_step = np.deg2rad(10) * self._rate_limiter.get_frame_time()
+            delta = goal - current_pos
+            if np.max(delta) > max_step:
+                delta = delta / np.max(delta) * max_step
+            self._set_joint_position(current_pos + delta)
+
+    def start_controller_thread(self):
+        self._running = True
+        self._thread = threading.Thread(target=self._controller, daemon=True)
+        self._thread.start()
+
+    def stop_controller_thread(self):
+        self._running = False
+        with self._goal_lock:
+            self._goal = None
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join()
+
+    # def to_pose_in_robot_coordinates(self, pose_in_world_coordinates: Pose) -> Pose: ...
+    # def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
+
+
+# TODO: problem when we inherit from gripper then we also need to call init which doesnt exist
+class SO101Gripper(common.Gripper):
     def __init__(self, hf_robot: SO101Follower):
         self.hf_robot = hf_robot
 
