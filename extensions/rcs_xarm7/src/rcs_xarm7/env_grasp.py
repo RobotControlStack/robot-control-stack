@@ -2,13 +2,12 @@ import logging
 import math
 from time import sleep
 
-import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 from rcs.envs.utils import default_sim_tilburg_hand_cfg, get_tcp_offset
 from rcs.hand.tilburg_hand import THConfig
-from rcs_xarm7.creators import RCSXArm7EnvCreator, XArm7SimEnvCreator
+from rcs_xarm7.creators import RCSXArm7EnvCreator
 
 import rcs
 from rcs import sim
@@ -77,8 +76,6 @@ def main():
         env_rel = sim_env()
 
     twin_env = sim_env()
-    twin_robot = twin_env.unwrapped.robot
-    twin_sim = twin_env.get_wrapper_attr("sim")
 
     env_rel.reset()
 

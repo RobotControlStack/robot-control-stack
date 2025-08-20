@@ -9,8 +9,6 @@ from rcs.envs.utils import (
     default_sim_robot_cfg,
 )
 
-import rcs
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

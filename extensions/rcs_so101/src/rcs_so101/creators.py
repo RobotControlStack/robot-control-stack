@@ -27,12 +27,12 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
-from rcs.envs.sim import CollisionGuard, GripperWrapperSim, RobotSimWrapper, SimWrapper
+from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper, SimWrapper
 from rcs.sim import SimCameraConfig, SimGripperConfig, SimRobotConfig
 from rcs_so101.hw import SO101, S0101Gripper
 
 import rcs
-from rcs import common, sim
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
