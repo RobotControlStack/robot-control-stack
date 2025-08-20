@@ -193,7 +193,7 @@ class TestPose:
 
     def test_rpy_conversion(self):
         # equal to identity
-        assert common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])).is_close(common.Pose())
+        assert common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])).is_close(common.Pose())  # type: ignore
 
         home_m = np.array(
             [
@@ -204,14 +204,14 @@ class TestPose:
             ]
         )
 
-        home_pose = common.Pose(pose_matrix=home_m)
+        home_pose = common.Pose(pose_matrix=home_m)  # type: ignore
 
         assert np.allclose(home_pose.pose_matrix(), home_m)
 
         trpy = home_pose.xyzrpy()
         assert np.allclose(trpy[:3], home_pose.translation())
 
-        home_pose2 = common.Pose(translation=trpy[:3], rpy_vector=trpy[3:])
+        home_pose2 = common.Pose(translation=trpy[:3], rpy_vector=trpy[3:])  # type: ignore
         home_m2 = home_pose2.pose_matrix()
 
         assert home_pose.is_close(home_pose2)
