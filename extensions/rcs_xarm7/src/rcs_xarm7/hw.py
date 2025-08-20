@@ -18,7 +18,7 @@ class XArm7Config(common.RobotConfig):
         super().__init__()
 
 
-class XArm7:
+class XArm7(common.Robot):
     def __init__(self, ip: str):
         self.ik = None  # common.RL(urdf_path=urdf_path)
         self._config = XArm7Config()
