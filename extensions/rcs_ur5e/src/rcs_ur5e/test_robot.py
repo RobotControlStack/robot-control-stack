@@ -1,5 +1,7 @@
-from hw import RobotiQGripper, UR5e
 import time
+
+from hw import RobotiQGripper, UR5e
+
 ROBOT_IP = "192.168.25.201"
 
 robot = UR5e(ROBOT_IP, "sth")
