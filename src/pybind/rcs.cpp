@@ -178,6 +178,15 @@ PYBIND11_MODULE(_core, m) {
                                     t[2].cast<double>());
           }));
 
+  py::class_<rcs::common::RotVec>(common, "RotVec")
+      .def(py::init<Eigen::Vector3d>(), py::arg("vec"))
+      .def("rotation_matrix", &rcs::common::RotVec::rotation_matrix)
+      .def("as_vector", &rcs::common::RotVec::as_vector)
+      .def("as_quaternion_vector", &rcs::common::RotVec::as_quaternion_vector)
+      .def("is_close", &rcs::common::RotVec::is_close, py::arg("other"),
+           py::arg("eps") = 1e-8)
+      .def("__str__", &rcs::common::RotVec::str);
+
   py::class_<rcs::common::Pose>(common, "Pose")
       .def(py::init<>())
       .def(py::init<const Eigen::Matrix4d &>(), py::arg("pose_matrix"))
