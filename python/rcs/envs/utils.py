@@ -8,7 +8,6 @@ from digit_interface import Digit
 from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import CameraType, SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
-from rcs.hand.tilburg_hand import THConfig
 
 import rcs
 from rcs import sim
@@ -27,14 +26,6 @@ def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim
     robot_cfg.kinematic_model_path = rcs.scenes[scene].mjcf_robot
     # robot_cfg.kinematic_model_path = rcs.scenes[scene].urdf
     return robot_cfg
-
-
-def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
-    hand_cfg = THConfig()
-    hand_cfg.grasp_percentage = 1.0
-    hand_cfg.calibration_file = str(file) if isinstance(file, PathLike) else file
-    return hand_cfg
-
 
 def default_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
     cfg = sim.SimGripperConfig()
