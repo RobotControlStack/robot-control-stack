@@ -30,11 +30,6 @@ foreach(scene_dir ${scene_dirs})
     # Install scene files
     install(FILES ${scene_mjb} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
 
-    # Install URDF files
-    file(GLOB urdfs ${scene_dir}/*.urdf)
-    foreach(urdf ${urdfs})
-        install(FILES ${urdf} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
-    endforeach()
 endforeach()
 
 # Create a custom target that depends on all generated .mjb files

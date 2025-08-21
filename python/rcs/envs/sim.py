@@ -3,9 +3,15 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
+from rcs.envs.base import (
+    ControlMode,
+    GripperWrapper,
+    HandWrapper,
+    MultiRobotWrapper,
+    RobotEnv,
+)
 from rcs.envs.space_utils import ActObsInfoWrapper
-from rcs.envs.utils import default_sim_robot_cfg
+from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
 
 import rcs
 from rcs import sim
@@ -114,6 +120,28 @@ class GripperWrapperSim(ActObsInfoWrapper):
         return observation, info
 
 
+class HandWrapperSim(ActObsInfoWrapper):
+    def __init__(self, env, hand: sim.SimTilburgHand):
+        super().__init__(env)
+        self._hand = hand
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if isinstance(action["hand"], int | float):
+            return action
+        if len(action["hand"]) == 18:
+            action["hand"] = action["hand"][:16]
+        assert len(action["hand"]) == 16 or len(action["hand"]) == 1, "Hand action must be of length 16 or 1"
+        return action
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        state = self._hand.get_state()
+        if "collision" not in info or not info["collision"]:
+            info["collision"] = state.collision
+        info["hand_position"] = self._hand.get_normalized_joint_poses()
+        # info["is_grasped"] = self._hand.get_normalized_joint_poses() > 0.01 and self._hand.get_normalized_joint_poses() < 0.99
+        return observation, info
+
+
 class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
     """
     - Gripper Wrapper has to be added before this as it removes the gripper action
@@ -193,20 +221,22 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cls,
         env: gym.Env,
         mjmld: str,
-        urdf: str,
+        cg_kinematics_path: str,
         id: str = "0",
         gripper: bool = True,
+        hand: bool = False,
         check_home_collision: bool = True,
         tcp_offset: rcs.common.Pose | None = None,
         control_mode: ControlMode | None = None,
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
+        # TODO: remove urdf and use mjcf
         # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
-        ik = rcs.common.RL(urdf, max_duration_ms=300)
         cfg = default_sim_robot_cfg(mjmld, id)
+        ik = rcs.common.Pin(cg_kinematics_path, cfg.attachment_site, False)
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
@@ -229,6 +259,13 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             fh = sim.SimGripper(simulation, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)
+        if hand:
+            hand_cfg = default_sim_tilburg_hand_cfg()
+            # hand_cfg.add_id(id)
+            th = sim.SimTilburgHand(simulation, hand_cfg)
+            c_env = HandWrapper(c_env, th)
+            c_env = HandWrapperSim(c_env, th)
+
         return cls(
             env=env,
             simulation=simulation,
@@ -254,7 +291,7 @@ class RandomCubePos(SimWrapper):
         self.sim.step(1)
 
         iso_cube = np.array([0.498, 0.0, 0.226])
-        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))  # type: ignore
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
         pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1

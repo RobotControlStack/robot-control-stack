@@ -109,7 +109,7 @@ class SimCameraSet(_SimCameraSet):
 
         cam = common.Pose(rotation=xmat, translation=xpos)
         # put z axis infront
-        rotation_p = common.Pose(rpy_vector=np.array([np.pi, 0, 0]), translation=np.array([0, 0, 0]))
+        rotation_p = common.Pose(rpy_vector=np.array([np.pi, 0, 0]), translation=np.array([0, 0, 0]))  # type: ignore
         cam = cam * rotation_p
 
         return cam.inverse().pose_matrix()

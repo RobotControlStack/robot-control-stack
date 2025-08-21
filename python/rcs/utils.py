@@ -39,3 +39,11 @@ class SimpleFrameRate:
             logger.info(f"FPS {self.loop_name}: {1 / (perf_counter() - self.t)}")
 
         self.t = perf_counter()
+
+
+class ContextManager:
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        pass
