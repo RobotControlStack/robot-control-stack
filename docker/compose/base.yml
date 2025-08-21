@@ -1,0 +1,38 @@
+services:
+  # Build / dev: the ONLY service that mounts your source
+  dev:
+    build:
+      context: ${PWD}              # run commands from the repo root
+      dockerfile: docker/Dockerfile
+    image: rcs-dev
+    user: root
+    tty: true
+    stdin_open: true
+    working_dir: /home/devuser/project
+    volumes:
+      - ${PWD}:/home/devuser/project
+    environment:
+      PYTHONUNBUFFERED: "1"
+    shm_size: "2g"
+
+  # Runtime base: NO source mount here
+  run:
+    image: rcs-dev
+    user: root
+    tty: true
+    stdin_open: true
+    working_dir: /home/devuser/project
+    environment:
+      PYTHONUNBUFFERED: "1"
+    shm_size: "2g"
+
+
+# Build the dev image
+# docker-compose -f compose/base.yml build dev
+# Run the dev container
+# docker-compose \
+#   -f compose/base.yml \
+#   -f compose/gui.yml \
+#   -f compose/gpu.yml \
+#   -f compose/hw.yml \
+#   run --rm run bash

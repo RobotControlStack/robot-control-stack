@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  run:
+    privileged: true
+    volumes:
+      - /dev:/dev
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      rttime: -1
+      memlock:
+        soft: 8428281856
+        hard: 8428281856
+    # If you prefer least-privilege instead of /dev:/dev, swap in specific devices:
+    # devices:
+    #   - /dev/video0:/dev/video0
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/dri:/dev/dri
