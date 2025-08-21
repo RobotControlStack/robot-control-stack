@@ -4,7 +4,7 @@ from pathlib import Path
 from os import PathLike
 from time import sleep
 
-from rcs_tilburg_hand.tilburg_hand import TilburgHand, THConfig
+from rcs_tilburg_hand.tilburg_hand_hw import TilburgHand, THConfig
 
 
 def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
