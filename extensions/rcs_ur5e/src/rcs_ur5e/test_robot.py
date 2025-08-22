@@ -4,7 +4,7 @@ from hw import RobotiQGripper, UR5e
 
 ROBOT_IP = "192.168.25.201"
 
-robot = UR5e(ROBOT_IP, "sth")
+robot = UR5e(ROBOT_IP)
 print(f"Robot joint positions: {robot.get_joint_position()}")
 print(f"Robot cartesian position: {robot.get_cartesian_position()}")
 print(f"Robot Parameters: {robot.get_parameters()}")

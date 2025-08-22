@@ -27,7 +27,7 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         robot_cfg = UR5eConfig()
-        robot_cfg.blocking = True
+        robot_cfg.blocking = False
         env_rel = RCSUR5eEnvCreator()(
             robot_cfg=robot_cfg,
             control_mode=ControlMode.CARTESIAN_TQuat,
@@ -67,9 +67,9 @@ def main():
         env_rel.get_wrapper_attr("sim").open_gui()
 
     obs, info = env_rel.reset()
-    print(obs)
-    print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-    print(env_rel.unwrapped.robot.get_joint_position())  # type: ignore
+    # print(obs)
+    # print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
+    # print(env_rel.unwrapped.robot.get_joint_position())  # type: ignore
 
     for _ in range(100):
         # act = {"joints": common.robots_meta_config(common.RobotType.UR5e).q_home, "gripper": 0}
@@ -80,9 +80,9 @@ def main():
         # sleep(1)
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0, 0.0087265, 0, 0, 0, 0.9999619], "gripper": 0}
+            act = {"tquat": [0.01, 0,0, 0.0087265, 0, 0, 0.9999619], "gripper": 0}
             obs, reward, terminated, truncated, info = env_rel.step(act)
-            print(obs)
+            #print(obs)
             # print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
             if truncated or terminated:
                 logger.info("Truncated or terminated!")

@@ -8,6 +8,7 @@ from rcs_ur5e.creators import RCSUR5eEnvCreator
 
 import rcs
 from rcs import sim
+from rcs_ur5e.hw import UR5eConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -19,8 +20,10 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+        robot_cfg = UR5eConfig()
         env_rel = RCSUR5eEnvCreator()(
             control_mode=ControlMode.JOINTS,
+            robot_cfg=robot_cfg,
             ip=ROBOT_IP,
             camera_set=None,
             max_relative_movement=np.deg2rad(5),
