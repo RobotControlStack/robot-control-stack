@@ -11,11 +11,7 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
-from rcs_so101.hw import SO101, SO101Gripper
-
-import rcs
-from rcs import sim
-from rcs_so101.hw import SO101, SO101Config
+from rcs_so101.hw import SO101, SO101Config, SO101Gripper
 
 import rcs
 
@@ -40,7 +36,7 @@ class RCSSO101EnvCreator(RCSHardwareEnvCreator):
         robot = SO101(robot_cfg=robot_cfg, ik=ik)
         env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 
-        gripper = SO101Gripper(robot.hf_robot)
+        gripper = SO101Gripper(robot.hf_robot, robot)
         env = GripperWrapper(env, gripper, binary=False)
 
         if camera_set is not None:

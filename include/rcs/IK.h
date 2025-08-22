@@ -53,7 +53,7 @@ class Pin : public IK {
   const int IT_MAX = 1000;
   const double DT = 1e-1;
   const double damp = 1e-6;
-  const double eps_pos = 0.02;
+  const double eps_pos = 0.01;
   const double eps_ori = 10 * (M_PI / 180.0);
   int FRAME_ID;
 

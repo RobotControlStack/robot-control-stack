@@ -29,7 +29,6 @@ def main():
     robot_cfg.mjcf_scene_path = rcs.scenes["so101_empty_world"].mjb
     robot_cfg.kinematic_model_path = rcs.scenes["so101_empty_world"].mjcf_robot
 
-
     gripper_cfg = sim.SimGripperConfig()
     gripper_cfg.min_actuator_width = -0.17453292519943295
     gripper_cfg.max_actuator_width = 1.7453292519943295
@@ -53,7 +52,6 @@ def main():
 
     act = {"tquat": [0.03, 0, 0, 0, 0, 0, 1], "gripper": 1}
     obs, reward, terminated, truncated, info = env_rel.step(act)
-
 
     for _ in range(100):
         for _ in range(5):
