@@ -54,7 +54,7 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
             camera_set.start()
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
-            env = CameraSetWrapper(env, camera_set)
+            env = CameraSetWrapper(env, camera_set, include_depth=True)
         if hand_cfg is not None and isinstance(hand_cfg, THConfig):
             hand = TilburgHand(cfg=hand_cfg, verbose=True)
             env = HandWrapper(env, hand, True)
