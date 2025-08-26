@@ -180,54 +180,65 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 0,
         delta_actions: bool = True,
+        cam_list: list[str] = ["wrist", "bird_eye", "side", "right_side", "left_side", "front"]
     ) -> gym.Env:
         if resolution is None:
             resolution = (256, 256)
-
         cameras = {
-            "wrist": SimCameraConfig(
-                identifier="wrist_0",
+            cam: SimCameraConfig(
+                identifier=cam,
                 type=CameraType.fixed,
                 resolution_height=resolution[1],
                 resolution_width=resolution[0],
                 frame_rate=frame_rate,
-            ),
-            "bird_eye": SimCameraConfig(
-                identifier="bird_eye_cam",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-            "side": SimCameraConfig(
-                identifier="side_view",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-            "right_side": SimCameraConfig(
-                identifier="right_side",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-            "left_side": SimCameraConfig(
-                identifier="left_side",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
-            "front": SimCameraConfig(
-                identifier="front",
-                type=CameraType.fixed,
-                resolution_height=resolution[1],
-                resolution_width=resolution[0],
-                frame_rate=frame_rate,
-            ),
+            )
+            for cam in cam_list
         }
         robot_cfg = default_sim_robot_cfg(scene="fr3_simple_pick_up")
+
+        return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
+
+class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
+    def __call__(  # type: ignore
+        self,
+        render_mode: str = "human",
+        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
+        resolution: tuple[int, int] | None = None,
+        frame_rate: int = 0,
+        delta_actions: bool = True,
+        cam_list: list[str] = [],
+        mjcf_path: str = ''
+    ) -> gym.Env:
+        if resolution is None:
+            resolution = (256, 256)
+        if cam_list is None or len(cam_list) == 0:
+            error_msg = "cam_list must contain at least one camera name."
+            raise ValueError(error_msg)
+        cameras = {
+            cam: SimCameraConfig(
+                identifier=cam,
+                type=CameraType.fixed,
+                resolution_height=resolution[1],
+                resolution_width=resolution[0],
+                frame_rate=frame_rate,
+            )
+            for cam in cam_list
+        }
+        robot_cfg = rcs.sim.SimRobotConfig()
+        robot_cfg.tcp_offset = rcs.common.Pose(translation=np.array([0.0, 0.0, 0.15]), rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]))
+        robot_cfg.robot_type = rcs.common.RobotType.FR3
+        robot_cfg.realtime = False
+        robot_cfg.add_id("0") # only required for fr3
+        robot_cfg.mjcf_scene_path = mjcf_path
+        robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot # .urdf (in case for urdf)
+        print(f"Creating FR3LabDigitGripperPickUpSim with the following parameters: \n"
+                    f"  render_mode: {render_mode}\n"
+                    f"  control_mode: {control_mode}\n"
+                    f"  resolution: {resolution}\n"
+                    f"  frame_rate: {frame_rate}\n"
+                    f"  delta_actions: {delta_actions}\n"
+                    f"  cameras: {cameras}\n"
+                    f"  mjcf_path: {mjcf_path}\n"
+                    )
 
         return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
