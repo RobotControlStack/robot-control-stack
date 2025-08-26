@@ -18,7 +18,7 @@ class XArm7Config(common.RobotConfig):
         super().__init__()
 
 
-class XArm7:
+class XArm7(common.Robot):
     def __init__(self, ip: str):
         self.ik = None  # common.RL(urdf_path=urdf_path)
         self._config = XArm7Config()
@@ -43,7 +43,7 @@ class XArm7:
             msg = "couldn't get cartesian position from xarm"
             raise RuntimeError(msg)
 
-        translation_meter = np.array(xyzrpy[:3], dtype=np.float64) * 0.001
+        translation_meter = xyzrpy[:3] * 0.001
         rpy = xyzrpy[3:]
 
         return common.Pose(rpy_vector=rpy, translation=translation_meter)
@@ -52,8 +52,10 @@ class XArm7:
         return self.ik
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]:  # type: ignore
-        obs = self._xarm.get_servo_angle(is_radian=True)[1]
-        return np.array(obs, dtype=np.float64)
+        return typing.cast(
+            np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]],
+            np.array(self._xarm.get_servo_angle(is_radian=True)[1]),
+        )
 
     def get_parameters(self) -> XArm7Config:
         return self._config

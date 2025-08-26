@@ -13,12 +13,12 @@ namespace rcs {
 namespace sim {
 
 struct SimTilburgHandConfig : common::HandConfig {
-  rcs::common::VectorXd max_joint_position =
+  rcs::common::Vector16d max_joint_position =
       (rcs::common::VectorXd(16) << 1.6581, 1.5708, 0.0000, 1.5708, 1.6581,
        1.6581, 1.6581, 0.4363, 1.6581, 1.6581, 1.6581, 0.4363, 1.6581, 1.6581,
        1.6581, 0.4363)
           .finished();
-  rcs::common::VectorXd min_joint_position =
+  rcs::common::Vector16d min_joint_position =
       (rcs::common::VectorXd(16) << 0.0000, 0.0000, -1.7453, 0.0000, -0.0873,
        -0.0873, -0.0873, -0.4363, -0.0873, -0.0873, -0.0873, -0.4363, -0.0873,
        -0.0873, -0.0873, -0.4363)

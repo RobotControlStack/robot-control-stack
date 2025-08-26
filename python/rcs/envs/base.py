@@ -104,7 +104,7 @@ class GripperDictType(RCSpaceType):
 
 class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
-    hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+    gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
 
 class HandVecDictType(RCSpaceType):
@@ -246,7 +246,7 @@ class RobotEnv(gym.Env):
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquat=np.concatenate(
-                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
+                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]  # type: ignore
             ),
             joints=self.robot.get_joint_position(),
             xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
@@ -518,12 +518,12 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
             )
             action.update(
                 TRPYDictType(
-                    xyzrpy=np.concatenate(
+                    xyzrpy=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_rpy().as_vector(),
@@ -562,13 +562,13 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 quaternion=(clipped_pose_offset * self._origin).rotation_q(),
             )
 
             action.update(
                 TQuatDictType(
-                    tquat=np.concatenate(
+                    tquat=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_q(),
@@ -695,7 +695,7 @@ class GripperWrapper(ActObsInfoWrapper):
         self.action_space: gym.spaces.Dict
         self.action_space.spaces.update(get_space(GripperDictType).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
-        self._gripper = gripper
+        self.gripper = gripper
         self.binary = binary
         self._last_gripper_cmd = None
         self.open_on_reset = open_on_reset
@@ -703,7 +703,7 @@ class GripperWrapper(ActObsInfoWrapper):
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         if self.open_on_reset:
             # resetting opens the gripper
-            self._gripper.reset()
+            self.gripper.reset()
         self._last_gripper_cmd = None
         return super().reset(**kwargs)
 
@@ -714,7 +714,7 @@ class GripperWrapper(ActObsInfoWrapper):
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
         else:
-            observation[self.gripper_key] = self._gripper.get_normalized_width()
+            observation[self.gripper_key] = self.gripper.get_normalized_width()
 
         return observation, info
 
@@ -727,9 +727,9 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = np.clip(gripper_action, 0.0, 1.0)
 
         if self.binary:
-            self._gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self._gripper.open()
+            self.gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self.gripper.open()
         else:
-            self._gripper.set_normalized_width(gripper_action)
+            self.gripper.set_normalized_width(gripper_action)
         self._last_gripper_cmd = gripper_action
         del action[self.gripper_key]
         return action

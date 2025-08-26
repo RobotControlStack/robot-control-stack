@@ -191,8 +191,8 @@ class SimTilburgHandConfig(rcs._core.common.HandConfig):
     grasp_type: rcs._core.common.GraspType
     ignored_collision_geoms: list[str]
     joints: list[str]
-    max_joint_position: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    min_joint_position: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    max_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]]
+    min_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]]
     seconds_between_callbacks: float
     def __init__(self) -> None: ...
     def add_id(self, id: str) -> None: ...

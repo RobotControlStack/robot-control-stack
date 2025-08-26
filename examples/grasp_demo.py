@@ -45,7 +45,7 @@ class PickUpDemo:
         # goal pose is above the object and gripper coordinate must flip z-axis (end effector base rotation is [1, 0, 0, 0])
         # be careful we define identity quaternion as as [0, 0, 0, 1]
         # this does not work if the object is flipped
-        goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))
+        goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))  # type: ignore
 
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
