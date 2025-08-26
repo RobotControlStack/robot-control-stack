@@ -104,7 +104,7 @@ class GripperDictType(RCSpaceType):
 
 class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
-    hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+    gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
 
 class HandVecDictType(RCSpaceType):
