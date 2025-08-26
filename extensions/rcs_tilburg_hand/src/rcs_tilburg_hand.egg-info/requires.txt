@@ -1,8 +1,0 @@
-rcs==0.4.0
-tilburg_hand
-numpy
-
-[dev]
-build
-twine
-pytest
