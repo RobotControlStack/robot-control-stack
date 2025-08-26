@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from gymnasium import register
 from rcs._core import __version__, common
-from rcs.envs.creators import FR3SimplePickUpSimEnvCreator
+from rcs.envs.creators import FR3SimplePickUpSimEnvCreator, FR3LabDigitGripperPickUpSimEnvCreator
 
 from rcs import camera, envs, hand, sim
 
@@ -74,6 +74,12 @@ register(
     id="rcs/FR3SimplePickUpSim-v0",
     entry_point=FR3SimplePickUpSimEnvCreator(),
 )
+register(
+    id="rcs/FR3LabDigitGripperPickUpSim-v0",
+    entry_point=FR3LabDigitGripperPickUpSimEnvCreator(),
+)
+
+# Genius TODO: Add the tacto version of the SimEnvCreator
 # TODO: gym.make("rcs/FR3SimEnv-v0") results in a pickling error:
 # TypeError: cannot pickle 'rcs._core.sim.SimRobotConfig' object
 # cf. https://pybind11.readthedocs.io/en/stable/advanced/classes.html#deepcopy-support

@@ -291,11 +291,13 @@ class RobotEnv(gym.Env):
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[ArmObsType, dict[str, Any]]:
         if seed is not None:
-            msg = "seeding not implemented yet"
-            raise NotImplementedError(msg)
+            msg = "seeding not implemented yet. Ignoring seed."
+            # raise NotImplementedError(msg)
+            _logger.error(msg)
         if options is not None:
-            msg = "options not implemented yet"
-            raise NotImplementedError(msg)
+            msg = "options not implemented yet. Ignoring options."
+            # raise NotImplementedError(msg)
+            _logger.error(msg)
         self.robot.reset()
         if self.home_on_reset:
             self.robot.move_home()
