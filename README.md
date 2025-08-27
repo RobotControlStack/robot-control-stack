@@ -120,6 +120,7 @@ for _ in range(100):
         print(obs)
         if truncated or terminated:
             logger.info("Truncated or terminated!")
+            exit()
 ```
 ### Examples
 Checkout the python examples in the [examples](examples) folder:
