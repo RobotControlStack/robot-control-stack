@@ -13,11 +13,11 @@ from rcs_ur5e import robotiq_gripper
 @dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
     lookahead_time: float = 0.05
-    gain: float = 300.0
+    gain: float = 500.0
     max_velocity: float = 1.0
     max_acceleration: float = 1.0
-    async_control: bool = False
-    max_servo_joint_step: float = 0.05
+    async_control: bool = True
+    max_servo_joint_step: float = 0.15
     max_servo_cartesian_step: float = 0.01
 
     def __post_init__(self):
@@ -99,11 +99,32 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
                 diff = joint_target_view - joint_state_view
                 if np.max(np.abs(diff)) < 0.01:
                     data_buffer[offset_target_reached] = 1
+
                 if np.max(np.abs(diff)) > robot_config.max_servo_joint_step:
                     diff = (robot_config.max_servo_joint_step / np.max(np.abs(diff))) * diff
                     target_q = (joint_state_view + diff).tolist()
                 else:
                     target_q = joint_target_view.tolist()
+
+                # current_qd = ur_receive.getActualQd()
+                # required_qd = diff / dt 
+                # required_qdd = (required_qd - current_qd) / dt
+
+                # max_qdd = [1,1,1,1,1,1]
+
+                # factor = 1
+
+                # for i in range(len(max_qdd)):
+                #     if np.abs(required_qdd[i])*factor > max_qdd[i]:
+                #         factor = factor * (max_qdd[i]/np.abs(required_qdd))
+                # assert factor <= 1
+                # if factor < 1:
+                #     target_qdd = factor * required_qdd
+                #     target_qd = current_qd + 0.5 * dt *target_qdd # average velocity in time window
+                #     new_target_q = joint_state + target_qd * dt
+                #     print("Current q: ", joint_state, " Target q: ", target_q, " New: ", new_target_q)
+
+                # print("Servo")
                 ur_control.servoJ(
                     target_q,
                     robot_config.max_velocity,
@@ -114,14 +135,29 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
                 )
                 
             elif mode == CARTESIAN_MODE: 
+                rotvec = common.RotVec(np.array(cartesian_target_view[3:6]))
+                # print("Target View: ", cartesian_target_view)
+                a = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_target_view[:3])
+                # print(a)
+                rotvec = common.RotVec(np.array(cartesian_state_view[3:6]))
+                b = common.Pose(quaternion=rotvec.as_quaternion_vector(), translation=cartesian_state_view[:3])
+                # print(b)
+                diff = b * a.inverse()
+                # print(diff)
+                diff.limit_rotation_angle(np.deg2rad(0.01)).limit_translation_length(0.008)
+                target = a * diff
+                # print("Target: ",target)
+                target_pose = target.rotvec()
+
                 diff = cartesian_target_view - cartesian_state_view
                 if np.max(np.abs(diff)) < 0.0025:
                     data_buffer[offset_target_reached] = 1
-                if np.max(diff) > robot_config.max_servo_cartesian_step:
-                    diff = (robot_config.max_servo_cartesian_step / np.max(diff)) * diff
-                    target_pose = (cartesian_state_view + diff).tolist()
-                else:
-                    target_pose = cartesian_target_view.tolist()
+
+                # if np.max(np.abs(diff[0:3])) > robot_config.max_servo_cartesian_step:
+                #     diff = (robot_config.max_servo_cartesian_step / np.max(diff)) * diff
+                #     target_pose = (cartesian_state_view + diff).tolist()
+                # else:
+                # target_pose = cartesian_target_view.tolist()
                 ur_control.servoL(
                     target_pose,
                     robot_config.max_velocity,
@@ -147,6 +183,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
 class UR5e: # (common.Robot): # should inherit and implement common.Robot, but currently there is a bug that needs to be fixed
     def __init__(self, ip: str):
+        self.ik = common.RL(urdf_path="/home/johannes/repos/rcs/assets/ur5e/urdf/ur5e.urdf")
         self._config = UR5eConfig()
         self._config.robot_type = common.RobotType.UR5e
         self._ip = ip
@@ -212,6 +249,7 @@ class UR5e: # (common.Robot): # should inherit and implement common.Robot, but c
         return pose
 
     def get_ik(self) -> common.IK | None:
+
         return None
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]:
@@ -222,12 +260,19 @@ class UR5e: # (common.Robot): # should inherit and implement common.Robot, but c
 
     def set_parameters(self, robot_cfg: UR5eConfig) -> None:
         self._config = robot_cfg
-        self._config_queue.put(robot_cfg)
+        # self._config_queue.put(robot_cfg)
 
     def get_state(self) -> UR5eState:
         return UR5eState
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
+        q = self.ik.ik(pose, self.get_joint_position())
+        if q is None:
+            print("IK failed")
+            return
+        self.set_joint_position(q)
+        return
+        self._shm_buffer[self._offset_target_reached] = 0
         target_pose = (common.Pose(rpy_vector=[0, 0, np.deg2rad(180)], translation=[0, 0, 0]) * pose).rotvec()
         self._cartesian_target_shm[:] = target_pose
         self._shm_buffer[self._offset_mode:self._offset_target_reached] = (CARTESIAN_MODE).to_bytes(4, "little")
@@ -236,6 +281,7 @@ class UR5e: # (common.Robot): # should inherit and implement common.Robot, but c
                 time.sleep(0.01)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]]) -> None:
+        self._shm_buffer[self._offset_target_reached] = 0
         self._joint_target_shm[:] = q
         self._shm_buffer[self._offset_mode:self._offset_target_reached] = (JOINT_MODE).to_bytes(4, "little")
         if not self._config.async_control:
@@ -265,9 +311,8 @@ class RobotiQGripper:  # (common.Gripper):
             self.gripper.connect(ip, 63352, socket_timeout=3.0)  # default port for Robotiq gripper
         except Exception as e:
             raise RuntimeError(f"Failed to connect to Robotiq gripper at {ip}: {e}")
-        self.gripper.activate()
         if not self.gripper.is_active():
-            raise RuntimeError("Failed to activate Robotiq gripper.")
+            self.gripper.activate()
         print("Gripper Connection established.")
 
     def get_normalized_width(self) -> float:
@@ -289,7 +334,7 @@ class RobotiQGripper:  # (common.Gripper):
         self.set_normalized_width(1.0)
 
     def reset(self) -> None:
-        pass
+        self.open()
 
     def set_normalized_width(self, width: float, _: float = 0) -> None:
         """

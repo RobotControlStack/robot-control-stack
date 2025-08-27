@@ -1,6 +1,7 @@
 import logging
 from time import sleep
 
+import numpy as np
 from rcs._core import common
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
@@ -10,7 +11,7 @@ from rcs.envs.utils import (
     default_sim_gripper_cfg,
     default_sim_robot_cfg,
 )
-from rcs_fr3.utils import default_fr3_hw_gripper_cfg
+# from rcs_fr3.utils import default_fr3_hw_gripper_cfg
 from rcs_ur5e.creators import RCSUR5eEnvCreator
 from rcs_ur5e.hw import RobotiQGripper, UR5eConfig
 
@@ -20,17 +21,17 @@ from rcs import sim
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-ROBOT_IP = "192.168.25.201"
+ROBOT_IP = "192.168.1.15"
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         robot_cfg = UR5eConfig()
-        robot_cfg.blocking = False
+        robot_cfg.async_control = False
         env_rel = RCSUR5eEnvCreator()(
             robot_cfg=robot_cfg,
-            control_mode=ControlMode.CARTESIAN_TQuat,
+            control_mode=ControlMode.CARTESIAN_TRPY,
             ip=ROBOT_IP,
             camera_set=None,
             max_relative_movement=0.2,
@@ -70,6 +71,13 @@ def main():
     # print(obs)
     # print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
     # print(env_rel.unwrapped.robot.get_joint_position())  # type: ignore
+
+
+    act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
+    obs, reward, terminated, truncated, info = env_rel.step(act)
+    #sleep(10)
+    exit()
+    
 
     for _ in range(100):
         # act = {"joints": common.robots_meta_config(common.RobotType.UR5e).q_home, "gripper": 0}
