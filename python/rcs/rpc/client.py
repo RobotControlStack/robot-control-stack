@@ -2,8 +2,9 @@ import gymnasium as gym
 import rpyc
 from rpyc.utils.classic import obtain
 
+
 class RcsClient(gym.Env):
-    def __init__(self, host='localhost', port=50051):
+    def __init__(self, host="localhost", port=50051):
         super().__init__()
         self.conn = rpyc.connect(host, port)
         self.server = self.conn.root
@@ -23,7 +24,7 @@ class RcsClient(gym.Env):
     @property
     def unwrapped(self):
         return self.server.unwrapped()
-    
+
     @property
     def action_space(self):
         return obtain(self.server.action_space())

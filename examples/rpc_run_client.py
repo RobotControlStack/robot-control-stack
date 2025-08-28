@@ -1,4 +1,5 @@
 import time
+
 from python.rcs.rpc.client import RcsClient
 
 if __name__ == "__main__":

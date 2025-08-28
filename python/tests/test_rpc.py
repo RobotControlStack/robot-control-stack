@@ -1,34 +1,35 @@
 import multiprocessing
-import time
+import os
 import socket
 import sys
+import time
 import traceback
-import os
+from contextlib import suppress
+from multiprocessing.context import ForkServerContext, SpawnContext
+from typing import Optional, Type, Union  # Add Type and Union here
+
 import pytest
-from typing import Optional  # Add this import at the top
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.rpc.server import RcsServer
+from rcs.envs.creators import SimEnvCreator
+from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
 from rcs.rpc.client import RcsClient
+from rcs.rpc.server import RcsServer
 
 HOST = "127.0.0.1"
+
 
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, 0))
         return s.getsockname()[1]
 
+
 def wait_for_port(
     host: str,
     port: int,
     timeout: float,
     server_proc: Optional[multiprocessing.Process] = None,
-    err_q: Optional[multiprocessing.Queue] = None
+    err_q: Optional[multiprocessing.Queue] = None,
 ) -> None:
     start = time.time()
     last_exc = None
@@ -44,10 +45,8 @@ def wait_for_port(
         if server_proc is not None and not server_proc.is_alive():
             server_err = None
             if err_q is not None:
-                try:
+                with suppress(Exception):
                     server_err = err_q.get_nowait()
-                except Exception:
-                    pass
             msg = f"Server process exited early (exitcode={server_proc.exitcode})."
             if server_err:
                 msg += f"\nServer traceback:\n{server_err}"
@@ -55,10 +54,8 @@ def wait_for_port(
         time.sleep(0.2)
     server_err = None
     if err_q is not None:
-        try:
+        with suppress(Exception):
             server_err = err_q.get_nowait()
-        except Exception:
-            pass
     msg = f"Timed out waiting for {host}:{port} to open."
     if last_exc:
         msg += f" Last socket error: {last_exc}"
@@ -68,6 +65,7 @@ def wait_for_port(
         msg += f"\nServer traceback:\n{server_err}"
     raise TimeoutError(msg)
 
+
 def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
     try:
         env = SimEnvCreator()(
@@ -76,7 +74,7 @@ def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
             robot_cfg=default_sim_robot_cfg(),
             gripper_cfg=default_sim_gripper_cfg(),
             # Disabled to avoid rendering problem in python subprocess.
-            #cameras=default_mujoco_cameraset_cfg(), 
+            # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.1,
             relative_to=RelativeTo.LAST_STEP,
         )
@@ -90,20 +88,22 @@ def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
                 time.sleep(1)
     except Exception:
         tb = "".join(traceback.format_exception(*sys.exc_info()))
-        try:
+        with suppress(Exception):
             err_q.put(tb)
-        except Exception:
-            pass
         sys.exit(1)
 
-def _mp_context() -> multiprocessing.context.BaseContext:
+
+def _mp_context() -> Union[SpawnContext, ForkServerContext]:
     # Prefer spawn to avoid fork-related issues with GL/MuJoCo/threaded libs
     methods = multiprocessing.get_all_start_methods()
     if "spawn" in methods:
         return multiprocessing.get_context("spawn")
     if "forkserver" in methods:
         return multiprocessing.get_context("forkserver")
-    return multiprocessing.get_context(methods[0])
+
+    msg = "No suitable multiprocessing context found."
+    raise RuntimeError(msg)
+
 
 def _external_server_from_env() -> tuple[str, int] | None:
     # Set RCS_TEST_HOST and RCS_TEST_PORT to reuse an already running server.
@@ -119,6 +119,7 @@ def _external_server_from_env() -> tuple[str, int] | None:
         return HOST, 50055
     return None
 
+
 def test_run_server_starts_and_stops():
     # Skip if reusing an external server
     ext = _external_server_from_env()
@@ -130,7 +131,7 @@ def test_run_server_starts_and_stops():
     server_proc = ctx.Process(target=run_server, args=(HOST, port, err_q))
     server_proc.start()
     try:
-        wait_for_port(HOST, port, timeout=120.0, server_proc=server_proc, err_q=err_q)
+        wait_for_port(HOST, port, timeout=120.0, server_proc=server_proc, err_q=err_q)  # type: ignore
         assert server_proc.is_alive(), "Server process did not start as expected."
     finally:
         if server_proc.is_alive():
@@ -138,9 +139,16 @@ def test_run_server_starts_and_stops():
             server_proc.join(timeout=5)
     assert not server_proc.is_alive(), "Server process did not terminate as expected."
 
+
 class TestRcsClientServer:
+    client: RcsClient
+    host: str = HOST
+    port: int = 0
+    server_proc = None
+    err_q: Optional[multiprocessing.Queue] = None
+
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls: Type["TestRcsClientServer"]):
         ext = _external_server_from_env()
         if ext:
             cls.host, cls.port = ext
@@ -156,11 +164,11 @@ class TestRcsClientServer:
         cls.server_proc = ctx.Process(target=run_server, args=(cls.host, cls.port, cls.err_q))
         cls.server_proc.start()
         # Wait until the server is actually listening or fail early if it crashed
-        wait_for_port(cls.host, cls.port, timeout=180.0, server_proc=cls.server_proc, err_q=cls.err_q)
+        wait_for_port(cls.host, cls.port, timeout=180.0, server_proc=cls.server_proc, err_q=cls.err_q)  # type: ignore
         cls.client = RcsClient(host=cls.host, port=cls.port)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls: Type["TestRcsClientServer"]):
         try:
             if getattr(cls, "client", None):
                 cls.client.close()
@@ -188,8 +196,14 @@ class TestRcsClientServer:
         _ = self.client.unwrapped
 
     def test_close(self):
-        self.client.close()
+        if self.client is not None:
+            self.client.close()
         # Reconnect for further tests
-        wait_for_port(self.__class__.host, self.__class__.port, timeout=15.0,
-                      server_proc=self.__class__.server_proc, err_q=self.__class__.err_q)
+        wait_for_port(
+            self.__class__.host,
+            self.__class__.port,
+            timeout=15.0,
+            server_proc=self.__class__.server_proc,  # type: ignore
+            err_q=self.__class__.err_q,
+        )
         self.__class__.client = RcsClient(host=self.__class__.host, port=self.__class__.port)
