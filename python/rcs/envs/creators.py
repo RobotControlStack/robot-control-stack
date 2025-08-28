@@ -22,10 +22,12 @@ from rcs.envs.sim import (
     HandWrapperSim,
     PickCubeSuccessWrapper,
     RandomCubePos,
+    RandomObjectPos,
     RobotSimWrapper,
     SimWrapper,
 )
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from functools import partial
 
 import rcs
 from rcs import sim
@@ -135,6 +137,7 @@ class SimTaskEnvCreator(EnvCreator):
         cameras: dict[str, SimCameraConfig] | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        random_pos_args: dict = {}
     ) -> gym.Env:
         mode = "gripper"
         if gripper_cfg is None and hand_cfg is None:
@@ -152,6 +155,15 @@ class SimTaskEnvCreator(EnvCreator):
             _hand_cfg = None
             logger.info("Using gripper configuration.")
 
+        random_env = RandomCubePos
+        if random_pos_args:
+            # check that all the keys are there
+            required_keys = ["joint_name", "init_object_pose"]
+            if not all(key in random_pos_args for key in required_keys):
+                missing_keys = [key for key in required_keys if key not in random_pos_args]
+                logger.warning(f"Missing random position arguments: {missing_keys}; Defaulting to RandomCubePos")
+            random_env = partial(RandomObjectPos, **random_pos_args)
+        
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=robot_cfg,
@@ -161,7 +173,7 @@ class SimTaskEnvCreator(EnvCreator):
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            sim_wrapper=RandomCubePos,
+            sim_wrapper=random_env,
         )
         if mode == "gripper":
             env_rel = PickCubeSuccessWrapper(env_rel)
