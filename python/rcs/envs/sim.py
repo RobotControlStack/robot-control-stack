@@ -290,26 +290,45 @@ class RandomObjectPos(SimWrapper):
         include_rotation (bool): Whether to include rotation in the randomization.
     """
 
-    def __init__(self, env: gym.Env, simulation: sim.Sim, joint_name: str, init_object_pose: rcs.common.Pose, include_rotation: bool = False):
+    def __init__(self, env: gym.Env, 
+                 simulation: sim.Sim, 
+                 joint_name: str, 
+                 init_object_pose: rcs.common.Pose, 
+                 include_position: bool = True, 
+                 include_rotation: bool = False):
         super().__init__(env, simulation)
         self.joint_name = joint_name
         self.init_object_pose = init_object_pose
+        self.include_position = include_position
         self.include_rotation = include_rotation
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if(options is not None and "RandomObjectPos.init_object_pose" in options.keys()):
+            assert isinstance(options["RandomObjectPos.init_object_pose"], rcs.common.Pose), \
+            "RandomObjectPos.init_object_pose must be a rcs.common.Pose"
+
+            self.init_object_pose = options["RandomObjectPos.init_object_pose"]
+            print("Got random object pos!\n", self.init_object_pose)
+            del options["RandomObjectPos.init_object_pose"]
         obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
         
-        pos_z = self.init_object_pose.translation()[2]
-        pos_x = self.init_object_pose.translation()[0] + np.random.random() * 0.2 - 0.1
-        pos_y = self.init_object_pose.translation()[1] + np.random.random() * 0.2 - 0.1
 
-        if self.include_rotation:
-            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+        pos_z = self.init_object_pose.translation()[2]
+        if(self.include_position):
+            pos_x = self.init_object_pose.translation()[0] + np.random.random() * 0.2 - 0.1
+            pos_y = self.init_object_pose.translation()[1] + np.random.random() * 0.2 - 0.1
         else:
-            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
+            pos_x = self.init_object_pose.translation()[0]
+            pos_y = self.init_object_pose.translation()[1]
+
+        quat = self.init_object_pose.rotation_q() # xyzw format
+        if self.include_rotation:
+            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - quat[3], quat[0], quat[1], quat[2]]
+        else:
+            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, quat[3], quat[0], quat[1], quat[2]]
 
         return obs, info
     
