@@ -276,7 +276,43 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             truncate_on_collision=truncate_on_collision,
         )
 
+class RandomObjectPos(SimWrapper):
+    """
+    Wrapper to randomly re-place an object in the lab environments.
+    Given the object's joint name and initial pose, its x, y coordinates are randomized, while z remains fixed.
+    If include_rotation is true, the object's z-axis rotation (yaw) is also randomized.
 
+    Args:
+        env (gym.Env): The environment to wrap.
+        simulation (sim.Sim): The simulation instance.
+        joint_name (str): The name of the free joint attached to the object to manipulate.
+        init_object_pose (rcs.common.Pose): The initial pose of the object.
+        include_rotation (bool): Whether to include rotation in the randomization.
+    """
+
+    def __init__(self, env: gym.Env, simulation: sim.Sim, joint_name: str, init_object_pose: rcs.common.Pose, include_rotation: bool = False):
+        super().__init__(env, simulation)
+        self.joint_name = joint_name
+        self.init_object_pose = init_object_pose
+        self.include_rotation = include_rotation
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+        self.sim.step(1)
+        
+        pos_z = self.init_object_pose.translation()[2]
+        pos_x = self.init_object_pose.translation()[0] + np.random.random() * 0.2 - 0.1
+        pos_y = self.init_object_pose.translation()[1] + np.random.random() * 0.2 - 0.1
+
+        if self.include_rotation:
+            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+        else:
+            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
+
+        return obs, info
+    
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
