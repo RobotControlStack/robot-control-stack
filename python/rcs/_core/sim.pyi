@@ -113,6 +113,28 @@ class SimGripper(rcs._core.common.Gripper):
     def set_parameters(self, cfg: SimGripperConfig) -> bool: ...
 
 class SimGripperConfig(rcs._core.common.GripperConfig):
+    '''
+    Configuration for the simulated gripper in MuJoCo.
+    All the name parameters can be appended with a value using add_id(id: str), which appends _{id} to the names.
+    e.g. "actuator8" -> "actuator8_0" when id="0"
+
+    properties:
+      actuator (str): The MuJoCo name of the actuator used by the gripper.
+                      Default: "actuator8".
+      collision_geoms (list[str]): The collision geometries for the gripper. 
+                                   Default: ["hand_c", "d435i_collision", "finger_0_left", "finger_0_right"]
+      collision_geoms_fingers (list[str]): The collision geometries for the gripper fingers.
+                               Default: ["finger_0_left", "finger_0_right"]
+      joint (str): The MuJoCo name of the joint controlled by the actuator.
+                   Default: "finger_joint1".
+      epsilon_inner (float): 0.005
+      epsilon_outer (float): 0.005
+      seconds_between_callbacks (float): 0.05  // 20 Hz
+      max_actuator_width (float): 255
+      min_actuator_width (float): 0
+      max_joint_width (float): 0.04
+      min_joint_width (float): 0.0
+    '''
     actuator: str
     collision_geoms: list[str]
     collision_geoms_fingers: list[str]
