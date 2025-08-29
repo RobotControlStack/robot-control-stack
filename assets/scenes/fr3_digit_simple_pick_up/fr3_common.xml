@@ -1,0 +1,138 @@
+<mujoco model="fr3">
+    <compiler angle="radian" meshdir="assets" />
+
+    <option integrator="implicitfast" impratio="20" noslip_iterations="5" cone="elliptic" />
+    <custom>
+		<numeric
+			name="tcp_offset"
+			data="0.0 0.0 0.0466"
+	    />
+    </custom>
+    <default>
+        <default class="fr3">
+            <joint armature="0.1" damping="1" />
+            <position inheritrange="1" />
+            <default class="finger">
+                <joint axis="0 -1 0" type="slide" range="0 0.04" />
+            </default>
+            <default class="visual">
+                <geom type="mesh" group="2" contype="0" conaffinity="0" />
+            </default>
+            <default class="tacto_visual">
+                <geom type="mesh" group="2" contype="0" conaffinity="0" friction="0.4" solimp="0.99 0.9999 0.000001" />
+            </default>
+            <default class="tacto_collision">
+                <geom type="mesh" group="3" mass="0" density="0" friction="0.4" solimp="0.99 0.9999 0.000001" />
+            </default>
+            <default class="collision">
+                <geom type="mesh" group="3" mass="0" density="0" />
+                <default class="fingertip_pad_collision_1">
+                    <geom type="box" size="0.0022 0.0005 0.0030875" pos="-0.009 -0.01 -0.06"/>
+                </default>
+                <default class="fingertip_pad_collision_2">
+                    <geom type="box" size="0.0022 0.0005 0.0030875" pos="-0.019 -0.01 -0.06"/>
+                </default>
+                <default class="fingertip_pad_collision_3">
+                    <geom type="box" size="0.0022 0.0005 0.0030875" pos="-0.019 -0.01 -0.068"/>
+                </default>
+                <default class="fingertip_pad_collision_4">
+                    <geom type="box" size="0.0022 0.0005 0.0030875" pos="-0.009 -0.01 -0.068"/>
+                </default>
+            </default>
+            <site size="0.001" rgba="0.5 0.5 0.5 0.3" group="4" />
+        </default>
+        <default class="d435i">
+            <material specular="0" shininess="0.25" />
+            <default class="visual_d435i">
+                <geom group="2" type="mesh" contype="0" conaffinity="0" mass="0" />
+            </default>
+            <default class="collision_d435i">
+                <geom group="3" type="mesh" mass="0" />
+            </default>
+        </default>
+
+    </default>
+
+    <asset>
+        <material name="black" rgba=".2 .2 .2 1" />
+        <material name="white" rgba="1 1 1 1" />
+        <material name="red" rgba="1 0.072272 0.039546 1" />
+        <material name="gray" rgba="0.863156 0.863156 0.863157 1" />
+        <material name="button_green" rgba="0.102241 0.571125 0.102242 1" />
+        <material name="button_red" rgba="0.520996 0.008023 0.013702 1" />
+        <material name="button_blue" rgba="0.024157 0.445201 0.737911 1" />
+
+        <mesh file="fr3_link0_0.obj" />
+        <mesh file="fr3_link0_1.obj" />
+        <mesh file="fr3_link0_2.obj" />
+        <mesh file="fr3_link0_3.obj" />
+        <mesh file="fr3_link0_4.obj" />
+        <mesh file="fr3_link0_5.obj" />
+        <mesh file="fr3_link0_6.obj" />
+        <mesh file="fr3_link1.obj" />
+        <mesh file="fr3_link2.obj" />
+        <mesh file="fr3_link3_0.obj" />
+        <mesh file="fr3_link3_1.obj" />
+        <mesh file="fr3_link4_0.obj" />
+        <mesh file="fr3_link4_1.obj" />
+        <mesh file="fr3_link5_0.obj" />
+        <mesh file="fr3_link5_1.obj" />
+        <mesh file="fr3_link5_2.obj" />
+        <mesh file="fr3_link6_0.obj" />
+        <mesh file="fr3_link6_1.obj" />
+        <mesh file="fr3_link6_2.obj" />
+        <mesh file="fr3_link6_3.obj" />
+        <mesh file="fr3_link6_4.obj" />
+        <mesh file="fr3_link6_5.obj" />
+        <mesh file="fr3_link6_6.obj" />
+        <mesh file="fr3_link6_7.obj" />
+        <mesh file="fr3_link7_0.obj" />
+        <mesh file="fr3_link7_1.obj" />
+        <mesh file="fr3_link7_2.obj" />
+        <mesh file="fr3_link7_3.obj" />
+        <mesh file="franka_hand_0.obj" />
+        <mesh file="franka_hand_1.obj" />
+        <mesh file="franka_hand_2.obj" />
+        <mesh file="franka_hand_3.obj" />
+        <mesh file="franka_hand_4.obj" />
+
+        <mesh name="fr3_link0_coll" file="fr3_link0.stl" />
+        <mesh name="fr3_link1_coll" file="fr3_link1.stl" />
+        <mesh name="fr3_link2_coll" file="fr3_link2.stl" />
+        <mesh name="fr3_link3_coll" file="fr3_link3.stl" />
+        <mesh name="fr3_link4_coll" file="fr3_link4.stl" />
+        <mesh name="fr3_link5_coll" file="fr3_link5.stl" />
+        <mesh name="fr3_link6_coll" file="fr3_link6.stl" />
+        <mesh name="fr3_link7_coll" file="fr3_link7.stl" />
+        <mesh name="franka_hand_coll" file="franka_hand.stl" />
+
+        
+        <material class="d435i" name="Black_Acrylic" rgba="0.070360 0.070360 0.070360 1" />
+        <material class="d435i" name="Cameras_Gray" rgba="0.296138 0.296138 0.296138 1" />
+        <material class="d435i" name="IR_Emitter_Lens" rgba="0.287440 0.665387 0.327778 1" />
+        <material class="d435i" name="IR_Lens" rgba="0.035601 0.035601 0.035601 1" />
+        <material class="d435i" name="IR_Rim" rgba="0.799102 0.806952 0.799103 1" />
+        <material class="d435i" name="Metal_Casing" rgba="1 1 1 1" />
+        <material class="d435i" name="RGB_Pupil" rgba="0.087140 0.002866 0.009346 1" />
+        <mesh file="d435i_0.obj" />
+        <mesh file="d435i_1.obj" />
+        <mesh file="d435i_2.obj" />
+        <mesh file="d435i_3.obj" />
+        <mesh file="d435i_4.obj" />
+        <mesh file="d435i_5.obj" />
+        <mesh file="d435i_6.obj" />
+        <mesh file="d435i_7.obj" />
+        <mesh file="d435i_8.obj" />
+        <mesh file="Panda_RealSenseD435_Camera_Mount.obj" scale="0.001 0.001 0.001" />
+
+        <mesh file="digit_finger.obj"/>
+        <mesh file="digit_finger_attachment_collision.stl"/>
+        <mesh file="digit_finger_backplate_collision.stl"/>
+        <mesh file="digit_sensor_no_backplate.obj"/>
+        <mesh file="digit_sensor_no_backplate_collision.stl"/>
+        <mesh file="digit_sensor_pad.obj"/>
+        
+        <material name="grey_material" specular="0.0" shininess="0.0" rgba="0.6471 0.6471 0.6471 1"/>
+        <material name="grey_material_tp" specular="0.0" shininess="0.0" rgba="0.6471 0.6471 0.6471 0.5"/>
+        <material name="green_material" specular="0.0" shininess="0.0" rgba="0.5137 0.7373 0.4078 1" /></asset>
+</mujoco>
