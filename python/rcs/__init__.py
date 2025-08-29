@@ -53,6 +53,19 @@ scenes: dict[str, Scene] = {
         ),
         robot_type=common.RobotType.FR3,
     ),
+    "fr3_digit_simple_pick_up": Scene(
+        mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_digit_simple_pick_up", "scene.mjb"),
+        mjcf_scene=os.path.join(
+            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_digit_simple_pick_up", "scene.xml"
+        ),
+        mjcf_robot=os.path.join(
+            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_digit_simple_pick_up", "fr3_0.xml"
+        ),
+        urdf=os.path.join(
+            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_digit_simple_pick_up", "robot.urdf"
+        ),
+        robot_type=common.RobotType.FR3,
+    ),
     "xarm7_empty_world": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "scene.mjb"),
         mjcf_scene=os.path.join(
