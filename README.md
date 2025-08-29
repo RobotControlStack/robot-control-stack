@@ -120,8 +120,69 @@ for _ in range(100):
         print(obs)
         if truncated or terminated:
             logger.info("Truncated or terminated!")
-            return
+            exit()
 ```
+
+### Remote Procedure Call (RPC) Client and Server
+#### Server
+```python
+from rcs.envs.creators import SimEnvCreator
+from rcs.envs.utils import (
+	default_mujoco_cameraset_cfg,
+	default_sim_gripper_cfg,
+	default_sim_robot_cfg,
+)
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.rpc.server import RcsServer
+
+def run_server():
+	env = SimEnvCreator()(
+		control_mode=ControlMode.JOINTS,
+		collision_guard=False,
+		robot_cfg=default_sim_robot_cfg(),
+		gripper_cfg=default_sim_gripper_cfg(),
+		cameras=default_mujoco_cameraset_cfg(),
+		max_relative_movement=0.1,
+		relative_to=RelativeTo.LAST_STEP,
+	)
+	server = RcsServer(env, port=50051)
+	server.start()
+ 
+if __name__ == "__main__":
+	run_server()
+```
+
+#### Client
+```python
+import time
+from python.rcs.rpc.client import RcsClient
+
+if __name__ == "__main__":
+    # Create the client (adjust host/port if needed)
+    client = RcsClient(host="localhost", port=50051)
+
+    try:
+        print("Resetting environment...")
+        obs = client.reset()
+        print(f"Initial observation: {obs}")
+
+        for i in range(5):
+            print(f"\nStep {i+1}")
+            # Replace with a valid action for your environment
+            action = 0
+            obs, reward, terminated, truncated, info = client.step(action)
+            print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}, Info: {info}")
+            if terminated or truncated:
+                print("Episode finished, resetting...")
+                obs = client.reset()
+                print(f"Reset observation: {obs}")
+            time.sleep(0.5)
+    finally:
+        print("Closing client.")
+        client.close()
+```
+
+
 ### Examples
 Checkout the python examples in the [examples](examples) folder:
 - [fr3_direct_control.py](examples/fr3.py) shows direct robot control with RCS's python bindings
