@@ -77,7 +77,7 @@
                                                 <geom mesh="d435i_7" material="RGB_Pupil" class="visual_d435i" />
                                                 <geom mesh="d435i_8" mass="0.072" material="Metal_Casing" class="visual_d435i" />
                                                 <geom class="collision_d435i" type="capsule" mesh="d435i_8" name="d435i_collision_0" />
-                                                <camera name="eye-in-hand_0" mode="fixed" pos="0.0325 0 0" euler="0 3.141592653589793 0" resolution="1920 1080"/>
+                                                <camera name="wrist_0" mode="fixed" pos="0.0325 0 0" euler="0 3.141592653589793 0" resolution="1920 1080"/>
                                             </body>
                                             <inertial mass="0.73" pos="-0.01 0 0.03" diaginertia="0.001 0.0025 0.0017" />
                                             <geom mesh="franka_hand_0" material="white" class="visual" />

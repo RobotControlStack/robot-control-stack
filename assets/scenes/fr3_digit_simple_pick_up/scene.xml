@@ -25,7 +25,7 @@
       <geom type="box" name="isocube" size="0.2 0.2 0.2" rgba="0.153 0.961 0.329 0.2" pos="0.498 0.0 0.226" contype="0" conaffinity="0" group="2"/>
     </body> -->
     
-    <camera name="bird-eye-cam" pos="0.271 -0.000 2.080" xyaxes="0.001 -1.000 -0.000 1.000 0.001 0.017" />
+    <camera name="bird_eye_cam" pos="0.271 -0.000 2.080" xyaxes="0.001 -1.000 -0.000 1.000 0.001 0.017" />
     <camera name="openvla_view" pos="1.535 -0.406 0.757" xyaxes="0.246 0.969 0.000 -0.468 0.119 0.876" />
     <camera name="right_side" pos="0.217 -1.738 0.583" xyaxes="1.000 -0.010 0.000 0.001 0.143 0.990"/>
     <camera name="front" pos="2.278 -0.020 0.931" xyaxes="0.003 1.000 0.000 -0.274 0.001 0.962"/>
