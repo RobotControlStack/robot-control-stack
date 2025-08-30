@@ -335,9 +335,10 @@ class RandomObjectPos(SimWrapper):
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
-    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False):
+    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False, cube_joint_name="box_joint"):
         super().__init__(env, simulation)
         self.include_rotation = include_rotation
+        self.cube_joint_name = cube_joint_name
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -353,9 +354,9 @@ class RandomCubePos(SimWrapper):
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 
         if self.include_rotation:
-            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
+            self.sim.data.joint(self.cube_joint_name).qpos = [pos_x, pos_y, pos_z, 2 * np.random.random() - 1, 0, 0, 1]
         else:
-            self.sim.data.joint("box_joint").qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
+            self.sim.data.joint(self.cube_joint_name).qpos = [pos_x, pos_y, pos_z, 0, 0, 0, 1]
 
         return obs, info
 
@@ -365,17 +366,18 @@ class PickCubeSuccessWrapper(gym.Wrapper):
 
     EE_HOME = np.array([0.34169773, 0.00047028, 0.4309004])
 
-    def __init__(self, env):
+    def __init__(self, env, cube_joint_name="box_joint"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
+        self.cube_joint_name = cube_joint_name
 
     def step(self, action: dict[str, Any]):
         obs, reward, _, truncated, info = super().step(action)
 
         success = (
-            self.sim.data.joint("box_joint").qpos[2] > 0.15 + 0.852
+            self.sim.data.joint(self.cube_joint_name).qpos[2] > 0.15 + 0.852
             and obs["gripper"] == GripperWrapper.BINARY_GRIPPER_CLOSED
         )
         info["success"] = success
@@ -383,9 +385,9 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             reward = 5
         else:
             tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint("box_joint").qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+                self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
             )
-            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint("box_joint").qpos[:3] - self.EE_HOME)
+            obj_to_goal_dist = np.linalg.norm(self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.EE_HOME)
 
             # old reward
             # reward = -obj_to_goal_dist - tcp_to_obj_dist
