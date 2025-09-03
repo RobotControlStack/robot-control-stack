@@ -36,6 +36,11 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]],
         lock: threading.Lock,
     ) -> bool:
+        self._extrinsics = self._cache.get(f"{self.camera_name}_extrinsics")
+        if self._extrinsics is not None:
+            logger.info("Using cached extrinsics for camera %s", self.camera_name)
+            return True
+
         logger.info("Calibrating camera %s. Position it as you wish and press enter.", self.camera_name)
         input()
         tries = 3
