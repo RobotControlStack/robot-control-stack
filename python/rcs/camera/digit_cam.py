@@ -1,4 +1,6 @@
+import time
 from digit_interface.digit import Digit
+from rcs._core import common
 from rcs._core.common import BaseCameraConfig
 from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame
@@ -34,12 +36,12 @@ class DigitCam(HardwareCamera):
         """Polls the frame from the camera with the given name."""
         digit = self._cameras[camera_name]
         frame = digit.get_frame()
-        color = DataFrame(data=frame)
+        color = DataFrame(data=frame, timestamp=time.monotonic())
         # rgb to bgr as expected by opencv
         # color = DataFrame(data=frame[:, :, ::-1])
         cf = CameraFrame(color=color)
 
-        return Frame(camera=cf)
+        return Frame(camera=cf, avg_timestamp=color.timestamp)
 
     def close(self):
         """
@@ -55,3 +57,13 @@ class DigitCam(HardwareCamera):
     def calibrate(self) -> bool:
         """No calibration needed for DIGIT cameras."""
         return True
+
+
+def default_digit(name2id: dict[str, str] | None) -> DigitCam | None:
+    if name2id is None:
+        return None
+    cameras = {
+        name: common.BaseCameraConfig(identifier=id, resolution_width=0, resolution_height=0, frame_rate=30)
+        for name, id in name2id.items()
+    }
+    return DigitCam(cameras=cameras)
