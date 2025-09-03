@@ -93,12 +93,12 @@ class HardwareCameraSet(BaseCameraSet):
     """
 
     def __init__(
-        self, cameras: Sequence[HardwareCamera], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 1000
+        self, cameras: Sequence[HardwareCamera | None], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 1000
     ):
-        self.cameras = cameras
+        self.cameras = [camera for camera in cameras if camera is not None]
         self.camera_dict, self._camera_names = self._cameras_util()
         self.frame_rate = self._frames_rate()
-        self.rate_limiter = SimpleFrameRate(self.frame_rate)
+        self.rate_limiter = SimpleFrameRate(self.frame_rate, "HardwareCameraSet")
 
         self.warm_up_disposal_frames = warm_up_disposal_frames
         self.max_buffer_frames = max_buffer_frames
@@ -196,7 +196,7 @@ class HardwareCameraSet(BaseCameraSet):
             self._logger.warning("Camera thread already running!")
             return
         self.running = True
-        self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,))
+        self._thread = threading.Thread(target=self.polling_thread, args=(warm_up,), daemon=True)
         self._thread.start()
 
     def record_video(self, path: Path, str_id: str):
