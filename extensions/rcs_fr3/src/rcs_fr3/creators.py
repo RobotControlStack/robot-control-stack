@@ -82,7 +82,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             camera_set.start()
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
-            env = CameraSetWrapper(env, camera_set)
+            env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         # if collision_guard is not None:
         #     assert urdf_path is not None

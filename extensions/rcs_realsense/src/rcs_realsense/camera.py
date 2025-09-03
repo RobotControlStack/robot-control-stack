@@ -1,6 +1,7 @@
 import copy
 import logging
 import threading
+from time import sleep
 import typing
 from dataclasses import dataclass
 
@@ -320,6 +321,7 @@ class RealSenseCameraSet(HardwareCamera):
         for device in self._enabled_devices.values():
             device.pipeline.stop()
         self.disable_streams()
+        sleep(10)  # give some time to stop the pipeline
 
     def enable_emitter(self, enable_ir_emitter=True):
         """
