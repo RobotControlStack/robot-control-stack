@@ -450,12 +450,16 @@ class RelativeActionSpace(gym.ActionWrapper):
                 origin, common.Pose
             ), "Invalid origin type. If control mode is cartesian, origin must be Pose."
             self._origin = copy.deepcopy(origin)
+        self._last_action = None
 
     def set_origin_to_current(self):
         if self.unwrapped.get_control_mode() == ControlMode.JOINTS:
             self._origin = self.unwrapped.robot.get_joint_position()
         else:
             self._origin = self.unwrapped.robot.get_cartesian_position()
+        self._last_action = None
+            
+        
 
     def reset(self, **kwargs) -> tuple[dict, dict[str, Any]]:
         obs, info = super().reset(**kwargs)
