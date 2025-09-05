@@ -1,4 +1,5 @@
 import threading
+import time
 import typing
 from pathlib import Path
 
@@ -82,10 +83,11 @@ class SO101:
         return common.RobotState()
 
     def move_home(self) -> None:
-        home = typing.cast(
-            np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
-            common.robots_meta_config(common.RobotType.SO101).q_home,
-        )
+        # home = typing.cast(
+        #     np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
+        #     common.robots_meta_config(common.RobotType.SO101).q_home,
+        # )
+        home = np.array([-0.06453914, -1.91823518,  1.56476701,  1.2254624,  -0.00514007])
         self.set_joint_position(home)
 
     def reset(self) -> None:
@@ -174,8 +176,9 @@ class SO101:
     # def to_pose_in_world_coordinates(self, pose_in_robot_coordinates: Pose) -> Pose: ...
 
     def close(self):
+        self.move_home()
         self.stop_controller_thread()
-        # self.hf_robot.disconnect()
+        self.hf_robot.disconnect()
 
 
 # TODO: problem when we inherit from gripper then we also need to call init which doesnt exist
