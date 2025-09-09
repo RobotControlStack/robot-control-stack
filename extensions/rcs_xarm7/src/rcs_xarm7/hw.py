@@ -75,7 +75,10 @@ class XArm7(common.Robot):
             np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]],
             common.robots_meta_config(common.RobotType.XArm7).q_home,
         )
-        self.set_joint_position(home)
+        # self.set_joint_position(home)
+        self._xarm.set_mode(0)
+        self._xarm.set_state(0)
+        self._xarm.set_servo_angle(angle=home, is_radian=True, wait=True)
 
     def reset(self) -> None:
         pass
@@ -89,6 +92,9 @@ class XArm7(common.Robot):
         self._xarm.set_position(x_mm, y_mm, z_mm, roll, pitch, yaw, is_radian=True, wait=not self._config.async_control)
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]) -> None:  # type: ignore
+        if self._config.async_control:
+            self._xarm.set_mode(6)
+            self._xarm.set_state(0)
         self._xarm.set_servo_angle(angle=q, is_radian=True, wait=not self._config.async_control)
 
     def close(self):
