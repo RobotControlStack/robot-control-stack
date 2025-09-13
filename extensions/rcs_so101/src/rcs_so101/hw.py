@@ -46,7 +46,7 @@ class SO101:
     def _get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
         obs = self.hf_robot.get_observation()
         self.obs = obs
-        joints = np.array(
+        joints_hf = np.array(
             [
                 obs["shoulder_pan.pos"],
                 obs["shoulder_lift.pos"],
@@ -57,7 +57,7 @@ class SO101:
             dtype=np.float64,
         )
         # print(obs)
-        joints_normalized = (joints + 100) / 200
+        joints_normalized = (joints_hf + 100) / 200
         joints_in_rad = (
             joints_normalized
             * (
@@ -87,7 +87,7 @@ class SO101:
         #     np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
         #     common.robots_meta_config(common.RobotType.SO101).q_home,
         # )
-        home = np.array([-0.06453914, -1.91823518,  1.56476701,  1.2254624,  -0.00514007])
+        home = np.array([-0.01914898, -1.90521916,  1.56476701,  1.04783839, -1.40323926])
         self.set_joint_position(home)
 
     def reset(self) -> None:
@@ -101,7 +101,7 @@ class SO101:
             self._last_cart = pose
 
     def _set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
-        # self._last_joint = q
+        self._last_joint = q
         q_normalized = (q - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]) / (
             common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
             - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
@@ -119,11 +119,7 @@ class SO101:
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._set_joint_position(q)
-        # if not self._running:
-        #     self.start_controller_thread()
-        #     print("Started controller thread")
-        # with self._goal_lock:
-        #     self._goal = q
+        
 
     def _controller(self):
         print("Controller thread started")

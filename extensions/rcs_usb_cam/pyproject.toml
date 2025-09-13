@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_usb_cam"
+version = "0.4.0"
+description="RCS USB Camera module"
+dependencies = [
+    "rcs==0.4.0",
+    "opencv-python~=4.10.0"
+]
+readme = "README.md"
+maintainers = [
+  { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
+]
+authors = [
+  { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
+  "Programming Language :: Python :: 3",
+]
+

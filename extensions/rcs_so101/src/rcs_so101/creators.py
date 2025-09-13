@@ -43,7 +43,7 @@ class RCSSO101EnvCreator(RCSHardwareEnvCreator):
             camera_set.start()
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
-            env = CameraSetWrapper(env, camera_set)
+            env = CameraSetWrapper(env, camera_set, include_depth=True)
 
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
