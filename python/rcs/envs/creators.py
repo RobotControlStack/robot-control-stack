@@ -137,8 +137,10 @@ class SimTaskEnvCreator(EnvCreator):
         cameras: dict[str, SimCameraConfig] | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
-        random_pos_args: dict = {}
+        random_pos_args: dict | None = None,
     ) -> gym.Env:
+        if random_pos_args is None:
+            random_pos_args = {}
         mode = "gripper"
         if gripper_cfg is None and hand_cfg is None:
             _gripper_cfg = default_sim_gripper_cfg()
@@ -192,8 +194,10 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 0,
         delta_actions: bool = True,
-        cam_list: list[str] = ["wrist", "bird_eye", "side", "right_side", "left_side", "front"],
+        cam_list: list[str] | None = None,
     ) -> gym.Env:
+        if cam_list is None:
+            cam_list = [],
         if resolution is None:
             resolution = (256, 256)
         cameras = {
@@ -219,9 +223,11 @@ class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 0,
         delta_actions: bool = True,
-        cam_list: list[str] = [],
+        cam_list: list[str] | None = None,
         mjcf_path: str = "",
     ) -> gym.Env:
+        if cam_list is None:
+            cam_list = []
         if resolution is None:
             resolution = (256, 256)
         if cam_list is None or len(cam_list) == 0:

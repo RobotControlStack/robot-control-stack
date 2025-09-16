@@ -309,7 +309,7 @@ class RandomObjectPos(SimWrapper):
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        if options is not None and "RandomObjectPos.init_object_pose" in options.keys():
+        if options is not None and "RandomObjectPos.init_object_pose" in options:
             assert isinstance(
                 options["RandomObjectPos.init_object_pose"], rcs.common.Pose
             ), "RandomObjectPos.init_object_pose must be a rcs.common.Pose"
