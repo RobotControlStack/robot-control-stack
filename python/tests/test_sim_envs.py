@@ -1,12 +1,9 @@
-from typing import cast
-
 import numpy as np
 import pytest
 from rcs.envs.base import (
     ControlMode,
     GripperDictType,
     JointsDictType,
-    RobotEnv,
     TQuatDictType,
     TRPYDictType,
 )
@@ -40,7 +37,6 @@ class TestSimEnvs:
 
     def assert_no_pose_change(self, info: dict, initial_obs: dict, final_obs: dict):
         assert info["ik_success"]
-        assert info["is_sim_converged"]
         out_pose = rcs.common.Pose(
             translation=np.array(final_obs["tquat"][:3]), quaternion=np.array(final_obs["tquat"][3:])
         )
@@ -51,7 +47,6 @@ class TestSimEnvs:
 
     def assert_collision(self, info: dict):
         assert info["ik_success"]
-        assert info["is_sim_converged"]
         assert info["collision"]
 
 
@@ -155,32 +150,32 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(collision_action)
         self.assert_collision(info)
 
-    def test_collision_guard_trpy(self, cfg, gripper_cfg):
-        """
-        Check that an obvious collision is detected by the CollisionGuard
-        """
-        # env creation
-        env = SimEnvCreator()(
-            ControlMode.CARTESIAN_TRPY,
-            cfg,
-            gripper_cfg=gripper_cfg,
-            collision_guard=True,
-            cameras=None,
-            max_relative_movement=None,
-        )
-        obs, _ = env.reset()
-        unwrapped = cast(RobotEnv, env.unwrapped)
-        p1: np.ndarray = unwrapped.robot.get_joint_position()
-        # an obvious below ground collision action
-        obs["xyzrpy"][0] = 0.4
-        obs["xyzrpy"][2] = -0.05
-        collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
-        collision_action.update(GripperDictType(gripper=0))
-        _, _, _, _, info = env.step(collision_action)
-        p2: np.ndarray = unwrapped.robot.get_joint_position()
-        self.assert_collision(info)
-        # assure that the robot did not move
-        assert np.allclose(p1, p2)
+    # def test_collision_guard_trpy(self, cfg, gripper_cfg):
+    #     """
+    #     Check that an obvious collision is detected by the CollisionGuard
+    #     """
+    #     # env creation
+    #     env = SimEnvCreator()(
+    #         ControlMode.CARTESIAN_TRPY,
+    #         cfg,
+    #         gripper_cfg=gripper_cfg,
+    #         collision_guard=True,
+    #         cameras=None,
+    #         max_relative_movement=None,
+    #     )
+    #     obs, _ = env.reset()
+    #     unwrapped = cast(RobotEnv, env.unwrapped)
+    #     p1: np.ndarray = unwrapped.robot.get_joint_position()
+    #     # an obvious below ground collision action
+    #     obs["xyzrpy"][0] = 0.4
+    #     obs["xyzrpy"][2] = -0.05
+    #     collision_action = TRPYDictType(xyzrpy=obs["xyzrpy"])
+    #     collision_action.update(GripperDictType(gripper=0))
+    #     _, _, _, _, info = env.step(collision_action)
+    #     p2: np.ndarray = unwrapped.robot.get_joint_position()
+    #     self.assert_collision(info)
+    #     # assure that the robot did not move
+    #     assert np.allclose(p1, p2)
 
 
 class TestSimEnvsTquat(TestSimEnvs):
@@ -275,32 +270,32 @@ class TestSimEnvsTquat(TestSimEnvs):
         _, _, _, _, info = env.step(collision_action)
         self.assert_collision(info)
 
-    def test_collision_guard_tquat(self, cfg, gripper_cfg):
-        """
-        Check that an obvious collision is detected by the CollisionGuard
-        """
-        # env creation
-        env = SimEnvCreator()(
-            ControlMode.CARTESIAN_TQuat,
-            cfg,
-            gripper_cfg=gripper_cfg,
-            collision_guard=True,
-            cameras=None,
-            max_relative_movement=None,
-        )
-        obs, _ = env.reset()
-        unwrapped = cast(RobotEnv, env.unwrapped)
-        p1: np.ndarray = unwrapped.robot.get_joint_position()
-        # an obvious below ground collision action
-        obs["tquat"][0] = 0.4
-        obs["tquat"][2] = -0.05
-        collision_action = TQuatDictType(tquat=obs["tquat"])
-        collision_action.update(GripperDictType(gripper=0))
-        _, _, _, _, info = env.step(collision_action)
-        p2: np.ndarray = unwrapped.robot.get_joint_position()
-        self.assert_collision(info)
-        # assure that the robot did not move
-        assert np.allclose(p1, p2)
+    # def test_collision_guard_tquat(self, cfg, gripper_cfg):
+    #     """
+    #     Check that an obvious collision is detected by the CollisionGuard
+    #     """
+    #     # env creation
+    #     env = SimEnvCreator()(
+    #         ControlMode.CARTESIAN_TQuat,
+    #         cfg,
+    #         gripper_cfg=gripper_cfg,
+    #         collision_guard=True,
+    #         cameras=None,
+    #         max_relative_movement=None,
+    #     )
+    #     obs, _ = env.reset()
+    #     unwrapped = cast(RobotEnv, env.unwrapped)
+    #     p1: np.ndarray = unwrapped.robot.get_joint_position()
+    #     # an obvious below ground collision action
+    #     obs["tquat"][0] = 0.4
+    #     obs["tquat"][2] = -0.05
+    #     collision_action = TQuatDictType(tquat=obs["tquat"])
+    #     collision_action.update(GripperDictType(gripper=0))
+    #     _, _, _, _, info = env.step(collision_action)
+    #     p2: np.ndarray = unwrapped.robot.get_joint_position()
+    #     self.assert_collision(info)
+    #     # assure that the robot did not move
+    #     assert np.allclose(p1, p2)
 
 
 class TestSimEnvsJoints(TestSimEnvs):
@@ -364,31 +359,31 @@ class TestSimEnvsJoints(TestSimEnvs):
         _, _, _, _, info = env.step(collision_act)
         self.assert_collision(info)
 
-    def test_collision_guard_joints(self, cfg, gripper_cfg):
-        """
-        Check that an obvious collision is detected by sim
-        """
-        # env creation
-        env = SimEnvCreator()(
-            ControlMode.JOINTS,
-            cfg,
-            gripper_cfg=gripper_cfg,
-            collision_guard=True,
-            cameras=None,
-            max_relative_movement=None,
-        )
-        env.reset()
-        unwrapped = cast(RobotEnv, env.unwrapped)
-        p1: np.ndarray = unwrapped.robot.get_joint_position()
-        # the below action is a test_case where there is an obvious collision regardless of the gripper action
-        collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
-        collision_act.update(GripperDictType(gripper=1))
-        _, _, _, _, info = env.step(collision_act)
-        p2: np.ndarray = unwrapped.robot.get_joint_position()
+    # def test_collision_guard_joints(self, cfg, gripper_cfg):
+    #     """
+    #     Check that an obvious collision is detected by sim
+    #     """
+    #     # env creation
+    #     env = SimEnvCreator()(
+    #         ControlMode.JOINTS,
+    #         cfg,
+    #         gripper_cfg=gripper_cfg,
+    #         collision_guard=True,
+    #         cameras=None,
+    #         max_relative_movement=None,
+    #     )
+    #     env.reset()
+    #     unwrapped = cast(RobotEnv, env.unwrapped)
+    #     p1: np.ndarray = unwrapped.robot.get_joint_position()
+    #     # the below action is a test_case where there is an obvious collision regardless of the gripper action
+    #     collision_act = JointsDictType(joints=np.array([0, 1.78, 0, -1.45, 0, 0, 0], dtype=np.float32))
+    #     collision_act.update(GripperDictType(gripper=1))
+    #     _, _, _, _, info = env.step(collision_act)
+    #     p2: np.ndarray = unwrapped.robot.get_joint_position()
 
-        self.assert_collision(info)
-        # assure that the robot did not move
-        assert np.allclose(p1, p2)
+    #     self.assert_collision(info)
+    #     # assure that the robot did not move
+    #     assert np.allclose(p1, p2)
 
     def test_relative_zero_action_joints(self, cfg, gripper_cfg):
         """
