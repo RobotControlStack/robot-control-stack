@@ -1,5 +1,6 @@
 import logging
 import typing
+from functools import partial
 from typing import Type
 
 import gymnasium as gym
@@ -27,7 +28,6 @@ from rcs.envs.sim import (
     SimWrapper,
 )
 from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
-from functools import partial
 
 import rcs
 from rcs import sim
@@ -163,7 +163,7 @@ class SimTaskEnvCreator(EnvCreator):
                 missing_keys = [key for key in required_keys if key not in random_pos_args]
                 logger.warning(f"Missing random position arguments: {missing_keys}; Defaulting to RandomCubePos")
             random_env = partial(RandomObjectPos, **random_pos_args)
-        
+
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=robot_cfg,
@@ -192,7 +192,7 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 0,
         delta_actions: bool = True,
-        cam_list: list[str] = ["wrist", "bird_eye", "side", "right_side", "left_side", "front"]
+        cam_list: list[str] = ["wrist", "bird_eye", "side", "right_side", "left_side", "front"],
     ) -> gym.Env:
         if resolution is None:
             resolution = (256, 256)
@@ -210,6 +210,7 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
 
         return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
 
+
 class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
     def __call__(  # type: ignore
         self,
@@ -219,7 +220,7 @@ class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
         frame_rate: int = 0,
         delta_actions: bool = True,
         cam_list: list[str] = [],
-        mjcf_path: str = ''
+        mjcf_path: str = "",
     ) -> gym.Env:
         if resolution is None:
             resolution = (256, 256)
@@ -237,20 +238,24 @@ class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
             for cam in cam_list
         }
         robot_cfg = rcs.sim.SimRobotConfig()
-        robot_cfg.tcp_offset = rcs.common.Pose(translation=np.array([0.0, 0.0, 0.15]), rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]))
+        robot_cfg.tcp_offset = rcs.common.Pose(
+            translation=np.array([0.0, 0.0, 0.15]),
+            rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),
+        )
         robot_cfg.robot_type = rcs.common.RobotType.FR3
         robot_cfg.realtime = False
-        robot_cfg.add_id("0") # only required for fr3
+        robot_cfg.add_id("0")  # only required for fr3
         robot_cfg.mjcf_scene_path = mjcf_path
-        robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot # .urdf (in case for urdf)
-        print(f"Creating FR3LabDigitGripperPickUpSim with the following parameters: \n"
-                    f"  render_mode: {render_mode}\n"
-                    f"  control_mode: {control_mode}\n"
-                    f"  resolution: {resolution}\n"
-                    f"  frame_rate: {frame_rate}\n"
-                    f"  delta_actions: {delta_actions}\n"
-                    f"  cameras: {cameras}\n"
-                    f"  mjcf_path: {mjcf_path}\n"
-                    )
+        robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot  # .urdf (in case for urdf)
+        print(
+            f"Creating FR3LabDigitGripperPickUpSim with the following parameters: \n"
+            f"  render_mode: {render_mode}\n"
+            f"  control_mode: {control_mode}\n"
+            f"  resolution: {resolution}\n"
+            f"  frame_rate: {frame_rate}\n"
+            f"  delta_actions: {delta_actions}\n"
+            f"  cameras: {cameras}\n"
+            f"  mjcf_path: {mjcf_path}\n"
+        )
 
         return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)

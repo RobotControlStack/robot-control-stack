@@ -75,7 +75,8 @@ void SimRobot::init_ids() {
   // Joints
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     name = this->cfg.joints[i];
-    this->ids.joints.push_back(mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str()));
+    this->ids.joints.push_back(
+        mj_name2id(this->sim->m, mjOBJ_JOINT, name.c_str()));
     if (this->ids.joints[i] == -1) {
       throw std::runtime_error(std::string("No joint named " + name));
     }

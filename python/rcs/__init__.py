@@ -6,7 +6,10 @@ from dataclasses import dataclass
 
 from gymnasium import register
 from rcs._core import __version__, common
-from rcs.envs.creators import FR3SimplePickUpSimEnvCreator, FR3LabDigitGripperPickUpSimEnvCreator
+from rcs.envs.creators import (
+    FR3LabDigitGripperPickUpSimEnvCreator,
+    FR3SimplePickUpSimEnvCreator,
+)
 
 from rcs import camera, envs, hand, sim
 
