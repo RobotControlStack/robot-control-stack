@@ -1,11 +1,9 @@
 import threading
-import time
 import typing
 from pathlib import Path
 
 import numpy as np
-from attr import dataclass
-from lerobot.robots import make_robot_from_config  # noqa: F401
+from lerobot.robots import make_robot_from_config
 from lerobot.robots.so101_follower.config_so101_follower import SO101FollowerConfig
 from lerobot.robots.so101_follower.so101_follower import SO101Follower
 from rcs.utils import SimpleFrameRate
@@ -19,14 +17,14 @@ class SO101Config(common.RobotConfig):
     calibration_dir: str = "."
 
 
-class SO101:
+class SO101(common.Robot):
     def __init__(self, robot_cfg: SO101Config, ik: common.IK):
         super().__init__()
         self.ik = ik
         cfg = SO101FollowerConfig(id=robot_cfg.id, calibration_dir=Path(robot_cfg.calibration_dir), port=robot_cfg.port)
         self.hf_robot = make_robot_from_config(cfg)
         self.hf_robot.connect()
-        self._thread = None
+        self._thread: threading.Thread | None = None
         self._running = False
         self._goal = None
         self._goal_lock = threading.Lock()
@@ -87,8 +85,8 @@ class SO101:
         #     np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
         #     common.robots_meta_config(common.RobotType.SO101).q_home,
         # )
-        home = np.array([-0.01914898, -1.90521916,  1.56476701,  1.04783839, -1.40323926])
-        self.set_joint_position(home)
+        home = np.array([-0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926])
+        self.set_joint_position(home)  # type: ignore
 
     def reset(self) -> None:
         pass
@@ -119,7 +117,6 @@ class SO101:
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._set_joint_position(q)
-        
 
     def _controller(self):
         print("Controller thread started")
@@ -187,6 +184,8 @@ class SO101Gripper(common.Gripper):
     def get_normalized_width(self) -> float:
         # obs = self.hf_robot.get_observation()
         obs = self.robot.obs
+        if obs is None:
+            return 0.0
         return obs["gripper.pos"] / 100.0
 
     # def get_parameters(self) -> GripperConfig: ...

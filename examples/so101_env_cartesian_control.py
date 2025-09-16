@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator

@@ -19,6 +19,7 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 def main():
 
+    robot_cfg: rcs._core.common.RobotConfig
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         robot_cfg = SO101Config()
         robot_cfg.id = "jobi_follower"
