@@ -30,41 +30,32 @@ class Scene:
     """Type of the robot in the scene."""
 
 
+def get_scene_urdf(scene_name: str) -> str | None:
+    urdf_path = os.path.join(site.getsitepackages()[0], "rcs", "scenes", scene_name, "robot.urdf")
+    return urdf_path if os.path.exists(urdf_path) else None
+
+
 # available mujoco scenes
 scenes: dict[str, Scene] = {
     "fr3_empty_world": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_empty_world", "scene.mjb"),
-        mjcf_scene=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_empty_world", "scene.xml"
-        ),
-        mjcf_robot=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_empty_world", "robot.xml"
-        ),
-        urdf=os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_empty_world", "robot.urdf"),
+        mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_empty_world", "scene.xml"),
+        mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_empty_world", "robot.xml"),
+        urdf=get_scene_urdf("fr3_empty_world"),
         robot_type=common.RobotType.FR3,
     ),
     "fr3_simple_pick_up": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_simple_pick_up", "scene.mjb"),
-        mjcf_scene=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_simple_pick_up", "scene.xml"
-        ),
-        mjcf_robot=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_simple_pick_up", "robot.xml"
-        ),
-        urdf=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "fr3_simple_pick_up", "robot.urdf"
-        ),
+        mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_simple_pick_up", "scene.xml"),
+        mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "fr3_simple_pick_up", "robot.xml"),
+        urdf=get_scene_urdf("fr3_simple_pick_up"),
         robot_type=common.RobotType.FR3,
     ),
     "xarm7_empty_world": Scene(
         mjb=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "scene.mjb"),
-        mjcf_scene=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "xarm7_empty_world", "scene.xml"
-        ),
-        mjcf_robot=os.path.join(
-            os.path.dirname(__file__), "..", "..", "assets", "scenes", "xarm7_empty_world", "robot.xml"
-        ),
-        urdf=os.path.join(os.path.dirname(__file__), "..", "..", "assets", "scenes", "xarm7_empty_world", "robot.urdf"),
+        mjcf_scene=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "scene.xml"),
+        mjcf_robot=os.path.join(site.getsitepackages()[0], "rcs", "scenes", "xarm7_empty_world", "robot.xml"),
+        urdf=get_scene_urdf("xarm7_empty_world"),
         robot_type=common.RobotType.FR3,
     ),
 }
