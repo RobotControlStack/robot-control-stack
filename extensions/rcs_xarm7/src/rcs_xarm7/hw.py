@@ -50,7 +50,7 @@ class XArm7(common.Robot):
         translation_meter = [x_mm * 0.001, y_mm * 0.001, z_mm * 0.001]
         rpy = xyzrpy[3:]
 
-        return common.Pose(rpy_vector=rpy, translation=translation_meter)
+        return common.Pose(rpy_vector=rpy, translation=translation_meter)  # type: ignore
 
     def get_ik(self) -> common.IK | None:
         return self.ik

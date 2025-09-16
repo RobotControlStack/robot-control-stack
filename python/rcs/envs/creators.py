@@ -139,8 +139,6 @@ class SimTaskEnvCreator(EnvCreator):
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
         random_pos_args: dict | None = None,
     ) -> gym.Env:
-        if random_pos_args is None:
-            random_pos_args = {}
         mode = "gripper"
         if gripper_cfg is None and hand_cfg is None:
             _gripper_cfg = default_sim_gripper_cfg()
@@ -158,13 +156,13 @@ class SimTaskEnvCreator(EnvCreator):
             logger.info("Using gripper configuration.")
 
         random_env = RandomCubePos
-        if random_pos_args:
+        if random_pos_args is not None:
             # check that all the keys are there
             required_keys = ["joint_name", "init_object_pose"]
             if not all(key in random_pos_args for key in required_keys):
                 missing_keys = [key for key in required_keys if key not in random_pos_args]
                 logger.warning(f"Missing random position arguments: {missing_keys}; Defaulting to RandomCubePos")
-            random_env = partial(RandomObjectPos, **random_pos_args)
+            random_env = partial(RandomObjectPos, **random_pos_args)  # type: ignore
 
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
@@ -197,7 +195,7 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
         cam_list: list[str] | None = None,
     ) -> gym.Env:
         if cam_list is None:
-            cam_list = [],
+            cam_list = []
         if resolution is None:
             resolution = (256, 256)
         cameras = {
@@ -245,8 +243,8 @@ class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
         }
         robot_cfg = rcs.sim.SimRobotConfig()
         robot_cfg.tcp_offset = rcs.common.Pose(
-            translation=np.array([0.0, 0.0, 0.15]),
-            rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),
+            translation=np.array([0.0, 0.0, 0.15]),  # type: ignore
+            rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),  # type: ignore
         )
         robot_cfg.robot_type = rcs.common.RobotType.FR3
         robot_cfg.realtime = False
