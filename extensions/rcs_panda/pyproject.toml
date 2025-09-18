@@ -1,0 +1,36 @@
+[build-system]
+requires = []
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "rcs_panda"
+version = "0.4.0"
+description="RCS libfranka integration"
+dependencies = [
+    # NOTE: when changing the pin version, also change it in requirements_dev.txt
+    "pin==3.7.0",
+]
+readme = "../../README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
+authors = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Pierre Krack", email = "pierre.krack@utn.de" },
+]
+requires-python = ">=3.10"
+license = {file = "../../LICENSE"}
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
+  "Programming Language :: Python :: 3",
+]
+
+
+[tool.scikit-build]
+build.verbose = true
+build.targets = ["_core"]
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["src/rcs_panda"]
+install.components = ["python_package"]
