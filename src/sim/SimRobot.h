@@ -12,13 +12,11 @@ namespace rcs {
 namespace sim {
 
 struct SimRobotConfig : common::RobotConfig {
-  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
   bool realtime = false;
   bool trajectory_trace = false;
-  common::RobotType robot_type = common::RobotType::FR3;
   std::vector<std::string> arm_collision_geoms{
       "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
       "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
@@ -31,8 +29,8 @@ struct SimRobotConfig : common::RobotConfig {
       "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
       "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
-  std::string attachment_site = "attachment_site";
   std::string base = "base";
+  std::string mjcf_scene_path = "assets/scenes/fr3_empty_world/scene.xml";
 
   void add_id(const std::string &id) {
     for (auto &s : this->arm_collision_geoms) {
@@ -76,6 +74,7 @@ class SimRobot : public common::Robot {
   std::optional<std::shared_ptr<common::IK>> get_ik() override;
   void reset() override;
   void set_joints_hard(const common::VectorXd &q);
+  void close() override {};
 
  private:
   SimRobotConfig cfg;
@@ -85,9 +84,8 @@ class SimRobot : public common::Robot {
   struct {
     std::set<size_t> cgeom;
     int attachment_site;
-    std::array<int, 7> joints;
-    std::array<int, 7> ctrl;
-    std::array<int, 7> actuators;
+    std::vector<int> joints;
+    std::vector<int> actuators;
     int base;
   } ids;
   void is_moving_callback();

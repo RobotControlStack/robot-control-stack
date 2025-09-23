@@ -18,7 +18,7 @@ struct RobotMetaConfig {
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits;
 };
 
-enum RobotType { FR3 = 0, UR5e, SO101 };
+enum RobotType { FR3 = 0, UR5e, SO101, XArm7 };
 enum RobotPlatform { SIMULATION = 0, HARDWARE };
 
 static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
@@ -57,6 +57,25 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
             // high 6‐tuple
             2 * M_PI, 2 * M_PI, 1 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI)
                .finished()}},
+      // -------------- XArm7 --------------
+      {XArm7, RobotMetaConfig{
+        // q_home (7‐vector):
+        (VectorXd(7) << 0,
+          -45. / 180. * M_PI,
+          0,
+          15. / 180. * M_PI,
+          0,
+          -25. / 180. * M_PI,
+          0
+        ).finished(),
+        // dof:
+        7,
+        // joint_limits (2×7):
+        (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+            // low 7‐tuple
+            -2 * M_PI, -2.094395, -2 * M_PI, -3.92699, -2 * M_PI, -M_PI, -2 * M_PI,
+            // high 7‐tuple
+             2 * M_PI,  2.059488,  2 * M_PI,  0.191986, 2 * M_PI, 1.692969, 2 * M_PI).finished()}},
       // -------------- SO101 --------------
       {SO101,
        RobotMetaConfig{
@@ -78,6 +97,9 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
+  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
+  std::string attachment_site = "attachment_site";
+  std::string kinematic_model_path = "assets/scenes/fr3_empty_world/robot.xml";
   virtual ~RobotConfig(){};
 };
 struct RobotState {
@@ -89,6 +111,17 @@ struct GripperConfig {
 };
 struct GripperState {
   virtual ~GripperState(){};
+};
+
+enum GraspType {  POWER_GRASP = 0, 
+                  PRECISION_GRASP,
+                  LATERAL_GRASP,
+                  TRIPOD_GRASP  };
+struct HandConfig {
+  virtual ~HandConfig(){};
+};
+struct HandState {
+  virtual ~HandState(){};
 };
 
 class Robot {
@@ -114,6 +147,8 @@ class Robot {
   virtual void move_home() = 0;
 
   virtual void reset() = 0;
+
+  virtual void close() = 0;
 
   virtual void set_cartesian_position(const Pose& pose) = 0;
 
@@ -156,6 +191,42 @@ class Gripper {
 
   // puts the gripper to max position
   virtual void reset() = 0;
+
+  // closes connection to gripper
+  virtual void close() = 0;
+};
+
+class Hand {
+ public:
+  virtual ~Hand(){};
+  // TODO: Add low-level control interface for the hand with internal state updates
+  // Also add an implementation specific set_parameters function that takes
+  // a deduced config type
+  // bool set_parameters(const GConfig& cfg);
+
+  virtual HandConfig* get_parameters() = 0;
+  virtual HandState* get_state() = 0;
+
+  // set width of the hand, 0 is closed, 1 is open
+  virtual void set_normalized_joint_poses(const VectorXd& q) = 0;
+  virtual VectorXd get_normalized_joint_poses() = 0;
+
+  virtual bool is_grasped() = 0;
+
+  // close hand with force, return true if the object is grasped successfully
+  virtual void grasp() = 0;
+
+  // open hand
+  virtual void open() = 0;
+
+  // close hand without applying force
+  virtual void shut() = 0;
+
+  // puts the hand to max position
+  virtual void reset() = 0;
+
+  // closes connection
+  virtual void close() = 0;
 };
 
 }  // namespace common

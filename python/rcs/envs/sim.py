@@ -3,9 +3,15 @@ from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ControlMode, GripperWrapper, MultiRobotWrapper, RobotEnv
+from rcs.envs.base import (
+    ControlMode,
+    GripperWrapper,
+    HandWrapper,
+    MultiRobotWrapper,
+    RobotEnv,
+)
 from rcs.envs.space_utils import ActObsInfoWrapper
-from rcs.envs.utils import default_sim_robot_cfg
+from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
 
 import rcs
 from rcs import sim
@@ -114,6 +120,28 @@ class GripperWrapperSim(ActObsInfoWrapper):
         return observation, info
 
 
+class HandWrapperSim(ActObsInfoWrapper):
+    def __init__(self, env, hand: sim.SimTilburgHand):
+        super().__init__(env)
+        self._hand = hand
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if isinstance(action["hand"], int | float):
+            return action
+        if len(action["hand"]) == 18:
+            action["hand"] = action["hand"][:16]
+        assert len(action["hand"]) == 16 or len(action["hand"]) == 1, "Hand action must be of length 16 or 1"
+        return action
+
+    def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        state = self._hand.get_state()
+        if "collision" not in info or not info["collision"]:
+            info["collision"] = state.collision
+        info["hand_position"] = self._hand.get_normalized_joint_poses()
+        # info["is_grasped"] = self._hand.get_normalized_joint_poses() > 0.01 and self._hand.get_normalized_joint_poses() < 0.99
+        return observation, info
+
+
 class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]):
     """
     - Gripper Wrapper has to be added before this as it removes the gripper action
@@ -193,20 +221,22 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         cls,
         env: gym.Env,
         mjmld: str,
-        urdf: str,
+        cg_kinematics_path: str,
         id: str = "0",
         gripper: bool = True,
+        hand: bool = False,
         check_home_collision: bool = True,
         tcp_offset: rcs.common.Pose | None = None,
         control_mode: ControlMode | None = None,
         sim_gui: bool = True,
         truncate_on_collision: bool = True,
     ) -> "CollisionGuard":
+        # TODO: remove urdf and use mjcf
         # TODO: this needs to support non FR3 robots
         assert isinstance(env.unwrapped, RobotEnv)
         simulation = sim.Sim(mjmld)
-        ik = rcs.common.RL(urdf, max_duration_ms=300)
         cfg = default_sim_robot_cfg(mjmld, id)
+        ik = rcs.common.Pin(cg_kinematics_path, cfg.attachment_site, False)
         cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
@@ -229,6 +259,13 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             fh = sim.SimGripper(simulation, gripper_cfg)
             c_env = GripperWrapper(c_env, fh)
             c_env = GripperWrapperSim(c_env, fh)
+        if hand:
+            hand_cfg = default_sim_tilburg_hand_cfg()
+            # hand_cfg.add_id(id)
+            th = sim.SimTilburgHand(simulation, hand_cfg)
+            c_env = HandWrapper(c_env, th)
+            c_env = HandWrapperSim(c_env, th)
+
         return cls(
             env=env,
             simulation=simulation,
@@ -238,6 +275,74 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
             sim_gui=sim_gui,
             truncate_on_collision=truncate_on_collision,
         )
+
+
+class RandomObjectPos(SimWrapper):
+    """
+    Wrapper to randomly re-place an object in the lab environments.
+    Given the object's joint name and initial pose, its x, y coordinates are randomized, while z remains fixed.
+    If include_rotation is true, the object's z-axis rotation (yaw) is also randomized.
+
+    Args:
+        env (gym.Env): The environment to wrap.
+        simulation (sim.Sim): The simulation instance.
+        joint_name (str): The name of the free joint attached to the object to manipulate.
+        init_object_pose (rcs.common.Pose): The initial pose of the object.
+        include_rotation (bool): Whether to include rotation in the randomization.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        simulation: sim.Sim,
+        joint_name: str,
+        init_object_pose: rcs.common.Pose,
+        include_position: bool = True,
+        include_rotation: bool = False,
+    ):
+        super().__init__(env, simulation)
+        self.joint_name = joint_name
+        self.init_object_pose = init_object_pose
+        self.include_position = include_position
+        self.include_rotation = include_rotation
+
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if options is not None and "RandomObjectPos.init_object_pose" in options:
+            assert isinstance(
+                options["RandomObjectPos.init_object_pose"], rcs.common.Pose
+            ), "RandomObjectPos.init_object_pose must be a rcs.common.Pose"
+
+            self.init_object_pose = options["RandomObjectPos.init_object_pose"]
+            print("Got random object pos!\n", self.init_object_pose)
+            del options["RandomObjectPos.init_object_pose"]
+        obs, info = super().reset(seed=seed, options=options)
+        self.sim.step(1)
+
+        pos_z = self.init_object_pose.translation()[2]
+        if self.include_position:
+            pos_x = self.init_object_pose.translation()[0] + np.random.random() * 0.2 - 0.1
+            pos_y = self.init_object_pose.translation()[1] + np.random.random() * 0.2 - 0.1
+        else:
+            pos_x = self.init_object_pose.translation()[0]
+            pos_y = self.init_object_pose.translation()[1]
+
+        quat = self.init_object_pose.rotation_q()  # xyzw format
+        if self.include_rotation:
+            self.sim.data.joint(self.joint_name).qpos = [
+                pos_x,
+                pos_y,
+                pos_z,
+                2 * np.random.random() - quat[3],
+                quat[0],
+                quat[1],
+                quat[2],
+            ]
+        else:
+            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, quat[3], quat[0], quat[1], quat[2]]
+
+        return obs, info
 
 
 class RandomCubePos(SimWrapper):
@@ -254,7 +359,7 @@ class RandomCubePos(SimWrapper):
         self.sim.step(1)
 
         iso_cube = np.array([0.498, 0.0, 0.226])
-        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))
+        iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))  # type: ignore
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
         pos_z = 0.826
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1

@@ -1,6 +1,6 @@
 add_library(sim)
 target_sources(sim
-  PRIVATE sim.cpp SimRobot.cpp renderer.cpp camera.cpp SimGripper.cpp gui_server.cpp gui_client.cpp
+  PRIVATE sim.cpp SimRobot.cpp renderer.cpp camera.cpp SimGripper.cpp SimTilburgHand.cpp gui_server.cpp gui_client.cpp
 )
 target_link_libraries(sim PUBLIC rcs MuJoCo::MuJoCo)
 

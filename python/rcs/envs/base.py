@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
+from rcs._core.common import Hand
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
     ActObsInfoWrapper,
@@ -18,7 +19,6 @@ from rcs.envs.space_utils import (
     get_space,
     get_space_keys,
 )
-from rcs.hand.interface import BaseHand
 
 from rcs import common
 
@@ -104,7 +104,7 @@ class GripperDictType(RCSpaceType):
 
 class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
-    hand: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
+    gripper: Annotated[float, gym.spaces.Box(low=0, high=1, dtype=np.float32)]
 
 
 class HandVecDictType(RCSpaceType):
@@ -246,7 +246,7 @@ class RobotEnv(gym.Env):
     def get_obs(self) -> ArmObsType:
         return ArmObsType(
             tquat=np.concatenate(
-                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]
+                [self.robot.get_cartesian_position().translation(), self.robot.get_cartesian_position().rotation_q()]  # type: ignore
             ),
             joints=self.robot.get_joint_position(),
             xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
@@ -291,18 +291,20 @@ class RobotEnv(gym.Env):
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[ArmObsType, dict[str, Any]]:
         if seed is not None:
-            msg = "seeding not implemented yet"
-            raise NotImplementedError(msg)
+            msg = "seeding not implemented yet. Ignoring seed."
+            # raise NotImplementedError(msg)
+            _logger.error(msg)
         if options is not None:
-            msg = "options not implemented yet"
-            raise NotImplementedError(msg)
+            msg = "options not implemented yet. Ignoring options."
+            # raise NotImplementedError(msg)
+            _logger.error(msg)
         self.robot.reset()
         if self.home_on_reset:
             self.robot.move_home()
         return self.get_obs(), {}
 
     def close(self):
-        super().close()
+        self.robot.close()
 
 
 class MultiRobotWrapper(gym.Env):
@@ -516,12 +518,12 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
             )
             action.update(
                 TRPYDictType(
-                    xyzrpy=np.concatenate(
+                    xyzrpy=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_rpy().as_vector(),
@@ -560,13 +562,13 @@ class RelativeActionSpace(gym.ActionWrapper):
                 self._last_action = clipped_pose_offset
 
             unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),
+                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
                 quaternion=(clipped_pose_offset * self._origin).rotation_q(),
             )
 
             action.update(
                 TQuatDictType(
-                    tquat=np.concatenate(
+                    tquat=np.concatenate(  # type: ignore
                         [
                             np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                             unclipped_pose.rotation_q(),
@@ -749,7 +751,7 @@ class HandWrapper(ActObsInfoWrapper):
     BINARY_HAND_CLOSED = 0
     BINARY_HAND_OPEN = 1
 
-    def __init__(self, env, hand: BaseHand, binary: bool = True):
+    def __init__(self, env, hand: Hand, binary: bool = True):
         super().__init__(env)
         self.unwrapped: RobotEnv
         self.observation_space: gym.spaces.Dict
@@ -778,7 +780,7 @@ class HandWrapper(ActObsInfoWrapper):
                 self._last_hand_cmd if self._last_hand_cmd is not None else self.BINARY_HAND_OPEN
             )
         else:
-            observation[self.hand_key] = self._hand.get_normalized_joints_poses()
+            observation[self.hand_key] = self._hand.get_normalized_joint_poses()
 
         info = {}
         return observation, info
@@ -798,7 +800,10 @@ class HandWrapper(ActObsInfoWrapper):
                 else:
                     self._hand.open()
         else:
-            self._hand.set_normalized_joints_poses(hand_action)
+            self._hand.set_normalized_joint_poses(hand_action)
         self._last_hand_cmd = hand_action
         del action[self.hand_key]
         return action
+
+    def close(self):
+        self._hand.close()

@@ -30,11 +30,26 @@ foreach(scene_dir ${scene_dirs})
     # Install scene files
     install(FILES ${scene_mjb} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
 
-    # Install URDF files
-    file(GLOB urdfs ${scene_dir}/*.urdf)
-    foreach(urdf ${urdfs})
-        install(FILES ${urdf} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
+    # Copy all .xml files (dereferencing symlinks) and install them
+    file(GLOB scene_xml_files ${scene_dir}/*.xml)
+    foreach(xml_file ${scene_xml_files})
+        get_filename_component(xml_name ${xml_file} NAME)
+        configure_file(${xml_file} ${CMAKE_BINARY_DIR}/assets/scenes/${scene_name}/${xml_name} COPYONLY)
+        install(FILES ${CMAKE_BINARY_DIR}/assets/scenes/${scene_name}/${xml_name} DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
     endforeach()
+
+    # Always copy robot.xml to build dir, dereferencing symlinks
+    if(EXISTS ${scene_dir}/robot.xml)
+        configure_file(${scene_dir}/robot.xml ${CMAKE_BINARY_DIR}/assets/scenes/${scene_name}/robot.xml COPYONLY)
+        install(FILES ${CMAKE_BINARY_DIR}/assets/scenes/${scene_name}/robot.xml DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
+    endif()
+    if(EXISTS ${scene_dir}/robot.urdf)
+        install(FILES ${scene_dir}/robot.urdf DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
+    endif()
+    if(EXISTS ${scene_dir}/scene.xml)
+        install(FILES ${scene_dir}/scene.xml DESTINATION rcs/scenes/${scene_name} COMPONENT python_package)
+    endif()
+
 endforeach()
 
 # Create a custom target that depends on all generated .mjb files

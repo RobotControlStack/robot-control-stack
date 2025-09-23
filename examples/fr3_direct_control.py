@@ -59,8 +59,8 @@ def main():
         robot: rcs.common.Robot
         gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
-            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+            simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
+            urdf_path = rcs.scenes["fr3_empty_world"].urdf
             ik = rcs.common.RL(str(urdf_path))
             cfg = sim.SimRobotConfig()
             cfg.add_id("0")
@@ -92,7 +92,7 @@ def main():
             simulation.open_gui()
 
         else:
-            urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+            urdf_path = rcs.scenes["fr3_empty_world"].urdf
             ik = rcs.common.RL(str(urdf_path))
             robot = hw.FR3(ROBOT_IP, ik)
             robot_cfg = hw.FR3Config()
@@ -116,7 +116,7 @@ def main():
 
         # 5cm in x direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))  # type: ignore
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -125,7 +125,7 @@ def main():
 
         # 5cm in y direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0.05, 0]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0.05, 0]))  # type: ignore
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -134,7 +134,7 @@ def main():
 
         # 5cm in z direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.05]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.05]))  # type: ignore
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -143,7 +143,7 @@ def main():
 
         # rotate the arm 90 degrees around the inverted y and z axis
         new_pose = robot.get_cartesian_position() * rcs.common.Pose(
-            translation=np.array([0, 0, 0]), rpy=rcs.common.RPY(roll=0, pitch=-np.deg2rad(90), yaw=-np.deg2rad(90))
+            translation=np.array([0, 0, 0]), rpy=rcs.common.RPY(roll=0, pitch=-np.deg2rad(90), yaw=-np.deg2rad(90))  # type: ignore
         )
         robot.set_cartesian_position(new_pose)
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
@@ -158,7 +158,7 @@ def main():
 
         # move 25cm towards the gripper direction
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.25]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, 0.25]))  # type: ignore
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()
@@ -173,7 +173,7 @@ def main():
 
         # move 25cm backward
         robot.set_cartesian_position(
-            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, -0.25]))
+            robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0, 0, -0.25]))  # type: ignore
         )
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation.step_until_convergence()

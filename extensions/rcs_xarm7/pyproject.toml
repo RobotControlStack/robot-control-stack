@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_xarm7"
+version = "0.4.0"
+description="RCS xArm7 module"
+dependencies = [
+    "rcs==0.4.0",
+    "xarm-python-sdk==1.17.0",
+]
+readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Ken Nakahara", email = "knakahara@lasr.org" },
+]
+authors = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Ken Nakahara", email = "knakahara@lasr.org" },
+]
+requires-python = ">=3.10"
+license       = "AGPL-3.0-or-later"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+]
+

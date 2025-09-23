@@ -27,7 +27,7 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         )  # None
         self.camera_name = camera_name
         self.tag_to_world = common.Pose(
-            rpy_vector=np.array([np.pi, 0, -np.pi / 2]), translation=np.array([0.145, 0, 0])
+            rpy_vector=np.array([np.pi, 0, -np.pi / 2]), translation=np.array([0.145, 0, 0])  # type: ignore
         ).pose_matrix()
 
     def calibrate(
