@@ -197,8 +197,8 @@ class RealSenseCameraSet(HardwareCamera):
             pipeline_profile,
             device_info,
             depth_scale=sensor.get_depth_scale(),
-            color_intrinsics=color_intrinsics,
-            depth_intrinsics=depth_intrinsics,
+            color_intrinsics=color_intrinsics,  # type: ignore
+            depth_intrinsics=depth_intrinsics,  # type: ignore
             depth_to_color=common.Pose(
                 translation=depth_to_color.translation, rotation=np.array(depth_to_color.rotation).reshape(3, 3)  # type: ignore
             ),
@@ -284,7 +284,7 @@ class RealSenseCameraSet(HardwareCamera):
                     ),
                     timestamp=to_ts(frame),
                     intrinsics=device.depth_intrinsics,
-                    extrinsics=depth_extrinsics,
+                    extrinsics=depth_extrinsics,  # type: ignore
                 )
             elif rs.stream.accel == stream.stream_type():
                 frame = frameset.first(stream.stream_index())

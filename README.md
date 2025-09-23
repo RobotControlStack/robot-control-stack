@@ -28,6 +28,32 @@ pip config --site set global.no-build-isolation false
 pip install -ve .
 ```
 
+## Docker (GUI + GPU + HW add-ons)
+
+**Prereqs:** Docker + docker-compose, X11 on host, NVIDIA driver + NVIDIA Container Toolkit (legacy `runtime: nvidia`).  
+**Layout:** `docker/Dockerfile`, overrides in `docker/compose/` (`base.yml`, `gui.yml`, `gpu.yml`, `hw.yml`).
+
+### Build the image
+`docker-compose -f docker/compose/base.yml build dev`
+
+### (GUI) allow X access (host)
+`export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}`  
+`xhost +local:docker`
+
+### Run container with GUI + GPU + HW and open a shell
+`docker-compose -f docker/compose/base.yml -f docker/compose/gui.yml -f docker/compose/gpu.yml -f docker/compose/hw.yml run --rm run bash`  
+*(Use fewer `-f` files for lighter setups, e.g., GUI+GPU without HW.)*
+
+### Inside the container
+`pip install -ve extensions/rcs_fr3`  
+`cd examples`  
+`python fr3_env_cartesian_control.py`
+
+### Troubleshooting
+- **`nvidia-smi` missing in container:** ensure it exists on host at `/usr/bin/nvidia-smi` (GPU override bind-mounts it).  
+- **GUI can’t open:** re-run the `xhost` command and confirm `$DISPLAY` is set on the host.  
+
+
 ## Usage
 The python package is called `rcs`.
 
@@ -39,8 +65,8 @@ from rcs import sim
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from time import sleep
-simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
-urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
+urdf_path = rcs.scenes["fr3_empty_world"].urdf
 ik = rcs.common.RL(str(urdf_path))
 cfg = sim.SimRobotConfig()
 cfg.add_id("0")
@@ -94,8 +120,69 @@ for _ in range(100):
         print(obs)
         if truncated or terminated:
             logger.info("Truncated or terminated!")
-            return
+            exit()
 ```
+
+### Remote Procedure Call (RPC) Client and Server
+#### Server
+```python
+from rcs.envs.creators import SimEnvCreator
+from rcs.envs.utils import (
+	default_mujoco_cameraset_cfg,
+	default_sim_gripper_cfg,
+	default_sim_robot_cfg,
+)
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.rpc.server import RcsServer
+
+def run_server():
+	env = SimEnvCreator()(
+		control_mode=ControlMode.JOINTS,
+		collision_guard=False,
+		robot_cfg=default_sim_robot_cfg(),
+		gripper_cfg=default_sim_gripper_cfg(),
+		cameras=default_mujoco_cameraset_cfg(),
+		max_relative_movement=0.1,
+		relative_to=RelativeTo.LAST_STEP,
+	)
+	server = RcsServer(env, port=50051)
+	server.start()
+ 
+if __name__ == "__main__":
+	run_server()
+```
+
+#### Client
+```python
+import time
+from python.rcs.rpc.client import RcsClient
+
+if __name__ == "__main__":
+    # Create the client (adjust host/port if needed)
+    client = RcsClient(host="localhost", port=50051)
+
+    try:
+        print("Resetting environment...")
+        obs = client.reset()
+        print(f"Initial observation: {obs}")
+
+        for i in range(5):
+            print(f"\nStep {i+1}")
+            # Replace with a valid action for your environment
+            action = 0
+            obs, reward, terminated, truncated, info = client.step(action)
+            print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}, Info: {info}")
+            if terminated or truncated:
+                print("Episode finished, resetting...")
+                obs = client.reset()
+                print(f"Reset observation: {obs}")
+            time.sleep(0.5)
+    finally:
+        print("Closing client.")
+        client.close()
+```
+
+
 ### Examples
 Checkout the python examples in the [examples](examples) folder:
 - [fr3_direct_control.py](examples/fr3.py) shows direct robot control with RCS's python bindings

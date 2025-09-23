@@ -1,6 +1,6 @@
 <mujoco model="simple pick up task">
   <include file="fr3_common.xml" />
-  <include file="fr3_0.xml" />
+  <include file="robot.xml" />
 
   <statistic center="0.3 0 0.4" extent="1" />
 
