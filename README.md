@@ -65,8 +65,8 @@ from rcs import sim
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from time import sleep
-simulation = sim.Sim(rcs.scenes["fr3_empty_world"]["mjb"])
-urdf_path = rcs.scenes["fr3_empty_world"]["urdf"]
+simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
+urdf_path = rcs.scenes["fr3_empty_world"].urdf
 ik = rcs.common.RL(str(urdf_path))
 cfg = sim.SimRobotConfig()
 cfg.add_id("0")

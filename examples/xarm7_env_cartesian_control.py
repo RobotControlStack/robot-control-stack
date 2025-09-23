@@ -2,7 +2,6 @@ import logging
 
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import get_tcp_offset
 
 import rcs
 from rcs import sim
@@ -36,7 +35,6 @@ def main():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
     robot_cfg.mjcf_scene_path = rcs.scenes["xarm7_empty_world"].mjb
     robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
     env_rel = SimEnvCreator()(

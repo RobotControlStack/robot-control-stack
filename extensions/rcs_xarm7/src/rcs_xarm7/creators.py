@@ -37,8 +37,6 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
         control_mode: ControlMode,
         ip: str,
         calibration_dir: PathLike | str | None = None,
-        collision_guard: str | PathLike | None = None,
-        cg_kinematics_path: str | PathLike | None = None,
         camera_set: HardwareCameraSet | None = None,
         hand_cfg: THConfig | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
@@ -47,7 +45,6 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
         if isinstance(calibration_dir, str):
             calibration_dir = Path(calibration_dir)
         robot = XArm7(ip=ip)
-        # env: gym.Env = RobotEnv(robot, ControlMode.JOINTS, home_on_reset=True)
         env: gym.Env = RobotEnv(robot, control_mode, home_on_reset=True)
 
         if camera_set is not None:
@@ -58,20 +55,6 @@ class RCSXArm7EnvCreator(RCSHardwareEnvCreator):
         if hand_cfg is not None and isinstance(hand_cfg, THConfig):
             hand = TilburgHand(cfg=hand_cfg, verbose=True)
             env = HandWrapper(env, hand, True)
-
-        # if collision_guard:
-        #     env = CollisionGuard.env_from_xml_paths(
-        #         env=env,
-        #         cg_kinematics_path=cg_kinematics_path,
-        #         hand=True,
-        #         gripper=False,
-        #         check_home_collision=False,
-        #         control_mode=control_mode,
-        #         tcp_offset=rcs.common.Pose(),
-        #         sim_gui=True,
-        #         truncate_on_collision=True,
-        #         id="",
-        #     )
 
         if max_relative_movement is not None:
             env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)

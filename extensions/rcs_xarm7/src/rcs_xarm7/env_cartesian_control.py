@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_tilburg_hand_cfg, get_tcp_offset
+from rcs.envs.utils import default_sim_tilburg_hand_cfg
 from rcs.hand.tilburg_hand import THConfig
 from rcs_xarm7.creators import RCSXArm7EnvCreator
 
@@ -43,7 +43,6 @@ def sim_env():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
     robot_cfg.mjcf_scene_path = rcs.scenes["xarm7_empty_world"].mjb
     robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
     env_rel = SimEnvCreator()(
@@ -72,8 +71,6 @@ def main():
             hand_cfg=hand_cfg,
             relative_to=RelativeTo.LAST_STEP,
             max_relative_movement=np.deg2rad(3),
-            # collision_guard=rcs.scenes["xarm7_empty_world"]["mjcf_scene"],
-            # cg_kinematics_path=rcs.scenes["xarm7_empty_world"]["mjcf_robot"],
         )
     else:
         env_rel = sim_env()

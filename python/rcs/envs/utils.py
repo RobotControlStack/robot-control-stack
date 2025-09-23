@@ -1,9 +1,6 @@
 import logging
 from os import PathLike
-from pathlib import Path
 
-import mujoco as mj
-import numpy as np
 from digit_interface import Digit
 from rcs._core.common import BaseCameraConfig
 from rcs._core.sim import CameraType, SimCameraConfig
@@ -19,7 +16,6 @@ logger.setLevel(logging.INFO)
 
 def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     robot_cfg = rcs.sim.SimRobotConfig()
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes[scene].mjcf_scene)
     robot_cfg.realtime = False
     robot_cfg.robot_type = rcs.scenes[scene].robot_type
     robot_cfg.add_id(idx)
@@ -73,34 +69,3 @@ def default_mujoco_cameraset_cfg() -> dict[str, SimCameraConfig]:
         ),
         # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed), frame_rate=10, resolution_width=256, resolution_height=256),
     }
-
-
-def get_tcp_offset(mjcf: str | Path) -> rcs.common.Pose:
-    """Reads out tcp offset set in mjcf file.
-
-    Convention: The tcp offset is stored in the model as a numeric attribute named "tcp_offset".
-
-    Args:
-        mjcf (str | PathLike): Path to the mjcf file.
-
-    Returns:
-        rcs.common.Pose: The tcp offset.
-    """
-    mjcf = Path(mjcf)
-    if mjcf.suffix in (".xml", ".mjcf"):
-        model = mj.MjModel.from_xml_path(str(mjcf))
-    elif mjcf.suffix == ".mjb":
-        model = mj.MjModel.from_binary_path(str(mjcf))
-    else:
-        msg = f"Expected .mjb, .mjcf or.xml, got {mjcf.suffix} and {mjcf}"
-        raise AssertionError(msg)
-    try:
-        tcp_offset_translation = np.array(model.numeric("tcp_offset_translation").data)
-        tcp_offset_rotation_matrix = np.array(model.numeric("tcp_offset_rotation_matrix").data)
-        return rcs.common.Pose(
-            translation=tcp_offset_translation, rotation=tcp_offset_rotation_matrix.reshape((3, 3))  # type: ignore
-        )
-    except KeyError:
-        msg = "No tcp offset found in the model. Using an identity transform as tcp offset."
-        logging.warning(msg)
-    return rcs.common.Pose()

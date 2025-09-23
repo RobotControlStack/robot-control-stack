@@ -5,7 +5,7 @@ from time import sleep
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_tilburg_hand_cfg, get_tcp_offset
+from rcs.envs.utils import default_sim_tilburg_hand_cfg
 from rcs.hand.tilburg_hand import THConfig
 from rcs_xarm7.creators import RCSXArm7EnvCreator
 
@@ -44,7 +44,6 @@ def sim_env():
     robot_cfg.robot_type = rcs.common.RobotType.XArm7
     robot_cfg.attachment_site = "attachment_site"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.tcp_offset = get_tcp_offset(rcs.scenes["xarm7_empty_world"].mjcf_scene)
     env_rel = SimEnvCreator()(
         robot_cfg=robot_cfg,
         control_mode=ControlMode.JOINTS,
