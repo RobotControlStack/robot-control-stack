@@ -127,3 +127,15 @@ python -m rcs_realsense --help
 
 ## Developer Documentation
 See our documentation page [robot-control-stack.org](https://robot-control-stack.org) for the development documentation.
+
+
+## Citation
+If you find RCS useful for your academic work, please consider citing it:
+```
+@misc{juelg2025robotcontrolstack,
+  title={{Robot Control Stack}: {A} Lean Ecosystem for Robot Learning at Scale}, 
+  author={Tobias J{\"u}lg and Pierre Krack and Seongjin Bien and Yannik Blei and Khaled Gamal and Ken Nakahara and Johannes Hechtl and Roberto Calandra and Wolfram Burgard and Florian Walter},
+  year={2025},
+  howpublished = {\url{https://arxiv.org/abs/2509.14932}}
+}
+```
