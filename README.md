@@ -1,9 +1,9 @@
 # Robot Control Stack
 RCS is a unified and multilayered robot control interface over a MuJoCo simulation and real world robot currently implemented for the FR3/Panda, xArm7, UR5e and SO101.
-## Requirements
-We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 ## Installation
+We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
+
 1. Install the system dependencies:
 ```shell
 sudo apt install $(cat debian_deps.txt)
@@ -13,11 +13,6 @@ sudo apt install $(cat debian_deps.txt)
 python3 -m venv .venv
 source .venv/bin/activate
 ``` 
-alternatively, with Conda:
-```shell
-conda create -n rcs python=3.11 # Version ensures that python is installed to the environment
-conda activate rcs
-```
 Then, install the package:
 ```shell
 pip install -r requirements_dev.txt
@@ -27,6 +22,8 @@ pip config --site set global.no-build-isolation false
 ```shell
 pip install -ve .
 ```
+
+For a docker deployment see the [docker](docker) folder.
 
 ## Usage
 The python package is called `rcs`.
@@ -126,7 +123,7 @@ python -m rcs_realsense --help
 ```
 
 ## Developer Documentation
-See our documentation page [robot-control-stack.org](https://robot-control-stack.org) for the development documentation.
+See [robot-control-stack.org](https://robot-control-stack.org) for the development documentation.
 
 
 ## Citation
