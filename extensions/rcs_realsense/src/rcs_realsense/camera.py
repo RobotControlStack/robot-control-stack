@@ -1,9 +1,9 @@
 import copy
 import logging
 import threading
-from time import sleep
 import typing
 from dataclasses import dataclass
+from time import sleep
 
 import numpy as np
 import pyrealsense2 as rs

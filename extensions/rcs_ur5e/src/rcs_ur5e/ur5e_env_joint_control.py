@@ -5,10 +5,10 @@ from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
 from rcs_ur5e.creators import RCSUR5eEnvCreator
+from rcs_ur5e.hw import UR5eConfig
 
 import rcs
 from rcs import sim
-from rcs_ur5e.hw import UR5eConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

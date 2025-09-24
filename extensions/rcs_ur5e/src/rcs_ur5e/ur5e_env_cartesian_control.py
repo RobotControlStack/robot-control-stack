@@ -2,18 +2,12 @@ import logging
 from time import sleep
 
 import numpy as np
-from rcs._core import common
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
-# from rcs_fr3.utils import default_fr3_hw_gripper_cfg
+
 from rcs_ur5e.creators import RCSUR5eEnvCreator
-from rcs_ur5e.hw import RobotiQGripper, UR5eConfig
+from rcs_ur5e.hw import UR5eConfig
 
 import rcs
 from rcs import sim
@@ -60,38 +54,21 @@ def main():
             # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=0.5,
             relative_to=RelativeTo.LAST_STEP,
-            # mjcf=rcs.scenes["ur5e_empty_world"]["mjb"],
-            mjcf="/home/johannes/repos/learning/robot-control-stack/assets/scenes/ur5e_empty_world/scene.xml",
-            # urdf_path=rcs.scenes["ur5e_empty_world"]["urdf"],
-            urdf_path="/home/johannes/repos/learning/robot-control-stack/assets/ur5e/urdf/ur5e.urdf",
+            mjcf=rcs.scenes["ur5e_empty_world"].mjb,
+            urdf_path=rcs.scenes["ur5e_empty_world"].urdf,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
 
     obs, info = env_rel.reset()
-    # print(obs)
-    # print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
-    # print(env_rel.unwrapped.robot.get_joint_position())  # type: ignore
-
 
     act = {"xyzrpy": [0.0, 0, 0.0, 0, 0, np.deg2rad(45)], "gripper": 0}
     obs, reward, terminated, truncated, info = env_rel.step(act)
-    #sleep(10)
-    exit()
-    
 
     for _ in range(100):
-        # act = {"joints": common.robots_meta_config(common.RobotType.UR5e).q_home, "gripper": 0}
-        # env_rel.step(act)
-        # env_rel.unwrapped.robot.move_home()
-        # simulation = env_rel.get_wrapper_attr("sim")
-        # simulation.step_until_convergence()
-        # sleep(1)
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0,0, 0.0087265, 0, 0, 0.9999619], "gripper": 0}
+            act = {"tquat": [0.01, 0, 0, 0.0087265, 0, 0, 0.9999619], "gripper": 0}
             obs, reward, terminated, truncated, info = env_rel.step(act)
-            #print(obs)
-            # print(env_rel.unwrapped.robot.get_cartesian_position())  # type: ignore
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
                 return
