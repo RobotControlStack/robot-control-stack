@@ -1,6 +1,6 @@
 # ATTENTION: auto generated from C++ code, use `make stubgen` to update!
 """
-rcs fr3 module
+rcs panda module
 """
 from __future__ import annotations
 
