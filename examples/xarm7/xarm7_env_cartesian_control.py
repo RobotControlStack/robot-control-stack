@@ -40,7 +40,6 @@ def main():
     env_rel = SimEnvCreator()(
         robot_cfg=robot_cfg,
         control_mode=ControlMode.CARTESIAN_TQuat,
-        collision_guard=False,
         gripper_cfg=None,
         # cameras=default_mujoco_cameraset_cfg(),
         max_relative_movement=0.5,

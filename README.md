@@ -72,7 +72,6 @@ from rcs.envs.utils import (
 from rcs.envs.base import ControlMode, RelativeTo
 env_rel = SimEnvCreator()(
     control_mode=ControlMode.JOINTS,
-    collision_guard=False,
     robot_cfg=default_sim_robot_cfg(),
     gripper_cfg=default_sim_gripper_cfg(),
     cameras=default_mujoco_cameraset_cfg(),

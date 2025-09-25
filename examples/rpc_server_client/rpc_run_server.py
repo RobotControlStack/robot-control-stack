@@ -11,7 +11,6 @@ from rcs.rpc.server import RcsServer
 def run_server():
     env = SimEnvCreator()(
         control_mode=ControlMode.JOINTS,
-        collision_guard=False,
         robot_cfg=default_sim_robot_cfg(),
         gripper_cfg=default_sim_gripper_cfg(),
         cameras=default_mujoco_cameraset_cfg(),
