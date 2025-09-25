@@ -11,7 +11,7 @@
 
 #include <memory>
 
-#include "rcs/IK.h"
+#include "rcs/Kinematics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -69,9 +69,10 @@ class PyRobot : public rcs::common::Robot {
   void close() override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, close, );
   }
-  std::optional<std::shared_ptr<rcs::common::IK>> get_ik() override {
-    PYBIND11_OVERRIDE_PURE(std::optional<std::shared_ptr<rcs::common::IK>>,
-                           rcs::common::Robot, get_ik, );
+  std::optional<std::shared_ptr<rcs::common::Kinematics>> get_ik() override {
+    PYBIND11_OVERRIDE_PURE(
+        std::optional<std::shared_ptr<rcs::common::Kinematics>>,
+        rcs::common::Robot, get_ik, );
   }
   rcs::common::Pose get_base_pose_in_world_coordinates() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
@@ -286,18 +287,19 @@ PYBIND11_MODULE(_core, m) {
             return rcs::common::Pose(t);
           }));
 
-  py::class_<rcs::common::IK, std::shared_ptr<rcs::common::IK>>(common, "IK")
-      .def("ik", &rcs::common::IK::ik, py::arg("pose"), py::arg("q0"),
-           py::arg("tcp_offset") = rcs::common::Pose::Identity())
-      .def("forward", &rcs::common::IK::forward, py::arg("q0"),
+  py::class_<rcs::common::Kinematics, std::shared_ptr<rcs::common::Kinematics>>(
+      common, "Kinematics")
+      .def("inverse", &rcs::common::Kinematics::inverse, py::arg("pose"),
+           py::arg("q0"), py::arg("tcp_offset") = rcs::common::Pose::Identity())
+      .def("forward", &rcs::common::Kinematics::forward, py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
 
-  py::class_<rcs::common::RL, rcs::common::IK,
+  py::class_<rcs::common::RL, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::RL>>(common, "RL")
       .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
            py::arg("max_duration_ms") = 300);
 
-  py::class_<rcs::common::Pin, rcs::common::IK,
+  py::class_<rcs::common::Pin, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
       .def(py::init<const std::string &, const std::string &, bool>(),
            py::arg("path"), py::arg("frame_id") = "fr3_link8",
@@ -521,8 +523,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    std::shared_ptr<rcs::common::IK>, rcs::sim::SimRobotConfig,
-                    bool>(),
+                    std::shared_ptr<rcs::common::Kinematics>,
+                    rcs::sim::SimRobotConfig, bool>(),
            py::arg("sim"), py::arg("ik"), py::arg("cfg"),
            py::arg("register_convergence_callback") = true)
       .def("get_config", &rcs::sim::SimRobot::get_config)

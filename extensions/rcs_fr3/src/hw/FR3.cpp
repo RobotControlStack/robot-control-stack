@@ -19,7 +19,8 @@
 
 namespace rcs {
 namespace hw {
-FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
+FR3::FR3(const std::string &ip,
+         std::optional<std::shared_ptr<common::Kinematics>> ik,
          const std::optional<FR3Config> &cfg)
     : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
@@ -650,7 +651,9 @@ double quintic_polynomial_speed_profile(double time, double start_time,
   // return (1 - std::cos(M_PI * progress)) / 2.0;
 }
 
-std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
+std::optional<std::shared_ptr<common::Kinematics>> FR3::get_ik() {
+  return this->m_ik;
+}
 
 void FR3::set_cartesian_position(const common::Pose &x) {
   // pose is assumed to be in the robots coordinate frame
@@ -686,8 +689,8 @@ void FR3::set_cartesian_position_ik(const common::Pose &pose) {
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
         "position.");
   }
-  auto joints = this->m_ik.value()->ik(pose, this->get_joint_position(),
-                                       this->cfg.tcp_offset);
+  auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
+                                            this->cfg.tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());

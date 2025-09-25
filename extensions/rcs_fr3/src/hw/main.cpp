@@ -1,7 +1,7 @@
 #include <franka/exception.h>
 #include <franka/gripper.h>
 #include <franka/robot.h>
-#include <rcs/IK.h>
+#include <rcs/Kinematics.h>
 
 #include <iostream>
 #include <memory>

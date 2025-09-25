@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "rcs/IK.h"
+#include "rcs/Kinematics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -99,7 +99,7 @@ PYBIND11_MODULE(_core, m) {
       (py::object)py::module_::import("rcs").attr("common").attr("Robot");
   py::class_<rcs::hw::FR3, std::shared_ptr<rcs::hw::FR3>>(hw, "FR3", robot)
       .def(py::init<const std::string &,
-                    std::optional<std::shared_ptr<rcs::common::IK>>>(),
+                    std::optional<std::shared_ptr<rcs::common::Kinematics>>>(),
            py::arg("ip"), py::arg("ik") = std::nullopt)
       .def("set_config", &rcs::hw::FR3::set_config, py::arg("cfg"))
       .def("get_config", &rcs::hw::FR3::get_config)

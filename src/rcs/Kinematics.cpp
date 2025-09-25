@@ -1,4 +1,4 @@
-#include "rcs/IK.h"
+#include "rcs/Kinematics.h"
 
 #include <rl/hal/CartesianPositionActuator.h>
 #include <rl/hal/CartesianPositionSensor.h>
@@ -33,8 +33,8 @@ RL::RL(const std::string& urdf_path, size_t max_duration_ms) : rl_data() {
   this->rl_data.ik->setDuration(std::chrono::milliseconds(max_duration_ms));
 }
 
-std::optional<VectorXd> RL::ik(const Pose& pose, const VectorXd& q0,
-                               const Pose& tcp_offset) {
+std::optional<VectorXd> RL::inverse(const Pose& pose, const VectorXd& q0,
+                                    const Pose& tcp_offset) {
   // pose is assumed to be in the robots coordinate frame
   this->rl_data.kin->setPosition(q0);
   this->rl_data.kin->forwardPosition();
@@ -75,8 +75,8 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true)
   }
 }
 
-std::optional<VectorXd> Pin::ik(const Pose& pose, const VectorXd& q0,
-                                const Pose& tcp_offset) {
+std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
+                                     const Pose& tcp_offset) {
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();
   VectorXd q(model.nq);
   q.setZero();

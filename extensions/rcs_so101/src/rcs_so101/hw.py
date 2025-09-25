@@ -55,7 +55,7 @@ class SO101(common.Robot):
         pass
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        joints = self.ik.ik(pose, q0=self.get_joint_position())
+        joints = self.ik.inverse(pose, q0=self.get_joint_position())
         if joints is not None:
             self.set_joint_position(joints)
 

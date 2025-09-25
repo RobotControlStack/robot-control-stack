@@ -20,16 +20,16 @@
 namespace rcs {
 namespace common {
 
-class IK {
+class Kinematics {
  public:
-  virtual ~IK(){};
-  virtual std::optional<VectorXd> ik(
+  virtual ~Kinematics(){};
+  virtual std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) = 0;
   virtual Pose forward(const VectorXd& q0, const Pose& tcp_offset) = 0;
 };
 
-class RL : public IK {
+class RL : public Kinematics {
  private:
   const int random_restarts = 0;
   const double eps = 1e-3;
@@ -41,13 +41,13 @@ class RL : public IK {
 
  public:
   RL(const std::string& path, size_t max_duration_ms = 300);
-  std::optional<VectorXd> ik(
+  std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
   Pose forward(const VectorXd& q0, const Pose& tcp_offset) override;
 };
 
-class Pin : public IK {
+class Pin : public Kinematics {
  private:
   const double eps = 1e-4;
   const int IT_MAX = 1000;
@@ -60,7 +60,7 @@ class Pin : public IK {
 
  public:
   Pin(const std::string& path, const std::string& frame_id, bool urdf);
-  std::optional<VectorXd> ik(
+  std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
   Pose forward(const VectorXd& q0, const Pose& tcp_offset) override;
