@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
@@ -35,7 +34,7 @@ class SimWrapper(gym.Wrapper):
 
 
 class RobotSimWrapper(gym.Wrapper):
-    def __init__(self, env, simulation: sim.Sim, sim_wrapper: SimWrapper | None = None):
+    def __init__(self, env, simulation: sim.Sim, sim_wrapper: Type[SimWrapper] | None = None):
         self.sim_wrapper = sim_wrapper
         if sim_wrapper is not None:
             env = sim_wrapper(env, simulation)

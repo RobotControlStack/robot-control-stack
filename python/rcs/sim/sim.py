@@ -42,7 +42,7 @@ def gui_loop(gui_uuid: str, close_event):
 
 
 class Sim(_Sim):
-    def __init__(self, mjmdl: str | PathLike, cfg: SimConfig = None):
+    def __init__(self, mjmdl: str | PathLike, cfg: SimConfig | None = None):
         mjmdl = Path(mjmdl)
         if mjmdl.suffix == ".xml":
             self.model = mj.MjModel.from_xml_path(str(mjmdl))
