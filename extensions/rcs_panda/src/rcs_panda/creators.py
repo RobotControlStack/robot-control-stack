@@ -18,8 +18,8 @@ from rcs.envs.base import (
 from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs.hand.tilburg_hand import TilburgHand
 from rcs_panda import hw
-from rcs_panda.envs import FR3HW
-from rcs_panda.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+from rcs_panda.envs import PandaHW
+from rcs_panda.utils import default_panda_hw_gripper_cfg, default_panda_hw_robot_cfg
 
 import rcs
 
@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class RCSFR3EnvCreator(RCSHardwareEnvCreator):
+class RCSPandaEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         self,
         ip: str,
         control_mode: ControlMode,
-        robot_cfg: hw.FR3Config,
+        robot_cfg: hw.PandaConfig,
         collision_guard: str | PathLike | None = None,
         gripper_cfg: hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
         camera_set: HardwareCameraSet | None = None,
@@ -41,14 +41,14 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
         """
-        Creates a hardware environment for the FR3 robot.
+        Creates a hardware environment for the Panda robot.
 
         Args:
             ip (str): IP address of the robot.
             control_mode (ControlMode): Control mode for the robot.
-            robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (hw.PandaConfig): Configuration for the Panda robot.
             collision_guard (str | PathLike | None): Key to a built-in scene
-            robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
+            robot_cfg (hw.PandaConfig): Configuration for the Panda robot.
             collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
                 or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
             gripper_cfg (hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
@@ -60,17 +60,19 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             urdf_path (str | PathLike | None): Path to the URDF file. If None the included one is used. A URDF file is needed for collision guarding.
 
         Returns:
-            gym.Env: The configured hardware environment for the FR3 robot.
+            gym.Env: The configured hardware environment for the Panda robot.
         """
         if urdf_path is None:
-            urdf_path = rcs.scenes["fr3_empty_world"].urdf
+            urdf_path = rcs.scenes["Panda_empty_world"].urdf
         ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
-        robot = hw.FR3(ip, ik)
+        robot = hw.Panda(ip, ik)
         robot.set_parameters(robot_cfg)
 
-        env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode, home_on_reset=True)
+        env: gym.Env = RobotEnv(
+            robot, ControlMode.JOINTS if collision_guard is not None else control_mode, home_on_reset=True
+        )
 
-        env = FR3HW(env)
+        env = PandaHW(env)
         if isinstance(gripper_cfg, hw.FHConfig):
             gripper = hw.FrankaHand(ip, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
@@ -103,11 +105,11 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         return env
 
 
-class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
+class RCSPandaMultiEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
         ips: list[str],
         control_mode: ControlMode,
-        robot_cfg: hw.FR3Config,
+        robot_cfg: hw.PandaConfig,
         gripper_cfg: hw.FHConfig | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
@@ -115,17 +117,17 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
 
-        urdf_path = rcs.scenes["fr3_empty_world"].urdf
+        urdf_path = rcs.scenes["panda_empty_world"].urdf
         ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
-        robots: dict[str, hw.FR3] = {}
+        robots: dict[str, hw.Panda] = {}
         for ip in ips:
-            robots[ip] = hw.FR3(ip, ik)
+            robots[ip] = hw.Panda(ip, ik)
             robots[ip].set_parameters(robot_cfg)
 
         envs = {}
         for ip in ips:
             env: gym.Env = RobotEnv(robots[ip], control_mode)
-            env = FR3HW(env)
+            env = PandaHW(env)
             if gripper_cfg is not None:
                 gripper = hw.FrankaHand(ip, gripper_cfg)
                 env = GripperWrapper(env, gripper, binary=True)
@@ -143,22 +145,3 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         return env
 
 
-class RCSFR3DefaultEnvCreator(RCSHardwareEnvCreator):
-    def __call__(  # type: ignore
-        self,
-        robot_ip: str,
-        control_mode: ControlMode = ControlMode.CARTESIAN_TRPY,
-        delta_actions: bool = True,
-        camera_set: HardwareCameraSet | None = None,
-        gripper: bool = True,
-    ) -> gym.Env:
-        return RCSFR3EnvCreator()(
-            ip=robot_ip,
-            camera_set=camera_set,
-            control_mode=control_mode,
-            robot_cfg=default_fr3_hw_robot_cfg(),
-            collision_guard=None,
-            gripper_cfg=default_fr3_hw_gripper_cfg() if gripper else None,
-            max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
-            relative_to=RelativeTo.LAST_STEP,
-        )

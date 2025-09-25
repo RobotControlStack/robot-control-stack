@@ -1,4 +1,4 @@
-#include "FR3.h"
+#include "Panda.h"
 
 #include <franka/duration.h>
 #include <franka/exception.h>
@@ -14,13 +14,13 @@
 #include <string>
 #include <thread>
 
-#include "FR3MotionGenerator.h"
+#include "PandaMotionGenerator.h"
 #include "rcs/Pose.h"
 
 namespace rcs {
 namespace hw {
-FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
-         const std::optional<FR3Config> &cfg)
+Panda::Panda(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
+         const std::optional<PandaConfig> &cfg)
     : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
@@ -31,14 +31,14 @@ FR3::FR3(const std::string &ip, std::optional<std::shared_ptr<common::IK>> ik,
   }  // else default constructor
 }
 
-FR3::~FR3() {}
+Panda::~Panda() {}
 
 /**
  * @brief Set the parameters for the robot
- * @param cfg The configuration for the robot, it should be a FR3Config type
+ * @param cfg The configuration for the robot, it should be a PandaConfig type
  * otherwise the call will fail
  */
-bool FR3::set_parameters(const FR3Config &cfg) {
+bool Panda::set_parameters(const PandaConfig &cfg) {
   this->cfg = cfg;
   this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -59,20 +59,20 @@ bool FR3::set_parameters(const FR3Config &cfg) {
   return true;
 }
 
-FR3Config *FR3::get_parameters() {
+PandaConfig *Panda::get_parameters() {
   // copy config to heap
-  FR3Config *cfg = new FR3Config();
+  PandaConfig *cfg = new PandaConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FR3State *FR3::get_state() {
+PandaState *Panda::get_state() {
   // dummy state until we define a prober state
-  FR3State *state = new FR3State();
+  PandaState *state = new PandaState();
   return state;
 }
 
-void FR3::set_default_robot_behavior() {
+void Panda::set_default_robot_behavior() {
   this->robot.setCollisionBehavior({{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
                                    {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
                                    {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
@@ -85,7 +85,7 @@ void FR3::set_default_robot_behavior() {
   this->robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 }
 
-common::Pose FR3::get_cartesian_position() {
+common::Pose Panda::get_cartesian_position() {
   common::Pose x;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -98,17 +98,17 @@ common::Pose FR3::get_cartesian_position() {
   return x;
 }
 
-void FR3::set_joint_position(const common::VectorXd &q) {
+void Panda::set_joint_position(const common::VectorXd &q) {
   if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
   }
   // sync control
-  FR3MotionGenerator motion_generator(this->cfg.speed_factor, q);
+  PandaMotionGenerator motion_generator(this->cfg.speed_factor, q);
   this->robot.control(motion_generator);
 }
 
-common::VectorXd FR3::get_joint_position() {
+common::VectorXd Panda::get_joint_position() {
   common::Vector7d joints;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -121,7 +121,7 @@ common::VectorXd FR3::get_joint_position() {
   return joints;
 }
 
-void FR3::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
+void Panda::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
                            bool yaw, bool elbow) {
   std::array<bool, 6> activated = {x, y, z, roll, pitch, yaw};
   this->robot.setGuidingMode(activated, elbow);
@@ -157,7 +157,7 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
   }
 }
 
-void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
+void Panda::controller_set_joint_position(const common::Vector7d &desired_q) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
@@ -185,13 +185,13 @@ void FR3::controller_set_joint_position(const common::Vector7d &desired_q) {
   // if not thread is running, then start
   if (this->running_controller == Controller::none) {
     this->running_controller = Controller::jsc;
-    this->control_thread = std::thread(&FR3::joint_controller, this);
+    this->control_thread = std::thread(&Panda::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
   }
 }
 
-void FR3::osc_set_cartesian_position(
+void Panda::osc_set_cartesian_position(
     const common::Pose &desired_pose_EE_in_base_frame) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;
@@ -221,14 +221,14 @@ void FR3::osc_set_cartesian_position(
   // if not thread is running, then start
   if (this->running_controller == Controller::none) {
     this->running_controller = Controller::osc;
-    this->control_thread = std::thread(&FR3::osc, this);
+    this->control_thread = std::thread(&Panda::osc, this);
   } else {
     this->interpolator_mutex.unlock();
   }
 }
 
 // method to stop thread
-void FR3::stop_control_thread() {
+void Panda::stop_control_thread() {
   if (this->control_thread.has_value() &&
       this->running_controller != Controller::none) {
     this->running_controller = Controller::none;
@@ -237,7 +237,7 @@ void FR3::stop_control_thread() {
   }
 }
 
-void FR3::osc() {
+void Panda::osc() {
   franka::Model model = this->robot.loadModel();
 
   this->controller_time = 0.0;
@@ -450,7 +450,7 @@ void FR3::osc() {
   });
 }
 
-void FR3::joint_controller() {
+void Panda::joint_controller() {
   franka::Model model = this->robot.loadModel();
   this->controller_time = 0.0;
 
@@ -544,17 +544,17 @@ void FR3::joint_controller() {
   });
 }
 
-void FR3::zero_torque_guiding() {
+void Panda::zero_torque_guiding() {
   if (this->running_controller != Controller::none) {
     throw std::runtime_error(
         "A controller is currently running. Please stop it first.");
   }
   this->controller_time = 0.0;
   this->running_controller = Controller::ztc;
-  this->control_thread = std::thread(&FR3::zero_torque_controller, this);
+  this->control_thread = std::thread(&Panda::zero_torque_controller, this);
 }
 
-void FR3::zero_torque_controller() {
+void Panda::zero_torque_controller() {
   // high collision threshold values for high impedance
   robot.setCollisionBehavior(
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -577,26 +577,26 @@ void FR3::zero_torque_controller() {
   });
 }
 
-void FR3::move_home() {
+void Panda::move_home() {
   // sync
-  FR3MotionGenerator motion_generator(
+  PandaMotionGenerator motion_generator(
       this->cfg.speed_factor,
-      common::robots_meta_config.at(common::RobotType::FR3).q_home);
+      common::robots_meta_config.at(common::RobotType::Panda).q_home);
   this->robot.control(motion_generator);
 }
 
-void FR3::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
+void Panda::automatic_error_recovery() { this->robot.automaticErrorRecovery(); }
 
-void FR3::reset() {
+void Panda::reset() {
   this->stop_control_thread();
   this->automatic_error_recovery();
 }
 
-void FR3::wait_milliseconds(int milliseconds) {
+void Panda::wait_milliseconds(int milliseconds) {
   std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
-void FR3::double_tap_robot_to_continue() {
+void Panda::double_tap_robot_to_continue() {
   auto s = this->robot.readOnce();
   int touch_counter = false;
   bool can_be_touched_again = true;
@@ -650,9 +650,9 @@ double quintic_polynomial_speed_profile(double time, double start_time,
   // return (1 - std::cos(M_PI * progress)) / 2.0;
 }
 
-std::optional<std::shared_ptr<common::IK>> FR3::get_ik() { return this->m_ik; }
+std::optional<std::shared_ptr<common::IK>> Panda::get_ik() { return this->m_ik; }
 
-void FR3::set_cartesian_position(const common::Pose &x) {
+void Panda::set_cartesian_position(const common::Pose &x) {
   // pose is assumed to be in the robots coordinate frame
   if (this->cfg.async_control) {
     this->osc_set_cartesian_position(x);
@@ -680,7 +680,7 @@ void FR3::set_cartesian_position(const common::Pose &x) {
   }
 }
 
-void FR3::set_cartesian_position_ik(const common::Pose &pose) {
+void Panda::set_cartesian_position_ik(const common::Pose &pose) {
   if (!this->m_ik.has_value()) {
     throw std::runtime_error(
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
@@ -698,12 +698,12 @@ void FR3::set_cartesian_position_ik(const common::Pose &pose) {
   }
 }
 
-common::Pose FR3::get_base_pose_in_world_coordinates() {
+common::Pose Panda::get_base_pose_in_world_coordinates() {
   return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value()
                                               : common::Pose();
 }
 
-void FR3::set_cartesian_position_internal(const common::Pose &pose,
+void Panda::set_cartesian_position_internal(const common::Pose &pose,
                                           double max_time,
                                           std::optional<double> elbow,
                                           std::optional<double> max_force) {

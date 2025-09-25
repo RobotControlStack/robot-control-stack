@@ -1,5 +1,5 @@
-#ifndef RCS_FR3_H
-#define RCS_FR3_H
+#ifndef RCS_Panda_H
+#define RCS_Panda_H
 
 #include <franka/robot.h>
 
@@ -21,7 +21,7 @@ namespace hw {
 
 const double DEFAULT_SPEED_FACTOR = 0.2;
 
-struct FR3Load {
+struct PandaLoad {
   double load_mass;
   std::optional<Eigen::Vector3d> f_x_cload;
   std::optional<Eigen::Matrix3d> load_inertia;
@@ -30,24 +30,24 @@ enum IKSolver { franka_ik = 0, rcs_ik };
 // modes: joint-space control, operational-space control, zero-torque
 // control
 enum Controller { none = 0, jsc, osc, ztc };
-struct FR3Config : common::RobotConfig {
+struct PandaConfig : common::RobotConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
   IKSolver ik_solver = IKSolver::franka_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
-  std::optional<FR3Load> load_parameters = std::nullopt;
+  std::optional<PandaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
   bool async_control = false;
 };
 
-struct FR3State : common::RobotState {};
+struct PandaState : common::RobotState {};
 
-class FR3 : public common::Robot {
+class Panda : public common::Robot {
  private:
   franka::Robot robot;
-  FR3Config cfg;
+  PandaConfig cfg;
   std::optional<std::shared_ptr<common::IK>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
   common::LinearPoseTrajInterpolator traj_interpolator;
@@ -61,16 +61,16 @@ class FR3 : public common::Robot {
   void zero_torque_controller();
 
  public:
-  FR3(const std::string &ip,
+  Panda(const std::string &ip,
       std::optional<std::shared_ptr<common::IK>> ik = std::nullopt,
-      const std::optional<FR3Config> &cfg = std::nullopt);
-  ~FR3() override;
+      const std::optional<PandaConfig> &cfg = std::nullopt);
+  ~Panda() override;
 
-  bool set_parameters(const FR3Config &cfg);
+  bool set_parameters(const PandaConfig &cfg);
 
-  FR3Config *get_parameters() override;
+  PandaConfig *get_parameters() override;
 
-  FR3State *get_state() override;
+  PandaState *get_state() override;
 
   void set_default_robot_behavior();
 
@@ -117,4 +117,4 @@ class FR3 : public common::Robot {
 }  // namespace hw
 }  // namespace rcs
 
-#endif  // RCS_FR3_H
+#endif  // RCS_Panda_H

@@ -1,5 +1,5 @@
-#ifndef RCS_MOTION_GENERATOR_H
-#define RCS_MOTION_GENERATOR_H
+#ifndef RCS_PANDA_MOTION_GENERATOR_H
+#define RCS_PANDA_MOTION_GENERATOR_H
 
 #include <franka/control_types.h>
 #include <franka/duration.h>
@@ -34,15 +34,15 @@ void setDefaultBehavior(franka::Robot& robot);
  * Identification and Control of Robots (Kogan Page Science Paper edition).
  *
  */
-class FR3MotionGenerator {
+class PandaMotionGenerator {
  public:
   /**
-   * Creates a new FR3MotionGenerator instance for a target q.
+   * Creates a new PandaMotionGenerator instance for a target q.
    *
    * @param[in] speed_factor General speed factor in range [0, 1].
    * @param[in] q_goal Target joint positions.
    */
-  FR3MotionGenerator(double speed_factor, const common::Vector7d q_goal);
+  PandaMotionGenerator(double speed_factor, const common::Vector7d q_goal);
 
   /**
    * Sends joint position calculations
@@ -82,4 +82,4 @@ class FR3MotionGenerator {
 };
 }  // namespace hw
 }  // namespace rcs
-#endif  // RCS_MOTION_GENERATOR_H
+#endif  // RCS_PANDA_MOTION_GENERATOR_H

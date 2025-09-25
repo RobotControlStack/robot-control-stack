@@ -1,5 +1,5 @@
 #include <franka/exception.h>
-#include <hw/FR3.h>
+#include <hw/Panda.h>
 #include <hw/FrankaHand.h>
 #include <pybind11/cast.h>
 #include <pybind11/eigen.h>
@@ -44,12 +44,12 @@ PYBIND11_MODULE(_core, m) {
 
   py::object robot_state =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotState");
-  py::class_<rcs::hw::FR3State>(hw, "FR3State", robot_state).def(py::init<>());
-  py::class_<rcs::hw::FR3Load>(hw, "FR3Load")
+  py::class_<rcs::hw::PandaState>(hw, "PandaState", robot_state).def(py::init<>());
+  py::class_<rcs::hw::PandaLoad>(hw, "PandaLoad")
       .def(py::init<>())
-      .def_readwrite("load_mass", &rcs::hw::FR3Load::load_mass)
-      .def_readwrite("f_x_cload", &rcs::hw::FR3Load::f_x_cload)
-      .def_readwrite("load_inertia", &rcs::hw::FR3Load::load_inertia);
+      .def_readwrite("load_mass", &rcs::hw::PandaLoad::load_mass)
+      .def_readwrite("f_x_cload", &rcs::hw::PandaLoad::f_x_cload)
+      .def_readwrite("load_inertia", &rcs::hw::PandaLoad::load_inertia);
 
   py::enum_<rcs::hw::IKSolver>(hw, "IKSolver")
       .value("franka_ik", rcs::hw::IKSolver::franka_ik)
@@ -58,15 +58,15 @@ PYBIND11_MODULE(_core, m) {
 
   py::object robot_config =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotConfig");
-  py::class_<rcs::hw::FR3Config>(hw, "FR3Config", robot_config)
+  py::class_<rcs::hw::PandaConfig>(hw, "PandaConfig", robot_config)
       .def(py::init<>())
-      .def_readwrite("ik_solver", &rcs::hw::FR3Config::ik_solver)
-      .def_readwrite("speed_factor", &rcs::hw::FR3Config::speed_factor)
-      .def_readwrite("load_parameters", &rcs::hw::FR3Config::load_parameters)
+      .def_readwrite("ik_solver", &rcs::hw::PandaConfig::ik_solver)
+      .def_readwrite("speed_factor", &rcs::hw::PandaConfig::speed_factor)
+      .def_readwrite("load_parameters", &rcs::hw::PandaConfig::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
-                     &rcs::hw::FR3Config::nominal_end_effector_frame)
-      .def_readwrite("world_to_robot", &rcs::hw::FR3Config::world_to_robot)
-      .def_readwrite("async_control", &rcs::hw::FR3Config::async_control);
+                     &rcs::hw::PandaConfig::nominal_end_effector_frame)
+      .def_readwrite("world_to_robot", &rcs::hw::PandaConfig::world_to_robot)
+      .def_readwrite("async_control", &rcs::hw::PandaConfig::async_control);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
@@ -97,33 +97,33 @@ PYBIND11_MODULE(_core, m) {
 
   py::object robot =
       (py::object)py::module_::import("rcs").attr("common").attr("Robot");
-  py::class_<rcs::hw::FR3, std::shared_ptr<rcs::hw::FR3>>(hw, "FR3", robot)
+  py::class_<rcs::hw::Panda, std::shared_ptr<rcs::hw::Panda>>(hw, "Panda", robot)
       .def(py::init<const std::string &,
                     std::optional<std::shared_ptr<rcs::common::IK>>>(),
            py::arg("ip"), py::arg("ik") = std::nullopt)
-      .def("set_parameters", &rcs::hw::FR3::set_parameters, py::arg("cfg"))
-      .def("get_parameters", &rcs::hw::FR3::get_parameters)
-      .def("get_state", &rcs::hw::FR3::get_state)
+      .def("set_parameters", &rcs::hw::Panda::set_parameters, py::arg("cfg"))
+      .def("get_parameters", &rcs::hw::Panda::get_parameters)
+      .def("get_state", &rcs::hw::Panda::get_state)
       .def("set_default_robot_behavior",
-           &rcs::hw::FR3::set_default_robot_behavior)
-      .def("set_guiding_mode", &rcs::hw::FR3::set_guiding_mode,
+           &rcs::hw::Panda::set_default_robot_behavior)
+      .def("set_guiding_mode", &rcs::hw::Panda::set_guiding_mode,
            py::arg("x") = true, py::arg("y") = true, py::arg("z") = true,
            py::arg("roll") = true, py::arg("pitch") = true,
            py::arg("yaw") = true, py::arg("elbow") = true)
-      .def("zero_torque_guiding", &rcs::hw::FR3::zero_torque_guiding)
+      .def("zero_torque_guiding", &rcs::hw::Panda::zero_torque_guiding)
       .def("osc_set_cartesian_position",
-           &rcs::hw::FR3::osc_set_cartesian_position,
+           &rcs::hw::Panda::osc_set_cartesian_position,
            py::arg("desired_pos_EE_in_base_frame"))
       .def("controller_set_joint_position",
-           &rcs::hw::FR3::controller_set_joint_position, py::arg("desired_q"))
-      .def("stop_control_thread", &rcs::hw::FR3::stop_control_thread)
-      .def("automatic_error_recovery", &rcs::hw::FR3::automatic_error_recovery)
+           &rcs::hw::Panda::controller_set_joint_position, py::arg("desired_q"))
+      .def("stop_control_thread", &rcs::hw::Panda::stop_control_thread)
+      .def("automatic_error_recovery", &rcs::hw::Panda::automatic_error_recovery)
       .def("double_tap_robot_to_continue",
-           &rcs::hw::FR3::double_tap_robot_to_continue)
+           &rcs::hw::Panda::double_tap_robot_to_continue)
       .def("set_cartesian_position_internal",
-           &rcs::hw::FR3::set_cartesian_position_ik, py::arg("pose"))
+           &rcs::hw::Panda::set_cartesian_position_ik, py::arg("pose"))
       .def("set_cartesian_position_ik",
-           &rcs::hw::FR3::set_cartesian_position_internal, py::arg("pose"),
+           &rcs::hw::Panda::set_cartesian_position_internal, py::arg("pose"),
            py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
 
   py::object gripper =

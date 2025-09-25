@@ -8,12 +8,12 @@ from rcs_panda._core import hw
 _logger = logging.getLogger(__name__)
 
 
-class FR3HW(gym.Wrapper):
+class PandaHW(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.unwrapped: RobotEnv
-        assert isinstance(self.unwrapped.robot, hw.FR3), "Robot must be a hw.FR3 instance."
-        self.hw_robot = cast(hw.FR3, self.unwrapped.robot)
+        assert isinstance(self.unwrapped.robot, hw.Panda), "Robot must be a hw.Panda instance."
+        self.hw_robot = cast(hw.Panda, self.unwrapped.robot)
 
     def step(self, action: Any) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict]:
         try:
@@ -22,7 +22,7 @@ class FR3HW(gym.Wrapper):
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
             # TODO: this does not work if some wrappers are in between
-            # FR3HW and RobotEnv
+            # PandaHW and RobotEnv
             return dict(self.unwrapped.get_obs()), 0, False, True, {}
 
     def reset(

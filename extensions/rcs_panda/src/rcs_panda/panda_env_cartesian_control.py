@@ -7,8 +7,8 @@ from rcs.envs.utils import (
     default_sim_gripper_cfg,
     default_sim_robot_cfg,
 )
-from rcs_panda.creators import RCSFR3EnvCreator
-from rcs_panda.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+from rcs_panda.creators import RCSPandaEnvCreator
+from rcs_panda.utils import default_panda_hw_gripper_cfg, default_panda_hw_robot_cfg
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -16,13 +16,13 @@ logger.setLevel(logging.INFO)
 
 def main():
 
-    env = RCSFR3EnvCreator()
+    env = RCSPandaEnvCreator()
     env_rel = env(
         ip="192.168.4.100",
         control_mode=ControlMode.CARTESIAN_TQuat,
-        robot_cfg=default_fr3_hw_robot_cfg(),
+        robot_cfg=default_panda_hw_robot_cfg(),
         collision_guard=None,
-        gripper_cfg=default_fr3_hw_gripper_cfg(),
+        gripper_cfg=default_panda_hw_gripper_cfg(),
         camera_set=None,
         max_relative_movement=0.2,
         relative_to=RelativeTo.LAST_STEP,
