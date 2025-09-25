@@ -20,9 +20,9 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
-    <body>
-    <geom type="box" name="isocube" size="0.2 0.2 0.2" rgba="0.153 0.961 0.329 0.2" pos="0.498 0.0 0.226" contype="0" conaffinity="0" group="2"/>
+    <!-- <body>
+      <geom type="box" name="isocube" size="0.2 0.2 0.2" rgba="0.153 0.961 0.329 0.2" pos="0.498 0.0 0.226" contype="0" conaffinity="0" group="2"/>
+    </body> -->
     <camera name="bird_eye_cam" pos="0.271 -0.000 2.080" xyaxes="0.001 -1.000 -0.000 1.000 0.001 0.017" />
-  </body>
   </worldbody>
 </mujoco>

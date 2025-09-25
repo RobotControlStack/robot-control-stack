@@ -72,7 +72,6 @@ from rcs.envs.utils import (
 from rcs.envs.base import ControlMode, RelativeTo
 env_rel = SimEnvCreator()(
     control_mode=ControlMode.JOINTS,
-    collision_guard=False,
     robot_cfg=default_sim_robot_cfg(),
     gripper_cfg=default_sim_gripper_cfg(),
     cameras=default_mujoco_cameraset_cfg(),
@@ -93,10 +92,11 @@ for _ in range(100):
 
 
 ### Examples
-Checkout the python examples in the [examples](examples) folder:
-- [fr3_direct_control.py](examples/fr3_direct_control.py) shows direct robot control with RCS's python bindings
-- [fr3_env_joint_control.py](examples/env_joint_control.py) and [fr3_env_cartesian_control.py](examples/env_cartesian_control.py) demonstrates RCS's high level [gymnasium](https://gymnasium.farama.org/) interface both for joint- and end effector space control
-All of these examples work both in the MuJoCo simulation as well as on your hardware FR3.
+Checkout the python examples in the [examples](examples) folder. For example
+[fr3_direct_control.py](examples/fr3/fr3_direct_control.py) shows direct robot control with RCS's python bindings.
+And [fr3_env_joint_control.py](examples/fr3/fr3_env_joint_control.py) and [fr3_env_cartesian_control.py](examples/fr3/fr3_env_cartesian_control.py) demonstrates RCS's high level [gymnasium](https://gymnasium.farama.org/) interface both for joint- and end effector space control
+Checkout the other sub folders for other robot-specific examples.
+Most of these examples work both in the MuJoCo simulation as well as on hardware.
 
 
 ### Hardware Extensions

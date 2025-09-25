@@ -28,16 +28,12 @@ bool get_last_return_value(ConditionCallback cb) {
 
 Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m){};
 
-bool Sim::set_config(const Config& cfg) {
-  if (cfg.async) {
-    /* Not implemented :) */
-    return false;
-  }
+bool Sim::set_config(const SimConfig& cfg) {
   this->cfg = cfg;
   return true;
 }
 
-Config Sim::get_config() { return this->cfg; }
+SimConfig Sim::get_config() { return this->cfg; }
 
 void Sim::invoke_callbacks() {
   for (int i = 0; i < std::size(this->callbacks); ++i) {
@@ -115,9 +111,6 @@ void Sim::step(size_t k) {
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
     this->invoke_rendering_callbacks();
-    if (this->cfg.realtime) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
   }
 }
 

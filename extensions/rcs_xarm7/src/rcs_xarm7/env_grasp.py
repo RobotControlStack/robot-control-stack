@@ -47,7 +47,6 @@ def sim_env():
     env_rel = SimEnvCreator()(
         robot_cfg=robot_cfg,
         control_mode=ControlMode.JOINTS,
-        collision_guard=False,
         gripper_cfg=None,
         hand_cfg=default_sim_tilburg_hand_cfg(),
         # cameras=default_mujoco_cameraset_cfg(),

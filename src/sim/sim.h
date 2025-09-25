@@ -26,10 +26,11 @@ class Renderer {
   std::unordered_map<std::string, mjrContext*> ctxs;
 };
 
-struct Config {
-  bool async = false;
+struct SimConfig {
+  bool async_control = false;
   bool realtime = false;
-  int max_convergence_steps = 5000;
+  int frequency = 30;  // in Hz
+  int max_convergence_steps = 500;
 };
 
 struct Callback {
@@ -56,7 +57,7 @@ struct RenderingCallback {
 
 class Sim {
  private:
-  Config cfg;
+  SimConfig cfg;
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
@@ -74,8 +75,8 @@ class Sim {
   mjModel* m;
   mjData* d;
   Sim(mjModel* m, mjData* d);
-  bool set_config(const Config& cfg);
-  Config get_config();
+  bool set_config(const SimConfig& cfg);
+  SimConfig get_config();
   bool is_converged();
   void step_until_convergence();
   void step(size_t k);

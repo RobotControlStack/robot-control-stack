@@ -70,7 +70,6 @@ def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
     try:
         env = SimEnvCreator()(
             control_mode=ControlMode.JOINTS,
-            collision_guard=False,
             robot_cfg=default_sim_robot_cfg(),
             gripper_cfg=default_sim_gripper_cfg(),
             # Disabled to avoid rendering problem in python subprocess.

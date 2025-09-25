@@ -36,7 +36,7 @@ class SimpleFrameRate:
             sleep(sleep_time)
         if self._last_print is None or perf_counter() - self._last_print > 10:
             self._last_print = perf_counter()
-            logger.info(f"FPS {self.loop_name}: {1 / (perf_counter() - self.t)}")
+            logger.debug(f"FPS {self.loop_name}: {1 / (perf_counter() - self.t)}")
 
         self.t = perf_counter()
 

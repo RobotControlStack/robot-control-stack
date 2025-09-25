@@ -12,6 +12,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
+from rcs.utils import SimpleFrameRate
 
 import rcs
 from rcs import sim
@@ -42,10 +43,20 @@ class RobotSimWrapper(gym.Wrapper):
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim_robot = cast(sim.SimRobot, self.unwrapped.robot)
         self.sim = simulation
+        cfg = self.sim.get_config()
+        self.frame_rate = SimpleFrameRate(1 / cfg.frequency, "RobotSimWrapper")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
         _, _, _, _, info = super().step(action)
-        self.sim.step_until_convergence()
+        cfg = self.sim.get_config()
+        if cfg.async_control:
+            self.sim.step(round(1 / cfg.frequency / self.sim.model.opt.timestep))
+            if cfg.realtime:
+                self.frame_rate.frame_rate = 1 / cfg.frequency
+                self.frame_rate()
+
+        else:
+            self.sim.step_until_convergence()
         state = self.sim_robot.get_state()
         info["collision"] = state.collision
         info["ik_success"] = state.ik_success
@@ -348,7 +359,7 @@ class RandomObjectPos(SimWrapper):
 class RandomCubePos(SimWrapper):
     """Wrapper to randomly place cube in the lab environments."""
 
-    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = False):
+    def __init__(self, env: gym.Env, simulation: sim.Sim, include_rotation: bool = True):
         super().__init__(env, simulation)
         self.include_rotation = include_rotation
 
@@ -361,7 +372,7 @@ class RandomCubePos(SimWrapper):
         iso_cube = np.array([0.498, 0.0, 0.226])
         iso_cube_pose = rcs.common.Pose(translation=np.array(iso_cube), rpy_vector=np.array([0, 0, 0]))  # type: ignore
         iso_cube = self.unwrapped.robot.to_pose_in_world_coordinates(iso_cube_pose).translation()
-        pos_z = 0.826
+        pos_z = 0.0288 / 2
         pos_x = iso_cube[0] + np.random.random() * 0.2 - 0.1
         pos_y = iso_cube[1] + np.random.random() * 0.2 - 0.1
 

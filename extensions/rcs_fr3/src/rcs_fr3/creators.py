@@ -49,8 +49,6 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
             collision_guard (str | PathLike | None): Key to a built-in scene
             robot_cfg (hw.FR3Config): Configuration for the FR3 robot.
-            collision_guard (str | PathLike | None): Key to a scene (requires UTN compatible scene package to be present)
-                or the path to a mujoco scene for collision guarding. If None, collision guarding is not used.
             gripper_cfg (hw.FHConfig | None): Configuration for the gripper. If None, no gripper is used.
             camera_set (BaseHardwareCameraSet | None): Camera set to be used. If None, no cameras are used.
             max_relative_movement (float | tuple[float, float] | None): Maximum allowed movement. If float, it restricts
@@ -84,6 +82,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
 
+        # TODO collision guard not working atm
         # if collision_guard is not None:
         #     assert urdf_path is not None
         #     env = CollisionGuard.env_from_xml_paths(

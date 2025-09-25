@@ -13,19 +13,28 @@ from rcs import sim
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+"""
+The example shows how to create a xArm7 environment with joint control
+and a relative action space. The example works both with a real robot and in
+simulation.
+
+To test with a real robot, set ROBOT_INSTANCE to RobotPlatform.HARDWARE,
+install the rcs_xarm7 extension (`pip install extensions/rcs_xarm7`)
+and set the ROBOT_IP variable to the robot's IP address.
+"""
+
 ROBOT_IP = "192.168.1.245"
-# ROBOT_INSTANCE = RobotPlatform.SIMULATION
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 
 def main():
-
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         env_rel = RCSXArm7EnvCreator()(
             control_mode=ControlMode.JOINTS,
             ip=ROBOT_IP,
             relative_to=RelativeTo.LAST_STEP,
-            max_relative_movement=np.deg2rad(3),
+            max_relative_movement=np.deg2rad(5),
         )
     else:
         robot_cfg = sim.SimRobotConfig()
@@ -56,29 +65,20 @@ def main():
         env_rel = SimEnvCreator()(
             robot_cfg=robot_cfg,
             control_mode=ControlMode.JOINTS,
-            collision_guard=False,
             gripper_cfg=None,
             # cameras=default_mujoco_cameraset_cfg(),
             max_relative_movement=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
         )
         env_rel.get_wrapper_attr("sim").open_gui()
+        sleep(3)  # wait for gui to open
 
-    with env_rel:
+    for _ in range(100):
+        obs, info = env_rel.reset()
         for _ in range(10):
-            obs, info = env_rel.reset()
-            for _ in range(3):
-                # sample random relative action and execute it
-                act = env_rel.action_space.sample()
-                print(act)
-                # act["gripper"] = 1.0
-                obs, reward, terminated, truncated, info = env_rel.step(act)
-                print(obs)
-                if truncated or terminated:
-                    logger.info("Truncated or terminated!")
-                    return
-                # logger.info(act["gripper"])
-                sleep(2.0)
+            # sample random relative action and execute it
+            act = env_rel.action_space.sample()
+            obs, reward, terminated, truncated, info = env_rel.step(act)
 
 
 if __name__ == "__main__":

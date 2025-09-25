@@ -43,7 +43,6 @@ def main():
             control_mode=ControlMode.JOINTS,
             urdf_path="/home/tobi/coding/lerobot/so101_new_calib.urdf",
             robot_cfg=cfg,
-            collision_guard=False,
             mjcf="/home/tobi/coding/lerobot/SO-ARM100/Simulation/SO101/scene.xml",
             gripper_cfg=grp_cfg,
             # camera_set_cfg=default_mujoco_cameraset_cfg(),
