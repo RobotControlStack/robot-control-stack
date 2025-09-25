@@ -209,6 +209,10 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
             for cam in cam_list
         }
         robot_cfg = default_sim_robot_cfg(scene="fr3_simple_pick_up")
+        robot_cfg.tcp_offset = rcs.common.Pose(
+            translation=np.array([0.0, 0.0, 0.1034]),  # type: ignore
+            rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),  # type: ignore
+        )
 
         return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
 
