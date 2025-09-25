@@ -134,8 +134,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("ip"), py::arg("cfg"))
       .def("get_config", &rcs::hw::FrankaHand::get_config)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
-      .def("set_config", &rcs::hw::FrankaHand::set_config,
-           py::arg("cfg"))
+      .def("set_config", &rcs::hw::FrankaHand::set_config, py::arg("cfg"))
       .def("is_grasped", &rcs::hw::FrankaHand::is_grasped)
       .def("homing", &rcs::hw::FrankaHand::homing);
 

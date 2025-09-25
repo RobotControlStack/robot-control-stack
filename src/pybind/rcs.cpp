@@ -517,8 +517,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("cfg"))
       .def("get_config", &rcs::sim::SimGripper::get_config)
       .def("get_state", &rcs::sim::SimGripper::get_state)
-      .def("set_config", &rcs::sim::SimGripper::set_config,
-           py::arg("cfg"));
+      .def("set_config", &rcs::sim::SimGripper::set_config, py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
@@ -527,8 +526,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("ik"), py::arg("cfg"),
            py::arg("register_convergence_callback") = true)
       .def("get_config", &rcs::sim::SimRobot::get_config)
-      .def("set_config", &rcs::sim::SimRobot::set_config,
-           py::arg("cfg"))
+      .def("set_config", &rcs::sim::SimRobot::set_config, py::arg("cfg"))
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("get_state", &rcs::sim::SimRobot::get_state);
@@ -570,8 +568,7 @@ PYBIND11_MODULE(_core, m) {
            py::arg("sim"), py::arg("cfg"))
       .def("get_config", &rcs::sim::SimTilburgHand::get_config)
       .def("get_state", &rcs::sim::SimTilburgHand::get_state)
-      .def("set_config", &rcs::sim::SimTilburgHand::set_config,
-           py::arg("cfg"));
+      .def("set_config", &rcs::sim::SimTilburgHand::set_config, py::arg("cfg"));
 
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")
       .value("free", rcs::sim::CameraType::free)
