@@ -9,6 +9,7 @@ from rcs._core.sim import (
     SimTilburgHand,
     SimTilburgHandConfig,
     SimTilburgHandState,
+    SimConfig,
 )
 from rcs.sim.sim import Sim, gui_loop
 
@@ -25,4 +26,5 @@ __all__ = [
     "SimTilburgHandState",
     "gui_loop",
     "SimCameraConfig",
+    "SimConfig",
 ]

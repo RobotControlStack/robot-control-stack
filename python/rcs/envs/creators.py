@@ -47,6 +47,7 @@ class SimEnvCreator(EnvCreator):
         robot_cfg: rcs.sim.SimRobotConfig,
         collision_guard: bool = False,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        sim_cfg: rcs.sim.SimConfig | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         cameras: dict[str, SimCameraConfig] | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
@@ -75,7 +76,7 @@ class SimEnvCreator(EnvCreator):
         Returns:
             gym.Env: The configured simulation environment for the FR3 robot.
         """
-        simulation = sim.Sim(robot_cfg.mjcf_scene_path)
+        simulation = sim.Sim(robot_cfg.mjcf_scene_path, sim_cfg)
 
         ik = rcs.common.Pin(
             robot_cfg.kinematic_model_path,
@@ -137,6 +138,7 @@ class SimTaskEnvCreator(EnvCreator):
         cameras: dict[str, SimCameraConfig] | None = None,
         hand_cfg: rcs.sim.SimTilburgHandConfig | None = None,
         gripper_cfg: rcs.sim.SimGripperConfig | None = None,
+        sim_cfg: rcs.sim.SimConfig | None = None,
         random_pos_args: dict | None = None,
     ) -> gym.Env:
         mode = "gripper"
@@ -170,6 +172,7 @@ class SimTaskEnvCreator(EnvCreator):
             collision_guard=False,
             gripper_cfg=_gripper_cfg,
             hand_cfg=_hand_cfg,
+            sim_cfg=sim_cfg,
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
@@ -213,8 +216,12 @@ class FR3SimplePickUpSimEnvCreator(EnvCreator):
             translation=np.array([0.0, 0.0, 0.1034]),  # type: ignore
             rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),  # type: ignore
         )
+        sim_cfg = sim.SimConfig()
+        sim_cfg.realtime = False
+        sim_cfg.async_control = True
+        sim_cfg.frequency = 30  # in Hz
 
-        return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras)
+        return SimTaskEnvCreator()(robot_cfg, render_mode, control_mode, delta_actions, cameras, sim_cfg=sim_cfg)
 
 
 class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):

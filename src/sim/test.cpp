@@ -123,7 +123,7 @@ int test_sim() {
   auto sim = std::make_shared<rcs::sim::Sim>(m, d);
   auto cfg = sim->get_config();
   cfg.realtime = true;
-  cfg.async = false;
+  cfg.async_control = false;
   sim->set_config(cfg);
   std::string id = "0";
 
