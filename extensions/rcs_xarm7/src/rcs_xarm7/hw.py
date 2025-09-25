@@ -61,10 +61,10 @@ class XArm7(common.Robot):
             np.array(self._xarm.get_servo_angle(is_radian=True)[1]),
         )
 
-    def get_parameters(self) -> XArm7Config:
+    def get_config(self) -> XArm7Config:
         return self._config
 
-    def set_parameters(self, robot_cfg: XArm7Config) -> None:
+    def set_config(self, robot_cfg: XArm7Config) -> None:
         self._config = robot_cfg
 
     def get_state(self) -> common.RobotState:

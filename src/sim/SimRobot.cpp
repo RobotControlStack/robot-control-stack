@@ -92,13 +92,13 @@ void SimRobot::init_ids() {
   }
 }
 
-bool SimRobot::set_parameters(const SimRobotConfig& cfg) {
+bool SimRobot::set_config(const SimRobotConfig& cfg) {
   this->cfg = cfg;
   this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
   return true;
 }
 
-SimRobotConfig* SimRobot::get_parameters() {
+SimRobotConfig* SimRobot::get_config() {
   SimRobotConfig* cfg = new SimRobotConfig();
   *cfg = this->cfg;
   return cfg;

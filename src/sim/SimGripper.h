@@ -71,9 +71,9 @@ class SimGripper : public common::Gripper {
   SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg);
   ~SimGripper() override;
 
-  bool set_parameters(const SimGripperConfig &cfg);
+  bool set_config(const SimGripperConfig &cfg);
 
-  SimGripperConfig *get_parameters() override;
+  SimGripperConfig *get_config() override;
 
   SimGripperState *get_state() override;
 

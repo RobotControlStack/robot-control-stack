@@ -41,7 +41,7 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         config = rcs_fr3.hw.FR3Config()
         config.speed_factor = 0.2
         config.ik_solver = rcs_fr3.hw.IKSolver.franka_ik
-        f.set_parameters(config)
+        f.set_config(config)
         config_hand = rcs_fr3.hw.FHConfig()
         g = rcs_fr3.hw.FrankaHand(ip, config_hand)
         if shut:
@@ -55,7 +55,7 @@ def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
         f = rcs_fr3.hw.FR3(ip)
         config = rcs_fr3.hw.FR3Config()
-        f.set_parameters(config)
+        f.set_config(config)
         print("Robot info:")
         print("Current cartesian position:")
         print(f.get_cartesian_position())

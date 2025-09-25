@@ -57,9 +57,9 @@ class FrankaHand : public common::Gripper {
   FrankaHand(const std::string &ip, const FHConfig &cfg);
   ~FrankaHand() override;
 
-  bool set_parameters(const FHConfig &cfg);
+  bool set_config(const FHConfig &cfg);
 
-  FHConfig *get_parameters() override;
+  FHConfig *get_config() override;
 
   FHState *get_state() override;
 

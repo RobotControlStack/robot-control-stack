@@ -128,13 +128,13 @@ class Robot {
  public:
   virtual ~Robot(){};
 
-  // Also add an implementation specific set_parameters function that takes
+  // Also add an implementation specific set_config function that takes
   // a deduced config type
-  // This functino can also be used for signaling e.g. error recovery and the
+  // This function can also be used for signaling e.g. error recovery and the
   // like
-  // bool set_parameters(const RConfig& cfg);
+  // bool set_config(const RConfig& cfg);
 
-  virtual RobotConfig* get_parameters() = 0;
+  virtual RobotConfig* get_config() = 0;
 
   virtual RobotState* get_state() = 0;
 
@@ -167,11 +167,11 @@ class Gripper {
  public:
   virtual ~Gripper(){};
 
-  // Also add an implementation specific set_parameters function that takes
+  // Also add an implementation specific set_config function that takes
   // a deduced config type
-  // bool set_parameters(const GConfig& cfg);
+  // bool set_config(const GConfig& cfg);
 
-  virtual GripperConfig* get_parameters() = 0;
+  virtual GripperConfig* get_config() = 0;
   virtual GripperState* get_state() = 0;
 
   // set width of the gripper, 0 is closed, 1 is open
@@ -200,11 +200,11 @@ class Hand {
  public:
   virtual ~Hand(){};
   // TODO: Add low-level control interface for the hand with internal state updates
-  // Also add an implementation specific set_parameters function that takes
+  // Also add an implementation specific set_config function that takes
   // a deduced config type
-  // bool set_parameters(const GConfig& cfg);
+  // bool set_config(const GConfig& cfg);
 
-  virtual HandConfig* get_parameters() = 0;
+  virtual HandConfig* get_config() = 0;
   virtual HandState* get_state() = 0;
 
   // set width of the hand, 0 is closed, 1 is open

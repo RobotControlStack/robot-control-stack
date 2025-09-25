@@ -34,9 +34,9 @@ class PyRobot : public rcs::common::Robot {
  public:
   using rcs::common::Robot::Robot;  // Inherit constructors
 
-  rcs::common::RobotConfig *get_parameters() override {
+  rcs::common::RobotConfig *get_config() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::RobotConfig *, rcs::common::Robot,
-                           get_parameters, );
+                           get_config, );
   }
 
   rcs::common::RobotState *get_state() override {
@@ -91,9 +91,9 @@ class PyGripper : public rcs::common::Gripper {
  public:
   using rcs::common::Gripper::Gripper;  // Inherit constructors
 
-  rcs::common::GripperConfig *get_parameters() override {
+  rcs::common::GripperConfig *get_config() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::GripperConfig *, rcs::common::Gripper,
-                           get_parameters, );
+                           get_config, );
   }
 
   rcs::common::GripperState *get_state() override {
@@ -140,9 +140,9 @@ class PyHand : public rcs::common::Hand {
  public:
   using rcs::common::Hand::Hand;  // Inherit constructors
 
-  rcs::common::HandConfig *get_parameters() override {
+  rcs::common::HandConfig *get_config() override {
     PYBIND11_OVERRIDE_PURE(rcs::common::HandConfig *, rcs::common::Hand,
-                           get_parameters, );
+                           get_config, );
   }
 
   rcs::common::HandState *get_state() override {
@@ -355,7 +355,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::Robot, PyRobot, std::shared_ptr<rcs::common::Robot>>(
       common, "Robot")
       .def(py::init<>())
-      .def("get_parameters", &rcs::common::Robot::get_parameters)
+      .def("get_config", &rcs::common::Robot::get_config)
       .def("get_state", &rcs::common::Robot::get_state)
       .def("get_cartesian_position",
            &rcs::common::Robot::get_cartesian_position)
@@ -382,7 +382,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::Gripper, PyGripper,
              std::shared_ptr<rcs::common::Gripper>>(common, "Gripper")
       .def(py::init<>())
-      .def("get_parameters", &rcs::common::Gripper::get_parameters)
+      .def("get_config", &rcs::common::Gripper::get_config)
       .def("get_state", &rcs::common::Gripper::get_state)
       .def("set_normalized_width", &rcs::common::Gripper::set_normalized_width,
            py::arg("width"), py::arg("force") = 0)
@@ -402,7 +402,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::Hand, PyHand, std::shared_ptr<rcs::common::Hand>>(
       common, "Hand")
       .def(py::init<>())
-      .def("get_parameters", &rcs::common::Hand::get_parameters)
+      .def("get_config", &rcs::common::Hand::get_config)
       .def("get_state", &rcs::common::Hand::get_state)
       .def("set_normalized_joint_poses",
            &rcs::common::Hand::set_normalized_joint_poses, py::arg("q"))
@@ -515,9 +515,9 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimGripperConfig &>(),
            py::arg("sim"), py::arg("cfg"))
-      .def("get_parameters", &rcs::sim::SimGripper::get_parameters)
+      .def("get_config", &rcs::sim::SimGripper::get_config)
       .def("get_state", &rcs::sim::SimGripper::get_state)
-      .def("set_parameters", &rcs::sim::SimGripper::set_parameters,
+      .def("set_config", &rcs::sim::SimGripper::set_config,
            py::arg("cfg"));
   py::class_<rcs::sim::SimRobot, rcs::common::Robot,
              std::shared_ptr<rcs::sim::SimRobot>>(sim, "SimRobot")
@@ -526,8 +526,8 @@ PYBIND11_MODULE(_core, m) {
                     bool>(),
            py::arg("sim"), py::arg("ik"), py::arg("cfg"),
            py::arg("register_convergence_callback") = true)
-      .def("get_parameters", &rcs::sim::SimRobot::get_parameters)
-      .def("set_parameters", &rcs::sim::SimRobot::set_parameters,
+      .def("get_config", &rcs::sim::SimRobot::get_config)
+      .def("set_config", &rcs::sim::SimRobot::set_config,
            py::arg("cfg"))
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
@@ -568,9 +568,9 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<std::shared_ptr<rcs::sim::Sim>,
                     const rcs::sim::SimTilburgHandConfig &>(),
            py::arg("sim"), py::arg("cfg"))
-      .def("get_parameters", &rcs::sim::SimTilburgHand::get_parameters)
+      .def("get_config", &rcs::sim::SimTilburgHand::get_config)
       .def("get_state", &rcs::sim::SimTilburgHand::get_state)
-      .def("set_parameters", &rcs::sim::SimTilburgHand::set_parameters,
+      .def("set_config", &rcs::sim::SimTilburgHand::set_config,
            py::arg("cfg"));
 
   py::enum_<rcs::sim::CameraType>(sim, "CameraType")

@@ -64,7 +64,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
             urdf_path = rcs.scenes["fr3_empty_world"].urdf
         ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
         robot = hw.FR3(ip, ik)
-        robot.set_parameters(robot_cfg)
+        robot.set_config(robot_cfg)
 
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
 
@@ -119,7 +119,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         robots: dict[str, hw.FR3] = {}
         for ip in ips:
             robots[ip] = hw.FR3(ip, ik)
-            robots[ip].set_parameters(robot_cfg)
+            robots[ip].set_config(robot_cfg)
 
         envs = {}
         for ip in ips:
