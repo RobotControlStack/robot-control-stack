@@ -3,6 +3,7 @@ import logging
 import threading
 import typing
 from dataclasses import dataclass
+from time import sleep
 
 import numpy as np
 import pyrealsense2 as rs
@@ -320,6 +321,7 @@ class RealSenseCameraSet(HardwareCamera):
         for device in self._enabled_devices.values():
             device.pipeline.stop()
         self.disable_streams()
+        sleep(5)
 
     def enable_emitter(self, enable_ir_emitter=True):
         """
