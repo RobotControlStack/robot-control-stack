@@ -20,7 +20,7 @@ FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
 
 FrankaHand::~FrankaHand() {}
 
-bool FrankaHand::set_parameters(const FHConfig &cfg) {
+bool FrankaHand::set_config(const FHConfig &cfg) {
   franka::GripperState gripper_state = this->gripper.readOnce();
   if (gripper_state.max_width < cfg.grasping_width) {
     return false;
@@ -29,7 +29,7 @@ bool FrankaHand::set_parameters(const FHConfig &cfg) {
   return true;
 }
 
-FHConfig *FrankaHand::get_parameters() {
+FHConfig *FrankaHand::get_config() {
   // copy config to heap
   FHConfig *cfg = new FHConfig();
   *cfg = this->cfg;

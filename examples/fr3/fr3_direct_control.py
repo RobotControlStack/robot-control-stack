@@ -98,7 +98,7 @@ def main():
             robot_cfg = hw.FR3Config()
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             robot_cfg.ik_solver = hw.IKSolver.rcs_ik
-            robot.set_parameters(robot_cfg)  # type: ignore
+            robot.set_config(robot_cfg)  # type: ignore
 
             gripper_cfg_hw = hw.FHConfig()
             gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1

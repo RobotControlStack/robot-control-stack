@@ -35,7 +35,7 @@ class SO101(common.Robot):
             ),
         )
 
-    def get_parameters(self):
+    def get_config(self):
         a = common.RobotConfig()
         a.robot_platform = common.RobotPlatform.HARDWARE
         a.robot_type = common.RobotType.SO101
@@ -83,7 +83,7 @@ class S0101Gripper(common.Gripper):
         obs = self._hf_robot.get_observation()
         return obs["gripper.pos"] / 100.0
 
-    # def get_parameters(self) -> GripperConfig: ...
+    # def get_config(self) -> GripperConfig: ...
     # def get_state(self) -> GripperState: ...
 
     def grasp(self) -> None:

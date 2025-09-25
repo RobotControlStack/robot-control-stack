@@ -57,14 +57,14 @@ void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
   }
 }
 
-bool SimGripper::set_parameters(const SimGripperConfig &cfg) {
+bool SimGripper::set_config(const SimGripperConfig &cfg) {
   this->cfg = cfg;
   this->add_collision_geoms(cfg.ignored_collision_geoms,
                             this->ignored_collision_geoms, true);
   return true;
 }
 
-SimGripperConfig *SimGripper::get_parameters() {
+SimGripperConfig *SimGripper::get_config() {
   // copy config to heap
   SimGripperConfig *cfg = new SimGripperConfig();
   *cfg = this->cfg;

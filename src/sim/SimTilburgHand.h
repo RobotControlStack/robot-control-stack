@@ -103,9 +103,9 @@ class SimTilburgHand : public common::Hand {
   SimTilburgHand(std::shared_ptr<Sim> sim, const SimTilburgHandConfig &cfg);
   ~SimTilburgHand() override;
 
-  bool set_parameters(const SimTilburgHandConfig &cfg);
+  bool set_config(const SimTilburgHandConfig &cfg);
 
-  SimTilburgHandConfig *get_parameters() override;
+  SimTilburgHandConfig *get_config() override;
 
   SimTilburgHandState *get_state() override;
 

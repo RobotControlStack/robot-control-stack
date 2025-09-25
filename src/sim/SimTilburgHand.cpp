@@ -66,7 +66,7 @@ SimTilburgHand::~SimTilburgHand() {}
 //   }
 // }
 
-bool SimTilburgHand::set_parameters(const SimTilburgHandConfig &cfg) {
+bool SimTilburgHand::set_config(const SimTilburgHandConfig &cfg) {
   auto current_grasp_type = this->cfg.grasp_type;
   this->cfg = cfg;
   if (!this->set_grasp_type(current_grasp_type)) {
@@ -89,7 +89,7 @@ bool SimTilburgHand::set_grasp_type(common::GraspType grasp_type) {
   return true;
 }
 
-SimTilburgHandConfig *SimTilburgHand::get_parameters() {
+SimTilburgHandConfig *SimTilburgHand::get_config() {
   // copy config to heap
   SimTilburgHandConfig *cfg = new SimTilburgHandConfig();
   *cfg = this->cfg;

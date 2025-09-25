@@ -38,7 +38,7 @@ FR3::~FR3() {}
  * @param cfg The configuration for the robot, it should be a FR3Config type
  * otherwise the call will fail
  */
-bool FR3::set_parameters(const FR3Config &cfg) {
+bool FR3::set_config(const FR3Config &cfg) {
   this->cfg = cfg;
   this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -59,7 +59,7 @@ bool FR3::set_parameters(const FR3Config &cfg) {
   return true;
 }
 
-FR3Config *FR3::get_parameters() {
+FR3Config *FR3::get_config() {
   // copy config to heap
   FR3Config *cfg = new FR3Config();
   *cfg = this->cfg;

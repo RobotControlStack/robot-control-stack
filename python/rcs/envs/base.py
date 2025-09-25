@@ -176,7 +176,7 @@ class ControlMode(Enum):
 
 def get_dof(robot: common.Robot) -> int:
     """Returns the number of degrees of freedom of the robot."""
-    return common.robots_meta_config(robot.get_parameters().robot_type).dof
+    return common.robots_meta_config(robot.get_config().robot_type).dof
 
 
 def get_joint_limits(robot: common.Robot) -> tuple[np.ndarray, np.ndarray]:
@@ -184,13 +184,13 @@ def get_joint_limits(robot: common.Robot) -> tuple[np.ndarray, np.ndarray]:
 
     The first element is the lower limit, the second element is the upper limit.
     """
-    limits = common.robots_meta_config(robot.get_parameters().robot_type).joint_limits
+    limits = common.robots_meta_config(robot.get_config().robot_type).joint_limits
     return limits[0], limits[1]
 
 
 def get_home_position(robot: common.Robot) -> np.ndarray:
     """Returns the home position of the robot."""
-    return common.robots_meta_config(robot.get_parameters().robot_type).q_home
+    return common.robots_meta_config(robot.get_config().robot_type).q_home
 
 
 class RobotEnv(gym.Env):

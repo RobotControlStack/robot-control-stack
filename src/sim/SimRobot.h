@@ -62,8 +62,8 @@ class SimRobot : public common::Robot {
   SimRobot(std::shared_ptr<rcs::sim::Sim> sim, std::shared_ptr<common::IK> ik,
            SimRobotConfig cfg, bool register_convergence_callback = true);
   ~SimRobot() override;
-  bool set_parameters(const SimRobotConfig &cfg);
-  SimRobotConfig *get_parameters() override;
+  bool set_config(const SimRobotConfig &cfg);
+  SimRobotConfig *get_config() override;
   SimRobotState *get_state() override;
   common::Pose get_cartesian_position() override;
   void set_joint_position(const common::VectorXd &q) override;
