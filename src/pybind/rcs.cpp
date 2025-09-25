@@ -487,15 +487,11 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("last_width", &rcs::sim::SimGripperState::last_width)
       .def_readonly("collision", &rcs::sim::SimGripperState::collision);
 
-  py::class_<rcs::sim::SimConfig>(
-      sim, "SimConfig")
+  py::class_<rcs::sim::SimConfig>(sim, "SimConfig")
       .def(py::init<>())
-      .def_readwrite("async_control",
-                     &rcs::sim::SimConfig::async_control)
-      .def_readwrite("realtime",
-                     &rcs::sim::SimConfig::realtime)
-      .def_readwrite("frequency",
-                     &rcs::sim::SimConfig::frequency)
+      .def_readwrite("async_control", &rcs::sim::SimConfig::async_control)
+      .def_readwrite("realtime", &rcs::sim::SimConfig::realtime)
+      .def_readwrite("frequency", &rcs::sim::SimConfig::frequency)
       .def_readwrite("max_convergence_steps",
                      &rcs::sim::SimConfig::max_convergence_steps);
 
@@ -513,7 +509,6 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &rcs::sim::Sim::reset)
       .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
-
 
   py::class_<rcs::sim::SimGripper, rcs::common::Gripper,
              std::shared_ptr<rcs::sim::SimGripper>>(sim, "SimGripper")

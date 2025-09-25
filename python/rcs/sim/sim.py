@@ -12,7 +12,7 @@ import mujoco as mj
 import mujoco.viewer
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
-from rcs.sim import egl_bootstrap, SimConfig
+from rcs.sim import SimConfig, egl_bootstrap
 from rcs.utils import SimpleFrameRate
 
 egl_bootstrap.bootstrap()

@@ -29,7 +29,9 @@ class PickUpDemo:
         geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
         obj_pose_world_coordinates = Pose(
             translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
-        ) * Pose(rpy_vector=np.array([0, 0, np.pi]), translation=[0, 0, 0])  # type: ignore
+        ) * Pose(
+            rpy_vector=np.array([0, 0, np.pi]), translation=[0, 0, 0]  # type: ignore
+        )
         return self.unwrapped.robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:

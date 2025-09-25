@@ -26,6 +26,7 @@ fr3_direct_control.py example which uses the FCI context manager.
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
 FR3_IP = "192.168.101.1"
 
+
 def main():
     if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
         env_rel = SimEnvCreator()(
@@ -40,6 +41,7 @@ def main():
     else:
         from rcs_fr3.creators import RCSFR3EnvCreator
         from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+
         env_rel = RCSFR3EnvCreator()(
             ip=FR3_IP,
             control_mode=ControlMode.CARTESIAN_TQuat,

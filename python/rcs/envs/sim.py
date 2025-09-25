@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, SupportsFloat, Type, cast
 
 import gymnasium as gym
@@ -12,11 +13,10 @@ from rcs.envs.base import (
 )
 from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.envs.utils import default_sim_robot_cfg, default_sim_tilburg_hand_cfg
+from rcs.utils import SimpleFrameRate
 
 import rcs
-import time
 from rcs import sim
-from rcs.utils import SimpleFrameRate
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -45,15 +45,15 @@ class RobotSimWrapper(gym.Wrapper):
         self.sim_robot = cast(sim.SimRobot, self.unwrapped.robot)
         self.sim = simulation
         cfg = self.sim.get_config()
-        self.frame_rate = SimpleFrameRate(1/cfg.frequency, "RobotSimWrapper")
+        self.frame_rate = SimpleFrameRate(1 / cfg.frequency, "RobotSimWrapper")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
         _, _, _, _, info = super().step(action)
         cfg = self.sim.get_config()
         if cfg.async_control:
-            self.sim.step(round(1/cfg.frequency / self.sim.model.opt.timestep))
+            self.sim.step(round(1 / cfg.frequency / self.sim.model.opt.timestep))
             if cfg.realtime:
-                self.frame_rate.frame_rate = 1/cfg.frequency
+                self.frame_rate.frame_rate = 1 / cfg.frequency
                 self.frame_rate()
 
         else:
