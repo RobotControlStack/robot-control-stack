@@ -70,4 +70,4 @@ FetchContent_Declare(pybind11
 
 FetchContent_MakeAvailable(rl libfranka pybind11)
 
-add_subdirectory(src)
+add_subdirectory(src_fr3)
