@@ -3,12 +3,17 @@ import typing
 import numpy as np
 from lerobot.common.robots.so101_follower.so101_follower import SO101Follower
 
-from rcs import common
+from rcs import common, scenes
 
 
 class SO101(common.Robot):
-    def __init__(self, hf_robot: SO101Follower, urdf_path: str):
-        self.ik = common.RL(urdf_path=urdf_path)
+    def __init__(self, hf_robot: SO101Follower):
+        # TODO: fix the hardcoded path when merged with so101 branch
+        self.ik = common.Pin(
+            scenes["so101_empty_world"].mjcf_robot,
+            "attachment_site",
+        )
+        # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
         self._hf_robot = hf_robot
         self._hf_robot.connect()
 
@@ -16,7 +21,7 @@ class SO101(common.Robot):
     def get_cartesian_position(self) -> common.Pose:
         return self.ik.forward(self.get_joint_position())
 
-    def get_ik(self) -> common.IK | None:
+    def get_ik(self) -> common.Kinematics | None:
         return self.ik
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
@@ -55,7 +60,7 @@ class SO101(common.Robot):
         pass
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        joints = self.ik.ik(pose, q0=self.get_joint_position())
+        joints = self.ik.inverse(pose, q0=self.get_joint_position())
         if joints is not None:
             self.set_joint_position(joints)
 

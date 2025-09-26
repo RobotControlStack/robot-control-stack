@@ -1,0 +1,27 @@
+[build-system]
+requires = []
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "rcs_robotics_library"
+version = "0.4.0"
+description="RCS robotics library integration"
+readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+]
+authors = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Pierre Krack", email = "pierre.krack@utn.de" },
+]
+requires-python = ">=3.10"
+license = {file = "../../LICENSE"}
+
+
+[tool.scikit-build]
+build.verbose = true
+build.targets = ["_core"]
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["src/rcs_robotics_library"]
+install.components = ["python_package"]

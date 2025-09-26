@@ -21,16 +21,15 @@ __all__ = [
     "Hand",
     "HandConfig",
     "HandState",
-    "IK",
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
+    "Kinematics",
     "LATERAL_GRASP",
     "POWER_GRASP",
     "PRECISION_GRASP",
     "Pin",
     "Pose",
-    "RL",
     "RPY",
     "Robot",
     "RobotConfig",
@@ -128,13 +127,13 @@ class HandConfig:
 class HandState:
     def __init__(self) -> None: ...
 
-class IK:
+class Kinematics:
     def forward(self, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...) -> Pose: ...
-    def ik(
+    def inverse(
         self, pose: Pose, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None: ...
 
-class Pin(IK):
+class Pin(Kinematics):
     def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = True) -> None: ...
 
 class Pose:
@@ -195,9 +194,6 @@ class Pose:
     def translation(self) -> numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
     def xyzrpy(self) -> numpy.ndarray[tuple[typing.Literal[6]], numpy.dtype[numpy.float64]]: ...
 
-class RL(IK):
-    def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...
-
 class RPY:
     pitch: float
     roll: float
@@ -223,7 +219,7 @@ class Robot:
     def get_base_pose_in_world_coordinates(self) -> Pose: ...
     def get_cartesian_position(self) -> Pose: ...
     def get_config(self) -> RobotConfig: ...
-    def get_ik(self) -> IK | None: ...
+    def get_ik(self) -> Kinematics | None: ...
     def get_joint_position(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
     def get_state(self) -> RobotState: ...
     def move_home(self) -> None: ...

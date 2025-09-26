@@ -149,4 +149,16 @@ major_version_zero = true
 version_files = [
     "CMakeLists.txt:VERSION",
     "python/rcs/_core/__init__.pyi:__version__",
+
+    "extensions/rcs_fr3/CMakeLists.txt:VERSION",
+    "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
+    "extensions/rcs_fr3/pyproject.toml:project.version",
+
+    "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
+    "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",
+    "extensions/rcs_robotics_library/pyproject.toml:project.version",
+
+    "extensions/rcs_realsense/pyproject.toml:project.version",
+    "extensions/rcs_so101/pyproject.toml:project.version",
+    "extensions/rcs_xarm7/pyproject.toml:project.version",
 ]

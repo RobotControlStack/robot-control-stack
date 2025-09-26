@@ -151,7 +151,7 @@ class SimGripperState(rcs._core.common.GripperState):
 
 class SimRobot(rcs._core.common.Robot):
     def __init__(
-        self, sim: Sim, ik: rcs._core.common.IK, cfg: SimRobotConfig, register_convergence_callback: bool = True
+        self, sim: Sim, ik: rcs._core.common.Kinematics, cfg: SimRobotConfig, register_convergence_callback: bool = True
     ) -> None: ...
     def get_config(self) -> SimRobotConfig: ...
     def get_state(self) -> SimRobotState: ...
@@ -165,7 +165,6 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
     joint_rotational_tolerance: float
     joints: list[str]
     mjcf_scene_path: str
-    realtime: bool
     seconds_between_callbacks: float
     trajectory_trace: bool
     def __init__(self) -> None: ...

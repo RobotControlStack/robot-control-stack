@@ -10,7 +10,7 @@
 #include <string>
 #include <thread>
 
-#include "rcs/IK.h"
+#include "rcs/Kinematics.h"
 #include "rcs/LinearPoseTrajInterpolator.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
@@ -34,6 +34,8 @@ struct FR3Config : common::RobotConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
+  common::RobotType robot_type = common::RobotType::FR3;
+  common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::franka_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;
@@ -48,7 +50,7 @@ class FR3 : public common::Robot {
  private:
   franka::Robot robot;
   FR3Config cfg;
-  std::optional<std::shared_ptr<common::IK>> m_ik;
+  std::optional<std::shared_ptr<common::Kinematics>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
   common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
@@ -62,7 +64,7 @@ class FR3 : public common::Robot {
 
  public:
   FR3(const std::string &ip,
-      std::optional<std::shared_ptr<common::IK>> ik = std::nullopt,
+      std::optional<std::shared_ptr<common::Kinematics>> ik = std::nullopt,
       const std::optional<FR3Config> &cfg = std::nullopt);
   ~FR3() override;
 
@@ -100,7 +102,7 @@ class FR3 : public common::Robot {
 
   void set_cartesian_position(const common::Pose &pose) override;
 
-  std::optional<std::shared_ptr<common::IK>> get_ik() override;
+  std::optional<std::shared_ptr<common::Kinematics>> get_ik() override;
 
   void set_cartesian_position_internal(const common::Pose &pose,
                                        double max_time,

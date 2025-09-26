@@ -24,8 +24,9 @@ namespace sim {
 
 // TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
-SimRobot::SimRobot(std::shared_ptr<Sim> sim, std::shared_ptr<common::IK> ik,
-                   SimRobotConfig cfg, bool register_convergence_callback)
+SimRobot::SimRobot(std::shared_ptr<Sim> sim,
+                   std::shared_ptr<common::Kinematics> ik, SimRobotConfig cfg,
+                   bool register_convergence_callback)
     : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
   this->init_ids();
   if (register_convergence_callback) {
@@ -137,14 +138,14 @@ common::VectorXd SimRobot::get_joint_position() {
   return q;
 }
 
-std::optional<std::shared_ptr<common::IK>> SimRobot::get_ik() {
+std::optional<std::shared_ptr<common::Kinematics>> SimRobot::get_ik() {
   return this->m_ik;
 }
 
 void SimRobot::set_cartesian_position(const common::Pose& pose) {
   // pose is assumed to be in the robots coordinate frame
-  auto joint_vals =
-      this->m_ik->ik(pose, this->get_joint_position(), this->cfg.tcp_offset);
+  auto joint_vals = this->m_ik->inverse(pose, this->get_joint_position(),
+                                        this->cfg.tcp_offset);
   if (joint_vals.has_value()) {
     this->state.ik_success = true;
     this->set_joint_position(joint_vals.value());

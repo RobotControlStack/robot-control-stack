@@ -1,7 +1,7 @@
 #ifndef RCS_FR3SIM_H
 #define RCS_FR3SIM_H
 #include <mujoco/mujoco.h>
-#include <rcs/IK.h>
+#include <rcs/Kinematics.h>
 #include <rcs/Pose.h>
 #include <rcs/Robot.h>
 #include <rcs/utils.h>
@@ -15,7 +15,6 @@ struct SimRobotConfig : common::RobotConfig {
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
-  bool realtime = false;
   bool trajectory_trace = false;
   std::vector<std::string> arm_collision_geoms{
       "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
@@ -59,8 +58,9 @@ struct SimRobotState : common::RobotState {
 
 class SimRobot : public common::Robot {
  public:
-  SimRobot(std::shared_ptr<rcs::sim::Sim> sim, std::shared_ptr<common::IK> ik,
-           SimRobotConfig cfg, bool register_convergence_callback = true);
+  SimRobot(std::shared_ptr<rcs::sim::Sim> sim,
+           std::shared_ptr<common::Kinematics> ik, SimRobotConfig cfg,
+           bool register_convergence_callback = true);
   ~SimRobot() override;
   bool set_config(const SimRobotConfig &cfg);
   SimRobotConfig *get_config() override;
@@ -71,7 +71,7 @@ class SimRobot : public common::Robot {
   void move_home() override;
   void set_cartesian_position(const common::Pose &pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;
-  std::optional<std::shared_ptr<common::IK>> get_ik() override;
+  std::optional<std::shared_ptr<common::Kinematics>> get_ik() override;
   void reset() override;
   void set_joints_hard(const common::VectorXd &q);
   void close() override {};
@@ -80,7 +80,7 @@ class SimRobot : public common::Robot {
   SimRobotConfig cfg;
   SimRobotState state;
   std::shared_ptr<Sim> sim;
-  std::shared_ptr<common::IK> m_ik;
+  std::shared_ptr<common::Kinematics> m_ik;
   struct {
     std::set<size_t> cgeom;
     int attachment_site;
