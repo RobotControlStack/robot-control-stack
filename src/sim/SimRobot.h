@@ -15,7 +15,6 @@ struct SimRobotConfig : common::RobotConfig {
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
-  bool realtime = false;
   bool trajectory_trace = false;
   std::vector<std::string> arm_collision_geoms{
       "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",

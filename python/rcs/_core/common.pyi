@@ -30,7 +30,6 @@ __all__ = [
     "PRECISION_GRASP",
     "Pin",
     "Pose",
-    "RL",
     "RPY",
     "Robot",
     "RobotConfig",
@@ -194,9 +193,6 @@ class Pose:
     def total_angle(self) -> float: ...
     def translation(self) -> numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
     def xyzrpy(self) -> numpy.ndarray[tuple[typing.Literal[6]], numpy.dtype[numpy.float64]]: ...
-
-class RL(Kinematics):
-    def __init__(self, urdf_path: str, max_duration_ms: int = 300) -> None: ...
 
 class RPY:
     pitch: float

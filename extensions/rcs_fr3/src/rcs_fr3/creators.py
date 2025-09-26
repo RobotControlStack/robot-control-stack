@@ -38,7 +38,6 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
-        urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
         """
         Creates a hardware environment for the FR3 robot.
@@ -55,14 +54,16 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
                 translational movement in meters. If tuple, it restricts both translational (in meters) and rotational
                 (in radians) movements. If None, no restriction is applied.
             relative_to (RelativeTo): Specifies whether the movement is relative to a configured origin or the last step.
-            urdf_path (str | PathLike | None): Path to the URDF file. If None the included one is used. A URDF file is needed for collision guarding.
 
         Returns:
             gym.Env: The configured hardware environment for the FR3 robot.
         """
-        if urdf_path is None:
-            urdf_path = rcs.scenes["fr3_empty_world"].urdf
-        ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
         robot = hw.FR3(ip, ik)
         robot.set_config(robot_cfg)
 
@@ -111,11 +112,15 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
-        urdf_path: str | PathLike | None = None,
     ) -> gym.Env:
 
-        urdf_path = rcs.scenes["fr3_empty_world"].urdf
-        ik = rcs.common.RL(str(urdf_path)) if urdf_path is not None else None
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
+
         robots: dict[str, hw.FR3] = {}
         for ip in ips:
             robots[ip] = hw.FR3(ip, ik)

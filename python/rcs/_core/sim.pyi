@@ -165,7 +165,6 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
     joint_rotational_tolerance: float
     joints: list[str]
     mjcf_scene_path: str
-    realtime: bool
     seconds_between_callbacks: float
     trajectory_trace: bool
     def __init__(self) -> None: ...

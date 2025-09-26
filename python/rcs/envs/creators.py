@@ -83,7 +83,7 @@ class SimEnvCreator(EnvCreator):
             robot_cfg.attachment_site,
             urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
         )
-        # ik = rcs.common.RL(robot_cfg.kinematic_model_path)
+        # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
         env: gym.Env = RobotEnv(robot, control_mode)
@@ -258,7 +258,6 @@ class FR3LabDigitGripperPickUpSimEnvCreator(EnvCreator):
             rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),  # type: ignore
         )
         robot_cfg.robot_type = rcs.common.RobotType.FR3
-        robot_cfg.realtime = False
         robot_cfg.add_id("0")  # only required for fr3
         robot_cfg.mjcf_scene_path = mjcf_path
         robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot  # .urdf (in case for urdf)

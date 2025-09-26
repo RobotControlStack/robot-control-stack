@@ -34,6 +34,8 @@ struct FR3Config : common::RobotConfig {
   // TODO: max force and elbow?
   // TODO: we can either write specific bindings for each, or we use python
   // dictionaries with these objects
+  common::RobotType robot_type = common::RobotType::FR3;
+  common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::franka_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   std::optional<FR3Load> load_parameters = std::nullopt;

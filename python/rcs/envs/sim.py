@@ -248,7 +248,6 @@ class CollisionGuard(gym.Wrapper[dict[str, Any], dict[str, Any], dict[str, Any],
         simulation = sim.Sim(mjmld)
         cfg = default_sim_robot_cfg(mjmld, id)
         ik = rcs.common.Pin(cg_kinematics_path, cfg.attachment_site, False)
-        cfg.realtime = False
         if tcp_offset is not None:
             cfg.tcp_offset = tcp_offset
         robot = rcs.sim.SimRobot(simulation, ik, cfg)

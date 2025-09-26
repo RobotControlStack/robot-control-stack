@@ -10,7 +10,6 @@ from rcs import common
 
 @dataclass(kw_only=True)
 class XArm7Config(common.RobotConfig):
-    # some_custom_config: str = "default_value"
     payload_weight: float = 0.624
     payload_tcp: List[float] = field(default_factory=lambda: [-4.15, 5.24, 76.38])
     async_control: bool = False
@@ -23,7 +22,7 @@ class XArm7(common.Robot):
     def __init__(self, ip: str):
         super().__init__()
 
-        self.ik = None  # common.RL(urdf_path=urdf_path)
+        self.ik = None
         self._config = XArm7Config()
         self._config.robot_platform = common.RobotPlatform.HARDWARE
         self._config.robot_type = common.RobotType.XArm7
@@ -52,7 +51,7 @@ class XArm7(common.Robot):
 
         return common.Pose(rpy_vector=rpy, translation=translation_meter)  # type: ignore
 
-    def get_ik(self) -> common.IK | None:
+    def get_ik(self) -> common.Kinematics | None:
         return self.ik
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]]:  # type: ignore

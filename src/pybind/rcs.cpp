@@ -15,7 +15,6 @@
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
-#include "rl/mdl/UrdfFactory.h"
 
 // TODO: define exceptions
 
@@ -294,11 +293,6 @@ PYBIND11_MODULE(_core, m) {
       .def("forward", &rcs::common::Kinematics::forward, py::arg("q0"),
            py::arg("tcp_offset") = rcs::common::Pose::Identity());
 
-  py::class_<rcs::common::RL, rcs::common::Kinematics,
-             std::shared_ptr<rcs::common::RL>>(common, "RL")
-      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
-           py::arg("max_duration_ms") = 300);
-
   py::class_<rcs::common::Pin, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
       .def(py::init<const std::string &, const std::string &, bool>(),
@@ -431,7 +425,6 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimRobotConfig::joint_rotational_tolerance)
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimRobotConfig::seconds_between_callbacks)
-      .def_readwrite("realtime", &rcs::sim::SimRobotConfig::realtime)
       .def_readwrite("mjcf_scene_path",
                      &rcs::sim::SimRobotConfig::mjcf_scene_path)
       .def_readwrite("trajectory_trace",
