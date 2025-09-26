@@ -16,4 +16,4 @@ from __future__ import annotations
 from . import common, sim
 
 __all__ = ["common", "sim"]
-__version__: str = "0.4.0"
+__version__: str = "0.5.0"

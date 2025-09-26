@@ -1,3 +1,196 @@
+## v0.5.0 (2025-09-26)
+
+### Feat
+
+- refactor robotics library ik into own extension
+- **sim**: sim config support for async and realtime mode
+- **install**: copy scene files into install folder
+- add random object pos to task env creator
+- added a configurable RandomObjectPos wrapper for flexible object placement in collector
+- add async control
+- add new env creator for diffpol evaluation, refactor existing one's camera creation logic
+- **xarm**: include depth in xarm realsense recording
+- added new envcreator for agent evaluation
+- pretty xarm
+- twin grasp
+- added digital twin for xarm
+- grasp demo
+- working real setup integration
+- add logic for init using either gripper or hand
+- add the simple hw tilburg test script
+- add an example for robot with hand
+- added an option for simulating hand
+- added default config for sim tilburg hand
+- added a HandWrapperSim
+- stubgen for SimTilburgHand
+- pybind for SimTilburgHand
+- added a basic compiling sim tilburg hand
+- added a grasp type enum for the hand
+- added mjcf xarm7
+- cartesian control
+- add xArm7 extension
+- calibration cache for realsense
+- docker compose restructure
+- docker compose add-ons
+- docker Added full working command wih hardware acess
+- docker add optional flags for running the container with hardware access:
+- docker enhance docker file user command cpu and gpu
+- docker add gpu support
+- docker image for rcs
+- work in progress: initial working docker
+- **rcs**: docker development
+- Added cartesian pose support for planning This calls the RobotEnv's ik function internally.
+- Added basic joint-level OMPL
+- full calibration support
+- **env**: allow nested space types
+- **sim**: intrinsic and extrinsic as additional camera data
+- mjcf support in pinoccio ik
+- **ik**: added pinocchio ik
+- added stub files for rcs_fr3
+- added findrcs.cmake to fr3 and used rcs instead of common
+- added initial cmake structure for fr3
+- **sim**: allow sim gripper to have arbitrary min max vals
+- **so101**: config for sim mode
+- **hw**: added hw support for so101
+- **ik**: add kinematics forward function
+- **gripper**: adds is_grapsed and width to info dict
+- **env**: made reset optional
+- **envs**: support for control of multiple robots
+- improve pick cube reward
+- **pyproject.toml**: add digit-interface to pyproject.toml
+- **examples digit_cam envs**: working on digit integration
+- **hand**: enable Binary and vector action
+
+### Fix
+
+- mode for async joint control and move_home
+- RandomObjectPos include setting orientation
+- **bindings**: robot and gripper interface with init function
+- tilburg hand usage of generic sized array
+- remove repeated robot_cfg
+- change to trajectory planning mode
+- **model**: actuatorgravcomp in xarm
+- **sim**: confusion of joint and actuator values
+- **sim**: fixed length simrobot ids
+- data class import in init
+- remove tcp offset from franka
+- seg fault in examples
+- relative path for scences
+- call proper setter function
+- **sim**: tcp offset in robot mjcf
+- **ik**: pinocchio ik with mjcf
+- account for binary case
+- change hard-coded value orders to match hardware
+- consistent function name
+- add SimTIlburgHand to exported stuff
+- syntax consistency
+- **README**: fix docker x acces command
+- **sim**: tcp offset in robot mjcf
+- **ik**: pinocchio ik with mjcf
+- mypy errors
+- pyformat and pylint changes
+- make ompl path result into a list of np arrays for better compat
+- **sim**: camera render image mixup
+- **calibration**: april tag offset and not visible msg
+- **cam**: depth scaling corrected
+- **sim camera**: remove framerate for direct camera render flag
+- **cmake**: added pinocchio link dep
+- implicit numpy version bumping and stubfiles
+- **cmake**: added pinocchio parsers
+- pinocchio ik to use custom frame
+- **fr3**: pybind rcs module refs
+- cycle import problem
+- rcs and rcs_fr3 compile
+- realsense structure
+- **digit**: remove property in digit config
+- **franka hand**: remove slow stopping
+- **cli**: remove refactor left over
+- **hw camera**: recording doesnt block lock, clear buffer waits for frames
+- **examples envs**: make digit_cam work with hardware instead of simulation
+- **envs**: 
+- **hand**: fix grasp mechanism after refactoring
+- **env creators**: gripper config types
+- **examples**: import of hand example
+- remaining qarts renamed
+- imports for renamed rcs package
+- **env**: fix some of the requersted changes
+- **hand**: make default value in TilburgHandControl class instead of HandControl class
+- **hand**: add get_pos_vector and set_pos_vector to Handcontol class
+
+### Refactor
+
+- rename ik into kinematics and inverse
+- rename set and get parameters to config
+- removed get tcp offset from mjcf utility
+- **envs**: renamed binary hand key to gripper
+- proper scene configuration
+- added mjcf and kinematics path to robot config
+- scene and kinematic file usage
+- introduce close method for cleanup
+- **env**: gripper wrapper non private gripper
+- calibration with list instead of queue
+- **camera**: calibration interface change
+- move xtrinsics into calibration
+- move examples into top level
+- compatility with current master
+- **ik**: abstract ik class with rl subclass
+- **fr3**: moved stubs to correct location
+- rename extensions with rcs prefix
+- rcs headers in own include folder, header copy and fr3 rcs renaming
+- build shared librcs
+- removed hw module from bindings and python code
+- seperate hardware extensions
+- **fr3**: moved env creators and utils for fr3 module
+- **fr3**: moved envs in fr3 module
+- fr3 module with desk in it
+- moved realsense into its own module
+- **sim**: generalize gripper to use a single joint
+- removed lab specific wrappers
+- **sim**: gui loop to use simple frame rate
+- moved frame rate and improved time tacking
+- moved sim into own folder
+- Remove private scenes, add public assets (#182)
+- **camera**: hardware camera with composition and digit as camera
+- **camera**: config and camera set
+- replace pydantic with dataclasses
+- **digit**: moved digit to camera folder
+- **gym sim**: removed fr3 from sim wrapper
+- **gripper**: id fill method and gripper with id
+- **robot ids**: move ids to config
+- **robot ids**: ids must match in config
+- mujoco attributes in config
+- stubs and ik solver rename to fit rcs package
+- renamed imports and all other occurrences rcsss -> rcs
+- renamed rcsss python folder to rcs
+- renamed bindings file to rcs.cpp
+- traj interpolator in same style
+- Flexible dof and robot meta config
+- rename FR3Env to RobotEnv
+- renaming of env creator classes
+- rename rcs sim classes in python
+- rename sim robot classes pybind
+- **cpp**: sim independent of robot type
+- removed unused robotwithgripper class
+- rename motion generator
+- rename quart to quat
+- **env**: factory functions into env creators
+- **env**: renamed factories to creators
+- rename resource manager to context manager
+- remove unused n robots class
+- removed unsued recordings
+- **control**: remove app code
+- **env**: sim specific gripper func into own wrapper
+- **hand**: previous renaming in code
+- **hand**: rename to remove control in name
+- **hand**: python protocol interface
+- **examples**: pyformat, pylint and pytest
+- **examples**: 
+- **envs**: fix pyformat, pylint and pytest
+- **envs, hand, examples**: address the requested changes
+- **hand**: beteter handling of default grasp value and add tilburg-hand library to requieremnts_dev.txt
+- **hand**: fix pyformat, pylint and pytest
+- **hand**: fix pyformat, pylint and pytest
+
 ## v0.4.0 (2025-05-12)
 
 ### Feat

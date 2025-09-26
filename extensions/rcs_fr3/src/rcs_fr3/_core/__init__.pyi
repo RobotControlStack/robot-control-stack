@@ -16,4 +16,4 @@ from __future__ import annotations
 from . import hw
 
 __all__ = ["hw"]
-__version__: str = "0.4.0"
+__version__: str = "0.5.0"
