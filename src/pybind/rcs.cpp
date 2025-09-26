@@ -304,6 +304,7 @@ PYBIND11_MODULE(_core, m) {
       .value("UR5e", rcs::common::RobotType::UR5e)
       .value("SO101", rcs::common::RobotType::SO101)
       .value("XArm7", rcs::common::RobotType::XArm7)
+      .value("Panda", rcs::common::RobotType::Panda)
       .export_values();
 
   py::enum_<rcs::common::RobotPlatform>(common, "RobotPlatform")

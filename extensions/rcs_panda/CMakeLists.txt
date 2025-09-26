@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(
-    rcs
+    rcs_panda
     LANGUAGES C CXX
-    VERSION 0.5.0
-    DESCRIPTION "Robot Control Stack Library"
+    VERSION 0.4.0
+    DESCRIPTION "RCS Libfranka integration"
 )
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -31,14 +31,36 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# turn off libfranka tests
+set(BUILD_TESTS OFF)
+set(BUILD_EXAMPLES OFF)
+set(RL_BUILD_DEMOS OFF)
+set(RL_BUILD_RL_SG OFF)
+set(RL_BUILD_TESTS OFF)
+set(RL_BUILD_EXTRAS OFF)
+set(BUILD_PYTHON_INTERFACE OFF)
+set(BUILD_DOCUMENTATION OFF)
+
 include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-find_package(MuJoCo REQUIRED)
 find_package(pinocchio REQUIRED)
+find_package(rcs REQUIRED)
 
-
+FetchContent_Declare(rl
+    GIT_REPOSITORY https://github.com/roboticslibrary/rl.git
+    GIT_TAG 0b3797215345a1d37903634095361233d190b2e6
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_Declare(
+    libfranka
+    GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
+    GIT_TAG 0.9.2
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
 FetchContent_Declare(pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
     GIT_TAG v2.13.4
@@ -46,7 +68,6 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(pybind11)
-include(compile_scenes)
+FetchContent_MakeAvailable(rl libfranka pybind11)
 
 add_subdirectory(src)

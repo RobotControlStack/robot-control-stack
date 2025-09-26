@@ -18,7 +18,7 @@ struct RobotMetaConfig {
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits;
 };
 
-enum RobotType { FR3 = 0, UR5e, SO101, XArm7 };
+enum RobotType { FR3 = 0, UR5e, SO101, XArm7, Panda };
 enum RobotPlatform { SIMULATION = 0, HARDWARE };
 
 static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
@@ -38,6 +38,22 @@ static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
             -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
             // high 7‐tuple
             2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+               .finished()}},
+      {Panda,
+       RobotMetaConfig{
+           // q_home:
+           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+            M_PI_4)
+               .finished(),
+           // dof:
+           7,
+           // joint_limits:
+           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+                // low 7‐tuple
+            -166. / 180. * M_PI, -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI, -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
+            // high 7‐tuple
+            166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI, -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI, 166. / 180. * M_PI
+          )
                .finished()}},
 
       // -------------- UR5e --------------
