@@ -19,9 +19,4 @@ authors = [
   { name = "Pierre Krack", email = "pierre.krack@utn.de" },
 ]
 requires-python = ">=3.10"
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
-  "Programming Language :: Python :: 3",
-]
-
+license = "AGPL-3.0-or-later"

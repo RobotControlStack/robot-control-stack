@@ -20,9 +20,4 @@ authors = [
   { name = "Ken Nakahara", email = "knakahara@lasr.org" },
 ]
 requires-python = ">=3.10"
-license       = "AGPL-3.0-or-later"
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Programming Language :: Python :: 3",
-]
-
+license = "AGPL-3.0-or-later"

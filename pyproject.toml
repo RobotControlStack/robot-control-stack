@@ -37,12 +37,7 @@ authors = [
   { name = "Pierre Krack", email = "pierre.krack@utn.de" },
 ]
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
-  "Programming Language :: Python :: 3",
-]
+license = "AGPL-3.0-or-later"
 
 # until https://github.com/pypa/pip/issues/11440 is resolved
 # we use requirements_dev.txt for linter and formatter dependencies
@@ -152,13 +147,13 @@ version_files = [
 
     "extensions/rcs_fr3/CMakeLists.txt:VERSION",
     "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
-    "extensions/rcs_fr3/pyproject.toml:project.version",
+    "extensions/rcs_fr3/pyproject.toml:version",
 
     "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
     "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",
-    "extensions/rcs_robotics_library/pyproject.toml:project.version",
+    "extensions/rcs_robotics_library/pyproject.toml:version",
 
-    "extensions/rcs_realsense/pyproject.toml:project.version",
-    "extensions/rcs_so101/pyproject.toml:project.version",
-    "extensions/rcs_xarm7/pyproject.toml:project.version",
+    "extensions/rcs_realsense/pyproject.toml:version",
+    "extensions/rcs_so101/pyproject.toml:version",
+    "extensions/rcs_xarm7/pyproject.toml:version",
 ]

@@ -15,7 +15,7 @@ authors = [
   { name = "Pierre Krack", email = "pierre.krack@utn.de" },
 ]
 requires-python = ">=3.10"
-license = {file = "../../LICENSE"}
+license = "AGPL-3.0-or-later"
 
 
 [tool.scikit-build]

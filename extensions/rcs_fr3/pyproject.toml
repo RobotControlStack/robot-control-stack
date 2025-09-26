@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_fr3"
-version = "0.4.0"
+version = "0.5.0"
 description="RCS libfranka integration"
 dependencies = [
     # NOTE: when changing the pin version, also change it in requirements_dev.txt
@@ -19,12 +19,7 @@ authors = [
   { name = "Pierre Krack", email = "pierre.krack@utn.de" },
 ]
 requires-python = ">=3.10"
-license = {file = "../../LICENSE"}
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
-  "Programming Language :: Python :: 3",
-]
+license = "AGPL-3.0-or-later"
 
 
 [tool.scikit-build]
