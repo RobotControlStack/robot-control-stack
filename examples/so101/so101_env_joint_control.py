@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo

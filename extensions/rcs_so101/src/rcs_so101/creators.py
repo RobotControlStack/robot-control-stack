@@ -1,6 +1,4 @@
 import logging
-from os import PathLike
-from pathlib import Path
 
 import gymnasium as gym
 from rcs.camera.hw import HardwareCameraSet

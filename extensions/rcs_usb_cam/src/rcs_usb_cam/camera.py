@@ -3,7 +3,6 @@ import datetime
 import logging
 import threading
 import typing
-from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -35,7 +34,7 @@ class USBCameraSet(HardwareCamera):
         self.CALIBRATION_FRAME_SIZE = 30
         if calibration_strategy is None:
             calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
-        for name, cam in self.cameras.items():
+        for cam in self.cameras.values():
             if cam.color_intrinsics is None:
                 cam.color_intrinsics = np.zeros((3, 4), dtype=np.float64)
             if cam.distortion_coeffs is None:
