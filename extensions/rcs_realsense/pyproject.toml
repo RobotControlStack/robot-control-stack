@@ -7,7 +7,7 @@ name = "rcs_realsense"
 version = "0.4.0"
 description="RCS realsense module"
 dependencies = [
-    "rcs==0.4.0",
+    "rcs>=0.4.0",
     "pyrealsense2~=2.55.1",
     "apriltag==0.0.16",
     "diskcache",
