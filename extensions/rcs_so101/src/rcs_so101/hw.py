@@ -9,6 +9,8 @@ from lerobot.robots.so101_follower.so101_follower import SO101Follower
 from rcs.utils import SimpleFrameRate
 
 from rcs import common
+
+
 class SO101Config(common.RobotConfig):
     id: str = "follower"
     port: str = "/dev/ttyACM0"
@@ -62,6 +64,7 @@ class SO101(common.Robot):
         )
         self._last_joint = joints_in_rad
         return joints_in_rad
+
     def get_joint_position(self) -> np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]:  # type: ignore
         # return self._last_joint
         return self._get_joint_position()
@@ -163,6 +166,7 @@ class SO101(common.Robot):
         self.move_home()
         self.stop_controller_thread()
         self._hf_robot.disconnect()
+
 
 # TODO: problem when we inherit from gripper then we also need to call init which doesnt exist
 class SO101Gripper(common.Gripper):

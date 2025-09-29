@@ -1,7 +1,10 @@
 import cv2
-'''
+
+"""
 Simple script for opening a webcam using OpenCV and displaying the video feed.
-'''
+"""
+
+
 def open_webcam():
     # Open the default webcam (0).
     # If you have multiple cameras, you can try 1, 2, etc.
@@ -26,12 +29,13 @@ def open_webcam():
         cv2.imshow("Webcam", frame)
 
         # Press 'q' to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     # Release the camera and close windows
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     open_webcam()

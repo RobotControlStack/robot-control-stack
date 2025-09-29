@@ -1,29 +1,36 @@
 import copy
+import datetime
 import logging
 import threading
 import typing
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
 from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera
-from rcs.camera.interface import BaseCameraSet, DataFrame, CameraFrame, Frame
-import cv2
+from rcs.camera.interface import CameraFrame, DataFrame, Frame
+
 from rcs import common
-import datetime
-'''
+
+"""
 A generic extension class for handling USB-connected cameras. 
 Uses OpenCV to interface with the camera hardware, specifically using cv2.VideoCapture(id).
 The ID can be both a single integer passed as a string, i.e. str(0), str(1), or the full /dev/ path, like /dev/video0.
 
-'''
+"""
+
+
 class USBCameraConfig(common.BaseCameraConfig):
     color_intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]] | None = None
     distortion_coeffs: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]] | None = None
 
+
 class USBCameraSet(HardwareCamera):
-    def __init__(self, 
-                 cameras: dict[str, USBCameraConfig], 
-                 calibration_strategy: dict[str, CalibrationStrategy] | None = None,):
+    def __init__(
+        self,
+        cameras: dict[str, USBCameraConfig],
+        calibration_strategy: dict[str, CalibrationStrategy] | None = None,
+    ):
         self.cameras = cameras
         self.CALIBRATION_FRAME_SIZE = 30
         if calibration_strategy is None:
@@ -44,7 +51,9 @@ class USBCameraSet(HardwareCamera):
         self._captures: dict[str, cv2.VideoCapture] = {}
         self._logger = logging.getLogger(__name__)
         self._logger.info("USBCamera initialized with cameras: %s", self._camera_names)
-        self._logger.info("If the camera streams are not correct, try v4l2-ctl --list-devices to see the available cameras.")
+        self._logger.info(
+            "If the camera streams are not correct, try v4l2-ctl --list-devices to see the available cameras."
+        )
         self._frame_buffer_lock: dict[str, threading.Lock] = {}
         self._frame_buffer: dict[str, list] = {}
 
@@ -58,7 +67,8 @@ class USBCameraSet(HardwareCamera):
             cap.set(cv2.CAP_PROP_FPS, camera.frame_rate)
 
             if not cap.isOpened():
-                raise RuntimeError(f"Could not open camera {name} with id {camera.identifier}")
+                err = f"Could not open camera {name} with id {camera.identifier}"
+                raise RuntimeError(err)
             self._captures[name] = cap
 
     @property
@@ -70,20 +80,27 @@ class USBCameraSet(HardwareCamera):
         timestamp = datetime.datetime.now().timestamp()
         ret, color_frame = cap.read()
         if not ret:
-            raise RuntimeError(f"Failed to read frame from camera {camera_name}")
+            err = f"Failed to read frame from camera {camera_name}"
+            raise RuntimeError(err)
         with self._frame_buffer_lock[camera_name]:
             if len(self._frame_buffer[camera_name]) >= self.CALIBRATION_FRAME_SIZE:
                 self._frame_buffer[camera_name].pop(0)
             self._frame_buffer[camera_name].append(copy.deepcopy(color_frame))
-        color = DataFrame(data=color_frame, 
-                          timestamp=timestamp, 
-                          intrinsics=self.cameras[camera_name].color_intrinsics, 
-                          extrinsics=self.calibration_strategy[camera_name].get_extrinsics())
-        depth_frame = np.zeros((self.cameras[camera_name].resolution_height, self.cameras[camera_name].resolution_width), dtype=np.uint16)
-        depth = DataFrame(data=depth_frame, 
-                          timestamp=timestamp,
-                          intrinsics=self.cameras[camera_name].color_intrinsics,
-                          extrinsics=self.calibration_strategy[camera_name].get_extrinsics())
+        color = DataFrame(
+            data=color_frame,
+            timestamp=timestamp,
+            intrinsics=self.cameras[camera_name].color_intrinsics,
+            extrinsics=self.calibration_strategy[camera_name].get_extrinsics(),
+        )
+        depth_frame = np.zeros(
+            (self.cameras[camera_name].resolution_height, self.cameras[camera_name].resolution_width), dtype=np.uint16
+        )
+        depth = DataFrame(
+            data=depth_frame,
+            timestamp=timestamp,
+            intrinsics=self.cameras[camera_name].color_intrinsics,
+            extrinsics=self.calibration_strategy[camera_name].get_extrinsics(),
+        )
         cf = CameraFrame(color=color, depth=depth)
         return Frame(camera=cf, avg_timestamp=timestamp)
 

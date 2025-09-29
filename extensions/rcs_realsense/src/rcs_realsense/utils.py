@@ -17,6 +17,7 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
     calibration_strategy = {name: typing.cast(CalibrationStrategy, FR3BaseArucoCalibration(name)) for name in name2id}
     return RealSenseCameraSet(cameras=cameras, calibration_strategy=calibration_strategy)
 
+
 def default_realsense_dummy_calibration(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
     if name2id is None:
         return None

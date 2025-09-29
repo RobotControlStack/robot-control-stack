@@ -3,7 +3,6 @@ from os import PathLike
 from pathlib import Path
 
 import gymnasium as gym
-
 from rcs.camera.hw import HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -15,6 +14,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs_so101.hw import SO101, SO101Config, SO101Gripper
+
 import rcs
 
 logger = logging.getLogger(__name__)
