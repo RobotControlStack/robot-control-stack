@@ -36,9 +36,9 @@ class USBCameraSet(HardwareCamera):
             calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
         for cam in self.cameras.values():
             if cam.color_intrinsics is None:
-                cam.color_intrinsics = np.zeros((3, 4), dtype=np.float64)
+                cam.color_intrinsics = np.zeros((3, 4), dtype=np.float64) # type: ignore
             if cam.distortion_coeffs is None:
-                cam.distortion_coeffs = np.zeros((5,), dtype=np.float64)
+                cam.distortion_coeffs = np.zeros((5,), dtype=np.float64) # type: ignore
             if cam.resolution_height is None:
                 cam.resolution_height = 480
             if cam.resolution_width is None:
