@@ -167,19 +167,19 @@ class SimTaskEnvCreator(EnvCreator):
             if not all(key in random_pos_args for key in required_keys):
                 missing_keys = [key for key in required_keys if key not in random_pos_args]
                 logger.warning(f"Missing random position arguments: {missing_keys}; Defaulting to RandomCubePos")
-            else: 
+            else:
                 logger.info(f"Initializing RandomObjectPos with joint name {random_pos_args['joint_name']}")
-                random_env = partial(RandomObjectPos, **random_pos_args)
-                with_RCP=False
+                random_env = partial(RandomObjectPos, **random_pos_args)  # type: ignore
+                with_RCP = False
 
             if "joint_name" in random_pos_args:
                 obj_joint_name = random_pos_args["joint_name"]
-            
+
         if with_RCP:
             print(f"Initializing RandomCubePos with joint name {obj_joint_name}")
             logger.warning(f"Initializing RandomCubePos with joint name {obj_joint_name}")
-            random_env = partial(RandomCubePos, cube_joint_name=obj_joint_name)
-                        
+            random_env = partial(RandomCubePos, cube_joint_name=obj_joint_name)  # type: ignore
+
         env_rel = SimEnvCreator()(
             control_mode=control_mode,
             robot_cfg=robot_cfg,
@@ -190,7 +190,7 @@ class SimTaskEnvCreator(EnvCreator):
             cameras=cameras,
             max_relative_movement=(0.2, np.deg2rad(45)) if delta_actions else None,
             relative_to=RelativeTo.LAST_STEP,
-            sim_wrapper=random_env,
+            sim_wrapper=random_env,  # type: ignore
         )
         if mode == "gripper":
             env_rel = PickCubeSuccessWrapper(env_rel, cube_joint_name=obj_joint_name)

@@ -301,16 +301,19 @@ class RandomObjectPos(SimWrapper):
         include_rotation (bool): Whether to include rotation in the randomization.
     """
 
-    def __init__(self, env: gym.Env, 
-                 simulation: sim.Sim, 
-                 joint_name: str, 
-                 init_object_pose: rcs.common.Pose, 
-                 include_position: bool = True, 
-                 include_rotation: bool = False,
-                 x_scale: float = 0.2,
-                 y_scale: float = 0.2,
-                 x_offset: float = 0.1,
-                 y_offset: float = 0.1):
+    def __init__(
+        self,
+        env: gym.Env,
+        simulation: sim.Sim,
+        joint_name: str,
+        init_object_pose: rcs.common.Pose,
+        include_position: bool = True,
+        include_rotation: bool = False,
+        x_scale: float = 0.2,
+        y_scale: float = 0.2,
+        x_offset: float = 0.1,
+        y_offset: float = 0.1,
+    ):
         super().__init__(env, simulation)
         self.joint_name = joint_name
         self.init_object_pose = init_object_pose
@@ -336,7 +339,7 @@ class RandomObjectPos(SimWrapper):
         self.sim.step(1)
 
         pos_z = self.init_object_pose.translation()[2]
-        if(self.include_position):
+        if self.include_position:
             pos_x = self.init_object_pose.translation()[0] + np.random.random() * self.x_scale + self.x_offset
             pos_y = self.init_object_pose.translation()[1] + np.random.random() * self.y_scale + self.y_offset
         else:
@@ -345,8 +348,16 @@ class RandomObjectPos(SimWrapper):
 
         quat = self.init_object_pose.rotation_q()  # xyzw format
         if self.include_rotation:
-            random_z_rotation = (np.random.random() - 0.5) * (0.7071068*2)
-            self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, quat[3] + random_z_rotation, quat[0], quat[1], quat[2] + random_z_rotation]
+            random_z_rotation = (np.random.random() - 0.5) * (0.7071068 * 2)
+            self.sim.data.joint(self.joint_name).qpos = [
+                pos_x,
+                pos_y,
+                pos_z,
+                quat[3] + random_z_rotation,
+                quat[0],
+                quat[1],
+                quat[2] + random_z_rotation,
+            ]
         else:
             self.sim.data.joint(self.joint_name).qpos = [pos_x, pos_y, pos_z, quat[3], quat[0], quat[1], quat[2]]
 
@@ -406,7 +417,8 @@ class PickCubeSuccessWrapper(gym.Wrapper):
             reward = 5
         else:
             tcp_to_obj_dist = np.linalg.norm(
-                self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.unwrapped.robot.get_cartesian_position().translation()
+                self.sim.data.joint(self.cube_joint_name).qpos[:3]
+                - self.unwrapped.robot.get_cartesian_position().translation()
             )
             obj_to_goal_dist = np.linalg.norm(self.sim.data.joint(self.cube_joint_name).qpos[:3] - self.EE_HOME)
 

@@ -1,17 +1,18 @@
 import logging
 import typing
 
-import numpy as np
 import gymnasium as gym
+import numpy as np
 from gymnasium.envs.registration import EnvCreator
-from rcs_tacto.tacto_wrapper import TactoSimWrapper
+from rcs._core.common import Pose
 from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig
 from rcs.envs.base import ControlMode
 from rcs.envs.creators import SimTaskEnvCreator
 from rcs.envs.utils import default_sim_robot_cfg
-from rcs._core.common import Pose
 from rcs.sim import SimGripperConfig
+from rcs_tacto.tacto_wrapper import TactoSimWrapper
+
 import rcs
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class FR3TactoSimplePickUpSimEnvCreator(EnvCreator):
         resolution: tuple[int, int] | None = None,
         frame_rate: int = 0,
         delta_actions: bool = True,
-        cam_list: list[str] = [
+        cam_list: tuple[str, ...] = (
             "wrist_0",
             "bird_eye_cam",
             "openvla_view",
@@ -34,7 +35,7 @@ class FR3TactoSimplePickUpSimEnvCreator(EnvCreator):
             "front",
             "left_side",
             "side_view",
-        ],
+        ),
         tacto_kwargs: dict[str, typing.Any] | None = None,
         **kwargs,
     ) -> gym.Env:
@@ -55,8 +56,8 @@ class FR3TactoSimplePickUpSimEnvCreator(EnvCreator):
         #       Probably because Pinocchio freaks out over all the weird tags?
         robot_cfg.kinematic_model_path = rcs.scenes["fr3_empty_world"].mjcf_robot
         robot_cfg.tcp_offset = Pose(
-                    translation=np.array([0.0, 0.0, 0.15]), 
-                    rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]])
+            translation=np.array([0.0, 0.0, 0.15]),  # type: ignore
+            rotation=np.array([[0.707, 0.707, 0], [-0.707, 0.707, 0], [0, 0, 1]]),  # type: ignore
         )
         gripper_cfg = SimGripperConfig()
 
@@ -83,16 +84,18 @@ class FR3TactoSimplePickUpSimEnvCreator(EnvCreator):
 
         # Append the id to keep it consistent with the model
         gripper_cfg.add_id("0")
-        random_pos_args = {"joint_name":"yellow-box-joint"}
+        random_pos_args = {"joint_name": "yellow-box-joint"}
 
-        env = SimTaskEnvCreator()(robot_cfg,
-                                  render_mode,
-                                  control_mode,
-                                  delta_actions,
-                                  cameras,
-                                  gripper_cfg=gripper_cfg,
-                                  random_pos_args=random_pos_args,
-                                  **kwargs)
+        env = SimTaskEnvCreator()(
+            robot_cfg,
+            render_mode,
+            control_mode,
+            delta_actions,
+            cameras,
+            gripper_cfg=gripper_cfg,
+            random_pos_args=random_pos_args,
+            **kwargs,
+        )
 
         # Here, we feed some default values for the tacto wrapper
         # that aligns with what we have in the fr3_digit_simple_pick_up

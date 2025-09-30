@@ -1,5 +1,3 @@
-from rcs_tacto.creators import FR3TactoSimplePickUpSimEnvCreator
-
 import logging
 from typing import Any, cast
 
@@ -8,7 +6,7 @@ import mujoco
 import numpy as np
 from rcs._core.common import Pose
 from rcs.envs.base import GripperWrapper, RobotEnv
-
+from rcs_tacto.creators import FR3TactoSimplePickUpSimEnvCreator
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -47,11 +45,11 @@ class PickUpDemo:
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 200) -> list[Pose]:
         end_eff_pose = self.unwrapped.robot.get_cartesian_position()
         goal_pose = self.get_object_pose(geom_name=geom_name)
-        goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))
+        goal_pose *= Pose(translation=np.array([0, 0, delta_up]), quaternion=np.array([1, 0, 0, 0]))  # type: ignore
         return self.generate_waypoints(end_eff_pose, goal_pose, num_waypoints=num_waypoints)
 
     def execute_motion(self, waypoints: list[Pose], gripper: float = GripperWrapper.BINARY_GRIPPER_OPEN) -> dict:
-        for i in range(0, len(waypoints)):
+        for i in range(len(waypoints)):
             obs = self.step(self._action(waypoints[i], gripper))
         return obs
 
@@ -86,13 +84,14 @@ def main():
         render_mode="human",
         delta_actions=False,
     )
-    
-    for i in tqdm(range(100)):
+
+    for _ in tqdm(range(100)):
         # reset the environment
         env.reset()
         controller = PickUpDemo(env)
         controller.pickup("yellow_box_geom")
     env.close()
+
 
 if __name__ == "__main__":
     main()
