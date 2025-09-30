@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_tacto"
-version = "0.4.0"
+version = "0.5.0"
 description="RCS integration of tacto"
 dependencies = [
-    "rcs==0.4.0",
+    "rcs>=0.5.0",
     "mujoco-tacto@git+https://github.com/utn-air/mujoco-tacto.git@main"
 ]
 readme = "README.md"
