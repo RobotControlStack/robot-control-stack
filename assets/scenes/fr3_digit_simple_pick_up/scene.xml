@@ -33,7 +33,7 @@
     <camera name="side_view" pos="1.760 -1.205 0.621" xyaxes="0.681 0.733 0.000 -0.105 0.097 0.990"/>
     
     <body name="yellow_box_geom" pos="0.44 0.1 0.03">
-      <geom type="box" size="0.03 0.03 0.03" rgba="1 1 0 1" name="yellow_box_geom" friction="1 0.3 0.1" density="50" />
+      <geom type="cylinder" size="0.025 0.01" rgba="1 1 0 1" name="yellow_box_geom" friction="1 0.3 0.1" density="50" />
       <joint type="free" name="yellow-box-joint" />
     </body>
   </worldbody>
