@@ -104,7 +104,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
 
 class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
-        ips: list[str],
+        name2ip: dict[str, str],
         control_mode: ControlMode,
         robot_cfg: hw.FR3Config,
         gripper_cfg: hw.FHConfig | None = None,
@@ -121,13 +121,13 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
 
         robots: dict[str, hw.Franka] = {}
-        for ip in ips:
-            robots[ip] = hw.Franka(ip, ik)
-            robots[ip].set_config(robot_cfg)
+        for key, ip in name2ip.items():
+            robots[key] = hw.Franka(ip, ik)
+            robots[key].set_config(robot_cfg)
 
         envs = {}
-        for ip in ips:
-            env: gym.Env = RobotEnv(robots[ip], control_mode)
+        for key, ip in name2ip.items():
+            env: gym.Env = RobotEnv(robots[key], control_mode)
             env = FR3HW(env)
             if gripper_cfg is not None:
                 gripper = hw.FrankaHand(ip, gripper_cfg)
@@ -135,7 +135,7 @@ class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
 
             if max_relative_movement is not None:
                 env = RelativeActionSpace(env, max_mov=max_relative_movement, relative_to=relative_to)
-            envs[ip] = env
+            envs[key] = env
 
         env = MultiRobotWrapper(envs)
         if camera_set is not None:
