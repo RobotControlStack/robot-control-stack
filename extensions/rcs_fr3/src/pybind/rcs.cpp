@@ -68,8 +68,10 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control);
 
-  py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config");
-  py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig");
+  py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")
+      .def(py::init<>());
+  py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
+      .def(py::init<>());
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(

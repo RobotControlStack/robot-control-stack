@@ -143,10 +143,10 @@ class IKSolver:
     def value(self) -> int: ...
 
 class FR3Config(FrankaConfig):
-    pass
+    def __init__(self) -> None: ...
 
 class PandaConfig(FrankaConfig):
-    pass
+    def __init__(self) -> None: ...
 
 franka_ik: IKSolver  # value = <IKSolver.franka_ik: 0>
 rcs_ik: IKSolver  # value = <IKSolver.rcs_ik: 1>

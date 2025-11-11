@@ -104,6 +104,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
 
 class RCSFR3MultiEnvCreator(RCSHardwareEnvCreator):
     def __call__(  # type: ignore
+        self,
         name2ip: dict[str, str],
         control_mode: ControlMode,
         robot_cfg: hw.FR3Config,
