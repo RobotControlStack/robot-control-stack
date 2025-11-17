@@ -3,7 +3,6 @@ build
 plugin.h
 .session.vim
 .projections.json
-pw.py
 __pycache__
 .ruff_cache
 .mypy_cache
@@ -18,3 +17,5 @@ wheels
 .env
 settings.json
 *.egg-info
+video*
+GEMINI.md

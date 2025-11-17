@@ -18,7 +18,13 @@ FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
   this->m_reset();
 }
 
-FrankaHand::~FrankaHand() {}
+FrankaHand::~FrankaHand() {
+  try {
+    this->m_stop();
+  } catch (const franka::Exception &e) {
+    std::cerr << "Exception in ~FrankaHand(): " << e.what() << std::endl;
+  }
+}
 
 bool FrankaHand::set_config(const FHConfig &cfg) {
   franka::GripperState gripper_state = this->gripper.readOnce();
@@ -75,8 +81,8 @@ double FrankaHand::get_normalized_width() {
 void FrankaHand::m_stop() {
   try {
     this->gripper.stop();
-  } catch (const franka::CommandException &e) {
-    std::cerr << "franka hand command exception ignored stop" << std::endl;
+  } catch (const franka::Exception &e) {
+    std::cerr << "FrankaHand::m_stop: " << e.what() << std::endl;
   }
   this->m_wait();
   this->is_moving = false;
@@ -181,5 +187,7 @@ void FrankaHand::shut() {
     this->is_moving = false;
   });
 }
+
+void FrankaHand::close() { this->m_stop(); }
 }  // namespace hw
 }  // namespace rcs

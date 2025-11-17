@@ -700,6 +700,10 @@ class GripperWrapper(ActObsInfoWrapper):
         self._last_gripper_cmd = None
         self.open_on_reset = open_on_reset
 
+    def close(self):
+        self.gripper.close()
+        super().close()
+
     def reset(self, **kwargs) -> tuple[dict[str, Any], dict[str, Any]]:
         if self.open_on_reset:
             # resetting opens the gripper

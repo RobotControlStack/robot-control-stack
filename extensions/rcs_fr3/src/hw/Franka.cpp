@@ -32,7 +32,13 @@ Franka::Franka(const std::string &ip,
   }  // else default constructor
 }
 
-Franka::~Franka() {}
+Franka::~Franka() {
+  try {
+    this->stop_control_thread();
+  } catch (const franka::Exception &e) {
+    std::cerr << "Exception in ~Franka(): " << e.what() << std::endl;
+  }
+}
 
 /**
  * @brief Set the parameters for the robot

@@ -144,7 +144,8 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("set_config", &rcs::hw::FrankaHand::set_config, py::arg("cfg"))
       .def("is_grasped", &rcs::hw::FrankaHand::is_grasped)
-      .def("homing", &rcs::hw::FrankaHand::homing);
+      .def("homing", &rcs::hw::FrankaHand::homing)
+      .def("close", &rcs::hw::FrankaHand::close);
 
   auto hw_except =
       hw.def_submodule("exceptions", "exceptions from the hardware module");
