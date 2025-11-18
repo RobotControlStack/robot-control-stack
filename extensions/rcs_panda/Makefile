@@ -22,7 +22,7 @@ clangcompile:
 
 # Auto generation of CPP binding stub files
 stubgen:
-	pybind11-stubgen -o src --numpy-array-use-type-var rcs_panda
+	pybind11-stubgen -o src --numpy-array-use-type-var --sort-by topological rcs_panda
 	find ./${PYSRC} -name '*.pyi' -print | xargs sed -i '1s/^/# ATTENTION: auto generated from C++ code, use `make stubgen` to update!\n/'
 	find ./${PYSRC} -not -path "./${PYSRC}/_core/*" -name '*.pyi' -delete
 	find ./${PYSRC}/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/tuple\[typing\.Literal[\1]\]/g'
