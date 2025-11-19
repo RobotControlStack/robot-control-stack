@@ -1,4 +1,3 @@
-# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
 """
 
         Robot Control Stack Python Bindings
@@ -11,9 +10,10 @@
 
     
 """
+
 from __future__ import annotations
 
 from . import rl
 
-__all__ = ["rl"]
+__all__: list[str] = ["rl"]
 __version__: str = "0.5.2"
