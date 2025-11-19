@@ -11,6 +11,7 @@ from rcs.envs.base import (
     RobotEnv,
 )
 from rcs.envs.creators import RCSHardwareEnvCreator
+from rcs_so101 import SO101IK
 from rcs_so101.hw import SO101, SO101Config, SO101Gripper
 
 import rcs
@@ -28,7 +29,7 @@ class RCSSO101EnvCreator(RCSHardwareEnvCreator):
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
     ) -> gym.Env:
-        ik = rcs.common.Pin(
+        ik = SO101IK(
             robot_cfg.kinematic_model_path,
             robot_cfg.attachment_site,
             urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),

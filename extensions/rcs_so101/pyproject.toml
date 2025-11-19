@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = []
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_so101"
@@ -20,3 +20,11 @@ authors = [
 ]
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
+
+[tool.scikit-build]
+build.verbose = true
+build.targets = ["_core"]
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["src/rcs_so101"]
+install.components = ["python_package"]
