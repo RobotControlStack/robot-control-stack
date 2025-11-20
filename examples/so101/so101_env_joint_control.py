@@ -35,7 +35,7 @@ def main():
     gripper_cfg.min_joint_width = -0.17453292519943295
     gripper_cfg.max_joint_width = 1.7453292519943295
     gripper_cfg.actuator = "6"
-    gripper_cfg.joint = "6"
+    gripper_cfg.joints = ["6"]
     gripper_cfg.collision_geoms = []
     gripper_cfg.collision_geoms_fingers = []
 

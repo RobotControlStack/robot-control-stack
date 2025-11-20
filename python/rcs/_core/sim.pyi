@@ -129,7 +129,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     epsilon_inner: float
     epsilon_outer: float
     ignored_collision_geoms: list[str]
-    joint: str
+    joints: list[str]
     max_actuator_width: float
     max_joint_width: float
     min_actuator_width: float

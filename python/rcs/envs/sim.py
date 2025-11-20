@@ -70,7 +70,6 @@ class RobotSimWrapper(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
         _, info = super().reset(seed=seed, options=options)
-        # self.unwrapped.robot.move_home()
         self.sim.step(1)
         obs = cast(dict, self.unwrapped.get_obs())
         return obs, info

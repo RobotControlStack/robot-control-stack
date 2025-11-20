@@ -463,7 +463,7 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimGripperConfig::collision_geoms)
       .def_readwrite("collision_geoms_fingers",
                      &rcs::sim::SimGripperConfig::collision_geoms_fingers)
-      .def_readwrite("joint", &rcs::sim::SimGripperConfig::joint)
+      .def_readwrite("joints", &rcs::sim::SimGripperConfig::joints)
       .def_readwrite("max_joint_width",
                      &rcs::sim::SimGripperConfig::max_joint_width)
       .def_readwrite("min_joint_width",
