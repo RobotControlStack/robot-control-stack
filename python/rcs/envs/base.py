@@ -401,7 +401,7 @@ class RelativeActionSpace(gym.ActionWrapper):
                 max_mov = self.DEFAULT_MAX_JOINT_MOV
             assert isinstance(
                 max_mov, float
-            ), "in cartesian control max_mov must be a float representing the maximum allowed rotation (in rad)."
+            ), "in joint control max_mov must be a float representing the maximum allowed rotation (in rad)."
             if max_mov > np.deg2rad(180):
                 _logger.warning(
                     "maximal movement is set higher to a value higher than 180 degree, which is really high, consider setting it lower"

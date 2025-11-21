@@ -47,7 +47,7 @@ class RobotSimWrapper(gym.Wrapper):
         self.frame_rate = SimpleFrameRate(1 / cfg.frequency, "RobotSimWrapper")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
-        _, _, _, _, info = super().step(action)
+        obs, _, _, _, info = super().step(action)
         cfg = self.sim.get_config()
         if cfg.async_control:
             self.sim.step(round(1 / cfg.frequency / self.sim.model.opt.timestep))
@@ -62,16 +62,17 @@ class RobotSimWrapper(gym.Wrapper):
         info["ik_success"] = state.ik_success
         info["is_sim_converged"] = self.sim.is_converged()
         # truncate episode if collision
-
-        return dict(self.unwrapped.get_obs()), 0, False, state.collision or not state.ik_success, info
+        obs.update(self.unwrapped.get_obs())
+        return obs, 0, False, state.collision or not state.ik_success, info
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.sim.reset()
-        _, info = super().reset(seed=seed, options=options)
+        obs, info = super().reset(seed=seed, options=options)
         self.sim.step(1)
-        obs = cast(dict, self.unwrapped.get_obs())
+        # todo: an obs method that is recursive over wrappers would be needed
+        obs.update(self.unwrapped.get_obs())
         return obs, info
 
 
@@ -440,3 +441,4 @@ class PickCubeSuccessWrapper(gym.Wrapper):
         # normalize
         reward /= 5  # type: ignore
         return obs, reward, success, truncated, info
+

@@ -124,7 +124,7 @@ bool SimGripper::collision_callback() {
         // ignore all collision with ignored objects with frankahand
         // not just fingers
         not(this->ignored_collision_geoms.contains(
-                this->sim->d->contact[i].geom[1]) or
+                this->sim->d->contact[i].geom[0]) or
             this->ignored_collision_geoms.contains(
                 this->sim->d->contact[i].geom[1]))) {
       this->state.collision = true;
