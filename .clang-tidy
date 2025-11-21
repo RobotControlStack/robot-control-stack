@@ -2,7 +2,6 @@
 Checks:          'clang-diagnostic-*,clang-analyzer-*,bug-prone-*,-clang-diagnostic-ignored-optimization-argument'
 WarningsAsErrors: ''
 HeaderFilterRegex: 'src/*.h'
-AnalyzeTemporaryDtors: false
 FormatStyle:     google
 CheckOptions:
   - key:             llvm-else-after-return.WarnOnConditionVariables
