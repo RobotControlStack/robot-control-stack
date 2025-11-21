@@ -131,6 +131,10 @@ void SimRobot::set_joint_position(const common::VectorXd& q) {
 }
 
 common::VectorXd SimRobot::get_joint_position() {
+  return m_get_joint_position();
+}
+
+common::VectorXd SimRobot::m_get_joint_position() {
   common::VectorXd q(std::size(this->cfg.joints));
   for (size_t i = 0; i < std::size(this->cfg.joints); ++i) {
     q[i] = this->sim->d->qpos[this->sim->m->jnt_qposadr[this->ids.joints[i]]];
@@ -195,8 +199,8 @@ void SimRobot::m_reset() {
   this->state = SimRobotState();
   this->set_joints_hard(
       common::robots_meta_config.at(this->cfg.robot_type).q_home);
-  this->state.previous_angles = this->get_joint_position();
-  this->state.target_angles = this->get_joint_position();
+  this->state.previous_angles = this->m_get_joint_position();
+  this->state.target_angles = this->m_get_joint_position();
   this->state.is_arrived = true;
   this->state.is_moving = false;
 }

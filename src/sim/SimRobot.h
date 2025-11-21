@@ -96,6 +96,7 @@ class SimRobot : public common::Robot {
   void init_ids();
   void construct();
   void m_reset();
+  common::VectorXd m_get_joint_position();
 };
 }  // namespace sim
 }  // namespace rcs

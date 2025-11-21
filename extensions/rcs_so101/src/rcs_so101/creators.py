@@ -14,8 +14,6 @@ from rcs.envs.creators import RCSHardwareEnvCreator
 from rcs_so101 import SO101IK
 from rcs_so101.hw import SO101, SO101Config, SO101Gripper
 
-import rcs
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
