@@ -19,3 +19,4 @@ settings.json
 *.egg-info
 video*
 GEMINI.md
+docs/_build

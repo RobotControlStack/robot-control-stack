@@ -1,0 +1,5 @@
+sphinx
+pydata-sphinx-theme
+myst-parser
+linkify-it-py
+sphinx-autobuild
