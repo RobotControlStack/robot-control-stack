@@ -99,9 +99,13 @@ class SimEnvCreator(EnvCreator):
         if gripper_cfg is not None and isinstance(gripper_cfg, rcs.sim.SimGripperConfig):
             gripper = sim.SimGripper(simulation, gripper_cfg)
             env = GripperWrapper(env, gripper, binary=True)
-            env = GripperWrapperSim(env, gripper)
+        else:
+            gripper = None
 
         env = RobotSimWrapper(env, simulation, sim_wrapper)
+
+        if gripper is not None:
+            env = GripperWrapperSim(env, gripper)
 
         if cameras is not None:
             camera_set = typing.cast(

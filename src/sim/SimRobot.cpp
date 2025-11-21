@@ -170,7 +170,6 @@ void SimRobot::is_arrived_callback() {
 }
 
 bool SimRobot::collision_callback() {
-  this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->ids.cgeom.contains(this->sim->d->contact[i].geom[0]) ||
         this->ids.cgeom.contains(this->sim->d->contact[i].geom[1])) {
@@ -180,6 +179,8 @@ bool SimRobot::collision_callback() {
   }
   return this->state.collision;
 }
+
+void SimRobot::clear_collision_flag() { this->state.collision = false; }
 
 bool SimRobot::convergence_callback() {
   /* When ik failed, the robot is not doing anything */

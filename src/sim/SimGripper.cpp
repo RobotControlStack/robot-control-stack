@@ -111,7 +111,6 @@ double SimGripper::get_normalized_width() {
 }
 
 bool SimGripper::collision_callback() {
-  this->state.collision = false;
   for (size_t i = 0; i < this->sim->d->ncon; ++i) {
     if (this->cfgeom.contains(this->sim->d->contact[i].geom[0]) &&
         this->cfgeom.contains(this->sim->d->contact[i].geom[1])) {
@@ -133,6 +132,8 @@ bool SimGripper::collision_callback() {
   }
   return this->state.collision;
 }
+
+void SimGripper::clear_collision_flag() { this->state.collision = false; }
 
 bool SimGripper::is_grasped() {
   double width = this->get_normalized_width();

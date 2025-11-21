@@ -74,6 +74,7 @@ class SimRobot : public common::Robot {
   std::optional<std::shared_ptr<common::Kinematics>> get_ik() override;
   void reset() override;
   void set_joints_hard(const common::VectorXd &q);
+  void clear_collision_flag();
   void close() override {};
 
  private:
