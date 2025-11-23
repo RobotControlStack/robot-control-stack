@@ -1,134 +1,52 @@
 # Robot Control Stack
-RCS is a unified and multilayered robot control interface over a MuJoCo simulation and real world robot currently implemented for the FR3/Panda, xArm7, UR5e and SO101.
+
+**Robot Control Stack (RCS)** is a unified and multilayered robot control interface over a MuJoCo simulation and real world robot currently implemented for the FR3/Panda, xArm7, UR5e and SO101.
 
 ## Installation
+
 We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
-1. Install the system dependencies:
-```shell
-sudo apt install $(cat debian_deps.txt)
-```
-2. Create, activate and configure a [Python virtual environment](https://docs.python.org/3/library/venv.html):
-```shell
-python3 -m venv .venv
-source .venv/bin/activate
-``` 
-Then, install the package:
-```shell
-pip install -r requirements_dev.txt
-pip config --site set global.no-build-isolation false
-```
-3. Build and install RCS:
-```shell
-pip install -ve .
-```
+1.  **System Dependencies**:
+    ```shell
+    sudo apt install $(cat debian_deps.txt)
+    ```
 
-For a docker deployment see the [docker](docker) folder.
+2.  **Python Environment**:
+    ```shell
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements_dev.txt
+    ```
 
-## Usage
-The python package is called `rcs`.
+3.  **Install RCS**:
+    ```shell
+    pip install -ve .
+    ```
 
-### Direct Robot Control
-Simple direct robot control:
-```python
-import rcs
-from rcs import sim
-from rcs._core.sim import CameraType
-from rcs.camera.sim import SimCameraConfig, SimCameraSet
-from time import sleep
-simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
-urdf_path = rcs.scenes["fr3_empty_world"].urdf
-ik = rcs.common.RL(str(urdf_path))
-cfg = sim.SimRobotConfig()
-cfg.add_id("0")
-cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-robot = rcs.sim.SimRobot(simulation, ik, cfg)
+## Hardware Extensions
 
-gripper_cfg_sim = sim.SimGripperConfig()
-gripper_cfg_sim.add_id("0")
-gripper = sim.SimGripper(simulation, gripper_cfg_sim)
+RCS supports various hardware extensions (e.g., FR3, xArm7, RealSense). These are located in the `extensions` directory.
 
-camera_set = SimCameraSet(simulation, {})
-simulation.open_gui()
-# wait for gui
-sleep(5)
-# step the robot 10 cm in x direction
-robot.set_cartesian_position(
-    robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.1, 0, 0]))
-)
-# close gripper
-gripper.grasp()
-simulation.step_until_convergence()
-input("press enter to close")
-```
-### Gym Env Interface
-```python
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
-from rcs.envs.base import ControlMode, RelativeTo
-env_rel = SimEnvCreator()(
-    control_mode=ControlMode.JOINTS,
-    robot_cfg=default_sim_robot_cfg(),
-    gripper_cfg=default_sim_gripper_cfg(),
-    cameras=default_mujoco_cameraset_cfg(),
-    max_relative_movement=np.deg2rad(5),
-    relative_to=RelativeTo.LAST_STEP,
-)
-env_rel.get_wrapper_attr("sim").open_gui()
+To install an extension:
 
-for _ in range(100):
-    obs, info = env_rel.reset()
-    for _ in range(10):
-        # sample random relative action and execute it
-        act = env_rel.action_space.sample()
-        print(act)
-        obs, reward, terminated, truncated, info = env_rel.step(act)
-        print(obs)
-```
-
-
-### Examples
-Checkout the python examples in the [examples](examples) folder. For example
-[fr3_direct_control.py](examples/fr3/fr3_direct_control.py) shows direct robot control with RCS's python bindings.
-And [fr3_env_joint_control.py](examples/fr3/fr3_env_joint_control.py) and [fr3_env_cartesian_control.py](examples/fr3/fr3_env_cartesian_control.py) demonstrates RCS's high level [gymnasium](https://gymnasium.farama.org/) interface both for joint- and end effector space control
-Checkout the other sub folders for other robot-specific examples.
-Most of these examples work both in the MuJoCo simulation as well as on hardware.
-
-
-### Hardware Extensions
-To enable hardware usage in RCS, install the needed hardware extensions via pip. RCS itself comes with a couple of supported extensions e.g. control of the FR3 via the [`rcs_fr3`](extensions/rcs_fr3) extension. All native supported extension are located in [extensions](extensions).
-To install extensions:
 ```shell
 pip install -ve extensions/rcs_fr3
 ```
-For more details real the readme file of the respective extension.
 
-After the required hardware extensions are installed the examples also above work on real hardware:
-Switch to hardware by setting the following flag:
-```python
-# ROBOT_INSTANCE = RobotPlatform.SIMULATION
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
-```
+For a full list of extensions and detailed documentation, visit [robot-control-stack.org/extensions](https://robot-control-stack.org/extensions).
 
-#### Command Line Interface
-Some modules include command line interfaces, e.g. rcs_fr3 defines useful commands to handle the FR3 robot without the need to use the Desk Website.
-You can see the available subcommands as follows:
-```shell
-python -m rcs_fr3 --help
-python -m rcs_realsense --help
-```
+## Documentation
 
-## Developer Documentation
-See [robot-control-stack.org](https://robot-control-stack.org) for the development documentation.
 
+For full documentation, including installation, usage, and API reference, please visit:
+
+**[robot-control-stack.org](https://robot-control-stack.org)**
 
 ## Citation
+
 If you find RCS useful for your academic work, please consider citing it:
-```
+
+```bibtex
 @misc{juelg2025robotcontrolstack,
   title={{Robot Control Stack}: {A} Lean Ecosystem for Robot Learning at Scale}, 
   author={Tobias J{\"u}lg and Pierre Krack and Seongjin Bien and Yannik Blei and Khaled Gamal and Ken Nakahara and Johannes Hechtl and Roberto Calandra and Wolfram Burgard and Florian Walter},
@@ -136,3 +54,5 @@ If you find RCS useful for your academic work, please consider citing it:
   howpublished = {\url{https://arxiv.org/abs/2509.14932}}
 }
 ```
+
+For more scientific info, visit the [paper website](https://robotcontrolstack.github.io/).

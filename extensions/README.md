@@ -1,8 +1,7 @@
 # Hardware Extensions
 
-To install hardware exentsion use
-```shell
-pip install -ve <extension> # e.g. rcs_fr3
-```
-Some extensions need further dependencies or further setups. Please to check out their readme pages for details.
-When installing the SO101 extension, make sure to check its `README_IMPORTANT.md` for dealing with dependency conflict.
+RCS supports various hardware extensions for robots and sensors.
+
+For detailed documentation on available extensions and how to create your own, please visit:
+
+**[robot-control-stack.org/extensions](https://robot-control-stack.org/extensions)**

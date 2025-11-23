@@ -1,48 +1,69 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
 
-project = 'Robot Control Stack'
-author = 'Tobias Jülg'
-release = '0.4'
+# inject path to rcs package to enable autodoc/autoapi to find packages
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../python")))
+
+project = "Robot Control Stack"
+copyright = "2025, RCS Contributors"
+author = "RCS Contributors"
+release = "0.1.0" # TODO: Get from package
+version = "0.1.0"
 
 extensions = [
-    'myst_parser',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+    "myst_parser",
+    "sphinx_design",
 ]
 
-templates_path = ['_templates']
-exclude_patterns = []
+# https://myst-parser.readthedocs.io/en/latest/syntax/optional.html
+myst_enable_extensions = ["colon_fence", "dollarmath"]
+myst_heading_anchors = 4
 
-html_theme = 'pydata_sphinx_theme'
-html_static_path = ['_static']
-html_logo = "images/rcs_logo_multiline.svg"
-html_favicon = "images/favicon.ico"
+exclude_patterns = ["README.md"]
+
+templates_path = ["_templates"]
+
+html_theme = "pydata_sphinx_theme"
+html_logo = "_static/rcs_logo_multiline.svg"
+html_favicon = "_static/favicon.ico"
 
 html_theme_options = {
-    "github_url": "https://github.com/RobotControlStack/robot-control-stack",
     "use_edit_page_button": True,
-    "show_prev_next": False,
-    "navbar_start": ["navbar-logo"],  # ensures the logo is shown
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/robot-control-stack/robot-control-stack", # TODO: Update if needed
+            "icon": "fa-brands fa-github",
+        },
+    ],
     "logo": {
-        "image_light": "images/rcs_logo_multiline.svg",  # your PNG
-        "image_dark": "images/rcs_logo_multiline.svg",   # can be same or a dark-mode version
+        "image_dark": "_static/rcs_logo_multiline.svg", # TODO: Use a white version if available
     },
-
+    "navbar_center": ["navbar-nav"],
+    "show_version_warning_banner": False,
 }
 
 html_context = {
-    "github_user": "RobotControlStack",
-    "github_repo": "robot-control-stack",
-    "github_version": "main",  # branch name
-    "doc_path": "docs",        # relative path in the repo where your docs live
+    "display_github": True,
+    "github_user": "robot-control-stack", # TODO: Update
+    "github_repo": "robot-control-stack", # TODO: Update
+    "github_version": "main",
+    "conf_py_path": "/docs/",
 }
 
+html_static_path = ['_static']
 
-myst_enable_extensions = [
-    "colon_fence",
-    "deflist",
-    "linkify",
-]
+# autodoc configs
+autosummary_generate = True
+autodoc_typehints = "description"
+autodoc_member_order = "groupwise"
+
+# Intersphinx mapping
+intersphinx_mapping = {'gymnasium': ('https://gymnasium.farama.org/', None)}
