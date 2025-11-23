@@ -46,8 +46,12 @@ html_theme_options = {
     "logo": {
         "image_dark": "_static/rcs_logo_multiline.svg", # TODO: Use a white version if available
     },
-    "navbar_center": ["navbar-nav"],
+    "navbar_center": ["version-switcher", "navbar-nav"],
     "show_version_warning_banner": False,
+    "switcher": {
+        "json_url": "/_static/version_switcher.json",
+        "version_match": "latest",
+    },
 }
 
 html_context = {
