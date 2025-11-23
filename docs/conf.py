@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../p
 
 project = "Robot Control Stack"
 copyright = "2025, RCS Contributors"
-author = "RCS Contributors"
-release = "0.1.0" # TODO: Get from package
-version = "0.1.0"
+author = "Tobias Jülg"
+release = "0.5.2"
+version = "0.5.2"
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -39,12 +39,12 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/robot-control-stack/robot-control-stack", # TODO: Update if needed
+            "url": "https://github.com/RobotControlStack/robot-control-stack",
             "icon": "fa-brands fa-github",
         },
     ],
     "logo": {
-        "image_dark": "_static/rcs_logo_multiline.svg", # TODO: Use a white version if available
+        "image_dark": "_static/rcs_logo_multiline.svg",
     },
     "navbar_center": ["version-switcher", "navbar-nav"],
     "show_version_warning_banner": False,
@@ -56,8 +56,8 @@ html_theme_options = {
 
 html_context = {
     "display_github": True,
-    "github_user": "robot-control-stack", # TODO: Update
-    "github_repo": "robot-control-stack", # TODO: Update
+    "github_user": "RobotControlStack",
+    "github_repo": "robot-control-stack",
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
