@@ -4,17 +4,32 @@ The high-level interface of RCS is based on [Gymnasium](https://gymnasium.farama
 
 ## Environment Creation
 
-Environments are created using the `SimEnvCreator` (for simulation) or `HardwareEnvCreator` (for real robots).
+To facilitate environment creation, RCS ships with environment factory classes that create an envrionment already wrapped with the most common wrappers.
+Simulated environments are created using the `SimEnvCreator`.
 
 ```python
 from rcs.envs.creators import SimEnvCreator
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.base import ControlMode
 
 env = SimEnvCreator()(
     control_mode=ControlMode.JOINTS,
     # ... configuration objects ...
 )
 ```
+
+Hardware environments are created using the robot-specific environment creator functions, located in the hardware extensions, usually named `<RobotName>EnvCreator`.
+```python
+from rcs_fr3.creators import RCSFR3EnvCreator
+from rcs.envs.base import ControlMode
+
+env = RCSFR3EnvCreator()(
+    ip="192.168.100.1",
+    control_mode=ControlMode.JOINTS,
+    # ... configuration objects ...
+)
+```
+
+
 
 ## Control Modes
 
