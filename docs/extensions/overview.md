@@ -34,5 +34,5 @@ RCS comes with several supported extensions:
 ## Creating Extensions
 
 You can create your own extensions to add support for new hardware or features.
-- [Creating a Python Extension](python_extension.md)
-- [Creating a C++ Extension](cpp_extension.md)
+- [Creating a Python Extension](../development/python_extension.md)
+- [Creating a C++ Extension](../development/cpp_extension.md)

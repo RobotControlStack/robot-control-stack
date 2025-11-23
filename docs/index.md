@@ -20,42 +20,30 @@
 
 ```{toctree}
 :maxdepth: 2
-:caption: Getting Started
+:caption: API
 
-getting_started/index
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: User Guide
-
-user_guide/architecture
-user_guide/gym_interface
-user_guide/low_level_api
+api/index
 ```
 
 ```{toctree}
 :maxdepth: 2
 :caption: Extensions
 
-extensions/overview
-extensions/python_extension
-extensions/cpp_extension
-extensions/rcs_fr3
-extensions/rcs_panda
-extensions/rcs_xarm7
-extensions/rcs_so101
-extensions/rcs_realsense
-extensions/rcs_usb_cam
-extensions/rcs_tacto
-extensions/rcs_robotics_library
+extensions/index
 ```
 
 ```{toctree}
 :maxdepth: 2
-:caption: Development
+:caption: Extending RCS
 
-contributing/index
+development/index
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Project Info
+
+meta/index
 ```
 
 ## Citation
