@@ -2,6 +2,7 @@
 #define RCS_FRANKA_H
 
 #include <franka/robot.h>
+#include <franka/robot_state.h>
 
 #include <cmath>
 #include <memory>
@@ -49,7 +50,9 @@ struct PandaConfig : FrankaConfig {
   common::RobotType robot_type = common::RobotType::Panda;
 };
 
-struct FrankaState : common::RobotState {};
+struct FrankaState : common::RobotState {
+  franka::RobotState robot_state;
+};
 
 class Franka : public common::Robot {
  private:
