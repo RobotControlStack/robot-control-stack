@@ -23,7 +23,6 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
     ```shell
     pip install -r requirements_dev.txt
-    pip config --site set global.no-build-isolation false
     ```
 
 ### Building RCS
@@ -31,7 +30,7 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 Build and install RCS in editable mode:
 
 ```shell
-pip install -ve .
+pip install -ve . --no-build-isolation
 ```
 
 For a docker deployment, see the `docker` folder in the repository.

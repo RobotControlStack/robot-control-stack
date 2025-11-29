@@ -20,7 +20,7 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 3.  **Install RCS**:
     ```shell
-    pip install -ve .
+    pip install -ve . --no-build-isolation
     ```
 
 ## Hardware Extensions
