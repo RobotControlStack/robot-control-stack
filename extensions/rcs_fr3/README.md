@@ -3,7 +3,8 @@ Extension to control the fr3 with rcs.
 
 ## Installation
 ```shell
-pip install -ve .
+# go to this directory
+pip install -ve . --no-build-isolation
 ```
 
 Add your FR3 credentials to a `.env` file like this:

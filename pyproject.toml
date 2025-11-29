@@ -25,6 +25,7 @@ dependencies = ["websockets>=11.0",
     "pin==3.7.0",
     "tilburg-hand",
     "digit-interface",
+    "pyopengl>=3.1.9",
     "ompl>=1.7.0",
     "rpyc==6.0.2",
 ]
@@ -39,15 +40,22 @@ authors = [
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
 
-# until https://github.com/pypa/pip/issues/11440 is resolved
-# we use requirements_dev.txt for linter and formatter dependencies
-# [project.optional-dependencies]
-# dev = [
-#     "ruff==0.3.2",
-#     "black==24.1.1",
-#     "isort==5.13.2",
-#     "mypy==1.4.1",
-# ]
+[project.optional-dependencies]
+dev = [
+    "ruff==0.3.2",
+    "black==24.1.1",
+    "isort==5.13.2",
+    "mypy==1.10.1",
+    "types-requests~=2.31",
+    # temporarily use fixed version until PR #275 is merged
+    # pybind11-stubgen==2.5.5
+    "pybind11-stubgen @ git+https://github.com/juelg/pybind11-stubgen@fix/class-sorting",
+    "pytest==8.1.1",
+    "commitizen~=3.28.0",
+    "clang",
+    "clang-format",
+    "clang-tidy",
+]
 
 
 [tool.scikit-build]

@@ -3,7 +3,9 @@ Implements access to the C++ library "Robotics Library".
 
 ## Installation
 ```shell
-pip install -ve .
+# go to this directory
+sudo apt install $(cat debian_deps.txt)
+pip install -ve . --no-build-isolation
 ```
 
 ## Usage

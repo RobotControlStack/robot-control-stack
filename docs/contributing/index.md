@@ -6,12 +6,14 @@ We welcome contributions to the Robot Control Stack!
 
 1.  Clone the repository.
 2.  Install dependencies (see [Getting Started](../getting_started/index.md)).
-3.  Install pre-commit hooks:
-    ```shell
-    pre-commit install
-    ```
 
 ## Development Tools
+
+Install the development dependencies:
+```shell
+# from root directory
+pip install -ve '.[dev]' --no-build-isolation
+```
 
 We provide a `Makefile` with several useful commands for development.
 
@@ -96,7 +98,7 @@ See [conventionalcommits.org](https://www.conventionalcommits.org/) for more det
 
 ## Pull Requests
 
-1.  Create a new branch for your feature or fix.
+1.  Fork the repo and create a new branch for your feature or fix.
 2.  Make your changes and commit them using the conventional commit format.
 3.  Push your branch and open a Pull Request.
 4.  Ensure all CI checks pass.

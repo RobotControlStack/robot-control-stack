@@ -13,9 +13,9 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 2.  **Python Environment**:
     ```shell
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements_dev.txt
+    conda create -n rcs python=3.11
+    conda activate rcs
+    pip install -r requirements.txt
     ```
 
 3.  **Install RCS**:
@@ -30,7 +30,7 @@ RCS supports various hardware extensions (e.g., FR3, xArm7, RealSense). These ar
 To install an extension:
 
 ```shell
-pip install -ve extensions/rcs_fr3
+pip install -ve extensions/rcs_fr3 --no-build-isolation
 ```
 
 For a full list of extensions and detailed documentation, visit [robotcontrolstack.org/extensions](https://robotcontrolstack.org/extensions).
