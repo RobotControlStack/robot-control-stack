@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "src/**"
-      - ".github/workflows/**"
+      - "include/**"
+      - "extensions/**"
+      - ".github/workflows/cpp.yaml"
   push:
     branches:
       - master
@@ -14,25 +16,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('debian_deps.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
       - name: Install dependencies
         run: sudo apt install $(cat debian_deps.txt)
-      - name: Check clang format
-        run: make cppcheckformat
       - name: Set up Python 3.11
         id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Clang build
-        run: make clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Check clang format
+        run: make cppcheckformat
       - name: Clang Tidy
         run: make cpplint
+      - name: Clang build
+        run: make clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
 
   build_gcc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('debian_deps.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
       - name: Install dependencies
         run: sudo apt install $(cat debian_deps.txt)
       - name: Set up Python 3.11
@@ -41,5 +60,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
       - name: GCC build
         run: make gcccompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
+
+  build_extensions:
+    needs: [build_clang, build_gcc]
+    uses: ./.github/workflows/extensions.yaml

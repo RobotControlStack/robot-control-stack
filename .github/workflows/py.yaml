@@ -5,7 +5,7 @@ on:
     paths:
       - "python/**"
       - "src/pybind/**"
-      - ".github/workflows/**"
+      - ".github/workflows/py.yaml"
   push:
     branches:
       - master
@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
           cache: "pip"
       - name: Install linting and formatting dependencies
         run: python -m pip install -r requirements.txt
@@ -26,6 +26,7 @@ jobs:
         run: make pycheckformat
 
   pythonpackage:
+    needs: format
     runs-on: ubuntu-latest
     env:
       CC: clang
@@ -47,11 +48,7 @@ jobs:
       - name: Install wheel
         run: python -m pip install wheel
       - name: Install the package
-        run: python -m pip install --no-build-isolation .
-      - name: Install the fr3 extension
-        run: python -m pip install --no-build-isolation extensions/rcs_fr3
-      - name: Install the panda extension
-        run: python -m pip install --no-build-isolation extensions/rcs_panda
+        run: python -m pip install -v --no-build-isolation '.[dev]'
       - name: Code linting
         run: make pylint
       - name: Check that stub files are up-to-date
