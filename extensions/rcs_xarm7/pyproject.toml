@@ -20,4 +20,10 @@ authors = [
   { name = "Ken Nakahara", email = "knakahara@lasr.org" },
 ]
 requires-python = ">=3.10"
-license = "AGPL-3.0-or-later"
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"

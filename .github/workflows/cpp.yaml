@@ -27,7 +27,7 @@ jobs:
       - name: Clang build
         run: make clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
       - name: Clang Tidy
-        run: clang-tidy -p=build --warnings-as-errors='*' $(find src -name '*.cpp' -o -name '*.cc' -name '*.h')
+        run: make cpplint
 
   build_gcc:
     runs-on: ubuntu-latest

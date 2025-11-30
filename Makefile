@@ -5,11 +5,9 @@ COMPILE_MODE = Release
 # CPP
 cppcheckformat:
 	clang-format --dry-run -Werror -i $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -o -name '*.h')
-	clang-format --dry-run -Werror -i $(shell find extensions/rcs_fr3/src -name '*.cpp' -o -name '*.cc' -o -name '*.h')
 
 cppformat:
 	clang-format -Werror -i $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -o -name '*.h')
-	clang-format -Werror -i $(shell find extensions/rcs_fr3/src -name '*.cpp' -o -name '*.cc' -o -name '*.h')
 
 cpplint: 
 	clang-tidy -p=build --warnings-as-errors='*' $(shell find ${CPPSRC} -name '*.cpp' -o -name '*.cc' -name '*.h')
