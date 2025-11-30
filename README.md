@@ -2,6 +2,8 @@
 
 **Robot Control Stack (RCS)** is a unified and multilayered robot control interface over a MuJoCo simulation and real world robot currently implemented for the FR3/Panda, xArm7, UR5e and SO101.
 
+![rcs architecture diagram](docs/_static/rcs_architecture_small.svg)
+
 ## Installation
 
 We build and test RCS on the latest Debian and on the latest Ubuntu LTS.

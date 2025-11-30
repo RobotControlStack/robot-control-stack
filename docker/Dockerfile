@@ -75,7 +75,7 @@ RUN pip install --upgrade pip setuptools
 RUN pip config --site set global.no-build-isolation false
 
 # Install development dependencies
-RUN pip install -r requirements_dev.txt
+RUN pip install -r requirements.txt
 
 # Install the package in editable mode (CMake + pybind11 + scikit-build-core triggered)
 RUN pip install -e . --no-cache-dir --verbose --no-build-isolation

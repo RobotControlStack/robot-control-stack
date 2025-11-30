@@ -16,12 +16,10 @@ cpplint:
 # clang-tidy -p=build --warnings-as-errors='*' $(shell find extensions/rcs_fr3/src -name '*.cpp' -o -name '*.cc' -name '*.h')
 
 gcccompile: 
-	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build -G Ninja
 	cmake --build build --target _core
 
 clangcompile: 
-	pip install --upgrade --requirement requirements_dev.txt
 	cmake -DCMAKE_BUILD_TYPE=${COMPILE_MODE} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build -G Ninja
 	cmake --build build --target _core
 
