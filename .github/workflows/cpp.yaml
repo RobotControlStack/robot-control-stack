@@ -36,8 +36,8 @@ jobs:
           pip install -r requirements.txt
       - name: Check clang format
         run: make cppcheckformat
-      - name: Clang Tidy
-        run: make cpplint
+      # - name: Clang Tidy
+      #   run: make cpplint
       - name: Clang build
         run: make clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
 

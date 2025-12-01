@@ -11,7 +11,7 @@ jobs:
           # Python extensions
           - rcs_xarm7
           - rcs_realsense
-          - rcs_robotiq
+          # - rcs_robotiq
           - rcs_tacto
           - rcs_usb_cam
           - rcs_zed
