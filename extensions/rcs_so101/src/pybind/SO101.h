@@ -9,20 +9,19 @@
 #include <eigen3/Eigen/Geometry>
 #include <memory>
 #include <optional>
-#include <string>
-
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/jacobian.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/parsers/mjcf.hpp>
 #include <pinocchio/parsers/urdf.hpp>
+#include <string>
 
 namespace rcs {
 namespace so101 {
 
 class SO101IK : public rcs::common::Kinematics {
-private:
+ private:
   const double eps = 1e-4;
   const int IT_MAX = 1000;
   const double DT = 1e-1;
@@ -35,7 +34,8 @@ private:
   pinocchio::Data data;
 
  public:
-  SO101IK(const std::string& path, const std::string& frame_id, bool urdf = true)
+  SO101IK(const std::string& path, const std::string& frame_id,
+          bool urdf = true)
       : model() {
     if (urdf) {
       pinocchio::urdf::buildModel(path, this->model);
@@ -53,10 +53,12 @@ private:
       const rcs::common::Pose& pose, const rcs::common::VectorXd& q0,
       const rcs::common::Pose& tcp_offset =
           rcs::common::Pose::Identity()) override {
-      // --- Tunables (could be class members) ------------------------------------
-    const double WP = 1.0;        // position weight
-    const double WO = 0.12;       // orientation (pitch+yaw) weight
-    const double WO_ROLL = 0.03;  // orientation roll weight (let it "float" more)
+    // --- Tunables (could be class members)
+    // ------------------------------------
+    const double WP = 1.0;   // position weight
+    const double WO = 0.12;  // orientation (pitch+yaw) weight
+    const double WO_ROLL =
+        0.03;  // orientation roll weight (let it "float" more)
     const double ORI_TOL = 5.0 * M_PI / 180.0;  // 5 deg tolerance (dead-zone)
     const double ORI_CAP =
         0.6;  // cap on |eo| scaling (rad/s-equivalent per iter)
@@ -78,7 +80,7 @@ private:
     bool success = false;
 
     // Pre-allocations
-    rcs::common::Vector6d err, err_w;                // 6x1
+    rcs::common::Vector6d err, err_w;   // 6x1
     Eigen::Vector3d ep, eo;             // position/orientation parts
     Eigen::VectorXd v(model.nv);        // nv x 1
     pinocchio::Data::Matrix6 JJt;       // 6x6
@@ -106,8 +108,9 @@ private:
       ep = err.head<3>();
       eo = err.tail<3>();
 
-      // ---- Orientation tolerance (dead-zone + soft cap) ----------------------
-      // If |eo| is small, ignore it completely (prevents twitch).
+      // ---- Orientation tolerance (dead-zone + soft cap)
+      // ---------------------- If |eo| is small, ignore it completely (prevents
+      // twitch).
       const double eo_norm = eo.norm();
       if (eo_norm < ORI_TOL) {
         eo.setZero();
@@ -140,9 +143,10 @@ private:
       pinocchio::Jlog6(iMd.inverse(), Jlog);
       J = -Jlog * J;  // tangent-space Jacobian for the error you’re minimizing
 
-      // ---- Weighted damped least-squares -------------------------------------
-      // Apply sqrt-weights on rows: this prioritizes translation > orientation,
-      // and de-weights tool roll further.
+      // ---- Weighted damped least-squares
+      // ------------------------------------- Apply sqrt-weights on rows: this
+      // prioritizes translation > orientation, and de-weights tool roll
+      // further.
       const auto Jw = Wsqrt * J;  // 6xnv
       err_w = Wsqrt * err;        // 6x1
 
@@ -168,10 +172,11 @@ private:
       v.noalias() = -Jw.transpose() * JJt.ldlt().solve(err_w);
       // ------------------------------------------------------------------------
 
-      // ---- Step-size limiter in task space to avoid sudden jumps -------------
-      // Predict task step and scale if too large
+      // ---- Step-size limiter in task space to avoid sudden jumps
+      // ------------- Predict task step and scale if too large
       Eigen::Matrix<double, 6, 1> task_step = J * v * this->DT;
-      double step_norm = task_step.head<3>().norm() + task_step.tail<3>().norm();
+      double step_norm =
+          task_step.head<3>().norm() + task_step.tail<3>().norm();
       if (step_norm > STEP_CAP && step_norm > 1e-9) {
         const double scale = STEP_CAP / step_norm;
         v *= scale;
@@ -199,7 +204,7 @@ private:
     q.head(q0.size()) = q0;
     pinocchio::framesForwardKinematics(model, data, q);
     rcs::common::Pose pose(data.oMf[this->FRAME_ID].rotation(),
-                          data.oMf[this->FRAME_ID].translation());
+                           data.oMf[this->FRAME_ID].translation());
 
     // apply the tcp offset
     return pose * tcp_offset.inverse();

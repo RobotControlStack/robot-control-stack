@@ -54,14 +54,14 @@ class FrankaHand : public common::Gripper {
   void m_wait();
 
  public:
-  FrankaHand(const std::string &ip, const FHConfig &cfg);
+  FrankaHand(const std::string& ip, const FHConfig& cfg);
   ~FrankaHand() override;
 
-  bool set_config(const FHConfig &cfg);
+  bool set_config(const FHConfig& cfg);
 
-  FHConfig *get_config() override;
+  FHConfig* get_config() override;
 
-  FHState *get_state() override;
+  FHState* get_state() override;
 
   void reset() override;
 

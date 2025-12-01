@@ -19,9 +19,9 @@
 
 namespace rcs {
 namespace hw {
-Franka::Franka(const std::string &ip,
+Franka::Franka(const std::string& ip,
                std::optional<std::shared_ptr<common::Kinematics>> ik,
-               const std::optional<FrankaConfig> &cfg)
+               const std::optional<FrankaConfig>& cfg)
     : robot(ip), m_ik(ik) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
@@ -35,7 +35,7 @@ Franka::Franka(const std::string &ip,
 Franka::~Franka() {
   try {
     this->stop_control_thread();
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Exception in ~Franka(): " << e.what() << std::endl;
   }
 }
@@ -45,7 +45,7 @@ Franka::~Franka() {
  * @param cfg The configuration for the robot, it should be a FrankaConfig type
  * otherwise the call will fail
  */
-bool Franka::set_config(const FrankaConfig &cfg) {
+bool Franka::set_config(const FrankaConfig& cfg) {
   this->cfg = cfg;
   this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -66,16 +66,16 @@ bool Franka::set_config(const FrankaConfig &cfg) {
   return true;
 }
 
-FrankaConfig *Franka::get_config() {
+FrankaConfig* Franka::get_config() {
   // copy config to heap
-  FrankaConfig *cfg = new FrankaConfig();
+  FrankaConfig* cfg = new FrankaConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FrankaState *Franka::get_state() {
+FrankaState* Franka::get_state() {
   // dummy state until we define a prober state
-  FrankaState *state = new FrankaState();
+  FrankaState* state = new FrankaState();
   return state;
 }
 
@@ -105,7 +105,7 @@ common::Pose Franka::get_cartesian_position() {
   return x;
 }
 
-void Franka::set_joint_position(const common::VectorXd &q) {
+void Franka::set_joint_position(const common::VectorXd& q) {
   if (this->cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
@@ -134,7 +134,7 @@ void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
   this->robot.setGuidingMode(activated, elbow);
 }
 
-void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
+void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
               double epsilon = 0.00025) {
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(
       M, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -153,7 +153,7 @@ void PInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
                          double max_torque) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
     if (tau_d_array[i] < min_torque) {
@@ -164,7 +164,7 @@ void TorqueSafetyGuardFn(std::array<double, 7> &tau_d_array, double min_torque,
   }
 }
 
-void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
+void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
@@ -199,7 +199,7 @@ void Franka::controller_set_joint_position(const common::Vector7d &desired_q) {
 }
 
 void Franka::osc_set_cartesian_position(
-    const common::Pose &desired_pose_EE_in_base_frame) {
+    const common::Pose& desired_pose_EE_in_base_frame) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;
   // form deoxys/config/charmander.yml
@@ -293,7 +293,7 @@ void Franka::osc() {
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
   avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
 
-  this->robot.control([&](const franka::RobotState &robot_state,
+  this->robot.control([&](const franka::RobotState& robot_state,
                           franka::Duration period) -> franka::Torques {
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
@@ -484,7 +484,7 @@ void Franka::joint_controller() {
   joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
 
-  this->robot.control([&](const franka::RobotState &robot_state,
+  this->robot.control([&](const franka::RobotState& robot_state,
                           franka::Duration period) -> franka::Torques {
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
@@ -570,7 +570,7 @@ void Franka::zero_torque_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   this->controller_time = 0.0;
-  this->robot.control([&](const franka::RobotState &robot_state,
+  this->robot.control([&](const franka::RobotState& robot_state,
                           franka::Duration period) -> franka::Torques {
     this->interpolator_mutex.lock();
     this->curr_state = robot_state;
@@ -613,7 +613,7 @@ void Franka::double_tap_robot_to_continue() {
   auto last_time_something_happened = std::chrono::system_clock::now();
   auto last_time_something_touched = std::chrono::system_clock::now();
   start_force << s.O_F_ext_hat_K[0], s.O_F_ext_hat_K[1], s.O_F_ext_hat_K[2];
-  this->robot.read([&](const franka::RobotState &robot_state) {
+  this->robot.read([&](const franka::RobotState& robot_state) {
     Eigen::Vector3d force;
     force << robot_state.O_F_ext_hat_K[0], robot_state.O_F_ext_hat_K[1],
         robot_state.O_F_ext_hat_K[2];
@@ -663,7 +663,7 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
   return this->m_ik;
 }
 
-void Franka::set_cartesian_position(const common::Pose &x) {
+void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
   if (this->cfg.async_control) {
     this->osc_set_cartesian_position(x);
@@ -691,7 +691,7 @@ void Franka::set_cartesian_position(const common::Pose &x) {
   }
 }
 
-void Franka::set_cartesian_position_ik(const common::Pose &pose) {
+void Franka::set_cartesian_position_ik(const common::Pose& pose) {
   if (!this->m_ik.has_value()) {
     throw std::runtime_error(
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
@@ -714,14 +714,14 @@ common::Pose Franka::get_base_pose_in_world_coordinates() {
                                               : common::Pose();
 }
 
-void Franka::set_cartesian_position_internal(const common::Pose &pose,
+void Franka::set_cartesian_position_internal(const common::Pose& pose,
                                              double max_time,
                                              std::optional<double> elbow,
                                              std::optional<double> max_force) {
   // TODO: use speed factor instead of max_time
   common::Pose initial_pose = this->get_cartesian_position();
 
-  auto force_stop_condition = [&max_force](const franka::RobotState &state,
+  auto force_stop_condition = [&max_force](const franka::RobotState& state,
                                            const double progress) {
     Eigen::Vector3d force;
     force << state.O_F_ext_hat_K[0], state.O_F_ext_hat_K[1],
@@ -737,7 +737,7 @@ void Franka::set_cartesian_position_internal(const common::Pose &pose,
   this->robot.control(
       [&force_stop_condition, &initial_elbow, &elbow, &max_force, &time,
        &max_time, &initial_pose, &should_stop,
-       &pose](const franka::RobotState &state,
+       &pose](const franka::RobotState& state,
               franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {

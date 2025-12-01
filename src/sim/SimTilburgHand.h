@@ -46,20 +46,20 @@ struct SimTilburgHandConfig : common::HandConfig {
   common::GraspType grasp_type = common::GraspType::POWER_GRASP;
 
   double seconds_between_callbacks = 0.0167;  // 60 Hz
-  void add_id(const std::string &id) {
-    for (auto &s : this->collision_geoms) {
+  void add_id(const std::string& id) {
+    for (auto& s : this->collision_geoms) {
       s = s + "_" + id;
     }
-    for (auto &s : this->collision_geoms_fingers) {
+    for (auto& s : this->collision_geoms_fingers) {
       s = s + "_" + id;
     }
-    for (auto &s : this->ignored_collision_geoms) {
+    for (auto& s : this->ignored_collision_geoms) {
       s = s + "_" + id;
     }
-    for (auto &s : this->joints) {
+    for (auto& s : this->joints) {
       s = s + "_" + id;
     }
-    for (auto &s : this->actuators) {
+    for (auto& s : this->actuators) {
       s = s + "_" + id;
     }
   }
@@ -85,8 +85,8 @@ class SimTilburgHand : public common::Hand {
   std::set<size_t> cgeom;
   std::set<size_t> cfgeom;
   std::set<size_t> ignored_collision_geoms;
-  void add_collision_geoms(const std::vector<std::string> &cgeoms_str,
-                           std::set<size_t> &cgeoms_set, bool clear_before);
+  void add_collision_geoms(const std::vector<std::string>& cgeoms_str,
+                           std::set<size_t>& cgeoms_set, bool clear_before);
   void m_reset();
 
   const rcs::common::VectorXd open_pose =
@@ -100,17 +100,17 @@ class SimTilburgHand : public common::Hand {
   bool set_grasp_type(common::GraspType grasp_type);
 
  public:
-  SimTilburgHand(std::shared_ptr<Sim> sim, const SimTilburgHandConfig &cfg);
+  SimTilburgHand(std::shared_ptr<Sim> sim, const SimTilburgHandConfig& cfg);
   ~SimTilburgHand() override;
 
-  bool set_config(const SimTilburgHandConfig &cfg);
+  bool set_config(const SimTilburgHandConfig& cfg);
 
-  SimTilburgHandConfig *get_config() override;
+  SimTilburgHandConfig* get_config() override;
 
-  SimTilburgHandState *get_state() override;
+  SimTilburgHandState* get_state() override;
 
   // normalized joints of the hand, 0 is closed, 1 is open
-  void set_normalized_joint_poses(const rcs::common::VectorXd &q) override;
+  void set_normalized_joint_poses(const rcs::common::VectorXd& q) override;
   rcs::common::VectorXd get_normalized_joint_poses() override;
 
   void reset() override;

@@ -68,31 +68,31 @@ class Franka : public common::Robot {
   void zero_torque_controller();
 
  public:
-  Franka(const std::string &ip,
+  Franka(const std::string& ip,
          std::optional<std::shared_ptr<common::Kinematics>> ik = std::nullopt,
-         const std::optional<FrankaConfig> &cfg = std::nullopt);
+         const std::optional<FrankaConfig>& cfg = std::nullopt);
   ~Franka() override;
 
-  bool set_config(const FrankaConfig &cfg);
+  bool set_config(const FrankaConfig& cfg);
 
-  FrankaConfig *get_config() override;
+  FrankaConfig* get_config() override;
 
-  FrankaState *get_state() override;
+  FrankaState* get_state() override;
 
   void set_default_robot_behavior();
 
   common::Pose get_cartesian_position() override;
 
-  void set_joint_position(const common::VectorXd &q) override;
+  void set_joint_position(const common::VectorXd& q) override;
 
   common::VectorXd get_joint_position() override;
 
   void set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch, bool yaw,
                         bool elbow);
 
-  void controller_set_joint_position(const common::Vector7d &desired_q);
+  void controller_set_joint_position(const common::Vector7d& desired_q);
   void osc_set_cartesian_position(
-      const common::Pose &desired_pose_EE_in_base_frame);
+      const common::Pose& desired_pose_EE_in_base_frame);
   void zero_torque_guiding();
 
   void stop_control_thread();
@@ -105,16 +105,16 @@ class Franka : public common::Robot {
 
   void double_tap_robot_to_continue();
 
-  void set_cartesian_position(const common::Pose &pose) override;
+  void set_cartesian_position(const common::Pose& pose) override;
 
   std::optional<std::shared_ptr<common::Kinematics>> get_ik() override;
 
-  void set_cartesian_position_internal(const common::Pose &pose,
+  void set_cartesian_position_internal(const common::Pose& pose,
                                        double max_time,
                                        std::optional<double> elbow,
                                        std::optional<double> max_force = 5);
 
-  void set_cartesian_position_ik(const common::Pose &x);
+  void set_cartesian_position_ik(const common::Pose& x);
 
   common::Pose get_base_pose_in_world_coordinates() override;
 

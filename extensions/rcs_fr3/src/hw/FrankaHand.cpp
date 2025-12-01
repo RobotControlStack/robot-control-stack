@@ -12,7 +12,7 @@
 namespace rcs {
 namespace hw {
 
-FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
+FrankaHand::FrankaHand(const std::string& ip, const FHConfig& cfg)
     : gripper(ip), cfg{} {
   this->cfg = cfg;
   this->m_reset();
@@ -21,12 +21,12 @@ FrankaHand::FrankaHand(const std::string &ip, const FHConfig &cfg)
 FrankaHand::~FrankaHand() {
   try {
     this->m_stop();
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "Exception in ~FrankaHand(): " << e.what() << std::endl;
   }
 }
 
-bool FrankaHand::set_config(const FHConfig &cfg) {
+bool FrankaHand::set_config(const FHConfig& cfg) {
   franka::GripperState gripper_state = this->gripper.readOnce();
   if (gripper_state.max_width < cfg.grasping_width) {
     return false;
@@ -35,19 +35,19 @@ bool FrankaHand::set_config(const FHConfig &cfg) {
   return true;
 }
 
-FHConfig *FrankaHand::get_config() {
+FHConfig* FrankaHand::get_config() {
   // copy config to heap
-  FHConfig *cfg = new FHConfig();
+  FHConfig* cfg = new FHConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-FHState *FrankaHand::get_state() {
+FHState* FrankaHand::get_state() {
   franka::GripperState gripper_state = this->gripper.readOnce();
   if (std::abs(gripper_state.max_width - this->cfg.grasping_width) > 0.01) {
     this->max_width = gripper_state.max_width - 0.001;
   }
-  FHState *state = new FHState();
+  FHState* state = new FHState();
   state->width = gripper_state.width / gripper_state.max_width;
   state->is_grasped = gripper_state.is_grasped;
   state->temperature = gripper_state.temperature;
@@ -81,7 +81,7 @@ double FrankaHand::get_normalized_width() {
 void FrankaHand::m_stop() {
   try {
     this->gripper.stop();
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     std::cerr << "FrankaHand::m_stop: " << e.what() << std::endl;
   }
   this->m_wait();
@@ -137,7 +137,7 @@ void FrankaHand::grasp() {
     this->is_moving = true;
     try {
       this->gripper.grasp(0, this->cfg.speed, this->cfg.force, 1, 1);
-    } catch (const franka::CommandException &e) {
+    } catch (const franka::CommandException& e) {
       std::cerr << "franka hand command exception ignored grasp" << std::endl;
     }
     this->is_moving = false;
@@ -163,7 +163,7 @@ void FrankaHand::open() {
       this->gripper.move(this->max_width, this->cfg.speed);
       // this->gripper.grasp(this->max_width, this->cfg.speed, this->cfg.force,
       // 1, 1);
-    } catch (const franka::CommandException &e) {
+    } catch (const franka::CommandException& e) {
       std::cerr << "franka hand command exception ignored open" << std::endl;
     }
     this->is_moving = false;

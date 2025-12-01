@@ -29,17 +29,17 @@ struct SimGripperConfig : common::GripperConfig {
   std::vector<std::string> joints = {"finger_joint1", "finger_joint2"};
   std::string actuator = "actuator8";
 
-  void add_id(const std::string &id) {
-    for (auto &s : this->collision_geoms) {
+  void add_id(const std::string& id) {
+    for (auto& s : this->collision_geoms) {
       s = s + "_" + id;
     }
-    for (auto &s : this->collision_geoms_fingers) {
+    for (auto& s : this->collision_geoms_fingers) {
       s = s + "_" + id;
     }
-    for (auto &s : this->ignored_collision_geoms) {
+    for (auto& s : this->ignored_collision_geoms) {
       s = s + "_" + id;
     }
-    for (auto &s : this->joints) {
+    for (auto& s : this->joints) {
       s = s + "_" + id;
     }
     this->actuator = this->actuator + "_" + id;
@@ -65,19 +65,19 @@ class SimGripper : public common::Gripper {
   std::set<size_t> cgeom;
   std::set<size_t> cfgeom;
   std::set<size_t> ignored_collision_geoms;
-  void add_collision_geoms(const std::vector<std::string> &cgeoms_str,
-                           std::set<size_t> &cgeoms_set, bool clear_before);
+  void add_collision_geoms(const std::vector<std::string>& cgeoms_str,
+                           std::set<size_t>& cgeoms_set, bool clear_before);
   void m_reset();
 
  public:
-  SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg);
+  SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig& cfg);
   ~SimGripper() override;
 
-  bool set_config(const SimGripperConfig &cfg);
+  bool set_config(const SimGripperConfig& cfg);
 
-  SimGripperConfig *get_config() override;
+  SimGripperConfig* get_config() override;
 
-  SimGripperState *get_state() override;
+  SimGripperState* get_state() override;
 
   // normalized width of the gripper, 0 is closed, 1 is open
   void set_normalized_width(double width, double force = 0) override;

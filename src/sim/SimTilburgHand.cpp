@@ -11,7 +11,7 @@ namespace rcs {
 namespace sim {
 
 SimTilburgHand::SimTilburgHand(std::shared_ptr<Sim> sim,
-                               const SimTilburgHandConfig &cfg)
+                               const SimTilburgHandConfig& cfg)
     : sim{sim}, cfg{cfg} {
   this->state = SimTilburgHandState();
 
@@ -66,7 +66,7 @@ SimTilburgHand::~SimTilburgHand() {}
 //   }
 // }
 
-bool SimTilburgHand::set_config(const SimTilburgHandConfig &cfg) {
+bool SimTilburgHand::set_config(const SimTilburgHandConfig& cfg) {
   auto current_grasp_type = this->cfg.grasp_type;
   this->cfg = cfg;
   if (!this->set_grasp_type(current_grasp_type)) {
@@ -89,20 +89,20 @@ bool SimTilburgHand::set_grasp_type(common::GraspType grasp_type) {
   return true;
 }
 
-SimTilburgHandConfig *SimTilburgHand::get_config() {
+SimTilburgHandConfig* SimTilburgHand::get_config() {
   // copy config to heap
-  SimTilburgHandConfig *cfg = new SimTilburgHandConfig();
+  SimTilburgHandConfig* cfg = new SimTilburgHandConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-SimTilburgHandState *SimTilburgHand::get_state() {
-  SimTilburgHandState *state = new SimTilburgHandState();
+SimTilburgHandState* SimTilburgHand::get_state() {
+  SimTilburgHandState* state = new SimTilburgHandState();
   *state = this->state;
   return state;
 }
 void SimTilburgHand::set_normalized_joint_poses(
-    const rcs::common::VectorXd &q) {
+    const rcs::common::VectorXd& q) {
   if (q.size() != this->n_joints) {
     throw std::invalid_argument("Invalid joint pose vector size, expected 16.");
   }

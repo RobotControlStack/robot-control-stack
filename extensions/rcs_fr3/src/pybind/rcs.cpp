@@ -104,7 +104,7 @@ PYBIND11_MODULE(_core, m) {
       (py::object)py::module_::import("rcs").attr("common").attr("Robot");
   py::class_<rcs::hw::Franka, std::shared_ptr<rcs::hw::Franka>>(hw, "Franka",
                                                                 robot)
-      .def(py::init<const std::string &,
+      .def(py::init<const std::string&,
                     std::optional<std::shared_ptr<rcs::common::Kinematics>>>(),
            py::arg("ip"), py::arg("ik") = std::nullopt)
       .def("set_config", &rcs::hw::Franka::set_config, py::arg("cfg"))
@@ -138,7 +138,7 @@ PYBIND11_MODULE(_core, m) {
       (py::object)py::module_::import("rcs").attr("common").attr("Gripper");
   py::class_<rcs::hw::FrankaHand, std::shared_ptr<rcs::hw::FrankaHand>>(
       hw, "FrankaHand", gripper)
-      .def(py::init<const std::string &, const rcs::hw::FHConfig &>(),
+      .def(py::init<const std::string&, const rcs::hw::FHConfig&>(),
            py::arg("ip"), py::arg("cfg"))
       .def("get_config", &rcs::hw::FrankaHand::get_config)
       .def("get_state", &rcs::hw::FrankaHand::get_state)

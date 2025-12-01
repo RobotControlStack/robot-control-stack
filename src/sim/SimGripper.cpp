@@ -10,7 +10,7 @@
 namespace rcs {
 namespace sim {
 
-SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
+SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig& cfg)
     : sim{sim}, cfg{cfg}, joint_ids{} {
   this->state = SimGripperState();
   this->actuator_id =
@@ -42,8 +42,8 @@ SimGripper::SimGripper(std::shared_ptr<Sim> sim, const SimGripperConfig &cfg)
 
 SimGripper::~SimGripper() {}
 
-void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
-                                     std::set<size_t> &cgeoms_set,
+void SimGripper::add_collision_geoms(const std::vector<std::string>& cgeoms_str,
+                                     std::set<size_t>& cgeoms_set,
                                      bool clear_before) {
   if (clear_before) {
     cgeoms_set.clear();
@@ -59,22 +59,22 @@ void SimGripper::add_collision_geoms(const std::vector<std::string> &cgeoms_str,
   }
 }
 
-bool SimGripper::set_config(const SimGripperConfig &cfg) {
+bool SimGripper::set_config(const SimGripperConfig& cfg) {
   this->cfg = cfg;
   this->add_collision_geoms(cfg.ignored_collision_geoms,
                             this->ignored_collision_geoms, true);
   return true;
 }
 
-SimGripperConfig *SimGripper::get_config() {
+SimGripperConfig* SimGripper::get_config() {
   // copy config to heap
-  SimGripperConfig *cfg = new SimGripperConfig();
+  SimGripperConfig* cfg = new SimGripperConfig();
   *cfg = this->cfg;
   return cfg;
 }
 
-SimGripperState *SimGripper::get_state() {
-  SimGripperState *state = new SimGripperState();
+SimGripperState* SimGripper::get_state() {
+  SimGripperState* state = new SimGripperState();
   *state = this->state;
   return state;
 }

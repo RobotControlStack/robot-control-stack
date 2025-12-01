@@ -21,85 +21,85 @@ Pose::Pose() {
   this->m_rotation = IdentityRotQuat();
 }
 
-Pose::Pose(const Eigen::Affine3d &pose_matrix) {
+Pose::Pose(const Eigen::Affine3d& pose_matrix) {
   this->m_translation = pose_matrix.translation();
   this->m_rotation = Eigen::Quaterniond(pose_matrix.rotation());
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const std::array<double, 16> &pose)
+Pose::Pose(const std::array<double, 16>& pose)
     : Pose(array2eigen<4, 4>(pose)) {}
 
-Pose::Pose(const Eigen::Matrix4d &pose) {
+Pose::Pose(const Eigen::Matrix4d& pose) {
   Eigen::Affine3d affine_pose = Eigen::Affine3d(pose);
   this->m_translation = affine_pose.translation();
   this->m_rotation = Eigen::Quaterniond(affine_pose.rotation());
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Matrix3d &rotation,
-           const Eigen::Vector3d &translation) {
+Pose::Pose(const Eigen::Matrix3d& rotation,
+           const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = Eigen::Quaterniond(rotation);
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Vector4d &quaternion,
-           const Eigen::Vector3d &translation) {
+Pose::Pose(const Eigen::Vector4d& quaternion,
+           const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = Eigen::Quaterniond(quaternion);
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Quaterniond &rotation,
-           const Eigen::Vector3d &translation) {
+Pose::Pose(const Eigen::Quaterniond& rotation,
+           const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = rotation;
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const RPY &rotation, const Eigen::Vector3d &translation) {
+Pose::Pose(const RPY& rotation, const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = rotation.as_quaternion();
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Vector3d &rotation,
-           const Eigen::Vector3d &translation) {
+Pose::Pose(const Eigen::Vector3d& rotation,
+           const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = RPY(rotation).as_quaternion();
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Vector3d &translation) {
+Pose::Pose(const Eigen::Vector3d& translation) {
   this->m_translation = translation;
   this->m_rotation = IdentityRotQuat();
 }
 
-Pose::Pose(const Eigen::Quaterniond &quaternion) {
+Pose::Pose(const Eigen::Quaterniond& quaternion) {
   this->m_translation = IdentityTranslation();
   this->m_rotation = quaternion;
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Vector4d &quaternion) {
+Pose::Pose(const Eigen::Vector4d& quaternion) {
   this->m_translation = IdentityTranslation();
   this->m_rotation = Eigen::Quaterniond(quaternion);
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const RPY &rpy) {
+Pose::Pose(const RPY& rpy) {
   this->m_translation = IdentityTranslation();
   this->m_rotation = rpy.as_quaternion();
   this->m_rotation.normalize();
 }
 
-Pose::Pose(const Eigen::Matrix3d &rotation) {
+Pose::Pose(const Eigen::Matrix3d& rotation) {
   this->m_translation = IdentityTranslation();
   this->m_rotation = Eigen::Quaterniond(rotation);
 }
 
-Pose::Pose(const Pose &pose) {
+Pose::Pose(const Pose& pose) {
   this->m_translation = pose.translation();
   this->m_rotation = pose.quaternion();
 }
@@ -137,7 +137,7 @@ RPY Pose::rotation_rpy() const {
   return RPY{rpy_vec.z(), rpy_vec.y(), rpy_vec.x()};
 }
 
-Pose Pose::interpolate(const Pose &dest_pose, double progress) const {
+Pose Pose::interpolate(const Pose& dest_pose, double progress) const {
   if (progress > 1) {
     progress = 1;
   }
@@ -170,7 +170,7 @@ std::string Pose::str() const {
   return ss.str();
 }
 
-Pose Pose::operator*(const Pose &pose_b) const {
+Pose Pose::operator*(const Pose& pose_b) const {
   Eigen::Vector3d trans =
       this->m_rotation * pose_b.translation() + this->m_translation;
   Eigen::Quaterniond rot = this->m_rotation * pose_b.m_rotation;
@@ -205,7 +205,7 @@ Pose Pose::inverse() const {
   return Pose(new_rot, -(new_rot * this->m_translation));
 }
 
-bool Pose::is_close(const Pose &other, double eps_r, double eps_t) const {
+bool Pose::is_close(const Pose& other, double eps_r, double eps_t) const {
   return (this->translation() - other.translation()).lpNorm<1>() < eps_t &&
          this->quaternion().angularDistance(other.quaternion()) < eps_r;
 }

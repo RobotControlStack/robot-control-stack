@@ -38,9 +38,8 @@ PYBIND11_MODULE(_core, m) {
 
   py::object kinematics =
       (py::object)py::module_::import("rcs").attr("common").attr("Kinematics");
-  py::class_<rcs::so101::SO101IK,
-             std::shared_ptr<rcs::so101::SO101IK>>(
+  py::class_<rcs::so101::SO101IK, std::shared_ptr<rcs::so101::SO101IK>>(
       ik, "SO101IK", kinematics)
-      .def(py::init<const std::string &, const std::string &, bool>(), py::arg("path"),
-           py::arg("frame_id"), py::arg("urdf") = true);
+      .def(py::init<const std::string&, const std::string&, bool>(),
+           py::arg("path"), py::arg("frame_id"), py::arg("urdf") = true);
 }

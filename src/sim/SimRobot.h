@@ -31,14 +31,14 @@ struct SimRobotConfig : common::RobotConfig {
   std::string base = "base";
   std::string mjcf_scene_path = "assets/scenes/fr3_empty_world/scene.xml";
 
-  void add_id(const std::string &id) {
-    for (auto &s : this->arm_collision_geoms) {
+  void add_id(const std::string& id) {
+    for (auto& s : this->arm_collision_geoms) {
       s = s + "_" + id;
     }
-    for (auto &s : this->joints) {
+    for (auto& s : this->joints) {
       s = s + "_" + id;
     }
-    for (auto &s : this->actuators) {
+    for (auto& s : this->actuators) {
       s = s + "_" + id;
     }
     this->attachment_site = this->attachment_site + "_" + id;
@@ -62,18 +62,18 @@ class SimRobot : public common::Robot {
            std::shared_ptr<common::Kinematics> ik, SimRobotConfig cfg,
            bool register_convergence_callback = true);
   ~SimRobot() override;
-  bool set_config(const SimRobotConfig &cfg);
-  SimRobotConfig *get_config() override;
-  SimRobotState *get_state() override;
+  bool set_config(const SimRobotConfig& cfg);
+  SimRobotConfig* get_config() override;
+  SimRobotState* get_state() override;
   common::Pose get_cartesian_position() override;
-  void set_joint_position(const common::VectorXd &q) override;
+  void set_joint_position(const common::VectorXd& q) override;
   common::VectorXd get_joint_position() override;
   void move_home() override;
-  void set_cartesian_position(const common::Pose &pose) override;
+  void set_cartesian_position(const common::Pose& pose) override;
   common::Pose get_base_pose_in_world_coordinates() override;
   std::optional<std::shared_ptr<common::Kinematics>> get_ik() override;
   void reset() override;
-  void set_joints_hard(const common::VectorXd &q);
+  void set_joints_hard(const common::VectorXd& q);
   void clear_collision_flag();
   void close() override {};
 

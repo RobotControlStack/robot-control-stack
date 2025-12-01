@@ -33,7 +33,7 @@ int main() {
     robot.set_cartesian_position_internal(rs, 5.0, std::nullopt);
 
     // robot.automatic_error_recovery();
-  } catch (const franka::Exception &e) {
+  } catch (const franka::Exception& e) {
     cout << e.what() << endl;
     return -1;
   }
