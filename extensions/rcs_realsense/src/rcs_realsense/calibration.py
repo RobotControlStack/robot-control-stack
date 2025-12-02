@@ -4,10 +4,10 @@ import typing
 from pathlib import Path
 from time import sleep
 
-import apriltag
 import cv2
 import diskcache as dc
 import numpy as np
+from pupil_apriltags import Detector
 from rcs._core import common
 from rcs.camera.hw import CalibrationStrategy
 from rcs.camera.interface import Frame
@@ -40,7 +40,7 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         input()
         tries = 3
         while len(samples) < 10 and tries > 0:
-            logger.info("not enought frames in recorded, waiting 2 seconds...")
+            logger.info("not enough frames in recorded, waiting 2 seconds...")
             tries = -1
             sleep(2)
         if tries == 0:
@@ -51,7 +51,7 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         with lock:
             for sample in samples:
                 frames.append(sample.camera.color.data.copy())
-        print(frames)
+        # print(frames) # Removed print for cleaner logs, optional
 
         _, tag_to_cam = get_average_marker_pose(frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=False)
 
@@ -71,9 +71,9 @@ def get_average_marker_pose(
     calib_tag_id,
     show_live_window,
 ):
-    # create detector
-    options = apriltag.DetectorOptions(families="tag25h9")
-    detector = apriltag.Detector(options=options)
+    # CHANGE 2: Simplified Initialization
+    # No "DetectorOptions" object needed anymore.
+    detector = Detector(families="tag25h9")
 
     # make while loop with tqdm
     poses = []
@@ -97,6 +97,7 @@ def get_average_marker_pose(
         camera_matrix = intrinsics[:3, :3]
 
         if show_live_window:
+            # Note: pose[:3, :3] works because we construct the 4x4 matrix in get_marker_pose below
             cv2.drawFrameAxes(frame, camera_matrix, None, pose[:3, :3], pose[:3, 3], 0.1)  # type: ignore
             # show frame
             cv2.imshow("frame", frame)
@@ -120,7 +121,15 @@ def get_average_marker_pose(
 
 def get_marker_pose(calib_tag_id, detector, intrinsics, frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    detections = detector.detect(gray)
+
+    # CHANGE 3: Pose estimation happens INSIDE .detect()
+    # We must extract camera params first to pass them here
+    fx = intrinsics[0, 0]
+    fy = intrinsics[1, 1]
+    cx = intrinsics[0, 2]
+    cy = intrinsics[1, 2]
+
+    detections = detector.detect(gray, estimate_tag_pose=True, camera_params=[fx, fy, cx, cy], tag_size=0.1)
 
     # count detections
     n_det = 0
@@ -138,20 +147,10 @@ def get_marker_pose(calib_tag_id, detector, intrinsics, frame):
     if marker_det is None:
         return None, None
 
-    fx = intrinsics[0, 0]
-    fy = intrinsics[1, 1]
-    cx = intrinsics[0, 2]
-    cy = intrinsics[1, 2]
-
-    pose, _, _ = detector.detection_pose(
-        marker_det,
-        camera_params=(
-            fx,
-            fy,
-            cx,
-            cy,
-        ),
-        tag_size=0.1,
-    )
+    # CHANGE 4: Construct 4x4 Matrix manually
+    # pupil-apriltags gives us R (3x3) and t (3x1). We must stack them.
+    pose = np.eye(4)
+    pose[:3, :3] = marker_det.pose_R
+    pose[:3, 3] = marker_det.pose_t.ravel()  # ravel() flattens the (3,1) array to (3,)
 
     return marker_det, pose
