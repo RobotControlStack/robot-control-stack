@@ -13,11 +13,11 @@
 using namespace std;
 
 const string ip = "192.168.101.1";
-const string urdf_path = "models/urdf/fr3.urdf";
+const string mjcf_path = "assets/fr3/mjcf/fr3_0.xml";
 
 int main() {
   try {
-    auto ik = make_shared<rcs::common::RL>(urdf_path);
+    auto ik = make_shared<rcs::common::Pin>(mjcf_path, "attachment_site_0", false);
     rcs::hw::Franka robot(ip, ik);
     robot.automatic_error_recovery();
     std::cout << "WARNING: This example will move the robot! "

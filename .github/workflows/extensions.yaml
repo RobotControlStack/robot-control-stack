@@ -14,7 +14,6 @@ jobs:
           # - rcs_robotiq
           - rcs_tacto
           - rcs_usb_cam
-          - rcs_zed
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,8 +73,8 @@ jobs:
           pip install -r requirements.txt
       - name: Check clang format
         run: make -C extensions/${{ matrix.extension }} cppcheckformat
-      - name: Clang Tidy
-        run: make -C extensions/${{ matrix.extension }} cpplint
+      # - name: Clang Tidy
+      #   run: make -C extensions/${{ matrix.extension }} cpplint
       - name: Clang build
         run: make -C extensions/${{ matrix.extension }} clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
 

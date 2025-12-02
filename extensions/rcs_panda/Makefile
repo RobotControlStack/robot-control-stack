@@ -1,5 +1,5 @@
 PYSRC = src/rcs_panda
-CPPSRC = src
+CPPSRC = src_fr3
 COMPILE_MODE = Release
 
 # CPP
