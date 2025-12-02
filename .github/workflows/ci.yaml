@@ -136,6 +136,11 @@ jobs:
             ${{ runner.os }}-apt-
       - name: Install virtual frame buffer tool
         run: sudo apt install xvfb
+      - name: Install potential debian deps
+        run: |
+          if [ -f extensions/${{ matrix.extension }}/debian_deps.txt ]; then
+            sudo apt install $(cat extensions/${{ matrix.extension }}/debian_deps.txt)
+          fi
       - name: Cache rcs build directory
         uses: actions/cache@v4
         with:
