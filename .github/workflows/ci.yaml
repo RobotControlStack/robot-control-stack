@@ -21,13 +21,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache build directory
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-build-py-${{ hashFiles('src/**', 'include/**', 'CMakeLists.txt', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-py-
       - name: Install CPP dependencies
         run: sudo apt install $(cat debian_deps.txt)
       - name: Install virtual frame buffer tool
@@ -89,13 +82,6 @@ jobs:
           key: ${{ runner.os }}-apt-${{ hashFiles('debian_deps.txt') }}
           restore-keys: |
             ${{ runner.os }}-apt-
-      - name: Cache rcs build directory
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-build-py-${{ hashFiles('src/**', 'include/**', 'CMakeLists.txt', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-py-
       - name: Install dependencies
         run: sudo apt install $(cat debian_deps.txt)
       - name: Set up Python 3.11
@@ -141,20 +127,6 @@ jobs:
           if [ -f extensions/${{ matrix.extension }}/debian_deps.txt ]; then
             sudo apt install $(cat extensions/${{ matrix.extension }}/debian_deps.txt)
           fi
-      - name: Cache rcs build directory
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-build-py-${{ hashFiles('src/**', 'include/**', 'CMakeLists.txt', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-build-py-
-      - name: Cache extension build directory
-        uses: actions/cache@v4
-        with:
-          path: extensions/${{ matrix.extension }}/build
-          key: ${{ runner.os }}-build-ext-${{ matrix.extension }}-${{ hashFiles('extensions/${{ matrix.extension }}/**') }}
-          restore-keys: |
-            ${{ runner.os }}-build-ext-${{ matrix.extension }}-
       - name: Install dependencies
         run: sudo apt install $(cat debian_deps.txt)
       - name: Set up Python 3.11
