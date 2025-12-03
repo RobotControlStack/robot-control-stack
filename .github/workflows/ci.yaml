@@ -169,7 +169,7 @@ jobs:
           pip install -v --no-build-isolation '.[dev]'
           pip install -v --no-build-isolation extensions/${{ matrix.extension }}
       - name: Check that stub files are up-to-date
-        run: xvfb-run make -C extensions/${{ matrix.extension }} stubgen && git diff --exit-code
+        run: make -C extensions/${{ matrix.extension }} stubgen && git diff --exit-code
       - name: Clang build
         run: make -C extensions/${{ matrix.extension }} clangcompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
       - name: Check clang format
