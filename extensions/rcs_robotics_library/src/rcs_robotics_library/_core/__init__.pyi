@@ -1,3 +1,4 @@
+# ATTENTION: auto generated from C++ code, use `make stubgen` to update!
 """
 
         Robot Control Stack Python Bindings
@@ -10,7 +11,6 @@
 
     
 """
-
 from __future__ import annotations
 
 from . import rl

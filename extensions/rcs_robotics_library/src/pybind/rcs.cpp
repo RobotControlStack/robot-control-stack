@@ -42,6 +42,6 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::robotics_library::RoboticsLibraryIK,
              std::shared_ptr<rcs::robotics_library::RoboticsLibraryIK>>(
       rl, "RoboticsLibraryIK", kinematics)
-      .def(py::init<const std::string &, size_t>(), py::arg("urdf_path"),
+      .def(py::init<const std::string&, size_t>(), py::arg("urdf_path"),
            py::arg("max_duration_ms") = 300);
 }
