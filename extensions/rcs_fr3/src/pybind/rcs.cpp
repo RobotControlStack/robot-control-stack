@@ -99,13 +99,13 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("O_ddP_EE_c", &franka::RobotState::O_ddP_EE_c)
       .def_readonly("theta", &franka::RobotState::theta)
       .def_readonly("dtheta", &franka::RobotState::dtheta)
-      .def_readonly("current_errors", &franka::RobotState::current_errors)
-      .def_readonly("last_motion_errors",
-                    &franka::RobotState::last_motion_errors)
+    //   .def_readonly("current_errors", &franka::RobotState::current_errors)
+    //   .def_readonly("last_motion_errors",
+    //                 &franka::RobotState::last_motion_errors)
       .def_readonly("control_command_success_rate",
                     &franka::RobotState::control_command_success_rate)
-      .def_readonly("robot_mode", &franka::RobotState::robot_mode)
-      .def_readonly("time", &franka::RobotState::time);
+    //   .def_readonly("time", &franka::RobotState::time)
+      .def_readonly("robot_mode", &franka::RobotState::robot_mode);
 
   py::object robot_state =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotState");
