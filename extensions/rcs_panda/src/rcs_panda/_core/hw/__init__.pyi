@@ -7,6 +7,7 @@ from __future__ import annotations
 import typing
 
 import numpy
+import pybind11_stubgen.typing_ext
 import rcs._core.common
 
 from . import exceptions
@@ -22,8 +23,17 @@ __all__: list[str] = [
     "FrankaState",
     "IKSolver",
     "PandaConfig",
+    "RobotMode",
+    "RobotState",
     "exceptions",
     "franka_ik",
+    "kAutomaticErrorRecovery",
+    "kGuiding",
+    "kIdle",
+    "kMove",
+    "kOther",
+    "kReflex",
+    "kUserStopped",
     "rcs_ik",
 ]
 
@@ -104,9 +114,6 @@ class FrankaLoad:
     f_x_cload: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
-    def __init__(self) -> None: ...
-
-class FrankaState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
 
 class IKSolver:
@@ -279,5 +286,17 @@ class FR3Config(FrankaConfig):
 class PandaConfig(FrankaConfig):
     def __init__(self) -> None: ...
 
+class FrankaState(rcs._core.common.RobotState):
+    def __init__(self) -> None: ...
+    @property
+    def robot_state(self) -> RobotState: ...
+
 franka_ik: IKSolver  # value = <IKSolver.franka_ik: 0>
+kAutomaticErrorRecovery: RobotMode  # value = <RobotMode.kAutomaticErrorRecovery: 6>
+kGuiding: RobotMode  # value = <RobotMode.kGuiding: 3>
+kIdle: RobotMode  # value = <RobotMode.kIdle: 1>
+kMove: RobotMode  # value = <RobotMode.kMove: 2>
+kOther: RobotMode  # value = <RobotMode.kOther: 0>
+kReflex: RobotMode  # value = <RobotMode.kReflex: 4>
+kUserStopped: RobotMode  # value = <RobotMode.kUserStopped: 5>
 rcs_ik: IKSolver  # value = <IKSolver.rcs_ik: 1>
