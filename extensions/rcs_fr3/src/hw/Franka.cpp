@@ -73,7 +73,7 @@ FrankaConfig* Franka::get_config() {
   return cfg;
 }
 
-FrankaState *Franka::get_state() {
+FrankaState* Franka::get_state() {
   franka::RobotState current_robot_state;
   if (this->running_controller == Controller::none) {
     current_robot_state = this->robot.readOnce();
@@ -81,7 +81,7 @@ FrankaState *Franka::get_state() {
     std::lock_guard<std::mutex> lock(this->interpolator_mutex);
     current_robot_state = this->curr_state;
   }
-  auto *state = new FrankaState();
+  auto* state = new FrankaState();
   state->robot_state = current_robot_state;
   return state;
 }
