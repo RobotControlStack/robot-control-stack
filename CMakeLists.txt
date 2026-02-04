@@ -33,7 +33,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FetchContent)
 
-find_package(Eigen3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(MuJoCo REQUIRED)
 find_package(pinocchio REQUIRED)
@@ -45,8 +44,22 @@ FetchContent_Declare(pybind11
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_Declare(Eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3.4.1
+    GIT_PROGRESS TRUE
+    EXCLUDE_FROM_ALL
+)
+FetchContent_Declare(
+    egl_headers
+    GIT_REPOSITORY https://github.com/KhronosGroup/EGL-Registry.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
 
-FetchContent_MakeAvailable(pybind11)
+FetchContent_MakeAvailable(pybind11 Eigen3 egl_headers)
 include(compile_scenes)
+# egl headers
+include_directories(${egl_headers_SOURCE_DIR}/api)
 
 add_subdirectory(src)

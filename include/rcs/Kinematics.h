@@ -1,8 +1,8 @@
 #ifndef RCS_IK_H
 #define RCS_IK_H
 
-#include <eigen3/Eigen/Eigen>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Eigen>
+#include <Eigen/Geometry>
 #include <memory>
 #include <optional>
 #include <string>

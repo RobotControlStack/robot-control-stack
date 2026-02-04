@@ -1,7 +1,7 @@
 #ifndef RCS_UTIL_H
 #define RCS_UTIL_H
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <memory>
 
 namespace rcs {

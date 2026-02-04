@@ -1,6 +1,5 @@
 #include "sim/sim.h"
 
-#include <GLFW/glfw3.h>
 #include <assert.h>
 
 #include <chrono>

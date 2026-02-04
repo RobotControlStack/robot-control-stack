@@ -4,7 +4,7 @@
 #include <rcs/Pose.h>
 #include <rcs/Robot.h>
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <mutex>
 #include <optional>
 #include <set>
