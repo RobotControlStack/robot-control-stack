@@ -1,5 +1,14 @@
 [build-system]
-requires = []
+requires = [
+    "build",
+    "wheel",
+    "scikit-build-core>=0.3.3",
+    "pybind11",
+    "cmake",
+    "ninja",
+    "mujoco==3.2.6",
+    "pin==3.7.0",
+]
 build-backend = "scikit_build_core.build"
 
 [project]

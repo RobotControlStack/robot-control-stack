@@ -110,11 +110,11 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
     ```shell
     conda create -n rcs python=3.11
     conda activate rcs
-    pip install -r requirements.txt
     ```
 
 3.  **Install RCS**:
     ```shell
+    pip install -r requirements.txt
     pip install -ve . --no-build-isolation
     ```
 
