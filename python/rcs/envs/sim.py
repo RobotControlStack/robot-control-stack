@@ -65,6 +65,7 @@ class RobotSimWrapper(gym.Wrapper):
             info["collision"] = info["collision"] or state.collision
         info["ik_success"] = state.ik_success
         info["is_sim_converged"] = self.sim.is_converged()
+        info["tau_ext"] = self.sim.data.qfrc_constraint[:7]
         # truncate episode if collision
         obs.update(self.unwrapped.get_obs())
         return obs, 0, False, info["collision"] or not state.ik_success, info
@@ -77,6 +78,7 @@ class RobotSimWrapper(gym.Wrapper):
         self.sim.step(1)
         # todo: an obs method that is recursive over wrappers would be needed
         obs.update(self.unwrapped.get_obs())
+        info["tau_ext"] = np.array(self.sim.data.qfrc_constraint[:7])
         return obs, info
 
 

@@ -12,6 +12,7 @@ from rcs.envs.creators import (
 )
 
 from rcs import camera, envs, hand, sim
+from rcs.lerobot import Pick
 
 
 @dataclass(kw_only=True)
@@ -98,6 +99,10 @@ register(
 register(
     id="rcs/FR3LabDigitGripperPickUpSim-v0",
     entry_point=FR3LabDigitGripperPickUpSimEnvCreator(),
+)
+register(
+    id="rcs/pick",
+    entry_point=Pick(),
 )
 
 # Genius TODO: Add the tacto version of the SimEnvCreator
