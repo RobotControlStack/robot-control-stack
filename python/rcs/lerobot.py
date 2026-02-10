@@ -1,18 +1,16 @@
 from typing import Any
-import gymnasium as gym
-import rcs
-import numpy as np
 
-from rcs._core.sim import SimConfig
+import gymnasium as gym
+import numpy as np
+from gymnasium.envs.registration import EnvCreator
+from rcs._core.sim import CameraType, SimCameraConfig, SimConfig
 from rcs.envs.base import ControlMode, RelativeActionSpace
+from rcs.envs.creators import SimTaskEnvCreator
 from rcs.envs.space_utils import ActObsInfoWrapper
 from rcs.sim import SimGripperConfig
 from rcs_tacto.tacto_wrapper import TactoSimWrapper
-from gymnasium.envs.registration import EnvCreator
 
-
-from rcs._core.sim import CameraType, SimCameraConfig
-from rcs.envs.creators import SimTaskEnvCreator
+import rcs
 
 SCENE_FILE = "beast_refiner/rcs_env/rcs_icra_scene_digit/scene.xml"
 CAMERAS = [
@@ -23,17 +21,20 @@ CAMERAS = [
     "side_wide",
 ]
 
+
 class AlignSpaceWrapper(ActObsInfoWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.observation_space = gym.spaces.Dict({
-            "state": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32),
-            "images.image": env.observation_space["frames"]["side"]["rgb"]["data"],
-            "images.image2": env.observation_space["frames"]["wrist"]["rgb"]["data"],
-            "images.tactile_left": gym.spaces.Box(low=0, high=255, shape=(320, 240, 3), dtype=np.uint8),
-            "images.tactile_right": gym.spaces.Box(low=0, high=255, shape=(320, 240, 3), dtype=np.uint8),
-        })
+        self.observation_space = gym.spaces.Dict(
+            {
+                "state": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(15,), dtype=np.float32),
+                "images.image": env.observation_space["frames"]["side"]["rgb"]["data"],
+                "images.image2": env.observation_space["frames"]["wrist"]["rgb"]["data"],
+                "images.tactile_left": gym.spaces.Box(low=0, high=255, shape=(320, 240, 3), dtype=np.uint8),
+                "images.tactile_right": gym.spaces.Box(low=0, high=255, shape=(320, 240, 3), dtype=np.uint8),
+            }
+        )
         # self.action_space = env.action_space["joints"]
         gym.spaces.Box(low=-np.inf, high=np.inf, shape=(8,), dtype=np.float32)
 
@@ -48,7 +49,6 @@ class AlignSpaceWrapper(ActObsInfoWrapper):
         # tactile and tau_ext are still unsolved
 
         return observation, info
-        
 
     def action(self, action: np.ndarray) -> dict[str, Any]:
         action = {"joints": action[:7], "gripper": action[7]}

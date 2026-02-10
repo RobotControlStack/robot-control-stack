@@ -2,17 +2,19 @@
 
 import os
 import site
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from gymnasium import register
+from lerobot.configs.types import PolicyFeature
+from lerobot.envs.configs import EnvConfig
 from rcs._core import __version__, common
 from rcs.envs.creators import (
     FR3LabDigitGripperPickUpSimEnvCreator,
     FR3SimplePickUpSimEnvCreator,
 )
+from rcs.lerobot import Pick
 
 from rcs import camera, envs, hand, sim
-from rcs.lerobot import Pick
 
 
 @dataclass(kw_only=True)
@@ -105,7 +107,6 @@ register(
     entry_point=Pick(),
 )
 
-# Genius TODO: Add the tacto version of the SimEnvCreator
 # TODO: gym.make("rcs/FR3SimEnv-v0") results in a pickling error:
 # TypeError: cannot pickle 'rcs._core.sim.SimRobotConfig' object
 # cf. https://pybind11.readthedocs.io/en/stable/advanced/classes.html#deepcopy-support
@@ -113,3 +114,29 @@ register(
 #    id="rcs/FR3SimEnv-v0",
 #    entry_point=SimEnvCreator(),
 # )
+
+
+# lerobot env registration
+@EnvConfig.register_subclass("rcs/pick")
+@dataclass
+class RCSEnvConfig(EnvConfig):
+    task: str | None = "pick"
+    fps: int = 30
+    features: dict[str, PolicyFeature] = field(default_factory=dict)
+    features_map: dict[str, str] = field(default_factory=dict)
+    max_parallel_tasks: int = 1
+    disable_env_checker: bool = True
+
+    @property
+    def package_name(self) -> str:
+        """Package name to import if environment not found in gym registry"""
+        return "rcs"
+
+    @property
+    def gym_id(self) -> str:
+        """ID string used in gym.make() to instantiate the environment"""
+        return f"{self.package_name}/{self.task}"
+
+    @property
+    def gym_kwargs(self) -> dict:
+        return {}
