@@ -6,6 +6,7 @@ from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs_fr3._core import hw
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
+from rcs_fr3.utils import default_fr3_hw_robot_cfg
 
 import rcs
 from rcs import sim
@@ -60,15 +61,15 @@ def main():
         gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
-            mjcf_path = rcs.scenes["fr3_empty_world"].mjcf_robot
+            robot_cfg = sim.SimRobotConfig()
+            robot_cfg.add_id("0")
+            robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             ik = rcs.common.Pin(
-                mjcf_path,
-                "attachment_site_0",
+                robot_cfg.kinematic_model_path,
+                robot_cfg.attachment_site,
+                urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
             )
-            cfg = sim.SimRobotConfig()
-            cfg.add_id("0")
-            cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            robot = rcs.sim.SimRobot(simulation, ik, cfg)
+            robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
 
             gripper_cfg_sim = sim.SimGripperConfig()
             gripper_cfg_sim.add_id("0")
@@ -95,15 +96,14 @@ def main():
             simulation.open_gui()
 
         else:
-            mjcf_path = rcs.scenes["fr3_empty_world"].mjcf_robot
+            fr3_cfg = default_fr3_hw_robot_cfg()
+            fr3_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             ik = rcs.common.Pin(
-                mjcf_path,
-                "attachment_site_0",
+                fr3_cfg.kinematic_model_path,
+                fr3_cfg.attachment_site,
+                urdf=fr3_cfg.kinematic_model_path.endswith(".urdf"),
             )
             robot = hw.Franka(ROBOT_IP, ik)
-            robot_cfg = hw.FR3Config()
-            robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            robot_cfg.ik_solver = hw.IKSolver.rcs_ik
             robot.set_config(robot_cfg)  # type: ignore
 
             gripper_cfg_hw = hw.FHConfig()

@@ -13,9 +13,11 @@ from urllib import parse
 import rcs_panda
 import requests
 from dotenv import load_dotenv
-from rcs_panda.utils import default_panda_hw_gripper_cfg
+from rcs_panda.utils import default_panda_hw_gripper_cfg, default_panda_hw_robot_cfg
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
+
+import rcs
 
 _logger = logging.getLogger("desk")
 
@@ -47,10 +49,16 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
-        f = rcs_panda.hw.Franka(ip)
-        config = rcs_panda.hw.PandaConfig()
-        config.speed_factor = 0.2
-        f.set_config(config)
+        robot_cfg = default_panda_hw_robot_cfg()
+        robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+        robot_cfg.speed_factor = 0.2
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        f = rcs_panda.hw.Franka(ip, ik)
+        f.set_config(robot_cfg)
         config_hand = rcs_panda.hw.FHConfig()
         g = rcs_panda.hw.FrankaHand(ip, config_hand)
         if shut:
@@ -62,9 +70,16 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
-        f = rcs_panda.hw.Franka(ip)
-        config = rcs_panda.hw.PandaConfig()
-        f.set_config(config)
+        robot_cfg = default_panda_hw_robot_cfg()
+        robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+        robot_cfg.speed_factor = 0.2
+        ik = rcs.common.Pin(
+            robot_cfg.kinematic_model_path,
+            robot_cfg.attachment_site,
+            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+        )
+        f = rcs_panda.hw.Franka(ip, ik)
+        f.set_config(robot_cfg)
         print("Robot info:")
         print("Current cartesian position:")
         print(f.get_cartesian_position())
