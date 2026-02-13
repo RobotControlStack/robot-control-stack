@@ -41,12 +41,14 @@ class RealSenseCameraSet(HardwareCamera):
         enable_ir: bool = False,
         laser_power: int = 330,
         enable_imu: bool = False,
+        align_depth_to_color: bool = False,
     ) -> None:
         self.enable_ir_emitter = enable_ir_emitter
         self.enable_ir = enable_ir
         self.laser_power = laser_power
         self.enable_imu = enable_imu
         self.cameras = cameras
+        self.align_depth_to_color = align_depth_to_color
         if calibration_strategy is None:
             calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
         self.calibration_strategy = calibration_strategy
@@ -241,6 +243,11 @@ class RealSenseCameraSet(HardwareCamera):
         streams = device.pipeline_profile.get_streams()
         frameset = device.pipeline.wait_for_frames()
 
+        if self.align_depth_to_color:
+            # replaces the frameset with a composite frameset containing the aligned depth
+            align = rs.align(rs.stream.color)
+            frameset = align.process(frameset)
+
         color: DataFrame | None = None
         ir: DataFrame | None = None
         depth: DataFrame | None = None
@@ -255,11 +262,18 @@ class RealSenseCameraSet(HardwareCamera):
             return frame.get_timestamp() * RealSenseCameraSet.TIMESTAMP_FACTOR
 
         color_extrinsics = self.calibration_strategy[camera_name].get_extrinsics()
-        depth_to_color = device.depth_to_color
-        assert depth_to_color is not None, "Depth to color extrinsics not found"
-        depth_extrinsics = (
-            color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
-        )
+
+        if self.align_depth_to_color:
+            # if aligned, depth acts as if it was shot from the color sensor
+            depth_extrinsics = color_extrinsics
+            active_depth_intrinsics = device.color_intrinsics
+        else:
+            depth_to_color = device.depth_to_color
+            assert depth_to_color is not None, "Depth to color extrinsics not found"
+            depth_extrinsics = (
+                color_extrinsics @ depth_to_color.inverse().pose_matrix() if color_extrinsics is not None else None
+            )
+            active_depth_intrinsics = device.depth_intrinsics
 
         timestamps = []
         for stream in streams:
@@ -282,7 +296,7 @@ class RealSenseCameraSet(HardwareCamera):
                         np.uint16
                     ),
                     timestamp=to_ts(frame),
-                    intrinsics=device.depth_intrinsics,
+                    intrinsics=active_depth_intrinsics,
                     extrinsics=depth_extrinsics,  # type: ignore
                 )
             elif rs.stream.accel == stream.stream_type():
