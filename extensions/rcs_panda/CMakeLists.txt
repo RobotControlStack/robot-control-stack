@@ -75,23 +75,7 @@ FetchContent_Declare(
     OVERRIDE_FIND_PACKAGE
 )
 
-# --- POCO C++ Libraries ---
-set(ENABLE_TESTS OFF CACHE BOOL "Disable POCO tests" FORCE)
-set(ENABLE_DATA_MYSQL OFF CACHE BOOL "Disable POCO MySQL" FORCE)
-set(ENABLE_DATA_ODBC OFF CACHE BOOL "Disable POCO ODBC" FORCE)
-set(ENABLE_PAGECOMPILER OFF CACHE BOOL "Disable POCO PageCompiler" FORCE)
-set(ENABLE_PAGECOMPILER_FILE2PAGE OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-    Poco
-    GIT_REPOSITORY https://github.com/pocoproject/poco.git
-    GIT_TAG        poco-1.13.3-release 
-    GIT_PROGRESS   TRUE
-    EXCLUDE_FROM_ALL
-    OVERRIDE_FIND_PACKAGE
-)
-
-FetchContent_MakeAvailable(pybind11 Eigen3 console_bridge Poco)
+FetchContent_MakeAvailable(pybind11 Eigen3 console_bridge)
 if(NOT TARGET Eigen3::Eigen3)
     add_library(Eigen3::Eigen3 ALIAS eigen)
 endif()

@@ -4,6 +4,7 @@ Extension to control the fr3 with rcs.
 ## Installation
 ```shell
 # go to this directory
+sudo apt install $(cat debian_deps.txt)
 pip install -ve .
 ```
 

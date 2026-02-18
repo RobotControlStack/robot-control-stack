@@ -6,6 +6,7 @@ This extension provides support for the Franka Research 3 (FR3) robot in RCS.
 
 ```shell
 # from root directory
+sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
 pip install -ve extensions/rcs_fr3
 ```
 

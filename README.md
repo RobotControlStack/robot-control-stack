@@ -152,6 +152,7 @@ RCS supports various hardware extensions to seamlessly connect your policies to 
 To install a specific robot extension (example for Franka FR3):
 
 ```shell
+sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
 pip install -ve extensions/rcs_fr3
 ```
 
