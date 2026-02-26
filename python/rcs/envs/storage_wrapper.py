@@ -263,6 +263,7 @@ class StorageWrapper(gym.Wrapper):
                     "success": self._success,
                     "action": self._prev_action,
                     "instruction": self.instruction,
+                    "timestamp": datetime.datetime.now().timestamp(),
                 }
             )
             self._prev_action = action

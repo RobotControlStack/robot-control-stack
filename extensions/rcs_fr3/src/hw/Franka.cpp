@@ -100,6 +100,7 @@ void Franka::set_default_robot_behavior() {
 }
 
 common::Pose Franka::get_cartesian_position() {
+  this->check_for_background_errors();
   common::Pose x;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -123,6 +124,7 @@ void Franka::set_joint_position(const common::VectorXd& q) {
 }
 
 common::VectorXd Franka::get_joint_position() {
+  this->check_for_background_errors();
   common::Vector7d joints;
   if (this->running_controller == Controller::none) {
     this->curr_state = this->robot.readOnce();
@@ -210,6 +212,7 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
 void Franka::check_for_background_errors() {
   std::lock_guard<std::mutex> lock(this->exception_mutex);
   if (this->background_exception) {
+    this->stop_control_thread();
     std::exception_ptr ex = this->background_exception;
     this->background_exception = nullptr;
     std::rethrow_exception(ex);
@@ -587,6 +590,7 @@ void Franka::joint_controller() {
 }
 
 void Franka::zero_torque_guiding() {
+  this->check_for_background_errors();
   if (this->running_controller != Controller::none) {
     throw std::runtime_error(
         "A controller is currently running. Please stop it first.");
@@ -605,18 +609,23 @@ void Franka::zero_torque_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   this->controller_time = 0.0;
-  this->robot.control([&](const franka::RobotState& robot_state,
-                          franka::Duration period) -> franka::Torques {
-    this->interpolator_mutex.lock();
-    this->curr_state = robot_state;
-    this->controller_time += period.toSec();
-    this->interpolator_mutex.unlock();
-    if (this->running_controller == Controller::none) {
-      // stop
-      return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
-    }
-    return franka::Torques({0, 0, 0, 0, 0, 0, 0});
-  });
+  try {
+    this->robot.control([&](const franka::RobotState& robot_state,
+                            franka::Duration period) -> franka::Torques {
+      this->interpolator_mutex.lock();
+      this->curr_state = robot_state;
+      this->controller_time += period.toSec();
+      this->interpolator_mutex.unlock();
+      if (this->running_controller == Controller::none) {
+        // stop
+        return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
+      }
+      return franka::Torques({0, 0, 0, 0, 0, 0, 0});
+    });
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(this->exception_mutex);
+    this->background_exception = std::current_exception();
+  }
 }
 
 void Franka::move_home() {
