@@ -133,6 +133,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FrankaConfig::nominal_end_effector_frame)
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
+      .def_readwrite("tcp_offset_configured_in_desk",
+                     &rcs::hw::FrankaConfig::tcp_offset_configured_in_desk)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control);
 
   py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")

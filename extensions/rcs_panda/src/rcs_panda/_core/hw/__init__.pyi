@@ -100,6 +100,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     load_parameters: FrankaLoad | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
+    tcp_offset_configured_in_desk: bool
     world_to_robot: rcs._core.common.Pose | None
     def __init__(self) -> None: ...
 

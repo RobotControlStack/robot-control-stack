@@ -43,6 +43,7 @@ struct FrankaConfig : common::RobotConfig {
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
   bool async_control = false;
+  bool tcp_offset_configured_in_desk = true;
 };
 
 struct FR3Config : FrankaConfig {};

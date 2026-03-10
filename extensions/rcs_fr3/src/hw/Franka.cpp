@@ -110,6 +110,9 @@ common::Pose Franka::get_cartesian_position() {
     x = common::Pose(this->curr_state.O_T_EE);
     this->interpolator_mutex.unlock();
   }
+  if (!this->cfg.tcp_offset_configured_in_desk) {
+    return x * cfg.tcp_offset;
+  }
   return x;
 }
 
