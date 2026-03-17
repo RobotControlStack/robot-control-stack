@@ -2,7 +2,7 @@
 
 import os
 import site
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from gymnasium import register
 from rcs._core import __version__, common
@@ -18,8 +18,6 @@ from rcs import camera, envs, hand, sim
 class Scene:
     """Scene configuration."""
 
-    mjb: str
-    """Path to the Mujoco binary scene file."""
     mjcf_scene: str
     """Path to the Mujoco scene XML file."""
     mjcf_robot: str
@@ -28,6 +26,10 @@ class Scene:
     """Path to the URDF robot file for IK, if available."""
     robot_type: common.RobotType
     """Type of the robot in the scene."""
+    mjb: str | None = None
+    """Path to the Mujoco binary scene file."""
+    # TODO: add possibility to add robot config to the scene config (the field below is currently unused)
+    robot_config: dict[str, common.RobotConfig] = field(default_factory=dict)
 
 
 def get_scene_urdf(scene_name: str) -> str | None:
