@@ -17,15 +17,16 @@ logger.setLevel(logging.INFO)
 
 def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
     robot_cfg = rcs.sim.SimRobotConfig()
-    robot_cfg.robot_type = rcs.scenes[scene].robot_type
+    scene_cfg = rcs.scenes[scene]
+    robot_cfg.robot_type = scene_cfg.robot_type
     robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
     robot_cfg.add_id(idx)
-    if rcs.scenes[scene].mjb is not None:
-        robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjb
+    if scene_cfg.mjb is not None:
+        robot_cfg.mjcf_scene_path = scene_cfg.mjb
     else:
-        robot_cfg.mjcf_scene_path = rcs.scenes[scene].mjcf_scene
-    robot_cfg.kinematic_model_path = rcs.scenes[scene].mjcf_robot
-    # robot_cfg.kinematic_model_path = rcs.scenes[scene].urdf
+        robot_cfg.mjcf_scene_path = scene_cfg.mjcf_scene
+    robot_cfg.kinematic_model_path = scene_cfg.mjcf_robot
+    # robot_cfg.kinematic_model_path = scene_cfg.urdf
     return robot_cfg
 
 

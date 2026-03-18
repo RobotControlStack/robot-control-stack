@@ -25,7 +25,8 @@ def main():
     robot_cfg.robot_type = rcs.common.RobotType.SO101
     robot_cfg.attachment_site = "gripper"
     robot_cfg.arm_collision_geoms = []
-    robot_cfg.mjcf_scene_path = rcs.scenes["so101_empty_world"].mjb
+    scene = rcs.scenes["so101_empty_world"]
+    robot_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
     robot_cfg.kinematic_model_path = rcs.scenes["so101_empty_world"].mjcf_robot
 
     gripper_cfg = sim.SimGripperConfig()

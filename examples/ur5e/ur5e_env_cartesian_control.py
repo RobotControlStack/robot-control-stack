@@ -44,7 +44,8 @@ def main():
         robot_sim_cfg.robot_type = rcs.common.RobotType.UR5e
         robot_sim_cfg.attachment_site = "attachment_site"
         robot_sim_cfg.arm_collision_geoms = []
-        robot_sim_cfg.mjcf_scene_path = rcs.scenes["ur5e_empty_world"].mjb
+        scene = rcs.scenes["ur5e_empty_world"]
+        robot_sim_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
         robot_sim_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
         robot_sim_cfg.base = "base"
         robot_sim_cfg.tcp_offset = rcs.common.Pose()

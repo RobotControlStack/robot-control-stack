@@ -60,7 +60,8 @@ def main():
         robot: rcs.common.Robot
         gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
+            scene = rcs.scenes["fr3_empty_world"]
+            simulation = sim.Sim(scene.mjb or scene.mjcf_scene)
             robot_cfg = sim.SimRobotConfig()
             robot_cfg.add_id("0")
             robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())

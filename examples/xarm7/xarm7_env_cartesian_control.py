@@ -60,7 +60,8 @@ def main():
         robot_cfg.robot_type = rcs.common.RobotType.XArm7
         robot_cfg.attachment_site = "attachment_site"
         robot_cfg.arm_collision_geoms = []
-        robot_cfg.mjcf_scene_path = rcs.scenes["xarm7_empty_world"].mjb
+        scene = rcs.scenes["xarm7_empty_world"]
+        robot_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
         robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
         env_rel = SimEnvCreator()(
             robot_cfg=robot_cfg,
