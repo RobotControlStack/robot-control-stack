@@ -39,6 +39,7 @@ dependencies = [
   "simplejpeg",
   "mujoco==3.2.6",
   "pin==3.7.0",
+  "tqdm",
 ]
 readme = "README.md"
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
@@ -71,6 +72,7 @@ dev = [
 build_deps = [
   "mujoco==3.2.6",
   "pin==3.7.0",
+  "scikit-build-core>=0.3.3",
 ]
 
 [tool.cibuildwheel]
