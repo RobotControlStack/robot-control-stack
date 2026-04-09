@@ -1,7 +1,4 @@
 <mujoco>
-    <extension>
-        <plugin plugin="mujoco.sensor.touch_grid" />
-    </extension>
     <worldbody>
     <body name="base_0" childclass="fr3" gravcomp="1">
         <body name="fr3_link0_0" gravcomp="1">
@@ -102,10 +99,10 @@
                                                     <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_1_left_1_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_1_left_2_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_1_left_3_0" friction="2 0.05 0.0001"/>
-                                                    <site name="left_tacto_pad_0" pos="0 0.005 -0.075" euler="1.5707963267948966 0 3.141592653589793"/>
+                                                    <site name="left_tacto_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
                                                 </body>
 
-                                                <joint name="finger_joint1_0" class="finger" />
+                                                <joint name="finger_joint1_0" class="finger"/>
                                                 <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7" />
                                             </body>
                                             <body name="right_finger_0" pos="0.00 -0.01 0.075" euler="0 3.141592653589793 0" gravcomp="1">
@@ -123,7 +120,7 @@
                                                     <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_1_right_1_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_1_right_2_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_1_right_3_0" friction="2 0.05 0.0001"/>
-                                                    <site name="right_tacto_pad_0" pos="0 0.005 -0.075" euler="1.5707963267948966 0 3.141592653589793"/>
+                                                    <site name="right_tacto_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
                                                 </body>
 
                                                 <joint name="finger_joint2_0" class="finger" />
@@ -162,18 +159,4 @@
         
         <general class="fr3" name="actuator8_0" tendon="split_0" forcerange="-100 100" ctrlrange="0 255" gainprm="0.01568627451 0 0" biasprm="0 -100 -10" />
     </actuator>
-    <sensor>
-        <plugin name="left_tacto_pad_0" plugin="mujoco.sensor.touch_grid" objtype="site" objname="left_tacto_pad_0">
-            <config key="size" value="120 160" />
-            <config key="fov" value="60 70" />
-            <config key="gamma" value="0" />
-            <config key="nchannel" value="3" />
-        </plugin>
-        <plugin name="right_tacto_pad_0" plugin="mujoco.sensor.touch_grid" objtype="site" objname="right_tacto_pad_0">
-            <config key="size" value="120 160" />
-            <config key="fov" value="60 70" />
-            <config key="gamma" value="0" />
-            <config key="nchannel" value="3" />
-        </plugin>
-  </sensor>
 </mujoco>

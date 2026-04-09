@@ -61,7 +61,6 @@
         <material name="button_green" rgba="0.102241 0.571125 0.102242 1" />
         <material name="button_red" rgba="0.520996 0.008023 0.013702 1" />
         <material name="button_blue" rgba="0.024157 0.445201 0.737911 1" />
-
         <mesh file="fr3_link0_0.obj" />
         <mesh file="fr3_link0_1.obj" />
         <mesh file="fr3_link0_2.obj" />

@@ -6,7 +6,7 @@ import mujoco
 import numpy as np
 from rcs._core.common import Pose
 from rcs.envs.base import GripperWrapper, RobotEnv
-from rcs_tacto.creators import FR3TactoSimplePickUpSimEnvCreator
+from rcs_taxim.creators import FR3TaximSimplePickUpSimEnvCreator
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class PickUpDemo:
 
 
 def main():
-    env_fact = FR3TactoSimplePickUpSimEnvCreator()
+    env_fact = FR3TaximSimplePickUpSimEnvCreator()
     env = env_fact(
         render_mode="human",
         delta_actions=False,
@@ -89,7 +89,7 @@ def main():
         # reset the environment
         env.reset()
         controller = PickUpDemo(env)
-        controller.pickup("yellow_box_geom")
+        controller.pickup("box_geom")
     env.close()
 
 

@@ -410,12 +410,12 @@ class PickCubeSuccessWrapper(gym.Wrapper):
     - whether the arm is standing still once the task is solved.
     """
 
-    def __init__(self, env, cube_joint_name="box_joint"):
+    def __init__(self, env, cube_joint_name="box_joint", cube_geom_name="box_geom"):
         super().__init__(env)
         self.unwrapped: RobotEnv
         assert isinstance(self.unwrapped.robot, sim.SimRobot), "Robot must be a sim.SimRobot instance."
         self.sim = env.get_wrapper_attr("sim")
-        self.cube_geom_name = "box_geom"
+        self.cube_geom_name = cube_geom_name
         self.home_pose = self.unwrapped.robot.get_cartesian_position()
         self._gripper_closing = 0
         self._gripper = self.get_wrapper_attr("_gripper")
