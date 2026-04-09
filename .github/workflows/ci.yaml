@@ -72,7 +72,7 @@ jobs:
           - rcs_xarm7
           - rcs_realsense
           - rcs_robotiq2f85
-          - rcs_tacto
+          - rcs_taxim
           - rcs_usb_cam
     runs-on: ubuntu-latest
     steps:

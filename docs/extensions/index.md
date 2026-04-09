@@ -10,7 +10,7 @@ rcs_xarm7
 rcs_so101
 rcs_realsense
 rcs_usb_cam
-rcs_tacto
+rcs_taxim
 rcs_robotics_library
 rcs_robotiq2f85
 ```

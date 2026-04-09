@@ -92,14 +92,14 @@
                                                 <geom mesh="digit_sensor_no_backplate" class="visual" material="black" />
                                                 <geom mesh="digit_sensor_no_backplate_collision" class="collision" name="finger_c_left_0" />
 
-                                                <body name="left_tacto">
+                                                <body name="left_taxim">
                                                     <geom mesh="digit_sensor_pad" class="visual" material="grey_material" />
                                                     <geom mesh="digit_sensor_pad" class="collision" name="finger_1_left_0" friction="0.4"/>
                                                     <geom class="fingertip_pad_collision_1" name="fingertip_pad_collision_1_left_0_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_1_left_1_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_1_left_2_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_1_left_3_0" friction="2 0.05 0.0001"/>
-                                                    <site name="left_tacto_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
+                                                    <site name="left_taxim_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
                                                 </body>
 
                                                 <joint name="finger_joint1_0" class="finger"/>
@@ -113,14 +113,14 @@
                                                 <geom mesh="digit_sensor_no_backplate" class="visual" material="black" />
                                                 <geom mesh="digit_sensor_no_backplate_collision" class="collision" name="finger_c_right_0" />
                                                 
-                                                <body name="right_tacto">
+                                                <body name="right_taxim">
                                                     <geom mesh="digit_sensor_pad" class="visual" material="grey_material" />
                                                     <geom mesh="digit_sensor_pad" class="collision" name="finger_1_right_0"/>
                                                     <geom class="fingertip_pad_collision_1" name="fingertip_pad_collision_1_right_0_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_1_right_1_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_1_right_2_0" friction="2 0.05 0.0001"/>
                                                     <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_1_right_3_0" friction="2 0.05 0.0001"/>
-                                                    <site name="right_tacto_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
+                                                    <site name="right_taxim_pad_0" pos="0 0.0173 -0.075" euler="-1.570796 0 1.570796"/>
                                                 </body>
 
                                                 <joint name="finger_joint2_0" class="finger" />

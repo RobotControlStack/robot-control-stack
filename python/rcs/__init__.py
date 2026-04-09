@@ -102,7 +102,6 @@ register(
     entry_point=FR3LabDigitGripperPickUpSimEnvCreator(),
 )
 
-# Genius TODO: Add the tacto version of the SimEnvCreator
 # TODO: gym.make("rcs/FR3SimEnv-v0") results in a pickling error:
 # TypeError: cannot pickle 'rcs._core.sim.SimRobotConfig' object
 # cf. https://pybind11.readthedocs.io/en/stable/advanced/classes.html#deepcopy-support

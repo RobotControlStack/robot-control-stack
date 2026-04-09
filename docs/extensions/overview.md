@@ -28,7 +28,7 @@ RCS comes with several supported extensions:
 - **rcs_so101**: Support for the SO101 robot.
 - **rcs_realsense**: Support for Intel RealSense cameras.
 - **rcs_usb_cam**: Support for generic USB webcams.
-- **rcs_tacto**: Integration with the Tacto tactile sensor simulator.
+- **rcs_taxim**: Integration with the Taxim tactile sensor simulator.
 - **rcs_robotics_library**: Integration with the Robotics Library (RL).
 - **rcs_robotiq2f85**: Integration with the Robotiq 2F-85 Gripper.
 

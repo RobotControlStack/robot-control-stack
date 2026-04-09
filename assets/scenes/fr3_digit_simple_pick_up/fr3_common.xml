@@ -18,10 +18,10 @@
             <default class="visual">
                 <geom type="mesh" group="2" contype="0" conaffinity="0" />
             </default>
-            <default class="tacto_visual">
+            <default class="taxim_visual">
                 <geom type="mesh" group="2" contype="0" conaffinity="0" friction="0.4" solimp="0.99 0.9999 0.000001" />
             </default>
-            <default class="tacto_collision">
+            <default class="taxim_collision">
                 <geom type="mesh" group="3" mass="0" density="0" friction="0.4" solimp="0.99 0.9999 0.000001" />
             </default>
             <default class="collision">
