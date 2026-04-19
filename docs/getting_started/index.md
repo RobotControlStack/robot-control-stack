@@ -14,6 +14,14 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 2.  Create and activate Python virtual environment or conda environment:
 
+    RCS requires **Python >= 3.10**. We strongly recommend **Python 3.11** for full compatibility with all extensions (e.g., `rcs_realsense`).
+
+    ```{note}
+    - **Python 3.11** is preferred for development.
+    - **Python > 3.11**: `rcs_realsense` may have compatibility issues due to `pyrealsense2` limitations.
+    - **Python > 3.12**: The `ompl` dependency is currently unavailable on PyPI.
+    ```
+
     ```shell
     conda create -n rcs python=3.11
     conda activate rcs
@@ -53,14 +61,20 @@ from time import sleep
 import numpy as np
 
 # Load simulation scene
-simulation = sim.Sim(rcs.scenes["fr3_empty_world"].mjb)
-urdf_path = rcs.scenes["fr3_empty_world"].urdf
-ik = rcs.common.RL(str(urdf_path))
+scene = rcs.scenes["fr3_empty_world"]
+simulation = sim.Sim(scene.mjb or scene.mjcf_scene)
 
 # Configure robot
 cfg = sim.SimRobotConfig()
 cfg.add_postfix("_0")
 cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+
+# Configure IK solver (using Pinocchio)
+ik = rcs.common.Pin(
+    cfg.kinematic_model_path,
+    cfg.attachment_site,
+    urdf=cfg.kinematic_model_path.endswith(".urdf"),
+)
 robot = rcs.sim.SimRobot(simulation, ik, cfg)
 
 # Configure gripper
@@ -73,7 +87,7 @@ camera_set = SimCameraSet(simulation, {})
 
 # Open GUI
 simulation.open_gui()
-sleep(5)
+sleep(2)
 
 # Step the robot 10 cm in x direction
 robot.set_cartesian_position(

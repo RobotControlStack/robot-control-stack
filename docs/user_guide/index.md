@@ -8,4 +8,7 @@ The User Guide provides in-depth information about the core concepts and compone
 architecture
 gym_interface
 low_level_api
+teleoperation
+data_collection
+remote_inference
 ```
