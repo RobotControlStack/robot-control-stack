@@ -32,8 +32,8 @@ ROBOT_IP = "172.16.0.2" # Replace with your robot IP
 
 user, pw = load_creds_franka_desk()
 with FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False):
-    urdf_path = rcs.scenes["fr3_empty_world"].urdf
-    ik = rcs.common.RL(str(urdf_path))
+    robot_meta = rcs.ROBOTS[rcs.common.RobotType.FR3]
+    ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site)
     
     # Configure Robot
     robot = hw.Franka(ROBOT_IP, ik)
