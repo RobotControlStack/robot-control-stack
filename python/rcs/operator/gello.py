@@ -1,5 +1,4 @@
 import contextlib
-import copy
 import logging
 import threading
 import time
@@ -18,13 +17,6 @@ try:
     HAS_DYNAMIXEL_SDK = True
 except ImportError:
     HAS_DYNAMIXEL_SDK = False
-
-try:
-    from pynput import keyboard
-
-    HAS_PYNPUT = True
-except ImportError:
-    HAS_PYNPUT = False
 
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
@@ -346,40 +338,15 @@ class GelloOperator(BaseOperator):
         super().__init__(config, sim)
         self.config: GelloConfig
         self._resource_lock = threading.Lock()
-        self._cmd_lock = threading.Lock()
-
         self._exit_requested = False
-        self._commands = TeleopCommands()
-
         self.controller_names = list(self.config.arms.keys())
 
         self._last_joints: Dict[str, np.ndarray | None] = {name: None for name in self.controller_names}
         self._last_gripper = {name: 1.0 for name in self.controller_names}
         self._hws: Dict[str, GelloHardware] = {}
 
-        if HAS_PYNPUT:
-            self._listener = keyboard.Listener(on_press=self._on_press)
-            self._listener.start()
-        else:
-            logger.warning("pynput not found. Keyboard triggers disabled.")
-
-    def _on_press(self, key):
-        try:
-            if hasattr(key, "char"):
-                if key.char == "s":
-                    with self._cmd_lock:
-                        self._commands.sync_position = True
-                elif key.char == "r":
-                    with self._cmd_lock:
-                        self._commands.failure = True
-        except AttributeError:
-            pass
-
     def consume_commands(self) -> TeleopCommands:
-        with self._cmd_lock:
-            cmds = copy.copy(self._commands)
-            self._commands = TeleopCommands()
-            return cmds
+        return TeleopCommands()
 
     def reset_operator_state(self):
         # GELLO is absolute, no internal state to reset typically
@@ -425,8 +392,6 @@ class GelloOperator(BaseOperator):
 
     def close(self):
         self._exit_requested = True
-        if HAS_PYNPUT and hasattr(self, "_listener"):
-            self._listener.stop()
         for hw in self._hws.values():
             hw.close()
         if self.is_alive() and threading.current_thread() != self:

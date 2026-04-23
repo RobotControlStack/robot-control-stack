@@ -7,8 +7,10 @@ from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
+from rcs.operator.compose import ComposeOperator, ComposeOperatorConfig
 from rcs.operator.gello import GelloConfig, GelloOperator
 from rcs.operator.interface import TeleopLoop
+from rcs.operator.keyboard import KeyboardOperatorConfig
 from rcs.operator.quest import QuestConfig, QuestOperator
 from rcs_fr3.configs import DefaultFR3MultiHardwareEnv
 from rcs_fr3.creators import HardwareCameraCreatorConfig
@@ -117,7 +119,7 @@ def get_env():
         # env_rel = StorageWrapper(
         #     env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
         # )
-        operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
+        operator = build_operator(config)
     else:
         # FR3
 
@@ -137,8 +139,19 @@ def get_env():
 
         sim = env_rel.get_wrapper_attr("sim")
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
-        operator = GelloOperator(config, sim) if isinstance(config, GelloConfig) else QuestOperator(config, sim)
+        operator = build_operator(config, sim)
     return env_rel, operator
+
+
+def build_operator(config: QuestConfig | GelloConfig, sim=None):
+    if isinstance(config, GelloConfig):
+        compose_config = ComposeOperatorConfig(
+            base=config,
+            override=KeyboardOperatorConfig(control_mode=GelloOperator.control_mode),
+            simulation=config.simulation,
+        )
+        return ComposeOperator(compose_config, sim)
+    return QuestOperator(config, sim) if sim is not None else QuestOperator(config)
 
 
 def main():

@@ -1,4 +1,3 @@
-import copy
 import logging
 import threading
 from dataclasses import dataclass, field
@@ -6,13 +5,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-
-try:
-    from pynput import keyboard
-
-    HAS_PYNPUT = True
-except ImportError:
-    HAS_PYNPUT = False
 
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
@@ -74,34 +66,12 @@ class SO101Operator(BaseOperator):
         super().__init__(config, sim)
         self.config: SO101OperatorConfig
         self._resource_lock = threading.Lock()
-        self._cmd_lock = threading.Lock()
-
         self._exit_requested = False
-        self._commands = TeleopCommands()
-
         self.controller_names = [self.config.controller_name]
         self._last_joints: np.ndarray | None = None
         self._last_gripper = 1.0
         self._leader: Any | None = None
         self._leader_factory = self.config.leader_factory or default_so101_leader_factory
-
-        if HAS_PYNPUT:
-            self._listener = keyboard.Listener(on_press=self._on_press)
-            self._listener.start()
-        else:
-            logger.warning("pynput not found. Keyboard triggers disabled.")
-
-    def _on_press(self, key):
-        try:
-            if hasattr(key, "char"):
-                if key.char == "s":
-                    with self._cmd_lock:
-                        self._commands.sync_position = True
-                elif key.char == "r":
-                    with self._cmd_lock:
-                        self._commands.failure = True
-        except AttributeError:
-            pass
 
     @staticmethod
     def _leader_action_to_target(action: dict[str, float], use_degrees: bool) -> tuple[np.ndarray, float]:
@@ -113,10 +83,7 @@ class SO101Operator(BaseOperator):
         return joints, gripper
 
     def consume_commands(self) -> TeleopCommands:
-        with self._cmd_lock:
-            cmds = copy.copy(self._commands)
-            self._commands = TeleopCommands()
-            return cmds
+        return TeleopCommands()
 
     def reset_operator_state(self):
         pass
@@ -156,8 +123,6 @@ class SO101Operator(BaseOperator):
 
     def close(self):
         self._exit_requested = True
-        if HAS_PYNPUT and hasattr(self, "_listener"):
-            self._listener.stop()
         if self._leader is not None:
             try:
                 self._leader.disconnect()
