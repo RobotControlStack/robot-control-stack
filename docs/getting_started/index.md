@@ -14,7 +14,7 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 2.  Create and activate Python virtual environment or conda environment:
 
-    RCS requires **Python >= 3.10**. We strongly recommend **Python 3.11** for full compatibility with all extensions (e.g., `rcs_realsense`).
+    RCS requires **Python >= 3.10**. We strongly recommend **Python 3.11** for full compatibility with all extensions (for example `rcs_realsense`).
 
     ```{note}
     - **Python 3.11** is preferred for development.
@@ -61,25 +61,17 @@ from time import sleep
 import numpy as np
 
 # Load simulation scene
-scene = rcs.scenes["fr3_empty_world"]
-simulation = sim.Sim(scene.mjb or scene.mjcf_scene)
+robot_meta = rcs.ROBOTS[rcs.common.RobotType.FR3]
+simulation = sim.Sim(rcs.SCENE_PATHS["empty_world"])
+ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site)
 
 # Configure robot
 cfg = sim.SimRobotConfig()
-cfg.add_postfix("_0")
 cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-
-# Configure IK solver (using Pinocchio)
-ik = rcs.common.Pin(
-    cfg.kinematic_model_path,
-    cfg.attachment_site,
-    urdf=cfg.kinematic_model_path.endswith(".urdf"),
-)
 robot = rcs.sim.SimRobot(simulation, ik, cfg)
 
 # Configure gripper
 gripper_cfg_sim = sim.SimGripperConfig()
-gripper_cfg_sim.add_postfix("_0")
 gripper = sim.SimGripper(simulation, gripper_cfg_sim)
 
 # Configure cameras
@@ -87,7 +79,7 @@ camera_set = SimCameraSet(simulation, {})
 
 # Open GUI
 simulation.open_gui()
-sleep(2)
+sleep(5)
 
 # Step the robot 10 cm in x direction
 robot.set_cartesian_position(
@@ -107,24 +99,16 @@ input("press enter to close")
 RCS provides a high-level [Gymnasium](https://gymnasium.farama.org/) interface for Reinforcement Learning and general control.
 
 ```python
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
-)
 from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.configs import EmptyWorldFR3
 import numpy as np
 
-# Create environment
-env_rel = SimEnvCreator()(
-    control_mode=ControlMode.JOINTS,
-    robot_cfg=default_sim_robot_cfg(),
-    gripper_cfg=default_sim_gripper_cfg(),
-    cameras=default_mujoco_cameraset_cfg(),
-    max_relative_movement=np.deg2rad(5),
-    relative_to=RelativeTo.LAST_STEP,
-)
+scene = EmptyWorldFR3()
+cfg = scene.config()
+cfg.control_mode = ControlMode.JOINTS
+cfg.max_relative_movement = np.deg2rad(5)
+cfg.relative_to = RelativeTo.LAST_STEP
+env_rel = scene.create_env(cfg)
 
 # Open GUI
 env_rel.get_wrapper_attr("sim").open_gui()
@@ -143,8 +127,8 @@ for _ in range(100):
 ## Examples
 
 Check out the python examples in the `examples` folder of the repository.
-- `examples/fr3/fr3_direct_control.py`: Direct robot control with RCS's python bindings.
-- `examples/fr3/fr3_env_joint_control.py`: Gymnasium interface with joint control.
-- `examples/fr3/fr3_env_cartesian_control.py`: Gymnasium interface with Cartesian control.
+- `fr3_direct_control.py`: Direct robot control with RCS's python bindings.
+- `fr3_env_joint_control.py`: Gymnasium interface with joint control.
+- `fr3_env_cartesian_control.py`: Gymnasium interface with Cartesian control.
 
 Most examples work both in the MuJoCo simulation as well as on hardware (with appropriate extensions installed).
