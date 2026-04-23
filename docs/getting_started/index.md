@@ -14,6 +14,14 @@ We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
 2.  Create and activate Python virtual environment or conda environment:
 
+    RCS requires **Python >= 3.10**. We strongly recommend **Python 3.11** for full compatibility with all extensions (for example `rcs_realsense`).
+
+    ```{note}
+    - **Python 3.11** is preferred for development.
+    - **Python > 3.11**: `rcs_realsense` may have compatibility issues due to `pyrealsense2` limitations.
+    - **Python > 3.12**: The `ompl` dependency is currently unavailable on PyPI.
+    ```
+
     ```shell
     conda create -n rcs python=3.11
     conda activate rcs
