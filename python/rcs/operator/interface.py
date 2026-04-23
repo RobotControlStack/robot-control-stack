@@ -24,6 +24,20 @@ class TeleopCommands:
     sync_position: bool = False
     reset_origin_to_current: dict[str, bool] = field(default_factory=dict)
 
+    @classmethod
+    def merged(cls, *commands: "TeleopCommands") -> "TeleopCommands":
+        merged = cls()
+        for cmd in commands:
+            merged.record = merged.record or cmd.record
+            merged.success = merged.success or cmd.success
+            merged.failure = merged.failure or cmd.failure
+            merged.sync_position = merged.sync_position or cmd.sync_position
+            for controller, should_reset in cmd.reset_origin_to_current.items():
+                merged.reset_origin_to_current[controller] = (
+                    merged.reset_origin_to_current.get(controller, False) or should_reset
+                )
+        return merged
+
 
 class BaseOperator(ABC, threading.Thread):
     control_mode: tuple[ControlMode, RelativeTo]
