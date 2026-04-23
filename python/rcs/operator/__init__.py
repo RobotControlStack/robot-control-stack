@@ -7,6 +7,7 @@ from rcs.operator.interface import (
     TeleopLoop,
 )
 from rcs.operator.keyboard import KeyboardOperator, KeyboardOperatorConfig
+from rcs.operator.pedals import FootPedalOperator, FootPedalOperatorConfig
 from rcs.operator.quest import QuestConfig, QuestOperator
 from rcs.operator.so101 import SO101Operator, SO101OperatorConfig
 
@@ -17,6 +18,8 @@ __all__ = [
     "ComposeOperatorConfig",
     "GelloConfig",
     "GelloOperator",
+    "FootPedalOperator",
+    "FootPedalOperatorConfig",
     "KeyboardOperator",
     "KeyboardOperatorConfig",
     "QuestConfig",

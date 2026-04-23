@@ -1,116 +1,143 @@
+import copy
+import logging
 import threading
-import time
+from dataclasses import dataclass, field
 
-import evdev
-from evdev import ecodes
+try:
+    import evdev
+    from evdev import ecodes
+
+    HAS_EVDEV = True
+except ImportError:
+    HAS_EVDEV = False
+
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
+from rcs.sim.sim import Sim
+from rcs.utils import SimpleFrameRate
+
+logger = logging.getLogger(__name__)
+
+_SUPPORTED_COMMANDS = frozenset({"record", "success", "failure", "sync_position"})
 
 
-class FootPedal:
-    def __init__(self, device_name_substring="Foot Switch"):
-        """Initializes the foot pedal and starts the background reading thread."""
-        self.device_path = self._find_device(device_name_substring)
+class FootPedalOperator(BaseOperator):
+    """Command-only operator for foot pedals exposed as a Linux evdev input device."""
 
-        if not self.device_path:
-            msg = f"Could not find a device matching '{device_name_substring}'"
+    control_mode = (ControlMode.JOINTS, RelativeTo.NONE)
+
+    def __init__(self, config: "FootPedalOperatorConfig", sim: Sim | None = None):
+        super().__init__(config, sim)
+        self.config: FootPedalOperatorConfig
+        self._cmd_lock = threading.Lock()
+        self._exit_requested = False
+        self._commands = TeleopCommands()
+        self.control_mode = self.config.control_mode
+        self.controller_names = []
+        self._device: evdev.InputDevice | None = None
+        self._device_thread: threading.Thread | None = None
+
+        invalid_commands = set(self.config.command_bindings.values()) - _SUPPORTED_COMMANDS
+        if invalid_commands:
+            msg = (
+                "Unsupported foot pedal command bindings: "
+                f"{sorted(invalid_commands)}. Supported commands are {sorted(_SUPPORTED_COMMANDS)}."
+            )
+            raise ValueError(msg)
+
+        if not HAS_EVDEV:
+            msg = "evdev is not installed. Install it to use FootPedalOperator."
+            raise ImportError(msg)
+
+        device_path = self._find_device_path(self.config.device_name_substring)
+        if device_path is None:
+            msg = f"Could not find a foot pedal input device matching '{self.config.device_name_substring}'."
             raise FileNotFoundError(msg)
 
-        self.device = evdev.InputDevice(self.device_path)
-        self.device.grab()  # Prevent events from leaking into the OS/terminal
+        self._device = evdev.InputDevice(device_path)
+        if self.config.grab_device:
+            self._device.grab()
 
-        # Dictionary to hold the current state of each key.
-        # True = Pressed/Held, False = Released
-        self._key_states = {}
-        self._lock = threading.Lock()
+        self._device_thread = threading.Thread(target=self._evdev_read_loop, daemon=True)
+        self._device_thread.start()
+        logger.info(f"Connected foot pedal device {self._device.name} at {device_path}")
 
-        # Start the background thread
-        self._running = True
-        self._thread = threading.Thread(target=self._read_events, daemon=True)
-        self._thread.start()
-        print(f"Connected to {self.device.name} at {self.device_path}")
-
-    def _find_device(self, substring):
-        """Finds the device path for the foot pedal."""
+    def _find_device_path(self, substring: str) -> str | None:
         for path in evdev.list_devices():
-            dev = evdev.InputDevice(path)
-            if substring.lower() in dev.name.lower():
+            device = evdev.InputDevice(path)
+            if substring.lower() in device.name.lower():
                 return path
         return None
 
-    def _read_events(self):
-        """Background loop that updates the state dictionary."""
+    def _trigger_command(self, command_name: str):
+        with self._cmd_lock:
+            setattr(self._commands, command_name, True)
+
+    def _evdev_read_loop(self):
+        assert self._device is not None
         try:
-            for event in self.device.read_loop():
-                if not self._running:
+            for event in self._device.read_loop():
+                if self._exit_requested:
                     break
+                if event.type != ecodes.EV_KEY or event.value not in (1, 2):
+                    continue
 
-                if event.type == ecodes.EV_KEY:
-                    key_event = evdev.categorize(event)
+                key_name = event.keycode
+                if isinstance(key_name, list):
+                    key_name = key_name[0]
 
-                    if isinstance(key_event, evdev.KeyEvent):
-                        with self._lock:
-                            # keystate: 1 is DOWN, 2 is HOLD, 0 is UP
-                            is_pressed = key_event.keystate in [1, 2]
-
-                            # Store state using the string name of the key (e.g., 'KEY_A')
-                            # If a key resolves to a list (rare, but happens in evdev), take the first one
-                            key_name = key_event.keycode
-                            if isinstance(key_name, list):
-                                key_name = key_name[0]
-
-                            self._key_states[key_name] = is_pressed
-
+                command_name = self.config.command_bindings.get(str(key_name))
+                if command_name is not None:
+                    self._trigger_command(command_name)
         except OSError:
-            pass  # Device disconnected or closed
+            if not self._exit_requested:
+                logger.warning("Foot pedal device disconnected.", exc_info=True)
 
-    def get_states(self):
-        """
-        Returns a snapshot of the latest key states.
-        Example return: {'KEY_A': True, 'KEY_B': False, 'KEY_C': False}
-        """
-        with self._lock:
-            # Return a copy to ensure thread safety
-            return self._key_states.copy()
+    def consume_commands(self) -> TeleopCommands:
+        with self._cmd_lock:
+            cmds = copy.copy(self._commands)
+            self._commands = TeleopCommands()
+            return cmds
 
-    def get_key_state(self, key_name):
-        """Returns the state of a specific key, defaulting to False if never pressed."""
-        with self._lock:
-            return self._key_states.get(key_name, False)
+    def reset_operator_state(self):
+        pass
+
+    def consume_action(self) -> dict[str, object]:
+        return {}
+
+    def run(self):
+        rate_limiter = SimpleFrameRate(self.config.read_frequency, "foot pedal operator")
+        while not self._exit_requested:
+            rate_limiter()
 
     def close(self):
-        """Cleans up the device and stops the thread."""
-        self._running = False
-        try:
-            self.device.ungrab()
-            self.device.close()
-        except OSError:
-            pass
+        self._exit_requested = True
+
+        if self._device is not None:
+            try:
+                if self.config.grab_device:
+                    self._device.ungrab()
+                self._device.close()
+            except OSError:
+                pass
+
+        if self._device_thread is not None and self._device_thread.is_alive():
+            self._device_thread.join(timeout=1.0)
+
+        if self.is_alive() and threading.current_thread() != self:
+            self.join(timeout=1.0)
 
 
-# ==========================================
-# Example Usage
-# ==========================================
-if __name__ == "__main__":
-    try:
-        # Initialize the pedal
-        pedal = FootPedal("Foot Switch")
-
-        # Simulate a typical robotics control loop running at 10Hz
-        print("Starting control loop... Press Ctrl+C to exit.")
-        while True:
-            # Grab the latest states instantly without blocking
-            states = pedal.get_states()
-
-            if states:
-                # Print only the keys that are currently pressed
-                pressed_keys = [key for key, is_pressed in states.items() if is_pressed]
-                print(f"Currently pressed: {pressed_keys}")
-
-            # Your teleoperation logic goes here...
-
-            time.sleep(0.1)  # 10Hz loop
-
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-    finally:
-        if "pedal" in locals():
-            pedal.close()
+@dataclass(kw_only=True)
+class FootPedalOperatorConfig(BaseOperatorConfig):
+    operator_class: type[BaseOperator] = field(default=FootPedalOperator)
+    control_mode: tuple[ControlMode, RelativeTo] = (ControlMode.JOINTS, RelativeTo.NONE)
+    device_name_substring: str = "Foot Switch"
+    grab_device: bool = True
+    command_bindings: dict[str, str] = field(
+        default_factory=lambda: {
+            "KEY_B": "sync_position",
+            "KEY_C": "record",
+            "KEY_A": "failure",
+        }
+    )
