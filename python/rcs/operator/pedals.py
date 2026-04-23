@@ -11,7 +11,7 @@ try:
 except ImportError:
     HAS_EVDEV = False
 
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.base import ArmWithGripper, ControlMode, RelativeTo
 from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
 from rcs.sim.sim import Sim
 from rcs.utils import SimpleFrameRate
@@ -82,7 +82,7 @@ class FootPedalOperator(BaseOperator):
                 if event.type != ecodes.EV_KEY or event.value not in (1, 2):
                     continue
 
-                key_name = event.keycode
+                key_name = getattr(event, "keycode", None)
                 if isinstance(key_name, list):
                     key_name = key_name[0]
 
@@ -102,7 +102,7 @@ class FootPedalOperator(BaseOperator):
     def reset_operator_state(self):
         pass
 
-    def consume_action(self) -> dict[str, object]:
+    def consume_action(self) -> dict[str, ArmWithGripper]:
         return {}
 
     def run(self):

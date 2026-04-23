@@ -10,7 +10,7 @@ try:
 except ImportError:
     HAS_PYNPUT = False
 
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.base import ArmWithGripper, ControlMode, RelativeTo
 from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
 from rcs.sim.sim import Sim
 from rcs.utils import SimpleFrameRate
@@ -68,7 +68,7 @@ class KeyboardOperator(BaseOperator):
     def reset_operator_state(self):
         pass
 
-    def consume_action(self) -> dict[str, object]:
+    def consume_action(self) -> dict[str, ArmWithGripper]:
         return {}
 
     def run(self):

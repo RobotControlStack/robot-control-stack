@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.operator.interface import BaseOperator, BaseOperatorConfig, TeleopCommands
 from rcs.sim.sim import Sim
