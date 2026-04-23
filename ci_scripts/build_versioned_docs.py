@@ -54,6 +54,14 @@ def build_docs(repo_root: Path, output_dir: Path, version_match: str) -> None:
     )
 
 
+def sync_release_build_config(repo_root: Path) -> None:
+    shutil.copy2(REPO_ROOT / "docs" / "conf.py", repo_root / "docs" / "conf.py")
+
+    static_dir = repo_root / "docs" / "_static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(REPO_ROOT / "docs" / "_static" / "version_switcher.json", static_dir / "version_switcher.json")
+
+
 def overwrite_switcher_json(site_dir: Path, entries: list[dict[str, str]]) -> None:
     payload = json.dumps(entries, indent=4) + "\n"
     for root in [site_dir, site_dir / "latest", *[p for p in site_dir.iterdir() if p.is_dir() and p.name not in {"latest", "_sources", "_static"}]]:
@@ -88,6 +96,7 @@ def main() -> None:
             worktree_dir = temp_dir / tag
             subprocess.run(["git", "worktree", "add", "--detach", str(worktree_dir), tag], cwd=REPO_ROOT, check=True)
             try:
+                sync_release_build_config(worktree_dir)
                 release = read_release(worktree_dir)
                 release_dir = OUTPUT_DIR / release
                 build_docs(worktree_dir, release_dir, release)
