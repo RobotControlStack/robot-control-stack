@@ -15,11 +15,12 @@ The RPC system consists of two main components:
 The server machine should be the one physically connected to the robot or running the simulation.
 
 ```python
-from rcs.envs.creators import SimEnvCreator
+from rcs.envs.configs import EmptyWorldFR3
 from rcs.rpc.server import RcsServer
 
 # Create your environment
-env = SimEnvCreator()(...)
+scene = EmptyWorldFR3()
+env = scene.create_env(scene.config())
 
 # Start the RPC server
 server = RcsServer(env, port=50051)
