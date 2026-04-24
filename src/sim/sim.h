@@ -68,6 +68,7 @@ class Sim {
   size_t convergence_steps = 0;
   bool converged = true;
   std::optional<GuiServer> gui;
+  bool gui_callback_registered = false;
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)

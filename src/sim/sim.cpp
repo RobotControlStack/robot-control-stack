@@ -176,11 +176,17 @@ void Sim::start_gui_server(const std::string& id) {
     throw std::runtime_error("Start gui server should be called only once.");
   }
   this->gui.emplace(this->m, this->d, id);
-  this->register_cb(
-      std::bind(&GuiServer::update_mjdata_callback, &this->gui.value()), 0);
+  if (!this->gui_callback_registered) {
+    this->register_cb(
+        [this]() {
+          if (this->gui.has_value()) {
+            this->gui->update_mjdata_callback();
+          }
+        },
+        0);
+    this->gui_callback_registered = true;
+  }
 }
-// TODO: when stop_gui_server is called, the callback still exists but now
-// points to an non existing gui
 void Sim::stop_gui_server() { this->gui.reset(); }
 }  // namespace sim
 }  // namespace rcs

@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import multiprocessing as mp
 import uuid
 from logging import getLogger
@@ -63,6 +64,7 @@ class Sim(_Sim):
         self._gui_client: Optional[_GuiClient] = None
         self._gui_process: Optional[mp.context.SpawnProcess] = None
         self._stop_event: Optional[EventClass] = None
+        self._gui_atexit_registered = False
         if cfg is not None:
             self.set_config(cfg)
 
@@ -72,17 +74,26 @@ class Sim(_Sim):
         if self._gui_process is not None:
             self._gui_process.join()
         self._stop_gui_server()
+        self._gui_uuid = None
+        self._gui_client = None
+        self._gui_process = None
+        self._stop_event = None
+        if self._gui_atexit_registered:
+            with contextlib.suppress(ValueError):
+                atexit.unregister(self.close_gui)
+            self._gui_atexit_registered = False
 
     def open_gui(self):
         if self._gui_uuid is None:
             self._gui_uuid = "rcs_" + str(uuid.uuid4())
             self._start_gui_server(self._gui_uuid)
-        if self._gui_client is None:
-            ctx = mp.get_context("spawn")
-            self._stop_event = ctx.Event()
-            self._gui_process = ctx.Process(
+        if self._gui_process is None or not self._gui_process.is_alive():
+            self._stop_event = self._mp_context.Event()
+            self._gui_process = self._mp_context.Process(
                 target=gui_loop,
                 args=(self._gui_uuid, self._stop_event),
             )
             self._gui_process.start()
-        atexit.register(self.close_gui)
+        if not self._gui_atexit_registered:
+            atexit.register(self.close_gui)
+            self._gui_atexit_registered = True

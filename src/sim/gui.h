@@ -75,7 +75,7 @@ class GuiClient {
  private:
   mjModel* m;
   mjData* d;
-  const std::string& id;
+  const std::string id;
   struct shm shm;
 };
 

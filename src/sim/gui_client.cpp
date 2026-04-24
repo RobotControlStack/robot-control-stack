@@ -9,12 +9,12 @@ namespace sim {
 using namespace boost::interprocess;
 
 GuiClient::GuiClient(const std::string& id)
-    : shm{.manager{open_only, id.c_str()},
-          .state_lock{open_only, (id + STATE_LOCK_POSTFIX).c_str()},
-          .info_lock{open_only, (id + INFO_LOCK_POSTFIX).c_str()}},
+    : m{nullptr},
+      d{nullptr},
       id{id},
-      m{nullptr},
-      d{nullptr} {
+      shm{.manager{open_only, id.c_str()},
+          .state_lock{open_only, (id + STATE_LOCK_POSTFIX).c_str()},
+          .info_lock{open_only, (id + INFO_LOCK_POSTFIX).c_str()}} {
   // setup shared memory
   std::tie(this->shm.info_byte, std::ignore) =
       this->shm.manager.find<bool>(INFO_BYTE);
