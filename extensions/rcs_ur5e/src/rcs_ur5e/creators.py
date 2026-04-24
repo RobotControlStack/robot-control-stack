@@ -87,7 +87,7 @@ def _create_robotiq_gripper(cfg: GripperConfig) -> Gripper:
 
 
 HARDWARE_GRIPPER_CREATORS: dict[str, typing.Callable[[GripperConfig], Gripper]] = {
-    "Robotiq2F85siemens": _create_robotiq_gripper,
+    "Robotiq2F85": _create_robotiq_gripper,
 }
 
 
