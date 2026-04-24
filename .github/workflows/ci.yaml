@@ -3,11 +3,6 @@ name: Python
 on:
   workflow_call:
   pull_request:
-    paths:
-      - "python/**"
-      - "src/pybind/**"
-      - ".github/workflows/py.yaml"
-      - "extensions/**"
   push:
     branches:
       - master

@@ -40,8 +40,8 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         input()
         tries = 3
         while len(samples) < 10 and tries > 0:
-            logger.info("not enough frames in recorded, waiting 2 seconds...")
-            tries = -1
+            logger.info("Not enough frames recorded, waiting 2 seconds...")
+            tries -= 1
             sleep(2)
         if tries == 0:
             logger.warning("Calibration failed, not enough frames arrived.")
@@ -51,7 +51,6 @@ class FR3BaseArucoCalibration(CalibrationStrategy):
         with lock:
             for sample in samples:
                 frames.append(sample.camera.color.data.copy())
-        # print(frames) # Removed print for cleaner logs, optional
 
         _, tag_to_cam = get_average_marker_pose(frames, intrinsics=intrinsics, calib_tag_id=9, show_live_window=False)
 
@@ -120,7 +119,7 @@ def get_average_marker_pose(
 
 
 def get_marker_pose(calib_tag_id, detector, intrinsics, frame):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
     # CHANGE 3: Pose estimation happens INSIDE .detect()
     # We must extract camera params first to pass them here

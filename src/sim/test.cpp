@@ -123,7 +123,7 @@ int test_sim() {
   cfg.realtime = true;
   cfg.async_control = false;
   sim->set_config(cfg);
-  std::string id = "0";
+  std::string id = "";
 
   auto ik = std::make_shared<rcs::common::Pin>(mjcf_robot,
                                                "attachment_site_" + id, false);
@@ -131,7 +131,7 @@ int test_sim() {
   rcs::sim::SimRobotConfig fr3_config;
   fr3_config.tcp_offset = tcp_offset;
   fr3_config.seconds_between_callbacks = 0.05;  // 20hz
-  fr3_config.add_id(id);
+  fr3_config.add_prefix(id);
   auto fr3 = rcs::sim::SimRobot(sim, ik, fr3_config);
   std::jthread t(rendering_loop, m, d);
   sim->step(1);

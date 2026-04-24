@@ -32,9 +32,7 @@ enum IKSolver { franka_ik = 0, rcs_ik };
 // control
 enum Controller { none = 0, jsc, osc, ztc };
 struct FrankaConfig : common::RobotConfig {
-  // TODO: max force and elbow?
-  // TODO: we can either write specific bindings for each, or we use python
-  // dictionaries with these objects
+  std::string ip;
   common::RobotType robot_type = common::RobotType::FR3;
   common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
@@ -44,11 +42,36 @@ struct FrankaConfig : common::RobotConfig {
   std::optional<common::Pose> world_to_robot = std::nullopt;
   bool async_control = false;
   bool tcp_offset_configured_in_desk = true;
+  bool ignore_realtime = false;
+  std::optional<common::VectorXd> q_home =
+      (common::VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
+       M_PI_4)
+          .finished();
+  size_t dof = 7;
+  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
+      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+           // low 7‐tuple
+           -2.3093,
+       -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
+       // high 7‐tuple
+       2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+          .finished();
 };
 
 struct FR3Config : FrankaConfig {};
 struct PandaConfig : FrankaConfig {
   common::RobotType robot_type = common::RobotType::Panda;
+  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
+      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+           // low 7‐tuple
+           -166. / 180. * M_PI,
+       -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI,
+       -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
+       // high 7‐tuple
+       166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI,
+       -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI,
+       166. / 180. * M_PI)
+          .finished();
 };
 
 struct FrankaState : common::RobotState {
@@ -58,7 +81,7 @@ struct FrankaState : common::RobotState {
 class Franka : public common::Robot {
  private:
   franka::Robot robot;
-  FrankaConfig cfg;
+  FrankaConfig m_cfg;
   std::optional<std::shared_ptr<common::Kinematics>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
   common::LinearPoseTrajInterpolator traj_interpolator;
@@ -75,9 +98,8 @@ class Franka : public common::Robot {
   void check_for_background_errors();
 
  public:
-  Franka(const std::string& ip,
-         std::optional<std::shared_ptr<common::Kinematics>> ik = std::nullopt,
-         const std::optional<FrankaConfig>& cfg = std::nullopt);
+  Franka(const FrankaConfig& cfg,
+         std::optional<std::shared_ptr<common::Kinematics>> ik = std::nullopt);
   ~Franka() override;
 
   bool set_config(const FrankaConfig& cfg);

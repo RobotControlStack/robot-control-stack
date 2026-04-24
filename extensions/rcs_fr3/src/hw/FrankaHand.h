@@ -21,6 +21,7 @@ namespace rcs {
 namespace hw {
 
 struct FHConfig : common::GripperConfig {
+  std::string ip;
   double grasping_width = 0.05;
   double speed = 0.1;
   double force = 5;
@@ -43,7 +44,7 @@ struct FHState : common::GripperState {
 class FrankaHand : public common::Gripper {
  private:
   franka::Gripper gripper;
-  FHConfig cfg;
+  FHConfig m_cfg;
   double max_width;
   double last_commanded_width;
   // TODO: might be better if is_moving is a lock
@@ -54,7 +55,7 @@ class FrankaHand : public common::Gripper {
   void m_wait();
 
  public:
-  FrankaHand(const std::string& ip, const FHConfig& cfg);
+  FrankaHand(const FHConfig& cfg);
   ~FrankaHand() override;
 
   bool set_config(const FHConfig& cfg);

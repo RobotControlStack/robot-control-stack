@@ -256,6 +256,7 @@ class StorageWrapper(gym.Wrapper):
             self.buffer.append(
                 {
                     "obs": obs,
+                    "info": info,
                     "reward": reward,
                     "step": self.step_cnt,
                     "uuid": self.uuid.hex,

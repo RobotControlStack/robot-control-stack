@@ -6,25 +6,39 @@ import numpy as np
 from lerobot.robots import make_robot_from_config
 from lerobot.robots.so101_follower.config_so101_follower import SO101FollowerConfig
 from lerobot.robots.so101_follower.so101_follower import SO101Follower
+from rcs.common_typing import RobotConfigKwargs
 from rcs.utils import SimpleFrameRate
 
 from rcs import common
 
 
 class SO101Config(common.RobotConfig):
-    id: str = "follower"
-    port: str = "/dev/ttyACM0"
-    calibration_dir: str = "."
+
+    def __init__(
+        self,
+        id: str = "follower",
+        port: str = "/dev/ttyACM0",
+        calibration_dir: str = ".",
+        **kwargs: typing.Unpack[RobotConfigKwargs],
+    ):
+        super().__init__(**kwargs)
+        self.id = id
+        self.port = port
+        self.calibration_dir = calibration_dir
 
 
 class SO101(common.Robot):
-    def __init__(self, robot_cfg: SO101Config, ik: common.Kinematics):
+    def __init__(self, cfg: SO101Config, ik: common.Kinematics):
         super().__init__()
         self.ik = ik
-        cfg = SO101FollowerConfig(id=robot_cfg.id, calibration_dir=Path(robot_cfg.calibration_dir), port=robot_cfg.port)
+        self._robot_config = cfg
+        cfg = SO101FollowerConfig(
+            id=self._robot_config.id,
+            calibration_dir=Path(self._robot_config.calibration_dir),
+            port=self._robot_config.port,
+        )
         self._hf_robot = make_robot_from_config(cfg)
         self._hf_robot.connect()
-        self._robot_config = robot_cfg
         self._thread: threading.Thread | None = None
         self._running = False
         self._goal = None
@@ -55,12 +69,8 @@ class SO101(common.Robot):
         # print(obs)
         joints_normalized = (joints_hf + 100) / 200
         joints_in_rad = (
-            joints_normalized
-            * (
-                common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
-                - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
-            )
-            + common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
+            joints_normalized * (self._robot_config.joint_limits[1] - self._robot_config.joint_limits[0])
+            + self._robot_config.joint_limits[0]
         )
         self._last_joint = joints_in_rad
         return joints_in_rad
@@ -78,7 +88,7 @@ class SO101(common.Robot):
     def move_home(self) -> None:
         home = typing.cast(
             np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]],
-            common.robots_meta_config(common.RobotType.SO101).q_home,
+            self._robot_config.q_home,
         )
         print("move home", home)
         self.set_joint_position(home)
@@ -94,9 +104,8 @@ class SO101(common.Robot):
 
     def _set_joint_position(self, q: np.ndarray[tuple[typing.Literal[5]], np.dtype[np.float64]]) -> None:  # type: ignore
         self._last_joint = q
-        q_normalized = (q - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]) / (
-            common.robots_meta_config(common.RobotType.SO101).joint_limits[1]
-            - common.robots_meta_config(common.RobotType.SO101).joint_limits[0]
+        q_normalized = (q - self._robot_config.joint_limits[0]) / (
+            self._robot_config.joint_limits[1] - self._robot_config.joint_limits[0]
         )
         q_hf = (q_normalized * 200) - 100
         self._hf_robot.send_action(
@@ -174,6 +183,7 @@ class SO101Gripper(common.Gripper):
         super().__init__()
         self._hf_robot = hf_robot
         self._robot = robot
+        self._cfg = common.GripperConfig()
 
     def get_normalized_width(self) -> float:
         obs = self._robot.obs
@@ -181,7 +191,9 @@ class SO101Gripper(common.Gripper):
             return 0.0
         return obs["gripper.pos"] / 100.0
 
-    # def get_config(self) -> GripperConfig: ...
+    def get_config(self) -> common.GripperConfig:
+        return self._cfg
+
     # def get_state(self) -> GripperState: ...
 
     def grasp(self) -> None:

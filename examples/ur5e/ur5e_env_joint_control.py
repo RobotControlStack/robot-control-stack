@@ -3,10 +3,21 @@ from time import sleep
 
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
-from rcs_ur5e.creators import RCSUR5eEnvCreator
-from rcs_ur5e.hw import UR5eConfig
+from rcs._core.sim import SimConfig
+from rcs.camera.sim import SimCameraSet
+from rcs.envs.base import (
+    CameraSetWrapper,
+    ControlMode,
+    CoverWrapper,
+    GripperWrapper,
+    RelativeActionSpace,
+    RelativeTo,
+    RobotWrapper,
+    SimEnv,
+)
+from rcs.envs.configs import EmptyWorldUR5e
+from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs_ur5e.configs import DefaultUR5eHardwareEnv
 
 import rcs
 from rcs import sim
@@ -22,52 +33,55 @@ ROBOT_INSTANCE = RobotPlatform.SIMULATION
 def main():
 
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        robot_cfg = UR5eConfig()
-        env_rel = RCSUR5eEnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            robot_cfg=robot_cfg,
-            ip=ROBOT_IP,
-            camera_set=None,
-            max_relative_movement=np.deg2rad(5),
-            relative_to=RelativeTo.LAST_STEP,
-        )
+        env_creator = DefaultUR5eHardwareEnv()
+        env_creator.ip = ROBOT_IP
+        hw_cfg = env_creator.config()
+        hw_cfg.control_mode = ControlMode.JOINTS
+        hw_cfg.camera_cfgs = None
+        hw_cfg.max_relative_movement = np.deg2rad(5)
+        hw_cfg.relative_to = RelativeTo.LAST_STEP
+        env_rel = env_creator.create_env(hw_cfg)
     else:
-        robot_sim_cfg = sim.SimRobotConfig()
-        robot_sim_cfg.actuators = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
-        robot_sim_cfg.joints = [
-            "shoulder_pan_joint",
-            "shoulder_lift_joint",
-            "elbow_joint",
-            "wrist_1_joint",
-            "wrist_2_joint",
-            "wrist_3_joint",
-        ]
-        robot_sim_cfg.robot_type = rcs.common.RobotType.UR5e
-        robot_sim_cfg.attachment_site = "attachment_site"
-        robot_sim_cfg.arm_collision_geoms = []
-        scene = rcs.scenes["ur5e_empty_world"]
-        robot_sim_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
-        robot_sim_cfg.kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
-        robot_sim_cfg.base = "base"
+        scene = EmptyWorldUR5e()
+        sim_cfg_data = scene.prefixed_cfg(scene.config())
+        ur5e = scene.lead_robot_name(sim_cfg_data)
 
-        gripper_config = sim.SimGripperConfig()
-        gripper_config.actuator = "fingers_actuator"
-        gripper_config.joints = ["right_driver_joint"]
-        gripper_config.collision_geoms = []
-        gripper_config.collision_geoms_fingers = []
-        gripper_config.max_actuator_width = 0
-        gripper_config.min_actuator_width = 1
-        gripper_config.max_joint_width = 0.0
-        gripper_config.min_joint_width = 0.8
+        robot_cfg = sim_cfg_data.robot_cfgs[ur5e]
+        gripper_cfg = sim_cfg_data.gripper_cfgs[ur5e]  # type: ignore[index]
+        camera_cfgs = sim_cfg_data.camera_cfgs
+        sim_cfg = SimConfig(
+            realtime=False,
+            async_control=False,
+        )
 
-        env_rel = SimEnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            collision_guard=False,
-            robot_cfg=robot_sim_cfg,
-            gripper_cfg=gripper_config,
-            max_relative_movement=np.deg2rad(5),
+        kinematic_model_path, attachment_site = scene.kinematics_cfg(sim_cfg_data)[ur5e]
+        ik = rcs.common.Pin(
+            kinematic_model_path,
+            attachment_site,
+        )
+        mjmodel = scene.create_model(sim_cfg_data)
+        simulation = sim.Sim(mjmodel, sim_cfg)
+
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+        env_rel = SimEnv(simulation)
+        env_rel = RobotWrapper(env_rel, robot, ControlMode.JOINTS)
+
+        gripper = sim.SimGripper(simulation, gripper_cfg)
+        env_rel = GripperWrapper(env_rel, gripper)
+
+        env_rel = RobotSimWrapper(env_rel)
+        env_rel = GripperWrapperSim(env_rel)
+
+        if camera_cfgs is not None:
+            camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)
+            env_rel = CameraSetWrapper(env_rel, camera_set, include_depth=True)  # type: ignore[arg-type]
+
+        env_rel = RelativeActionSpace(
+            env_rel,
+            max_mov=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
         )
+        env_rel = CoverWrapper(env_rel)
         env_rel.get_wrapper_attr("sim").open_gui()
 
     for _ in range(100):

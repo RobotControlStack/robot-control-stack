@@ -45,8 +45,13 @@ SimRobot::SimRobot(std::shared_ptr<Sim> sim,
 SimRobot::~SimRobot() {}
 
 void SimRobot::move_home() {
-  this->set_joint_position(
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  if (this->cfg.q_home.has_value()) {
+    this->set_joint_position(this->cfg.q_home.value());
+  } else {
+    std::cerr
+        << "Warning: No home position defined for robot, cannot move home."
+        << std::endl;
+  }
 }
 
 void SimRobot::init_ids() {
@@ -197,8 +202,10 @@ bool SimRobot::convergence_callback() {
 
 void SimRobot::m_reset() {
   this->state = SimRobotState();
-  this->set_joints_hard(
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  // if has qhome
+  if (this->cfg.q_home.has_value()) {
+    this->set_joints_hard(this->cfg.q_home.value());
+  }
   this->state.previous_angles = this->m_get_joint_position();
   this->state.target_angles = this->m_get_joint_position();
   this->state.is_arrived = true;

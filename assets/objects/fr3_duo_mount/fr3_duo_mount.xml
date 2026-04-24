@@ -1,0 +1,48 @@
+<mujoco model="fr3_duo_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="metal" rgba="0.58 0.58 0.58 1"/>
+    <material name="white"/>
+
+    <mesh name="fr3_duo_head" file="fr3_duo_kit_head.obj"/>
+    <mesh name="fr3_duo_mount" file="fr3_duo_mount.obj"/>
+    <mesh name="fr3_duo_cover" file="fr3_duo_cover.obj"/>
+    <mesh name="fr3_duo_pillar" file="fr3_duo_pillar_28cm.obj"/>
+    <mesh name="fr3_duo_plate" file="fr3_duo_plate.obj"/>
+    <mesh name="fr3_duo_head_coll" file="fr3_duo_kit_head.stl"/>
+    <mesh name="fr3_duo_mount_coll" file="fr3_duo_mount.stl"/>
+    <mesh name="fr3_duo_cover_coll" file="fr3_duo_cover.stl"/>
+    <mesh name="fr3_duo_pillar_coll" file="fr3_duo_pillar_28cm.stl"/>
+    <mesh name="fr3_duo_plate_coll" file="fr3_duo_plate.stl"/>
+  </asset>
+
+  <default>
+    <default class="fr3_duo_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="fr3_duo_mount">
+      <geom mesh="fr3_duo_head"  material="metal"  pos="-0.0369 0 0.459" class="visual"/>
+      <geom mesh="fr3_duo_mount" material="metal"  pos="-0.0369 0 0.292" class="visual"/>
+      <geom mesh="fr3_duo_cover" material="white"  pos="-0.0369 0 0.360" class="visual"/>
+      <geom mesh="fr3_duo_pillar" material="metal" pos="-0.0369 0 0.152" class="visual"/>
+      <geom mesh="fr3_duo_plate" material="metal"  pos="-0.0369 0 0.006" class="visual"/>
+      <geom mesh="fr3_duo_head_coll"  material="metal"  pos="-0.0369 0 0.459" class="collision"/>
+      <geom mesh="fr3_duo_mount_coll" material="metal"  pos="-0.0369 0 0.292" class="collision"/>
+      <geom mesh="fr3_duo_cover_coll" material="white"  pos="-0.0369 0 0.360" class="collision"/>
+      <geom mesh="fr3_duo_pillar_coll" material="metal" pos="-0.0369 0 0.152" class="collision"/>
+      <geom mesh="fr3_duo_plate_coll" material="metal"  pos="-0.0369 0 0.006" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>

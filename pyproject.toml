@@ -39,7 +39,7 @@ dependencies = [
   "simplejpeg",
   "mujoco==3.2.6",
   "pin==3.7.0",
-  "tqdm",
+  "greenlet",
 ]
 readme = "README.md"
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
@@ -72,7 +72,6 @@ dev = [
 build_deps = [
   "mujoco==3.2.6",
   "pin==3.7.0",
-  "scikit-build-core>=0.3.3",
 ]
 
 [tool.cibuildwheel]
@@ -84,7 +83,7 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmuj
 
 [tool.scikit-build]
 build.verbose = true
-build.targets = ["_core", "scenes", "rcs"]
+build.targets = ["_core", "rcs"]
 logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["python/rcs"]
@@ -132,6 +131,8 @@ ignore = [
   "G004",    # Logging format string does not contain any placeholders
   "ARG002",
 ]
+[tool.ruff.lint.per-file-ignores]
+"python/rcs/_core/*.pyi" = ["B006"]
 
 [tool.pylint.format]
 max-line-length = 120
@@ -213,9 +214,9 @@ version_files = [
   "extensions/rcs_ur5e/src/rcs_ur5e/__init__.py:__version__",
   "extensions/rcs_ur5e/pyproject.toml:\"rcs>=(.*)\"",
 
-  "extensions/rcs_taxim/pyproject.toml:version",
-  "extensions/rcs_taxim/src/rcs_taxim/__init__.py:__version__",
-  "extensions/rcs_taxim/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_tacto/pyproject.toml:version",
+  "extensions/rcs_tacto/src/rcs_tacto/__init__.py:__version__",
+  "extensions/rcs_tacto/pyproject.toml:\"rcs>=(.*)\"",
 
   "extensions/rcs_robotiq2f85/pyproject.toml:version",
   "extensions/rcs_robotiq2f85/src/rcs_robotiq2f85/__init__.py:__version__",

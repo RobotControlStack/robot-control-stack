@@ -2,7 +2,7 @@ import logging
 from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
-from rcs.envs.base import RobotEnv
+from rcs._core.common import RobotPlatform
 from rcs_panda._core import hw
 
 _logger = logging.getLogger(__name__)
@@ -11,9 +11,9 @@ _logger = logging.getLogger(__name__)
 class PandaHW(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.unwrapped: RobotEnv
-        assert isinstance(self.unwrapped.robot, hw.Franka), "Robot must be a hw.Franka instance."
-        self.hw_robot = cast(hw.Franka, self.unwrapped.robot)
+        assert self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.HARDWARE, "Base environment must be hardware."
+        assert isinstance(self.get_wrapper_attr("robot"), hw.Franka), "Robot must be a hw.Franka instance."
+        self.hw_robot = cast(hw.Franka, self.get_wrapper_attr("robot"))
         self._robot_state_keys: list[str] | None = None
 
     def step(self, action: Any) -> tuple[dict[str, Any], SupportsFloat, bool, bool, dict]:
@@ -24,14 +24,12 @@ class PandaHW(gym.Wrapper):
         except hw.exceptions.FrankaControlException as e:
             _logger.error("FrankaControlException: %s", e)
             self.hw_robot.automatic_error_recovery()
-            # TODO: this does not work if some wrappers are in between
-            # PandaHW and RobotEnv
             return self.get_obs(), 0, False, True, {}
 
     def get_obs(self, obs: dict | None = None) -> dict[str, Any]:
         if obs is None:
-            obs = dict(self.unwrapped.get_obs())
-        robot_state = cast(hw.FrankaState, self.unwrapped.robot.get_state())
+            obs = dict(self.get_wrapper_attr("get_robot_obs")())
+        robot_state = cast(hw.FrankaState, self.hw_robot.get_state())
         obs["robot_state"] = self._rs2dict(robot_state.robot_state)
         return obs
 
@@ -40,10 +38,11 @@ class PandaHW(gym.Wrapper):
             self._robot_state_keys = [
                 attr for attr in dir(state) if not attr.startswith("__") and not callable(getattr(state, attr))
             ]
+            self._robot_state_keys.remove("robot_mode")
         return {key: getattr(state, key) for key in self._robot_state_keys}
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         return super().reset(seed=seed, options=options)
 

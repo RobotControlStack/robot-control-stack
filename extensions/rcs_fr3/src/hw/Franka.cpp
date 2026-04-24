@@ -19,17 +19,15 @@
 
 namespace rcs {
 namespace hw {
-Franka::Franka(const std::string& ip,
-               std::optional<std::shared_ptr<common::Kinematics>> ik,
-               const std::optional<FrankaConfig>& cfg)
-    : robot(ip), m_ik(ik) {
+Franka::Franka(const FrankaConfig& cfg,
+               std::optional<std::shared_ptr<common::Kinematics>> ik)
+    : m_cfg(cfg),
+      m_ik(ik),
+      robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
+                                        : franka::RealtimeConfig::kEnforce) {
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
-
-  if (cfg.has_value()) {
-    this->cfg = cfg.value();
-  }  // else default constructor
 }
 
 Franka::~Franka() {
@@ -46,11 +44,11 @@ Franka::~Franka() {
  * otherwise the call will fail
  */
 bool Franka::set_config(const FrankaConfig& cfg) {
-  this->cfg = cfg;
-  this->cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
+  this->m_cfg = cfg;
+  this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
-  if (this->cfg.load_parameters.has_value()) {
-    auto load_value = &(this->cfg.load_parameters.value());
+  if (this->m_cfg.load_parameters.has_value()) {
+    auto load_value = &(this->m_cfg.load_parameters.value());
     if (!load_value->f_x_cload.has_value()) {
       load_value->f_x_cload = Eigen::Vector3d::Zero();
     }
@@ -69,7 +67,7 @@ bool Franka::set_config(const FrankaConfig& cfg) {
 FrankaConfig* Franka::get_config() {
   // copy config to heap
   FrankaConfig* cfg = new FrankaConfig();
-  *cfg = this->cfg;
+  *cfg = this->m_cfg;
   return cfg;
 }
 
@@ -110,19 +108,19 @@ common::Pose Franka::get_cartesian_position() {
     x = common::Pose(this->curr_state.O_T_EE);
     this->interpolator_mutex.unlock();
   }
-  if (!this->cfg.tcp_offset_configured_in_desk) {
-    return x * cfg.tcp_offset;
+  if (!this->m_cfg.tcp_offset_configured_in_desk) {
+    return x * this->m_cfg.tcp_offset;
   }
   return x;
 }
 
 void Franka::set_joint_position(const common::VectorXd& q) {
-  if (this->cfg.async_control) {
+  if (this->m_cfg.async_control) {
     this->controller_set_joint_position(q);
     return;
   }
   // sync control
-  FrankaMotionGenerator motion_generator(this->cfg.speed_factor, q);
+  FrankaMotionGenerator motion_generator(this->m_cfg.speed_factor, q);
   this->robot.control(motion_generator);
 }
 
@@ -634,9 +632,12 @@ void Franka::zero_torque_controller() {
 void Franka::move_home() {
   // sync
   this->stop_control_thread();
-  FrankaMotionGenerator motion_generator(
-      this->cfg.speed_factor,
-      common::robots_meta_config.at(this->cfg.robot_type).q_home);
+  if (!this->m_cfg.q_home.has_value()) {
+    std::cerr << "Home position is not defined in the config." << std::endl;
+    return;
+  }
+  FrankaMotionGenerator motion_generator(this->m_cfg.speed_factor,
+                                         this->m_cfg.q_home.value());
   this->robot.control(motion_generator);
 }
 
@@ -713,28 +714,28 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
-  if (this->cfg.async_control) {
+  if (this->m_cfg.async_control) {
     this->osc_set_cartesian_position(x);
     return;
   }
   // TODO: this should handled with tcp offset config
   common::Pose nominal_end_effector_frame_value;
-  if (this->cfg.nominal_end_effector_frame.has_value()) {
+  if (this->m_cfg.nominal_end_effector_frame.has_value()) {
     nominal_end_effector_frame_value =
-        this->cfg.nominal_end_effector_frame.value();
+        this->m_cfg.nominal_end_effector_frame.value();
   } else {
     nominal_end_effector_frame_value = common::Pose::Identity();
   }
   // nominal end effector frame should be on top of tcp offset as franka already
   // takes care of the default franka hand offset lets add a franka hand offset
 
-  if (this->cfg.ik_solver == IKSolver::franka_ik) {
+  if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
 
-  } else if (this->cfg.ik_solver == IKSolver::rcs_ik) {
+  } else if (this->m_cfg.ik_solver == IKSolver::rcs_ik) {
     this->set_cartesian_position_ik(x);
   }
 }
@@ -746,7 +747,7 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
         "position.");
   }
   auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
-                                            this->cfg.tcp_offset);
+                                            this->m_cfg.tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());
@@ -758,8 +759,9 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
 }
 
 common::Pose Franka::get_base_pose_in_world_coordinates() {
-  return this->cfg.world_to_robot.has_value() ? this->cfg.world_to_robot.value()
-                                              : common::Pose();
+  return this->m_cfg.world_to_robot.has_value()
+             ? this->m_cfg.world_to_robot.value()
+             : common::Pose();
 }
 
 void Franka::set_cartesian_position_internal(const common::Pose& pose,

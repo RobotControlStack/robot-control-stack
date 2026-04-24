@@ -1,8 +1,9 @@
-from quest_iris_dual_arm import MQ3_ADDR, MySimPublisher, MySimScene
+from franka import MQ3_ADDR
+from rcs.operator.quest import FakeSimPublisher, FakeSimScene
 from simpub.xr_device.meta_quest3 import MetaQuest3
 
-MySimPublisher(MySimScene(), MQ3_ADDR)
+FakeSimPublisher(FakeSimScene(), MQ3_ADDR)
 reader = MetaQuest3("RCSNode")
 while True:
     data = reader.get_controller_data()
-    print(data)
+    # print(data)

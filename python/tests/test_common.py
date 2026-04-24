@@ -1,9 +1,22 @@
+import gc
 import math
 
 import numpy as np
 import pytest
 
 from rcs import common
+
+
+def test_typebase_registry_survives_python_object_lifetimes():
+    robot_type = common.RobotType("TestRobot")
+    gripper_type = common.GripperType("TestGripper")
+
+    del robot_type
+    del gripper_type
+    gc.collect()
+
+    assert "TestRobot" in {robot.id for robot in common.RobotType.get_all()}
+    assert "TestGripper" in {gripper.id for gripper in common.GripperType.get_all()}
 
 
 class TestPose:

@@ -8,7 +8,7 @@ version = "0.6.3"
 description="RCS RobotiQ module"
 dependencies = [
     "rcs>=0.6.3",
-    "2f85-python-driver @ git+https://github.com/PhilNad/2f85-python-driver.git",
+    "2f85-python-driver @ git+https://github.com/RobotControlStack/2f85-python-driver.git",
 ]
 readme = "README.md"
 maintainers = [

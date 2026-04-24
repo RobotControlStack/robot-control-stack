@@ -1,0 +1,38 @@
+services:
+  rcs:
+    image: rcs-dev
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    working_dir: /workspace/robot-control-stack
+    command:
+      - /bin/sh
+      - -lc
+      - /usr/local/bin/link-editable-source && exec /bin/sh
+    environment:
+      DISPLAY: ${DISPLAY}
+      RCS_PREFIX: /workspace/robot-control-stack
+      NVIDIA_DISABLE_REQUIRE: 1
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      __NV_PRIME_RENDER_OFFLOAD: 1
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
+      __VK_LAYER_NV_optimus: NVIDIA_only
+    volumes:
+      - ../..:/workspace/robot-control-stack
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev:/dev
+      - ${HOME}/zed_models:/usr/local/zed/resources
+    tmpfs:
+      - /dev/dri
+    network_mode: host
+    privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true

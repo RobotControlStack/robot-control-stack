@@ -1,14 +1,23 @@
 import os
 import sys
+import tomllib
+from pathlib import Path
 
 # inject path to rcs package to enable autodoc/autoapi to find packages
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../python")))
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
 project = "Robot Control Stack"
 copyright = "2025, RCS Contributors"
 author = "Tobias Jülg"
-release = "0.5.2"
-version = "0.5.2"
+
+with (ROOT_DIR / "pyproject.toml").open("rb") as f:
+    _pyproject = tomllib.load(f)
+
+release = os.environ.get("RCS_DOCS_RELEASE", _pyproject["project"]["version"])
+version = release
+_docs_version_match = os.environ.get("RCS_DOCS_VERSION", "latest")
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -50,7 +59,7 @@ html_theme_options = {
     "show_version_warning_banner": False,
     "switcher": {
         "json_url": "/_static/version_switcher.json",
-        "version_match": "latest",
+        "version_match": _docs_version_match,
     },
 }
 

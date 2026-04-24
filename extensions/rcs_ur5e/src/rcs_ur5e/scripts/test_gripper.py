@@ -1,10 +1,10 @@
 """Test script for the RobotiQ gripper."""
 
-from rcs_ur5e.hw import RobotiQGripper
+from rcs_ur5e.hw import RobotiQGripper, RobotiQGripperConfig
 
 ROBOT_IP = "192.168.25.201"
 
-gripper = RobotiQGripper(ROBOT_IP)
+gripper = RobotiQGripper(RobotiQGripperConfig(ip=ROBOT_IP))
 gripper.open()
 print(f"Gripper width: {gripper.get_normalized_width()}")
 

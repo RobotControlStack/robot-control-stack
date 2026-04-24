@@ -1,0 +1,35 @@
+<mujoco model="d405">
+  <compiler angle="degree" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="gray" rgba="0.8 0.8 0.8 1"/>
+    <material name="black" rgba="0.1 0.1 0.1 1"/>
+
+    <mesh name="d405_shell" file="d405_shell.obj" scale="0.001 0.001 0.001"/>
+    <mesh name="d405_glass" file="d405_glass.obj" scale="0.001 0.001 0.001"/>
+    <mesh name="d405_coll" file="d405.stl" scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <default>
+    <default class="d405">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="d405" childclass="d405" pos="0 0 0.1">
+      <geom mesh="d405_shell"  quat="0.5 0.5 0.5 0.5" material="gray" class="visual"/>
+      <geom mesh="d405_glass"  quat="0.5 0.5 0.5 0.5" material="black" class="visual"/>
+      <geom mesh="d405_coll"  quat="0.5 0.5 0.5 0.5" class="collision"/>
+      <camera name="camera" pos="0.0038 0.009 0" quat="0.5 0.5 -0.5 -0.5" fovy="58"/> 
+    </body>
+  </worldbody>
+
+</mujoco>

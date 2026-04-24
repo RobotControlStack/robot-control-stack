@@ -10,13 +10,7 @@ struct BaseCameraConfig {
   int frame_rate;
   int resolution_width;
   int resolution_height;
-  BaseCameraConfig(const std::string &identifier, int frame_rate,
-                   int resolution_width, int resolution_height)
-      : identifier(identifier),
-        frame_rate(frame_rate),
-        resolution_width(resolution_width),
-        resolution_height(resolution_height) {}
-  ~BaseCameraConfig() {}
+  virtual ~BaseCameraConfig() {}
 };
 
 }  // namespace common

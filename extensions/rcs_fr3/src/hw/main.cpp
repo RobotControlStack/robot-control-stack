@@ -19,7 +19,9 @@ int main() {
   try {
     auto ik =
         make_shared<rcs::common::Pin>(mjcf_path, "attachment_site_0", false);
-    rcs::hw::Franka robot(ip, ik);
+    rcs::hw::FrankaConfig cfg;
+    cfg.ip = ip;
+    rcs::hw::Franka robot(cfg, ik);
     robot.automatic_error_recovery();
     std::cout << "WARNING: This example will move the robot! "
               << "Please make sure to have the user stop button at hand!"

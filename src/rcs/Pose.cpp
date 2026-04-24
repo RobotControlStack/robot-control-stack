@@ -114,6 +114,12 @@ Eigen::Matrix3d Pose::rotation_m() const {
 
 Eigen::Vector4d Pose::rotation_q() const { return this->m_rotation.coeffs(); }
 
+Eigen::Vector4d Pose::rotation_q_wxyz() const {
+  return (Eigen::Vector4d() << this->m_rotation.w(), this->m_rotation.x(),
+          this->m_rotation.y(), this->m_rotation.z())
+      .finished();
+}
+
 Eigen::Quaterniond Pose::quaternion() const { return this->m_rotation; }
 
 Eigen::Affine3d Pose::affine_matrix() const {

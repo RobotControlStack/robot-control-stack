@@ -2,8 +2,7 @@ import logging
 
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_panda.creators import RCSPandaEnvCreator
-from rcs_panda.utils import default_panda_hw_gripper_cfg, default_panda_hw_robot_cfg
+from rcs_panda.configs import DefaultPandaHardwareEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -13,7 +12,6 @@ def main():
     # TODO!
     # env_rel = SimEnvCreator()(
     #     control_mode=ControlMode.JOINTS,
-    #     collision_guard=False,
     #     robot_cfg=default_sim_robot_cfg("panda_empty_world"),
     #     gripper_cfg=default_sim_gripper_cfg(),
     #     cameras=default_mujoco_cameraset_cfg(),
@@ -21,17 +19,14 @@ def main():
     #     relative_to=RelativeTo.LAST_STEP,
     # )
     # env_rel.get_wrapper_attr("sim").open_gui()
-    env = RCSPandaEnvCreator()
-    env_rel = env(
-        ip="192.168.4.100",
-        control_mode=ControlMode.JOINTS,
-        robot_cfg=default_panda_hw_robot_cfg(),
-        collision_guard=None,
-        gripper_cfg=default_panda_hw_gripper_cfg(),
-        camera_set=None,
-        max_relative_movement=(np.deg2rad(5)),
-        relative_to=RelativeTo.LAST_STEP,
-    )
+    env = DefaultPandaHardwareEnv()
+    env.ip = "192.168.4.100"
+    cfg = env.config()
+    cfg.control_mode = ControlMode.JOINTS
+    cfg.camera_cfgs = None
+    cfg.max_relative_movement = np.deg2rad(5)
+    cfg.relative_to = RelativeTo.LAST_STEP
+    env_rel = env.create_env(cfg)
     input("moving")
 
     for _ in range(100):

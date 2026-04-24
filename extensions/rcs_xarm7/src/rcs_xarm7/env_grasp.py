@@ -4,13 +4,9 @@ from time import sleep
 
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_tilburg_hand_cfg
+from rcs.envs.configs import EmptyWorldXArm7
 from rcs.hand.tilburg_hand import THConfig
-from rcs_xarm7.creators import RCSXArm7EnvCreator
-
-import rcs
-from rcs import sim
+from rcs_xarm7.configs import DefaultXArm7HardwareEnv
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -21,38 +17,10 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 
 def sim_env():
-    robot_cfg = sim.SimRobotConfig()
-    robot_cfg.actuators = [
-        "act1",
-        "act2",
-        "act3",
-        "act4",
-        "act5",
-        "act6",
-        "act7",
-    ]
-    robot_cfg.joints = [
-        "joint1",
-        "joint2",
-        "joint3",
-        "joint4",
-        "joint5",
-        "joint6",
-        "joint7",
-    ]
-    robot_cfg.base = "base"
-    robot_cfg.robot_type = rcs.common.RobotType.XArm7
-    robot_cfg.attachment_site = "attachment_site"
-    robot_cfg.arm_collision_geoms = []
-    env_rel = SimEnvCreator()(
-        robot_cfg=robot_cfg,
-        control_mode=ControlMode.JOINTS,
-        gripper_cfg=None,
-        hand_cfg=default_sim_tilburg_hand_cfg(),
-        # cameras=default_mujoco_cameraset_cfg(),
-        # max_relative_movement=0.5,
-        relative_to=RelativeTo.LAST_STEP,
-    )
+    scene = EmptyWorldXArm7()
+    cfg = scene.config()
+    cfg.control_mode = ControlMode.JOINTS
+    env_rel = scene.create_env(cfg)
     env_rel.get_wrapper_attr("sim").open_gui()
     return env_rel
 
@@ -63,13 +31,14 @@ def main():
         hand_cfg = THConfig(
             calibration_file="/home/ken/tilburg_hand/calibration.json", grasp_percentage=1, hand_orientation="right"
         )
-        env_rel = RCSXArm7EnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            ip=ROBOT_IP,
-            hand_cfg=hand_cfg,
-            relative_to=RelativeTo.LAST_STEP,
-            max_relative_movement=None,
-        )
+        env_creator = DefaultXArm7HardwareEnv()
+        env_creator.ip = ROBOT_IP
+        cfg = env_creator.config()
+        cfg.control_mode = ControlMode.JOINTS
+        cfg.hand_cfg = hand_cfg
+        cfg.relative_to = RelativeTo.LAST_STEP
+        cfg.max_relative_movement = None
+        env_rel = env_creator.create_env(cfg)
     else:
         env_rel = sim_env()
 

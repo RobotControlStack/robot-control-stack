@@ -18,9 +18,9 @@ chmod 777 /dev/ttyUSB0
 
 ## Usage
 ```python
-from rcs_robotiq2f85 import RobotiQGripper
+from rcs_robotiq2f85 import RobotiQGripper, RobotiQ2F85GripperConfig
 
-gripper = RobotiQGripper('<YOUR_SERIAL_NUMBER>')
+gripper = RobotiQGripper(RobotiQ2F85GripperConfig(serial_number='<YOUR_SERIAL_NUMBER>'))
 gripper.reset()
 gripper.shut()
 print(gripper.get_normalized_width())

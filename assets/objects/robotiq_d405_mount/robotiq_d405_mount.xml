@@ -1,0 +1,30 @@
+<mujoco model="robotiq_d405_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="white"/>
+
+    <mesh name="robotiq_d405_mount" file="robotiq_d405_mount.stl"/>
+  </asset>
+
+  <default>
+    <default class="robotiq_d405_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="robotiq_d405_mount">
+      <geom mesh="robotiq_d405_mount"  material="white" class="visual"/>
+      <geom mesh="robotiq_d405_mount"  material="white" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>

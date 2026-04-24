@@ -1,8 +1,19 @@
 import logging
 
+import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
+from rcs._core.sim import SimConfig
+from rcs.envs.base import (
+    ControlMode,
+    CoverWrapper,
+    GripperWrapper,
+    RelativeActionSpace,
+    RelativeTo,
+    RobotWrapper,
+    SimEnv,
+)
+from rcs.envs.configs import EmptyWorldSO101
+from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs
 from rcs import sim
@@ -12,42 +23,40 @@ logger.setLevel(logging.INFO)
 
 
 def main():
+    scene = EmptyWorldSO101()
+    cfg = scene.prefixed_cfg(scene.config())
+    so101 = scene.lead_robot_name(cfg)
 
-    robot_cfg = sim.SimRobotConfig()
-    robot_cfg.actuators = ["1", "2", "3", "4", "5"]
-    robot_cfg.joints = [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-    ]
-    robot_cfg.base = "base"
-    robot_cfg.robot_type = rcs.common.RobotType.SO101
-    robot_cfg.attachment_site = "gripper"
-    robot_cfg.arm_collision_geoms = []
-    scene = rcs.scenes["so101_empty_world"]
-    robot_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
-    robot_cfg.kinematic_model_path = rcs.scenes["so101_empty_world"].mjcf_robot
+    robot_cfg = cfg.robot_cfgs[so101]
+    gripper_cfg = cfg.gripper_cfgs[so101]  # type: ignore[index]
+    sim_cfg = SimConfig(
+        realtime=False,
+        async_control=False,
+    )
 
-    gripper_cfg = sim.SimGripperConfig()
-    gripper_cfg.min_actuator_width = -0.17453292519943295
-    gripper_cfg.max_actuator_width = 1.7453292519943295
-    gripper_cfg.min_joint_width = -0.17453292519943295
-    gripper_cfg.max_joint_width = 1.7453292519943295
-    gripper_cfg.actuator = "6"
-    gripper_cfg.joints = ["6"]
-    gripper_cfg.collision_geoms = []
-    gripper_cfg.collision_geoms_fingers = []
+    kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[so101]
+    ik = rcs.common.Pin(
+        kinematic_model_path,
+        attachment_site,
+    )
+    mjmodel = scene.create_model(cfg)
+    simulation = sim.Sim(mjmodel, sim_cfg)
 
-    env_rel = SimEnvCreator()(
-        robot_cfg=robot_cfg,
-        control_mode=ControlMode.JOINTS,
-        collision_guard=False,
-        gripper_cfg=gripper_cfg,
-        max_relative_movement=np.deg2rad(5),
+    robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+    env_rel: gym.Env = SimEnv(simulation)
+    env_rel = RobotWrapper(env_rel, robot, ControlMode.JOINTS)
+
+    gripper = sim.SimGripper(simulation, gripper_cfg)
+    env_rel = GripperWrapper(env_rel, gripper)
+
+    env_rel = RobotSimWrapper(env_rel)
+    env_rel = GripperWrapperSim(env_rel)
+    env_rel = RelativeActionSpace(
+        env_rel,
+        max_mov=np.deg2rad(5),
         relative_to=RelativeTo.LAST_STEP,
     )
+    env_rel = CoverWrapper(env_rel)
     env_rel.get_wrapper_attr("sim").open_gui()
 
     for _ in range(100):

@@ -58,7 +58,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(pybind11 Eigen3 egl_headers)
-include(compile_scenes)
 # egl headers
 include_directories(${egl_headers_SOURCE_DIR}/api)
 

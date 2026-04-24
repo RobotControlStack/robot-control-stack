@@ -1,3 +1,4 @@
+import copy
 import multiprocessing
 import os
 import socket
@@ -6,19 +7,70 @@ import time
 import traceback
 from contextlib import suppress
 from multiprocessing.context import ForkServerContext, SpawnContext
-from typing import Optional, Type, Union  # Add Type and Union here
+from typing import Optional, Type, Union
 
+import gymnasium as gym
 import pytest
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import default_sim_gripper_cfg, default_sim_robot_cfg
+from rcs.envs.base import (
+    ControlMode,
+    RelativeActionSpace,
+    RelativeTo,
+    RobotWrapper,
+    SimEnv,
+)
+from rcs.envs.configs import EmptyWorldFR3
+from rcs.envs.sim import RobotSimWrapper
 from rcs.rpc.client import RcsClient
 from rcs.rpc.server import RcsServer
+
+import rcs
+from rcs import sim
 
 HOST = "127.0.0.1"
 
 
+def build_rpc_env() -> gym.Env:
+    scene = EmptyWorldFR3()
+    cfg = copy.deepcopy(scene.config())
+    cfg.control_mode = ControlMode.JOINTS
+    cfg.gripper_cfgs = None
+    cfg.gripper_offsets = None
+    cfg.camera_cfgs = None
+    cfg.camera_adds = None
+    cfg.headless = True
+    cfg.sim_cfg.realtime = False
+    cfg.sim_cfg.async_control = False
+
+    prefixed_cfg = scene.prefixed_cfg(cfg)
+    robot_name = scene.lead_robot_name(prefixed_cfg)
+    robot_cfg = prefixed_cfg.robot_cfgs[robot_name]
+    mjmodel = scene.create_model(prefixed_cfg)
+    simulation = sim.Sim(mjmodel, prefixed_cfg.sim_cfg)
+    kinematic_model_path, attachment_site = scene.kinematics_cfg(prefixed_cfg)[robot_name]
+    ik = rcs.common.Pin(
+        kinematic_model_path,
+        attachment_site,
+    )
+
+    env: gym.Env = SimEnv(simulation)
+    robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+    env = RobotWrapper(env, robot, ControlMode.JOINTS)
+    env = RobotSimWrapper(env)
+    return RelativeActionSpace(env, max_mov=0.1, relative_to=RelativeTo.LAST_STEP)
+
+
+def can_bind_tcp() -> bool:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, 0))
+        return True
+    except PermissionError:
+        return False
+
+
 def get_free_port() -> int:
+    if not can_bind_tcp():
+        pytest.skip("TCP sockets are not permitted in this test environment.")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, 0))
         return s.getsockname()[1]
@@ -41,7 +93,6 @@ def wait_for_port(
                     return
             except OSError as e:
                 last_exc = e
-        # If the server process died, surface its error immediately
         if server_proc is not None and not server_proc.is_alive():
             server_err = None
             if err_q is not None:
@@ -68,21 +119,11 @@ def wait_for_port(
 
 def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
     try:
-        env = SimEnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            robot_cfg=default_sim_robot_cfg(),
-            gripper_cfg=default_sim_gripper_cfg(),
-            # Disabled to avoid rendering problem in python subprocess.
-            # cameras=default_mujoco_cameraset_cfg(),
-            max_relative_movement=0.1,
-            relative_to=RelativeTo.LAST_STEP,
-        )
-        # Bind explicitly to IPv4 loopback
+        env = build_rpc_env()
         server = RcsServer(env, host=host, port=port)
         try:
             server.start()
         finally:
-            # If start returns (non-blocking implementation), keep process alive
             while True:
                 time.sleep(1)
     except Exception:
@@ -93,7 +134,6 @@ def run_server(host: str, port: int, err_q: multiprocessing.Queue) -> None:
 
 
 def _mp_context() -> Union[SpawnContext, ForkServerContext]:
-    # Prefer spawn to avoid fork-related issues with GL/MuJoCo/threaded libs
     methods = multiprocessing.get_all_start_methods()
     if "spawn" in methods:
         return multiprocessing.get_context("spawn")
@@ -105,7 +145,6 @@ def _mp_context() -> Union[SpawnContext, ForkServerContext]:
 
 
 def _external_server_from_env() -> tuple[str, int] | None:
-    # Set RCS_TEST_HOST and RCS_TEST_PORT to reuse an already running server.
     host = os.getenv("RCS_TEST_HOST")
     port = os.getenv("RCS_TEST_PORT")
     if host and port:
@@ -113,14 +152,14 @@ def _external_server_from_env() -> tuple[str, int] | None:
             return host, int(port)
         except ValueError:
             pass
-    # Convenience: RCS_TEST_REUSE_SERVER=1 will use HOST + default port 50055
     if os.getenv("RCS_TEST_REUSE_SERVER") == "1":
         return HOST, 50055
     return None
 
 
 def test_run_server_starts_and_stops():
-    # Skip if reusing an external server
+    if not can_bind_tcp():
+        pytest.skip("TCP sockets are not permitted in this test environment.")
     ext = _external_server_from_env()
     if ext:
         pytest.skip("External server reuse enabled via env; skipping spawn test.")
@@ -139,6 +178,7 @@ def test_run_server_starts_and_stops():
     assert not server_proc.is_alive(), "Server process did not terminate as expected."
 
 
+@pytest.mark.skipif(not can_bind_tcp(), reason="TCP sockets are not permitted in this test environment.")
 class TestRcsClientServer:
     client: RcsClient
     host: str = HOST
@@ -162,7 +202,6 @@ class TestRcsClientServer:
         cls.host, cls.port = HOST, get_free_port()
         cls.server_proc = ctx.Process(target=run_server, args=(cls.host, cls.port, cls.err_q))
         cls.server_proc.start()
-        # Wait until the server is actually listening or fail early if it crashed
         wait_for_port(cls.host, cls.port, timeout=180.0, server_proc=cls.server_proc, err_q=cls.err_q)  # type: ignore
         cls.client = RcsClient(host=cls.host, port=cls.port)
 
@@ -188,7 +227,7 @@ class TestRcsClientServer:
 
     def test_get_obs(self):
         self.client.reset()
-        obs2 = self.client.get_obs()
+        obs2 = self.client.get_robot_obs()
         assert obs2 is not None, "get_obs did not return an observation"
 
     def test_unwrapped(self):
@@ -197,7 +236,6 @@ class TestRcsClientServer:
     def test_close(self):
         if self.client is not None:
             self.client.close()
-        # Reconnect for further tests
         wait_for_port(
             self.__class__.host,
             self.__class__.port,

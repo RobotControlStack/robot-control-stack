@@ -29,7 +29,7 @@ class Renderer {
 struct SimConfig {
   bool async_control = false;
   bool realtime = false;
-  int frequency = 30;  // in Hz
+  double frequency = 30;  // in Hz
   int max_convergence_steps = 500;
 };
 

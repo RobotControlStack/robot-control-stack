@@ -1,14 +1,25 @@
 import logging
 
+import gymnasium as gym
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.utils import (
-    default_mujoco_cameraset_cfg,
-    default_sim_gripper_cfg,
-    default_sim_robot_cfg,
+from rcs._core.sim import SimConfig
+from rcs.camera.sim import SimCameraSet
+from rcs.envs.base import (
+    CameraSetWrapper,
+    ControlMode,
+    CoverWrapper,
+    GripperWrapper,
+    RelativeActionSpace,
+    RelativeTo,
+    RobotWrapper,
+    SimEnv,
 )
+from rcs.envs.configs import EmptyWorldFR3
+from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,32 +42,62 @@ FR3_IP = "192.168.101.1"
 
 def main():
     if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-        env_rel = SimEnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            robot_cfg=default_sim_robot_cfg("fr3_empty_world"),
-            gripper_cfg=default_sim_gripper_cfg(),
-            cameras=default_mujoco_cameraset_cfg(),
-            max_relative_movement=np.deg2rad(5),
+        scene = EmptyWorldFR3()
+        cfg = scene.prefixed_cfg(scene.config())
+        fr3 = scene.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[fr3]
+        gripper_cfg = cfg.gripper_cfgs[fr3]  # type: ignore
+        camera_cfgs = cfg.camera_cfgs
+        sim_cfg = SimConfig(
+            realtime=False,
+            async_control=False,
+        )
+
+        kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[fr3]
+
+        ik = rcs.common.Pin(
+            kinematic_model_path,
+            attachment_site,
+        )
+        mjmodel = scene.create_model(cfg)
+        simulation = sim.Sim(mjmodel, sim_cfg)
+
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+        env_rel: gym.Env = SimEnv(simulation)
+        env_rel = RobotWrapper(env_rel, robot, ControlMode.JOINTS)
+
+        gripper = sim.SimGripper(simulation, gripper_cfg)
+        env_rel = GripperWrapper(env_rel, gripper)
+
+        env_rel = RobotSimWrapper(env_rel)
+        env_rel = GripperWrapperSim(env_rel)
+
+        camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)  # type: ignore
+        env_rel = CameraSetWrapper(env_rel, camera_set, include_depth=True)  # type: ignore[arg-type]
+
+        env_rel = RelativeActionSpace(
+            env_rel,
+            max_mov=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
         )
+        env_rel = CoverWrapper(env_rel)
         env_rel.get_wrapper_attr("sim").open_gui()
     else:
-        from rcs_fr3.creators import RCSFR3EnvCreator
-        from rcs_fr3.utils import default_fr3_hw_gripper_cfg, default_fr3_hw_robot_cfg
+        from rcs_fr3.configs import DefaultFR3HardwareEnv
 
-        env_rel = RCSFR3EnvCreator()(
-            ip=FR3_IP,
-            control_mode=ControlMode.JOINTS,
-            robot_cfg=default_fr3_hw_robot_cfg(),
-            gripper_cfg=default_fr3_hw_gripper_cfg(),
-            camera_set=None,
-            max_relative_movement=np.deg2rad(5),
-            relative_to=RelativeTo.LAST_STEP,
-        )
+        env_creator = DefaultFR3HardwareEnv()
+        env_creator.ip = FR3_IP
+        hw_cfg = env_creator.config()
+        hw_cfg.control_mode = ControlMode.JOINTS
+        hw_cfg.camera_cfgs = None
+        hw_cfg.max_relative_movement = np.deg2rad(5)
+        hw_cfg.relative_to = RelativeTo.LAST_STEP
+        env_rel = env_creator.create_env(hw_cfg)
         input("the robot is going to move, press enter whenever you are ready")
 
     # access low level robot api to get current cartesian position
-    print(env_rel.unwrapped.robot.get_joint_position())  # type: ignore
+    print(env_rel.get_wrapper_attr("robot").get_joint_position())  # type: ignore
 
     for _ in range(100):
         obs, info = env_rel.reset()

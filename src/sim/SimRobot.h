@@ -12,6 +12,7 @@ namespace rcs {
 namespace sim {
 
 struct SimRobotConfig : common::RobotConfig {
+  common::RobotPlatform robot_platform = common::RobotPlatform::SIMULATION;
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
@@ -29,20 +30,19 @@ struct SimRobotConfig : common::RobotConfig {
       "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
   std::string base = "base";
-  std::string mjcf_scene_path = "assets/scenes/fr3_empty_world/scene.xml";
 
-  void add_id(const std::string& id) {
+  void add_prefix(const std::string& id) {
     for (auto& s : this->arm_collision_geoms) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->joints) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->actuators) {
-      s = s + "_" + id;
+      s = id + s;
     }
-    this->attachment_site = this->attachment_site + "_" + id;
-    this->base = this->base + "_" + id;
+    this->attachment_site = id + this->attachment_site;
+    this->base = id + this->base;
   }
 };
 

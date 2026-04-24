@@ -1,1 +1,4 @@
-simpub @ git+https://github.com/intuitive-robots/SimPublisher.git
+# simpub @ git+https://github.com/intuitive-robots/SimPublisher.git@a0ebdbfba86f58aaa6360eb3b9da7b74a9c9b1dd # doesnt work
+dynamixel_sdk
+pynput
+scipy

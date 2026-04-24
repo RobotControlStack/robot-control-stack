@@ -1,7 +1,6 @@
 import copy
 import logging
 import typing
-from dataclasses import dataclass
 from time import sleep
 
 import numpy as np
@@ -15,27 +14,30 @@ logger = logging.getLogger(__name__)
 logger.disabled = False
 
 
-@dataclass(kw_only=True)
 class THConfig(common.HandConfig):
     """Config for the Tilburg hand"""
 
-    calibration_file: str | None = None
-    grasp_percentage: float = 1.0
-    control_unit: Unit = Unit.NORMALIZED
-    hand_orientation: str = "right"
-    grasp_type: common.GraspType = common.GraspType.POWER_GRASP
-
-    def __post_init__(self):
-        # 👇 satisfy pybind11 by actually calling the C++ constructor
+    def __init__(
+        self,
+        calibration_file: str | None = None,
+        grasp_percentage: float = 1.0,
+        control_unit: Unit = Unit.NORMALIZED,
+        hand_orientation: str = "right",
+        grasp_type: common.GraspType = common.GraspType.POWER_GRASP,
+    ) -> None:
         super().__init__()
+        self.calibration_file = calibration_file
+        self.grasp_percentage = grasp_percentage
+        self.control_unit = control_unit
+        self.hand_orientation = hand_orientation
+        self.grasp_type = grasp_type
 
 
-@dataclass
 class TilburgHandState(common.HandState):
-    joint_positions: Vec18Type
 
-    def __post_init__(self):
+    def __init__(self, joint_positions: Vec18Type) -> None:
         super().__init__()
+        self.joint_positions = joint_positions
 
 
 class TilburgHand(common.Hand):

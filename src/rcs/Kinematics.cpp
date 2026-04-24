@@ -10,7 +10,8 @@
 namespace rcs {
 namespace common {
 
-Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf = true)
+Pin::Pin(const std::string& path, const std::string& frame_id,
+         bool urdf = false)
     : model() {
   if (urdf) {
     pinocchio::urdf::buildModel(path, this->model);

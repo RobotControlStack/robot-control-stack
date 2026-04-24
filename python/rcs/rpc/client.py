@@ -18,8 +18,8 @@ class RcsClient(gym.Env):
     def reset(self, **kwargs):
         return self.server.reset(**kwargs)
 
-    def get_obs(self):
-        return self.server.get_obs()
+    def get_robot_obs(self):
+        return self.server.get_robot_obs()
 
     @property
     def unwrapped(self):

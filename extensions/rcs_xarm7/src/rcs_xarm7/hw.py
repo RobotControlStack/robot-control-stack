@@ -1,33 +1,42 @@
 import typing
-from dataclasses import dataclass, field
 from typing import List
 
 import numpy as np
+from rcs.common_typing import RobotConfigKwargs
 from xarm.wrapper import XArmAPI
 
 from rcs import common
 
 
-@dataclass(kw_only=True)
 class XArm7Config(common.RobotConfig):
-    payload_weight: float = 0.624
-    payload_tcp: List[float] = field(default_factory=lambda: [-4.15, 5.24, 76.38])
-    async_control: bool = False
 
-    def __post_init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        ip: str,
+        payload_weight: float = 0.624,
+        payload_tcp: List[float] | None = None,
+        async_control: bool = False,
+        use_internal_ik: bool = True,
+        **kwargs: typing.Unpack[RobotConfigKwargs],
+    ):
+        super().__init__(**kwargs)
+        self.ip = ip
+        self.payload_weight = payload_weight
+        self.payload_tcp = payload_tcp if payload_tcp is not None else [-4.15, 5.24, 76.38]
+        self.async_control = async_control
+        self.use_internal_ik = use_internal_ik
 
 
 class XArm7(common.Robot):
-    def __init__(self, ip: str):
+    def __init__(self, cfg: XArm7Config, ik: common.Kinematics):
         super().__init__()
 
-        self.ik = None
-        self._config = XArm7Config()
+        self.ik = ik
+        self._config = cfg
         self._config.robot_platform = common.RobotPlatform.HARDWARE
-        self._config.robot_type = common.RobotType.XArm7
+        self._config.robot_type = common.RobotType("XArm7")
 
-        self._xarm = XArmAPI(ip)
+        self._xarm = XArmAPI(cfg.ip)
         self._xarm.set_mode(0)
         self._xarm.clean_error()
         self._xarm.clean_warn()
@@ -72,7 +81,7 @@ class XArm7(common.Robot):
     def move_home(self) -> None:
         home = typing.cast(
             np.ndarray[tuple[typing.Literal[7]], np.dtype[np.float64]],
-            common.robots_meta_config(common.RobotType.XArm7).q_home,
+            self._config.q_home,
         )
         # self.set_joint_position(home)
         self._xarm.set_mode(0)
@@ -83,6 +92,11 @@ class XArm7(common.Robot):
         pass
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
+        if not self._config.use_internal_ik:
+            target_joints = self.ik.inverse(pose=pose, q0=self.get_joint_position(), tcp_offset=self._config.tcp_offset)
+            if target_joints is not None:
+                self.set_joint_position(target_joints)
+            return
         if self._config.async_control:
             self._xarm.set_mode(7)
             self._xarm.set_state(0)

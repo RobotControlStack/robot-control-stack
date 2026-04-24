@@ -2,12 +2,12 @@ import os
 import xml.etree.ElementTree as ET
 from copy import deepcopy
 
+import gymnasium as gym
 import mujoco as mj
 import numpy as np
 from ompl import base as ob
 from ompl import geometric as og
 from rcs._core.common import Pose
-from rcs.envs.base import RobotEnv
 
 DEFAULT_PLANNING_TIME = 5.0  # Default time allowed for planning in seconds
 INTERPOLATE_NUM = 500  # Number of points to interpolate between start and goal states
@@ -60,7 +60,7 @@ class MjORobot:
     def __init__(
         self,
         robot_name: str,
-        env: RobotEnv,
+        env: gym.Env,
         njoints: int = 7,
         robot_tcp: Pose | None = None,
         robot_xml_name: str = "",
@@ -72,13 +72,13 @@ class MjORobot:
     ):
         """
         Initialize the robot object with the given parameters.
-        It is essentially a thin wrapper around the RobotEnv (i.e. MuJoCo variables),
+        It is essentially a thin wrapper around the RobotWrapper (i.e. MuJoCo variables),
         for easily extracting the relevant bodies, joints, etc. from the MuJoCo model.
         Anything that directly calls MuJoCo functions should be done through this class.
 
         Parameters:
         - robot_name: Name of the robot.
-        - env: The RobotEnv environment in which the robot operates.
+        - env: The gym environment with RobotWrapper in which the robot operates.
         - njoints: Number of joints in the robot.
         - robot_xml_name: Path to the robot's XML file.
                           This file will be used to query the <body>s of the robot to get collision checking info.
@@ -282,7 +282,7 @@ class MjORobot:
         Returns:
             numpy.ndarray: Joint positions that achieve the desired pose, or None if no solution is found.
         """
-        return self.env.unwrapped.robot.get_ik().inverse(pose, q0, self.tcp_offset)  # type: ignore[attr-defined]
+        return self.env.get_wrapper_attr("robot").get_ik().inverse(pose, q0, self.tcp_offset)  # type: ignore[attr-defined]
 
 
 class MjOStateSpace(ob.RealVectorStateSpace):
@@ -312,7 +312,7 @@ class MjOStateSpace(ob.RealVectorStateSpace):
 class MjOMPL:
     def __init__(
         self,
-        robot_env: RobotEnv,
+        robot_env: gym.Env,
         robot_name: str,
         robot_xml_name: str,
         robot_root_name: str,
@@ -328,12 +328,12 @@ class MjOMPL:
         """
         Initialize the OMPL planner with the given parameters.
         Besides setting up the OMPL planning context, it instantiates an MjORobot instance,
-        which is a thin wrapper around the RobotEnv (i.e. MuJoCo variables),
+        which is a thin wrapper around the RobotWrapper (i.e. MuJoCo variables),
         for easily extracting the relevant bodies, joints, etc. from the MuJoCo model.
 
 
         Parameters:
-        - robot_env: The RobotEnv environment in which the robot operates.
+        - robot_env: The environment with RobotWrapper in which the robot operates.
         - robot_name: Name of the robot.
 
         - robot_xml_name: Path to the robot's XML file.

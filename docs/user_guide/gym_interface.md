@@ -4,29 +4,32 @@ The high-level interface of RCS is based on [Gymnasium](https://gymnasium.farama
 
 ## Environment Creation
 
-To facilitate environment creation, RCS ships with environment factory classes that create an envrionment already wrapped with the most common wrappers.
-Simulated environments are created using the `SimEnvCreator`.
+To facilitate environment creation, RCS ships with config-based creator classes that return environments already wrapped with the most common wrappers.
+Simulated environments are typically created through a scene config class such as `EmptyWorldFR3`.
 
 ```python
-from rcs.envs.creators import SimEnvCreator
-from rcs.envs.base import ControlMode
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.configs import EmptyWorldFR3
 
-env = SimEnvCreator()(
-    control_mode=ControlMode.JOINTS,
-    # ... configuration objects ...
-)
+scene = EmptyWorldFR3()
+cfg = scene.config()
+cfg.control_mode = ControlMode.JOINTS
+cfg.relative_to = RelativeTo.LAST_STEP
+env = scene.create_env(cfg)
 ```
 
-Hardware environments are created using the robot-specific environment creator functions, located in the hardware extensions, usually named `<RobotName>EnvCreator`.
+Hardware environments are created using the robot-specific config creators and default config classes from the hardware extensions.
 ```python
-from rcs_fr3.creators import RCSFR3EnvCreator
-from rcs.envs.base import ControlMode
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs_fr3.configs import DefaultFR3HardwareEnv
 
-env = RCSFR3EnvCreator()(
-    ip="192.168.100.1",
-    control_mode=ControlMode.JOINTS,
-    # ... configuration objects ...
-)
+creator = DefaultFR3HardwareEnv()
+creator.ip = "192.168.100.1"
+cfg = creator.config()
+cfg.control_mode = ControlMode.JOINTS
+cfg.camera_cfgs = None
+cfg.relative_to = RelativeTo.LAST_STEP
+env = creator.create_env(cfg)
 ```
 
 

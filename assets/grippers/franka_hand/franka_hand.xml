@@ -1,0 +1,99 @@
+<mujoco model="franka_hand">
+    <compiler angle="radian" meshdir="assets"/>
+    <asset>
+        <mesh name="franka_hand_0" file="franka_hand_0.obj"/>
+        <mesh name="franka_hand_1" file="franka_hand_1.obj"/>
+        <mesh name="franka_hand_2" file="franka_hand_2.obj"/>
+        <mesh name="franka_hand_3" file="franka_hand_3.obj"/>
+        <mesh name="franka_hand_4" file="franka_hand_4.obj"/>
+        <mesh name="franka_hand_coll" file="franka_hand.stl"/>
+        <mesh name="finger_0" file="finger_0.obj"/>
+        <mesh name="finger_1" file="finger_1.obj"/>
+        
+        <material name="white" rgba="1 1 1 1"/>
+        <material name="black" rgba=".2 .2 .2 1"/>
+    </asset>
+
+    <default>
+        <default class="franka_hand">
+            <joint armature="0.1" damping="1"/>
+            <default class="finger">
+                <joint axis="0 1 0" type="slide" range="0 0.04" limited="true"/>
+            </default>
+            <default class="visual">
+                <geom type="mesh" group="2" contype="0" conaffinity="0"/>
+            </default>
+            <default class="collision">
+                <geom type="mesh" group="3" mass="0" density="0"/>
+                <default class="fingertip_pad_collision_1">
+                    <geom type="box" size="0.0085 0.004 0.0085" pos="0 0.0055 0.0445"/>
+                </default>
+                <default class="fingertip_pad_collision_2">
+                    <geom type="box" size="0.003 0.002 0.003" pos="0.0055 0.002 0.05"/>
+                </default>
+                <default class="fingertip_pad_collision_3">
+                    <geom type="box" size="0.003 0.002 0.003" pos="-0.0055 0.002 0.05"/>
+                </default>
+                <default class="fingertip_pad_collision_4">
+                    <geom type="box" size="0.003 0.002 0.0035" pos="0.0055 0.002 0.0395"/>
+                </default>
+                <default class="fingertip_pad_collision_5">
+                    <geom type="box" size="0.003 0.002 0.0035" pos="-0.0055 0.002 0.0395"/>
+                </default>
+            </default>
+        </default>
+    </default>
+
+    <worldbody>
+        <body name="hand" childclass="franka_hand" quat="0.9238795 0 0 -0.3826834" gravcomp="1">
+            <inertial mass="0.73" pos="-0.01 0 0.03" diaginertia="0.001 0.0025 0.0017"/>
+            <geom mesh="franka_hand_0" material="white" class="visual"/>
+            <geom mesh="franka_hand_1" material="black" class="visual"/>
+            <geom mesh="franka_hand_2" material="black" class="visual"/>
+            <geom mesh="franka_hand_3" material="white" class="visual"/>
+            <geom mesh="franka_hand_4" material="white" class="visual"/>
+            <geom mesh="franka_hand_coll" class="collision" name="hand_c"/>
+            
+            <body name="left_finger" pos="0 0 0.0584" gravcomp="1">
+                <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                <joint name="finger_joint1" class="finger"/>
+                <geom mesh="finger_0" material="white" class="visual"/>
+                <geom mesh="finger_1" material="black" class="visual"/>
+                <geom mesh="finger_0" class="collision" name="finger_0_left"/>
+                <geom class="fingertip_pad_collision_1" name="fingertip_pad_collision_1_left" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_2_left" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_3_left" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_4_left" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_5" name="fingertip_pad_collision_5_left" friction="2 0.05 0.0001"/>
+            </body>
+            <body name="right_finger" pos="0 0 0.0584" quat="0 0 0 1" gravcomp="1">
+                <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                <joint name="finger_joint2" class="finger"/>
+                <geom mesh="finger_0" material="white" class="visual"/>
+                <geom mesh="finger_1" material="black" class="visual"/>
+                <geom mesh="finger_0" class="collision" name="finger_0_right"/>
+                <geom class="fingertip_pad_collision_1" name="fingertip_pad_collision_1_right" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_2_right" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_3_right" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_4_right" friction="2 0.05 0.0001"/>
+                <geom class="fingertip_pad_collision_5" name="fingertip_pad_collision_5_right" friction="2 0.05 0.0001"/>
+            </body>
+        </body>
+    </worldbody>
+
+    <tendon>
+        <fixed name="split">
+            <joint joint="finger_joint1" coef="0.5"/>
+            <joint joint="finger_joint2" coef="0.5"/>
+        </fixed>
+    </tendon>
+
+    <equality>
+        <joint joint1="finger_joint1" joint2="finger_joint2" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    </equality>
+
+    <actuator>
+        <general name="hand_actuator" class="franka_hand" tendon="split" forcerange="-100 100" ctrlrange="0 255"
+            biastype="affine" gainprm="0.01568627451 0 0" biasprm="0 -100 -10"/>
+    </actuator>
+</mujoco>

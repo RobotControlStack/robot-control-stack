@@ -24,14 +24,9 @@ class RcsServer(Wrapper, rpyc.Service):
         return super().reset(**kwargs)
 
     @rpyc.exposed
-    def get_obs(self):
+    def get_robot_obs(self):
         """Get the current observation using the Wrapper base class if available."""
-        if hasattr(super(), "get_obs"):
-            return super().get_obs()
-        if hasattr(self.env, "get_obs"):
-            return self.env.get_obs()
-        error = "The environment does not have a get_obs method."
-        raise NotImplementedError(error)
+        return self.env.get_wrapper_attr("get_robot_obs")()
 
     @rpyc.exposed
     def unwrapped(self):

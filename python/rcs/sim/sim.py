@@ -13,6 +13,7 @@ import mujoco.viewer
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
 from rcs.sim import SimConfig, egl_bootstrap
+from rcs.sim.composer import ModelComposer
 from rcs.utils import SimpleFrameRate
 
 egl_bootstrap.bootstrap()
@@ -42,15 +43,19 @@ def gui_loop(gui_uuid: str, close_event):
 
 
 class Sim(_Sim):
-    def __init__(self, mjmdl: str | PathLike, cfg: SimConfig | None = None):
-        mjmdl = Path(mjmdl)
-        if mjmdl.suffix == ".xml":
-            self.model = mj.MjModel.from_xml_path(str(mjmdl))
-        elif mjmdl.suffix == ".mjb":
-            self.model = mj.MjModel.from_binary_path(str(mjmdl))
+    def __init__(self, mjmdl: str | PathLike | ModelComposer, cfg: SimConfig | None = None):
+        if isinstance(mjmdl, ModelComposer):
+            self.model = mjmdl.get_model()
         else:
-            msg = f"Filetype {mjmdl.suffix} is unknown"
-            logger.error(msg)
+            mjmdl = Path(mjmdl)
+            if mjmdl.suffix == ".xml":
+                self.model = mj.MjModel.from_xml_path(str(mjmdl))
+            elif mjmdl.suffix == ".mjb":
+                self.model = mj.MjModel.from_binary_path(str(mjmdl))
+            else:
+                msg = f"Filetype {mjmdl.suffix} is unknown"
+                logger.error(msg)
+
         self.data = mj.MjData(self.model)
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")

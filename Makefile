@@ -1,6 +1,8 @@
 PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
+LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher
+LINT_EXCLUDE_MYPY = 'build|examples/teleop/SimPublisher'
 
 # CPP
 cppcheckformat:
@@ -30,9 +32,13 @@ stubgen:
 	find ./python -not -path "./python/rcs/_core/*" -name '*.pyi' -delete
 	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/tuple\[typing\.Literal[\1]\]/g'
 	find ./python/rcs/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/tuple\[\1\]/g'
-	ruff check --fix python/rcs/_core
-	isort python/rcs/_core
-	black python/rcs/_core
+	sed -i 's/    q_home: numpy\.ndarray\[tuple\[M\], numpy\.dtype\[numpy\.float64\]\] | None/    q_home: numpy.ndarray | None/' python/rcs/_core/common.pyi
+	python -c "from pathlib import Path; p=Path('python/rcs/_core/common.pyi'); t=p.read_text(); t=t.replace('numpy.ndarray[tuple[typing.Literal[2], N], numpy.dtype[numpy.float64]]', 'numpy.ndarray[tuple[typing.Literal[2], typing.Any], numpy.dtype[numpy.float64]]'); p.write_text(t)"
+	python -c "from pathlib import Path; p=Path('python/rcs/_core/sim.pyi'); t=p.read_text(); t=t.replace('numpy.ndarray[tuple[typing.Literal[2], N], numpy.dtype[numpy.float64]]', 'numpy.ndarray[tuple[typing.Literal[2], typing.Any], numpy.dtype[numpy.float64]]'); t=t.replace(', max_buffer_frames: int = 100', ''); p.write_text(t)"
+	python ci_scripts/generate_common_typing.py
+	ruff check --fix python/rcs/_core python/rcs/common_typing.py
+	isort python/rcs/_core python/rcs/common_typing.py
+	black python/rcs/_core python/rcs/common_typing.py
 
 # Python
 pycheckformat:
@@ -46,10 +52,10 @@ pyformat:
 pylint: ruff mypy
 
 ruff:
-	ruff check ${PYSRC} extensions examples
+	ruff check ${PYSRC} extensions examples ${LINT_EXCLUDE_RUFF}
 
 mypy:
-	mypy ${PYSRC} extensions examples --install-types --non-interactive --no-namespace-packages --exclude 'build'
+	mypy ${PYSRC} extensions examples --install-types --non-interactive --no-namespace-packages --exclude ${LINT_EXCLUDE_MYPY}
 
 pytest:
 	pytest -vv

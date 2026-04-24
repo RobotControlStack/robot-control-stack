@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,8 +34,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
 
-      - name: Build Sphinx HTML
-        run: sphinx-build -b html docs docs/_build/html
+      - name: Build versioned docs site
+        run: python ci_scripts/build_versioned_docs.py
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v3
@@ -41,7 +43,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_build/html
+          path: docs/_build/site
 
   deploy:
     needs: build

@@ -5,36 +5,45 @@ Uses shared memory to communicate between the main process and the control proce
 import multiprocessing as mp
 import time
 import typing
-from dataclasses import dataclass
 from enum import IntEnum
 from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
 import rtde_control
 import rtde_receive
+from rcs.common_typing import GripperConfigKwargs, RobotConfigKwargs
 from rcs_ur5e import robotiq_gripper
 
-import rcs
 from rcs import common
 
 
-@dataclass(kw_only=True)
 class UR5eConfig(common.RobotConfig):
-    # Kinematics Setup
-    robot_type: common.RobotType = common.RobotType.UR5e
-    kinematic_model_path = rcs.scenes["ur5e_empty_world"].mjcf_robot
-    attachment_site = "attachment_site"
 
-    # Robot movement parameters
-    max_velocity: float = 1.0
-    max_acceleration: float = 1.0
-    async_control: bool = True
-    max_servo_joint_step: float = 0.15
-    max_servo_cartesian_step: float = 0.01
-
-    # UR Controller parameters, change with caution
-    lookahead_time: float = 0.05
-    gain: float = 500.0
+    def __init__(
+        self,
+        ip: str,
+        max_velocity: float = 1.0,
+        max_acceleration: float = 1.0,
+        async_control: bool = True,
+        max_servo_joint_step: float = 0.15,
+        max_servo_cartesian_step: float = 0.01,
+        lookahead_time: float = 0.05,
+        gain: float = 500.0,
+        **kwargs: typing.Unpack[RobotConfigKwargs],
+    ):
+        super().__init__(**kwargs)
+        self.robot_platform = common.RobotPlatform.HARDWARE
+        self.robot_type = common.RobotType("UR5e")
+        self.ip = ip
+        # Robot movement parameters
+        self.max_velocity = max_velocity
+        self.max_acceleration = max_acceleration
+        self.async_control = async_control
+        self.max_servo_joint_step = max_servo_joint_step
+        self.max_servo_cartesian_step = max_servo_cartesian_step
+        # UR Controller parameters, change with caution
+        self.lookahead_time = lookahead_time
+        self.gain = gain
 
     def to_dict(self) -> dict[str, typing.Any]:
         return {
@@ -53,8 +62,11 @@ class UR5eConfig(common.RobotConfig):
         for key, value in data.items():
             setattr(self, key, value)
 
-    def __post_init__(self):
-        super().__init__()
+
+class RobotiQGripperConfig(common.GripperConfig):
+    def __init__(self, ip: str, **kwargs: typing.Unpack[GripperConfigKwargs]) -> None:
+        super().__init__(**kwargs)
+        self.ip = ip
 
 
 # Define the shared memory
@@ -72,7 +84,7 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
     """
     Control loop for the robot, running in a separate process.
     """
-    robot_config = UR5eConfig()
+    robot_config = UR5eConfig(ip=ip)
     try:
         # Initialize robot interfaces
         ur_control = rtde_control.RTDEControlInterface(ip)
@@ -178,12 +190,12 @@ def _control_robot(shm_name: str, ip: str, stop_queue: mp.Queue, config_queue: m
 
 class UR5e(common.Robot):
 
-    def __init__(self, ip: str, ik: common.Kinematics):
+    def __init__(self, cfg: UR5eConfig, ik: common.Kinematics):
         super().__init__()
         self.ik = ik
-        self._config = UR5eConfig()
-        self._config.robot_type = common.RobotType.UR5e
-        self._ip = ip
+        self._config = cfg
+        self._config.robot_type = common.RobotType("UR5e")
+        self._ip = cfg.ip
 
         # Delete shared memory if it exists
         try:
@@ -294,7 +306,7 @@ class UR5e(common.Robot):
     def move_home(self) -> None:
         home = typing.cast(
             np.ndarray[tuple[typing.Literal[6]], np.dtype[np.float64]],
-            common.robots_meta_config(common.RobotType.UR5e).q_home,
+            self._config.q_home,
         )
         if np.any((home < -2 * np.pi) | (home > 2 * np.pi)):
             msg = f"Home position {home} is out of bounds."
@@ -312,17 +324,21 @@ class UR5e(common.Robot):
 
 
 class RobotiQGripper(common.Gripper):
-    def __init__(self, ip):
+    def __init__(self, cfg: RobotiQGripperConfig):
         super().__init__()
+        self._cfg = cfg
         self.gripper = robotiq_gripper.RobotiqGripper()
         try:
-            self.gripper.connect(ip, 63352, socket_timeout=3.0)  # default port for Robotiq gripper
+            self.gripper.connect(cfg.ip, 63352, socket_timeout=3.0)  # default port for Robotiq gripper
         except Exception as e:
-            msg = f"Failed to connect to RobotiQ gripper at {ip}"
+            msg = f"Failed to connect to RobotiQ gripper at {cfg.ip}"
             raise RuntimeError(msg) from e
         if not self.gripper.is_active():
             self.gripper.activate()
         print("Gripper Connection established.")
+
+    def get_config(self) -> RobotiQGripperConfig:
+        return self._cfg
 
     def get_normalized_width(self) -> float:
         # value between 0 and 1 (0 is closed)
@@ -343,7 +359,7 @@ class RobotiQGripper(common.Gripper):
     def reset(self) -> None:
         self.open()
 
-    def set_normalized_width(self, width: float, _: float = 0) -> None:
+    def set_normalized_width(self, width: float, force: float = 0) -> None:
         """
         Set the gripper width to a normalized value between 0 and 1.
         """

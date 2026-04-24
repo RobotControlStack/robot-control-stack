@@ -46,21 +46,21 @@ struct SimTilburgHandConfig : common::HandConfig {
   common::GraspType grasp_type = common::GraspType::POWER_GRASP;
 
   double seconds_between_callbacks = 0.0167;  // 60 Hz
-  void add_id(const std::string& id) {
+  void add_prefix(const std::string& id) {
     for (auto& s : this->collision_geoms) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->collision_geoms_fingers) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->ignored_collision_geoms) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->joints) {
-      s = s + "_" + id;
+      s = id + s;
     }
     for (auto& s : this->actuators) {
-      s = s + "_" + id;
+      s = id + s;
     }
   }
 };

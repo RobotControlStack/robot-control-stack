@@ -13,7 +13,7 @@ from urllib import parse
 import rcs_panda
 import requests
 from dotenv import load_dotenv
-from rcs_panda.utils import default_panda_hw_gripper_cfg, default_panda_hw_robot_cfg
+from rcs_panda.configs import DefaultPandaHardwareEnv
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
@@ -47,12 +47,15 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
 
 def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
-        robot_cfg = default_panda_hw_robot_cfg()
+        default_env = DefaultPandaHardwareEnv()
+        default_env.ip = ip
+        env_cfg = default_env.config()
+        robot_cfg = env_cfg.robot_cfg
         robot_cfg.speed_factor = 0.2
-        f = rcs_panda.hw.Franka(ip)
-        f.set_config(robot_cfg)
-        config_hand = rcs_panda.hw.FHConfig()
-        g = rcs_panda.hw.FrankaHand(ip, config_hand)
+        f = rcs_panda.hw.Franka(robot_cfg)
+        config_hand = env_cfg.gripper_cfg
+        assert isinstance(config_hand, rcs_panda.hw.FHConfig)
+        g = rcs_panda.hw.FrankaHand(config_hand)
         if shut:
             g.shut()
         else:
@@ -62,18 +65,21 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):
     with Desk.fci(ip, username, password):
-        robot_cfg = rcs_panda.hw.PandaConfig()
+        robot_cfg = rcs_panda.hw.PandaConfig(ip=ip)
         robot_cfg.speed_factor = 0.2
-        f = rcs_panda.hw.Franka(ip)
-        f.set_config(robot_cfg)
+        f = rcs_panda.hw.Franka(robot_cfg)
         print("Robot info:")
         print("Current cartesian position:")
         print(f.get_cartesian_position())
         print("Current joint position:")
         print(f.get_joint_position())
         if include_hand:
-            config_hand = default_panda_hw_gripper_cfg()
-            g = rcs_panda.hw.FrankaHand(ip, config_hand)
+            default_env = DefaultPandaHardwareEnv()
+            default_env.ip = ip
+            env_cfg = default_env.config()
+            config_hand = env_cfg.gripper_cfg
+            assert isinstance(config_hand, rcs_panda.hw.FHConfig)
+            g = rcs_panda.hw.FrankaHand(config_hand)
             print("Gripper info:")
             print("Current normalized width:")
             print(g.get_normalized_width())

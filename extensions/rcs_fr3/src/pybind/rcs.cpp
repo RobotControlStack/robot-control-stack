@@ -126,7 +126,6 @@ PYBIND11_MODULE(_core, m) {
   py::object robot_config =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotConfig");
   py::class_<rcs::hw::FrankaConfig>(hw, "FrankaConfig", robot_config)
-      .def(py::init<>())
       .def_readwrite("ik_solver", &rcs::hw::FrankaConfig::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
       .def_readwrite("load_parameters", &rcs::hw::FrankaConfig::load_parameters)
@@ -135,18 +134,121 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
       .def_readwrite("tcp_offset_configured_in_desk",
                      &rcs::hw::FrankaConfig::tcp_offset_configured_in_desk)
-      .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control);
+      .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
+      .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
+      .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
+  rcs::hw::FR3Config default_fr3_config;
   py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")
-      .def(py::init<>());
+      .def(py::init(
+               [](const std::string& ip, rcs::hw::IKSolver ik_solver,
+                  double speed_factor,
+                  std::optional<rcs::hw::FrankaLoad> load_parameters,
+                  std::optional<rcs::common::Pose> nominal_end_effector_frame,
+                  std::optional<rcs::common::Pose> world_to_robot,
+                  bool async_control, bool tcp_offset_configured_in_desk,
+                  bool ignore_realtime, rcs::common::Pose tcp_offset,
+                  std::string attachment_site,
+                  std::string kinematic_model_path) {
+                 rcs::hw::FR3Config cfg;
+                 cfg.ik_solver = ik_solver;
+                 cfg.speed_factor = speed_factor;
+                 cfg.load_parameters = load_parameters;
+                 cfg.nominal_end_effector_frame = nominal_end_effector_frame;
+                 cfg.world_to_robot = world_to_robot;
+                 cfg.async_control = async_control;
+                 cfg.tcp_offset_configured_in_desk =
+                     tcp_offset_configured_in_desk;
+                 cfg.ignore_realtime = ignore_realtime;
+                 cfg.ip = ip;
+                 cfg.tcp_offset = tcp_offset;
+                 cfg.attachment_site = attachment_site;
+                 cfg.kinematic_model_path = kinematic_model_path;
+                 return cfg;
+               }),
+           py::arg("ip"), py::arg("ik_solver") = default_fr3_config.ik_solver,
+           py::arg("speed_factor") = default_fr3_config.speed_factor,
+           py::arg("load_parameters") = default_fr3_config.load_parameters,
+           py::arg("nominal_end_effector_frame") =
+               default_fr3_config.nominal_end_effector_frame,
+           py::arg("world_to_robot") = default_fr3_config.world_to_robot,
+           py::arg("async_control") = default_fr3_config.async_control,
+           py::arg("tcp_offset_configured_in_desk") =
+               default_fr3_config.tcp_offset_configured_in_desk,
+           py::arg("ignore_realtime") = default_fr3_config.ignore_realtime,
+           py::arg("tcp_offset") = default_fr3_config.tcp_offset,
+           py::arg("attachment_site") = default_fr3_config.attachment_site,
+           py::arg("kinematic_model_path") =
+               default_fr3_config.kinematic_model_path);
+  rcs::hw::PandaConfig default_panda_config;
   py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
-      .def(py::init<>());
+      .def(py::init(
+               [](const std::string& ip, rcs::hw::IKSolver ik_solver,
+                  double speed_factor,
+                  std::optional<rcs::hw::FrankaLoad> load_parameters,
+                  std::optional<rcs::common::Pose> nominal_end_effector_frame,
+                  std::optional<rcs::common::Pose> world_to_robot,
+                  bool async_control, bool tcp_offset_configured_in_desk,
+                  bool ignore_realtime, rcs::common::Pose tcp_offset,
+                  std::string attachment_site,
+                  std::string kinematic_model_path) {
+                 rcs::hw::PandaConfig cfg;
+                 cfg.ik_solver = ik_solver;
+                 cfg.speed_factor = speed_factor;
+                 cfg.load_parameters = load_parameters;
+                 cfg.nominal_end_effector_frame = nominal_end_effector_frame;
+                 cfg.world_to_robot = world_to_robot;
+                 cfg.async_control = async_control;
+                 cfg.tcp_offset_configured_in_desk =
+                     tcp_offset_configured_in_desk;
+                 cfg.ignore_realtime = ignore_realtime;
+                 cfg.ip = ip;
+                 cfg.tcp_offset = tcp_offset;
+                 cfg.attachment_site = attachment_site;
+                 cfg.kinematic_model_path = kinematic_model_path;
+                 return cfg;
+               }),
+           py::arg("ip"), py::arg("ik_solver") = default_panda_config.ik_solver,
+           py::arg("speed_factor") = default_panda_config.speed_factor,
+           py::arg("load_parameters") = default_panda_config.load_parameters,
+           py::arg("nominal_end_effector_frame") =
+               default_panda_config.nominal_end_effector_frame,
+           py::arg("world_to_robot") = default_panda_config.world_to_robot,
+           py::arg("async_control") = default_panda_config.async_control,
+           py::arg("tcp_offset_configured_in_desk") =
+               default_panda_config.tcp_offset_configured_in_desk,
+           py::arg("ignore_realtime") = default_panda_config.ignore_realtime,
+           py::arg("tcp_offset") = default_panda_config.tcp_offset,
+           py::arg("attachment_site") = default_panda_config.attachment_site,
+           py::arg("kinematic_model_path") =
+               default_panda_config.kinematic_model_path);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
           "GripperConfig");
+  rcs::hw::FHConfig default_gripper_config;
   py::class_<rcs::hw::FHConfig>(hw, "FHConfig", gripper_config)
-      .def(py::init<>())
+      .def(py::init([](const std::string& ip, double grasping_width,
+                       double speed, double force, double epsilon_inner,
+                       double epsilon_outer, bool async_control) {
+             rcs::hw::FHConfig cfg;
+             cfg.ip = ip;
+             cfg.grasping_width = grasping_width;
+             cfg.speed = speed;
+             cfg.force = force;
+             cfg.epsilon_inner = epsilon_inner;
+             cfg.epsilon_outer = epsilon_outer;
+             cfg.async_control = async_control;
+             return cfg;
+           }),
+           py::arg("ip"),
+           py::arg("grasping_width") = default_gripper_config.grasping_width,
+           py::arg("speed") = default_gripper_config.speed,
+           py::arg("force") = default_gripper_config.force,
+           py::arg("epsilon_inner") = default_gripper_config.epsilon_inner,
+           py::arg("epsilon_outer") = default_gripper_config.epsilon_outer,
+           py::arg("async_control") = default_gripper_config.async_control)
+      .def_readwrite("ip", &rcs::hw::FHConfig::ip)
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
       .def_readwrite("force", &rcs::hw::FHConfig::force)
@@ -173,11 +275,9 @@ PYBIND11_MODULE(_core, m) {
       (py::object)py::module_::import("rcs").attr("common").attr("Robot");
   py::class_<rcs::hw::Franka, std::shared_ptr<rcs::hw::Franka>>(hw, "Franka",
                                                                 robot)
-      .def(py::init<const std::string&,
-                    std::optional<std::shared_ptr<rcs::common::Kinematics>>,
-                    const std::optional<rcs::hw::FrankaConfig>&>(),
-           py::arg("ip"), py::arg("ik") = std::nullopt,
-           py::arg("cfg") = std::nullopt)
+      .def(py::init<const rcs::hw::FrankaConfig&,
+                    std::optional<std::shared_ptr<rcs::common::Kinematics>>>(),
+           py::arg("cfg"), py::arg("ik") = std::nullopt)
       .def("set_config", &rcs::hw::Franka::set_config, py::arg("cfg"))
       .def("get_config", &rcs::hw::Franka::get_config)
       .def("get_state", &rcs::hw::Franka::get_state)
@@ -209,8 +309,7 @@ PYBIND11_MODULE(_core, m) {
       (py::object)py::module_::import("rcs").attr("common").attr("Gripper");
   py::class_<rcs::hw::FrankaHand, std::shared_ptr<rcs::hw::FrankaHand>>(
       hw, "FrankaHand", gripper)
-      .def(py::init<const std::string&, const rcs::hw::FHConfig&>(),
-           py::arg("ip"), py::arg("cfg"))
+      .def(py::init<const rcs::hw::FHConfig&>(), py::arg("cfg"))
       .def("get_config", &rcs::hw::FrankaHand::get_config)
       .def("get_state", &rcs::hw::FrankaHand::get_state)
       .def("set_config", &rcs::hw::FrankaHand::set_config, py::arg("cfg"))

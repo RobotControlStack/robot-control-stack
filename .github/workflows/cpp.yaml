@@ -2,10 +2,6 @@ name: Cpp
 on:
   workflow_call:
   pull_request:
-    paths:
-      - "src/**"
-      - "include/**"
-      - ".github/workflows/cpp.yaml"
   push:
     branches:
       - master
@@ -66,4 +62,3 @@ jobs:
         run: pip install --group dev --group build_deps
       - name: GCC build
         run: make gcccompile PYTHON_EXECUTABLE=${{ steps.setup-python.outputs.python-path }}
-

@@ -262,6 +262,15 @@ class Pose {
   Eigen::Vector4d rotation_q() const;
 
   /**
+   * @brief returns the rotational part of the pose as quaternion in MuJoCo
+   * order (wxyz)
+   * For python bindings.
+   *
+   * @return 4D vector of the quaternion in wxyz order
+   */
+  Eigen::Vector4d rotation_q_wxyz() const;
+
+  /**
    * @brief returns the rotational part of the pose as quaternion
    * @return Rotation as quaternion
    */

@@ -3,9 +3,18 @@ from time import sleep
 
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.creators import SimEnvCreator
-from rcs_xarm7.creators import RCSXArm7EnvCreator
+from rcs._core.sim import SimConfig
+from rcs.envs.base import (
+    ControlMode,
+    CoverWrapper,
+    RelativeActionSpace,
+    RelativeTo,
+    RobotWrapper,
+    SimEnv,
+)
+from rcs.envs.configs import EmptyWorldXArm7
+from rcs.envs.sim import RobotSimWrapper
+from rcs_xarm7.configs import DefaultXArm7HardwareEnv
 
 import rcs
 from rcs import sim
@@ -30,47 +39,42 @@ ROBOT_INSTANCE = RobotPlatform.SIMULATION
 
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        env_rel = RCSXArm7EnvCreator()(
-            control_mode=ControlMode.JOINTS,
-            ip=ROBOT_IP,
-            relative_to=RelativeTo.LAST_STEP,
-            max_relative_movement=np.deg2rad(5),
-        )
+        env_creator = DefaultXArm7HardwareEnv()
+        env_creator.ip = ROBOT_IP
+        hw_cfg = env_creator.config()
+        hw_cfg.control_mode = ControlMode.JOINTS
+        hw_cfg.max_relative_movement = np.deg2rad(5)
+        hw_cfg.relative_to = RelativeTo.LAST_STEP
+        env_rel = env_creator.create_env(hw_cfg)
     else:
-        robot_cfg = sim.SimRobotConfig()
-        robot_cfg.actuators = [
-            "act1",
-            "act2",
-            "act3",
-            "act4",
-            "act5",
-            "act6",
-            "act7",
-        ]
-        robot_cfg.joints = [
-            "joint1",
-            "joint2",
-            "joint3",
-            "joint4",
-            "joint5",
-            "joint6",
-            "joint7",
-        ]
-        robot_cfg.base = "base"
-        robot_cfg.robot_type = rcs.common.RobotType.XArm7
-        robot_cfg.attachment_site = "attachment_site"
-        robot_cfg.arm_collision_geoms = []
-        scene = rcs.scenes["xarm7_empty_world"]
-        robot_cfg.mjcf_scene_path = scene.mjb or scene.mjcf_scene
-        robot_cfg.kinematic_model_path = rcs.scenes["xarm7_empty_world"].mjcf_robot
-        env_rel = SimEnvCreator()(
-            robot_cfg=robot_cfg,
-            control_mode=ControlMode.JOINTS,
-            gripper_cfg=None,
-            # cameras=default_mujoco_cameraset_cfg(),
-            max_relative_movement=np.deg2rad(5),
+        scene = EmptyWorldXArm7()
+        sim_cfg_data = scene.prefixed_cfg(scene.config())
+        xarm7 = scene.lead_robot_name(sim_cfg_data)
+
+        robot_cfg = sim_cfg_data.robot_cfgs[xarm7]
+        sim_cfg = SimConfig(
+            realtime=False,
+            async_control=False,
+        )
+
+        kinematic_model_path, attachment_site = scene.kinematics_cfg(sim_cfg_data)[xarm7]
+        ik = rcs.common.Pin(
+            kinematic_model_path,
+            attachment_site,
+        )
+        mjmodel = scene.create_model(sim_cfg_data)
+        simulation = sim.Sim(mjmodel, sim_cfg)
+
+        robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
+        env_rel = SimEnv(simulation)
+        env_rel = RobotWrapper(env_rel, robot, ControlMode.JOINTS)
+        env_rel = RobotSimWrapper(env_rel)
+        env_rel = RelativeActionSpace(
+            env_rel,
+            max_mov=np.deg2rad(5),
             relative_to=RelativeTo.LAST_STEP,
         )
+        env_rel = CoverWrapper(env_rel)
         env_rel.get_wrapper_attr("sim").open_gui()
         sleep(3)  # wait for gui to open
 
@@ -80,6 +84,7 @@ def main():
             # sample random relative action and execute it
             act = env_rel.action_space.sample()
             obs, reward, terminated, truncated, info = env_rel.step(act)
+            sleep(0.3)
 
 
 if __name__ == "__main__":

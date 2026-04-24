@@ -18,22 +18,16 @@ DESK_PASSWORD=...
 ```python
 import rcs_fr3
 from rcs_fr3._core import hw
+from rcs_fr3.configs import DefaultFR3HardwareEnv
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
 user, pw = load_creds_franka_desk()
 with FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False):
-    urdf_path = rcs.scenes["fr3_empty_world"].urdf
-    ik = rcs.common.RL(str(urdf_path))
-    robot = hw.Franka(ROBOT_IP, ik)
-    robot_cfg = hw.FR3Config()
-    robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-    robot_cfg.ik_solver = IKSolver.rcs_ik
-    robot.set_config(robot_cfg)
-
-    gripper_cfg_hw = hw.FHConfig()
-    gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
-    gripper_cfg_hw.speed = 0.1
-    gripper_cfg_hw.force = 30
-    gripper = hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
+    creator = DefaultFR3HardwareEnv()
+    creator.ip = ROBOT_IP
+    cfg = creator.config()
+    ik = rcs.common.Pin(cfg.robot_cfg.kinematic_model_path, cfg.robot_cfg.attachment_site)
+    robot = hw.Franka(cfg.robot_cfg, ik)
+    gripper = hw.FrankaHand(cfg.gripper_cfg)
     robot.set_cartesian_position(
         robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))
     )

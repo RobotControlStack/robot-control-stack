@@ -1,0 +1,33 @@
+<mujoco model="zed_mini">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="gray" rgba="0.8 0.8 0.8 1"/>
+    <material name="black" rgba="0.1 0.1 0.1 1"/>
+    <mesh name="zed_mini" file="zed_mini.obj"/>
+    <mesh name="zed_mini_coll" file="zed_mini.stl"/>
+  </asset>
+
+  <default>
+    <default class="zed_mini">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="zed_mini" childclass="zed_mini">
+      <geom mesh="zed_mini" quat="1 0 0 0" material="black" class="visual"/>
+      <geom mesh="zed_mini_coll" quat="1 0 0 0" material="black" class="collision"/>
+
+      <camera name="camera" pos="0 0.0255 0" quat="0.5 0.5 -0.5 -0.5" fovy="52"/>  
+    </body>
+  </worldbody>
+
+</mujoco>

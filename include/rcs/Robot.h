@@ -3,7 +3,9 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <vector>
 
 #include "Kinematics.h"
 #include "Pose.h"
@@ -12,108 +14,41 @@
 namespace rcs {
 namespace common {
 
-struct RobotMetaConfig {
-  VectorXd q_home;
-  int dof;
-  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits;
-};
-
-enum RobotType { FR3 = 0, UR5e, SO101, XArm7, Panda };
 enum RobotPlatform { SIMULATION = 0, HARDWARE };
 
-static const std::unordered_map<RobotType, RobotMetaConfig> robots_meta_config =
-    {{// -------------- FR3 --------------
-      {FR3,
-       RobotMetaConfig{
-           // q_home:
-           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
-            M_PI_4)
-               .finished(),
-           // dof:
-           7,
-           // joint_limits:
-           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-                // low 7‐tuple
-                -2.3093,
-            -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
-            // high 7‐tuple
-            2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
-               .finished()}},
-      {Panda,
-       RobotMetaConfig{
-           // q_home:
-           (VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
-            M_PI_4)
-               .finished(),
-           // dof:
-           7,
-           // joint_limits:
-           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-                // low 7‐tuple
-            -166. / 180. * M_PI, -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI, -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
-            // high 7‐tuple
-            166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI, -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI, 166. / 180. * M_PI
-          )
-               .finished()}},
+template <typename Derived>
+struct TypeBase {
+  std::string id;
 
-      // -------------- UR5e --------------
-      {UR5e,
-       RobotMetaConfig{
-           // q_home (6‐vector):
-           (VectorXd(6) << 0.0, -2.02711196, 1.64630026, -1.18999615,
-            -1.57079762, 0.0)
-               .finished(),
-           // dof:
-           6,
-           // joint_limits (2×6):
-           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 6) <<
-                // low 6‐tuple
-                -2 * M_PI,
-            -2 * M_PI, -1 * M_PI, -2 * M_PI, -2 * M_PI, -2 * M_PI,
-            // high 6‐tuple
-            2 * M_PI, 2 * M_PI, 1 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI)
-               .finished()}},
-      // -------------- XArm7 --------------
-      {XArm7, RobotMetaConfig{
-        // q_home (7‐vector):
-        (VectorXd(7) << 0,
-          -45. / 180. * M_PI,
-          0,
-          15. / 180. * M_PI,
-          0,
-          -25. / 180. * M_PI,
-          0
-        ).finished(),
-        // dof:
-        7,
-        // joint_limits (2×7):
-        (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-            // low 7‐tuple
-            -2 * M_PI, -2.094395, -2 * M_PI, -3.92699, -2 * M_PI, -M_PI, -2 * M_PI,
-            // high 7‐tuple
-             2 * M_PI,  2.059488,  2 * M_PI,  0.191986, 2 * M_PI, 1.692969, 2 * M_PI).finished()}},
-      // -------------- SO101 --------------
-      {SO101,
-       RobotMetaConfig{
-           // q_home (5‐vector):
-          //  (VectorXd(5) << -9.40612320177057, -99.66130397967824,
-          //   99.9124726477024, 69.96996996996998, -9.095744680851055)
-          //      .finished(),
-                     (VectorXd(5) << -0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926)
-               .finished(),
-           // dof:
-           5,
-           // joint_limits (2×5):
-           (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 5) <<
-            // low 5‐tuple
-                -1.9198621771937616,
-            -1.9198621771937634, -1.7453292519943295, -1.6580627969561903,
-            -2.7925268969992407,
+  // Each subclass gets its own unique static registry of type ids.
+  static std::set<std::string>& registry() {
+    static std::set<std::string> _registry;
+    return _registry;
+  }
 
-            // high 5‐tuple
-            1.9198621771937616, 1.9198621771937634, 1.5707963267948966,
-            1.6580627969561903, 2.7925268969992407)
-               .finished()}}}};
+  // Constructor automatically registers the instance
+  TypeBase(std::string id_) : id(std::move(id_)) { registry().insert(id); }
+
+  // Returns all registered instances of this specific type
+  static std::vector<Derived> get_all() {
+    std::vector<Derived> all;
+    all.reserve(registry().size());
+    for (const auto& id : registry()) {
+      all.emplace_back(id);
+    }
+    return all;
+  }
+
+  bool operator==(const TypeBase& other) const { return id == other.id; }
+};
+struct RobotType : public TypeBase<RobotType> {
+  using TypeBase::TypeBase;  // Inherit the constructor
+
+  static const RobotType FR3;
+  static const RobotType Panda;
+};
+inline const RobotType RobotType::FR3{"FR3"};
+inline const RobotType RobotType::Panda{"Panda"};
 
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
@@ -121,33 +56,53 @@ struct RobotConfig {
   rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
   std::string attachment_site = "attachment_site";
   std::string kinematic_model_path = "assets/scenes/fr3_empty_world/robot.xml";
-  virtual ~RobotConfig(){};
+  std::optional<VectorXd> q_home = std::nullopt;
+  size_t dof = 7;
+  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
+      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+           // low 7‐tuple
+           -2.3093,
+       -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
+       // high 7‐tuple
+       2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+          .finished();
+  virtual ~RobotConfig() {};
 };
 struct RobotState {
-  virtual ~RobotState(){};
+  virtual ~RobotState() {};
 };
+
+struct GripperType : public TypeBase<GripperType> {
+  using TypeBase::TypeBase;
+
+  static const GripperType FrankaHand;
+};
+inline const GripperType GripperType::FrankaHand{"FrankaHand"};
 
 struct GripperConfig {
-  virtual ~GripperConfig(){};
+  GripperType gripper_type = GripperType::FrankaHand;
+  virtual ~GripperConfig() {};
 };
 struct GripperState {
-  virtual ~GripperState(){};
+  virtual ~GripperState() {};
 };
 
-enum GraspType {  POWER_GRASP = 0, 
-                  PRECISION_GRASP,
-                  LATERAL_GRASP,
-                  TRIPOD_GRASP  };
+enum GraspType {
+  POWER_GRASP = 0,
+  PRECISION_GRASP,
+  LATERAL_GRASP,
+  TRIPOD_GRASP
+};
 struct HandConfig {
-  virtual ~HandConfig(){};
+  virtual ~HandConfig() {};
 };
 struct HandState {
-  virtual ~HandState(){};
+  virtual ~HandState() {};
 };
 
 class Robot {
  public:
-  virtual ~Robot(){};
+  virtual ~Robot() {};
 
   // Also add an implementation specific set_config function that takes
   // a deduced config type
@@ -186,7 +141,7 @@ class Robot {
 
 class Gripper {
  public:
-  virtual ~Gripper(){};
+  virtual ~Gripper() {};
 
   // Also add an implementation specific set_config function that takes
   // a deduced config type
@@ -219,9 +174,9 @@ class Gripper {
 
 class Hand {
  public:
-  virtual ~Hand(){};
-  // TODO: Add low-level control interface for the hand with internal state updates
-  // Also add an implementation specific set_config function that takes
+  virtual ~Hand() {};
+  // TODO: Add low-level control interface for the hand with internal state
+  // updates Also add an implementation specific set_config function that takes
   // a deduced config type
   // bool set_config(const GConfig& cfg);
 

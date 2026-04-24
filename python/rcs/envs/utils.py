@@ -1,46 +1,15 @@
 import logging
-from os import PathLike
 
 from digit_interface import Digit
-from rcs._core import common
 from rcs._core.common import BaseCameraConfig
-from rcs._core.sim import CameraType, SimCameraConfig
+from rcs._core.sim import SimCameraConfig
 from rcs.camera.digit_cam import DigitCam
-from rcs.hand.tilburg_hand import THConfig
 
 import rcs
 from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def default_sim_robot_cfg(scene: str = "fr3_empty_world", idx: str = "0") -> sim.SimRobotConfig:
-    robot_cfg = rcs.sim.SimRobotConfig()
-    scene_cfg = rcs.scenes[scene]
-    robot_cfg.robot_type = scene_cfg.robot_type
-    robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
-    robot_cfg.add_id(idx)
-    if scene_cfg.mjb is not None:
-        robot_cfg.mjcf_scene_path = scene_cfg.mjb
-    else:
-        robot_cfg.mjcf_scene_path = scene_cfg.mjcf_scene
-    robot_cfg.kinematic_model_path = scene_cfg.mjcf_robot
-    # robot_cfg.kinematic_model_path = scene_cfg.urdf
-    return robot_cfg
-
-
-def default_tilburg_hw_hand_cfg(file: str | PathLike | None = None) -> THConfig:
-    hand_cfg = THConfig()
-    hand_cfg.grasp_percentage = 1.0
-    hand_cfg.calibration_file = str(file) if isinstance(file, PathLike) else file
-    return hand_cfg
-
-
-def default_sim_gripper_cfg(idx: str = "0") -> sim.SimGripperConfig:
-    cfg = sim.SimGripperConfig()
-    cfg.add_id(idx)
-    return cfg
 
 
 def default_sim_tilburg_hand_cfg() -> sim.SimTilburgHandConfig:
@@ -53,24 +22,31 @@ def default_digit(name2id: dict[str, str] | None, stream_name: str = "QVGA") -> 
     stream_dict = Digit.STREAMS[stream_name]
     cameras = {
         name: BaseCameraConfig(
-            identifier=id,
+            identifier=identifier,
             resolution_width=stream_dict["resolution"]["width"],
             resolution_height=stream_dict["resolution"]["height"],
             frame_rate=stream_dict["fps"]["30fps"],
         )
-        for name, id in name2id.items()
+        for name, identifier in name2id.items()
     }
     return DigitCam(cameras=cameras)
 
 
 def default_mujoco_cameraset_cfg() -> dict[str, SimCameraConfig]:
-    # 256x256 needed for VLAs
+    # Kept for backwards compatibility in docs/comments while examples migrate.
     return {
         "wrist": SimCameraConfig(
-            identifier="wrist_0", type=CameraType.fixed, frame_rate=10, resolution_width=256, resolution_height=256
+            identifier="wrist_0",
+            type=rcs._core.sim.CameraType.fixed,
+            frame_rate=10,
+            resolution_width=256,
+            resolution_height=256,
         ),
         "default_free": SimCameraConfig(
-            identifier="", type=CameraType.default_free, frame_rate=10, resolution_width=256, resolution_height=256
+            identifier="",
+            type=rcs._core.sim.CameraType.default_free,
+            frame_rate=10,
+            resolution_width=256,
+            resolution_height=256,
         ),
-        # "bird_eye": SimCameraConfig(identifier="bird_eye_cam", type=int(CameraType.fixed), frame_rate=10, resolution_width=256, resolution_height=256),
     }

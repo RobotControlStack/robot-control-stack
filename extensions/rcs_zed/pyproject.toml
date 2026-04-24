@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_zed"
+version = "0.6.3"
+description = "RCS ZED camera module"
+dependencies = [
+  "rcs>=0.6.3",
+  "opencv-python~=4.10.0",
+  "pupil_apriltags",
+  "diskcache",
+  "typer~=0.9",
+]
+maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"

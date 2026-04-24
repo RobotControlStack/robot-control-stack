@@ -2,11 +2,12 @@ import logging
 
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs._core.sim import CameraType
+from rcs._core.sim import CameraType, SimConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
+from rcs.envs.configs import EmptyWorldFR3
 from rcs_fr3._core import hw
+from rcs_fr3.configs import DefaultFR3HardwareEnv
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
-from rcs_fr3.utils import default_fr3_hw_robot_cfg
 
 import rcs
 from rcs import sim
@@ -60,21 +61,29 @@ def main():
         robot: rcs.common.Robot
         gripper: rcs.common.Gripper
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            scene = rcs.scenes["fr3_empty_world"]
-            simulation = sim.Sim(scene.mjb or scene.mjcf_scene)
-            robot_cfg = sim.SimRobotConfig()
-            robot_cfg.add_id("0")
-            robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+            scene = EmptyWorldFR3()
+            cfg = scene.prefixed_cfg(scene.config())
+            fr3 = scene.lead_robot_name(cfg)
+            mjmodel = scene.create_model(cfg)
+
+            sim_cfg = SimConfig(
+                realtime=False,
+                async_control=False,
+            )
+
+            simulation = sim.Sim(mjmodel, sim_cfg)
+
+            robot_cfg = cfg.robot_cfgs[fr3]
+
+            kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[fr3]
             ik = rcs.common.Pin(
-                robot_cfg.kinematic_model_path,
-                robot_cfg.attachment_site,
-                urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+                kinematic_model_path,
+                attachment_site,
             )
             robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
 
-            gripper_cfg_sim = sim.SimGripperConfig()
-            gripper_cfg_sim.add_id("0")
-            gripper = sim.SimGripper(simulation, gripper_cfg_sim)
+            gripper_cfg = cfg.gripper_cfgs[fr3]  # type: ignore
+            gripper = sim.SimGripper(simulation, gripper_cfg)
 
             # add camera to have a rendering gui
             cameras = {
@@ -97,21 +106,21 @@ def main():
             simulation.open_gui()
 
         else:
-            fr3_cfg = default_fr3_hw_robot_cfg()
+            default_env = DefaultFR3HardwareEnv()
+            default_env.ip = ROBOT_IP
+            env_cfg = default_env.config()
+            fr3_cfg = env_cfg.robot_cfg
             fr3_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             ik = rcs.common.Pin(
                 fr3_cfg.kinematic_model_path,
                 fr3_cfg.attachment_site,
                 urdf=fr3_cfg.kinematic_model_path.endswith(".urdf"),
             )
-            robot = hw.Franka(ROBOT_IP, ik)
-            robot.set_config(fr3_cfg)  # type: ignore
+            robot = hw.Franka(fr3_cfg, ik)
 
-            gripper_cfg_hw = hw.FHConfig()
-            gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
-            gripper_cfg_hw.speed = 0.1
-            gripper_cfg_hw.force = 30
-            gripper = hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
+            gripper_cfg_hw = env_cfg.gripper_cfg
+            assert isinstance(gripper_cfg_hw, hw.FHConfig)
+            gripper = hw.FrankaHand(gripper_cfg_hw)
             input("the robot is going to move, press enter whenever you are ready")
 
         # move to home position and open gripper
