@@ -48,6 +48,7 @@ class Sim(_Sim):
     STATE_SPEC = mj.mjtState.mjSTATE_INTEGRATION
 
     def __init__(self, mjmdl: str | PathLike | ModelComposer, cfg: SimConfig | None = None):
+        self.mjmdl = mjmdl
         self.model, self.data = self.get_model_data(mjmdl)
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")
@@ -56,6 +57,7 @@ class Sim(_Sim):
         self._gui_process: Optional[mp.context.SpawnProcess] = None
         self._stop_event: Optional[EventClass] = None
         self._gui_atexit_registered = False
+        self._stale_model = False
         if cfg is not None:
             self.set_config(cfg)
 
@@ -75,11 +77,13 @@ class Sim(_Sim):
         return model, data
 
     def set_model_data(self, model: mj.MjModel, data: mj.MjData):
+        self.model, self.data = model, data
         super().set_model_data(model._address, data._address)
 
     def instantiate_new_sim(self, mjmdl: str | PathLike | ModelComposer):
-        self.model, self.data = self.get_model_data(mjmdl)
-        self.set_model_data(self.model, self.data)
+        self.mjmdl = mjmdl
+        model, data = self.get_model_data(mjmdl)
+        self.set_model_data(model, data)
 
     def get_state_spec(self) -> int:
         return int(self.STATE_SPEC)
