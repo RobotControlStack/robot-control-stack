@@ -25,7 +25,12 @@ bool get_last_return_value(ConditionCallback cb) {
   return cb.last_return_value;
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {};
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {}
+
+void Sim::set_model_data(mjModel* model, mjData* data) {
+  this->m = model;
+  this->d = data;
+}
 
 bool Sim::set_config(const SimConfig& cfg) {
   this->cfg = cfg;

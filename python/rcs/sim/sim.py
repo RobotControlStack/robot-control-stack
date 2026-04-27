@@ -48,19 +48,7 @@ class Sim(_Sim):
     STATE_SPEC = mj.mjtState.mjSTATE_INTEGRATION
 
     def __init__(self, mjmdl: str | PathLike | ModelComposer, cfg: SimConfig | None = None):
-        if isinstance(mjmdl, ModelComposer):
-            self.model = mjmdl.get_model()
-        else:
-            mjmdl = Path(mjmdl)
-            if mjmdl.suffix == ".xml":
-                self.model = mj.MjModel.from_xml_path(str(mjmdl))
-            elif mjmdl.suffix == ".mjb":
-                self.model = mj.MjModel.from_binary_path(str(mjmdl))
-            else:
-                msg = f"Filetype {mjmdl.suffix} is unknown"
-                logger.error(msg)
-
-        self.data = mj.MjData(self.model)
+        self.model, self.data = self.get_model_data(mjmdl)
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")
         self._gui_uuid: Optional[str] = None
@@ -70,6 +58,28 @@ class Sim(_Sim):
         self._gui_atexit_registered = False
         if cfg is not None:
             self.set_config(cfg)
+
+    def get_model_data(self, mjmdl: str | PathLike | ModelComposer) -> tuple[mj.MjModel, mj.MjData]:
+        if isinstance(mjmdl, ModelComposer):
+            model = mjmdl.get_model()
+        else:
+            mjmdl = Path(mjmdl)
+            if mjmdl.suffix == ".xml":
+                model = mj.MjModel.from_xml_path(str(mjmdl))
+            elif mjmdl.suffix == ".mjb":
+                model = mj.MjModel.from_binary_path(str(mjmdl))
+            else:
+                msg = f"Filetype {mjmdl.suffix} is unknown"
+                logger.error(msg)
+        data = mj.MjData(model)
+        return model, data
+
+    def set_model_data(self, model: mj.MjModel, data: mj.MjData):
+        super().set_model_data(model._address, data._address)
+
+    def instantiate_new_sim(self, mjmdl: str | PathLike | ModelComposer):
+        self.model, self.data = self.get_model_data(mjmdl)
+        self.set_model_data(self.model, self.data)
 
     def get_state_spec(self) -> int:
         return int(self.STATE_SPEC)

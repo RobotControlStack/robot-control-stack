@@ -70,8 +70,9 @@ class Task(typing.Generic[TaskConfig]):
         """Add task-specific elements to the Mujoco scene."""
 
     @staticmethod
-    def add_task_env(_cfg: TaskConfig, env: gym.Env, _simulation: Sim, _env_cfg: "SimEnvCreatorConfig") -> gym.Env:
+    def add_task_env(cfg: TaskConfig, env: gym.Env, simulation: Sim, env_cfg: "SimEnvCreatorConfig") -> gym.Env:
         """Add task-specific wrappers to the environment."""
+        _ = (cfg, simulation, env_cfg)
         return env
 
 

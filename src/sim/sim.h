@@ -76,6 +76,7 @@ class Sim {
   mjModel* m;
   mjData* d;
   Sim(mjModel* m, mjData* d);
+  void set_model_data(mjModel* model, mjData* data);
   bool set_config(const SimConfig& cfg);
   SimConfig get_config();
   bool is_converged();

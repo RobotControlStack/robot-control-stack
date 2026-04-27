@@ -735,6 +735,12 @@ PYBIND11_MODULE(_core, m) {
              return std::make_shared<rcs::sim::Sim>((mjModel*)m, (mjData*)d);
            }),
            py::arg("mjmdl"), py::arg("mjdata"))
+      .def(
+          "set_model_data",
+          [](rcs::sim::Sim& self, long model, long data) {
+            self.set_model_data((mjModel*)model, (mjData*)data);
+          },
+          py::arg("mjmdl"), py::arg("mjdata"))
       .def("step_until_convergence", &rcs::sim::Sim::step_until_convergence,
            py::call_guard<py::gil_scoped_release>())
       .def("is_converged", &rcs::sim::Sim::is_converged)
