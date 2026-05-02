@@ -44,9 +44,6 @@ class RobotSimWrapper(ActObsInfoWrapper):
 
 
 class SimStateObservationWrapper(ActObsInfoWrapper):
-    STATE_KEY = "sim_state"
-    STATE_SPEC_KEY = "sim_state_spec"
-    STATE_SIZE_KEY = "sim_state_size"
     DYNAMIC_JOINT_SCHEMA_KEY = "dynamic_joint_schema"
     DYNAMIC_JOINT_QPOS_KEY = "dynamic_joint_qpos"
     DYNAMIC_JOINT_QVEL_KEY = "dynamic_joint_qvel"
@@ -72,6 +69,7 @@ class SimStateObservationWrapper(ActObsInfoWrapper):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
+        # Re-emit the schema on the first recorded step after each reset.
         self._include_schema_in_next_step = True
         return obs, info
 

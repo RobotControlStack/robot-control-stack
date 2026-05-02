@@ -250,33 +250,57 @@ void Sim::set_dynamic_joint_state(const DynamicJointSchema& schema,
     throw std::invalid_argument(msg.str());
   }
 
+  std::vector<bool> matched_target_joints(this->dynamic_joint_specs.size(),
+                                          false);
   int qpos_offset = 0;
   int qvel_offset = 0;
   for (size_t i = 0; i < joint_count; ++i) {
     auto spec_iter =
         this->dynamic_joint_name_to_index.find(schema.joint_names[i]);
-    if (spec_iter != this->dynamic_joint_name_to_index.end()) {
-      const DynamicJointSpec& target_spec =
-          this->dynamic_joint_specs[spec_iter->second];
-      if (target_spec.type != schema.joint_types[i] ||
-          target_spec.qpos_size != schema.qpos_sizes[i] ||
-          target_spec.qvel_size != schema.qvel_sizes[i]) {
-        std::ostringstream msg;
-        msg << "Dynamic joint schema mismatch for joint '"
-            << schema.joint_names[i] << "'.";
-        throw std::invalid_argument(msg.str());
-      }
+    if (spec_iter == this->dynamic_joint_name_to_index.end()) {
+      std::cerr << "WARNING: Recorded dynamic joint '" << schema.joint_names[i]
+                << "' is missing in the replay model. Skipping it."
+                << std::endl;
+      qpos_offset += schema.qpos_sizes[i];
+      qvel_offset += schema.qvel_sizes[i];
+      continue;
+    }
 
-      for (int j = 0; j < target_spec.qpos_size; ++j) {
-        this->d->qpos[target_spec.qpos_adr + j] = state.qpos[qpos_offset + j];
-      }
-      for (int j = 0; j < target_spec.qvel_size; ++j) {
-        this->d->qvel[target_spec.qvel_adr + j] = state.qvel[qvel_offset + j];
-      }
+    const DynamicJointSpec& target_spec =
+        this->dynamic_joint_specs[spec_iter->second];
+    matched_target_joints[spec_iter->second] = true;
+    if (target_spec.type != schema.joint_types[i] ||
+        target_spec.qpos_size != schema.qpos_sizes[i] ||
+        target_spec.qvel_size != schema.qvel_sizes[i]) {
+      std::ostringstream msg;
+      msg << "Dynamic joint schema mismatch for joint '"
+          << schema.joint_names[i] << "': expected type=" << target_spec.type
+          << ", qpos_size=" << target_spec.qpos_size
+          << ", qvel_size=" << target_spec.qvel_size << " but got type="
+          << schema.joint_types[i] << ", qpos_size=" << schema.qpos_sizes[i]
+          << ", qvel_size=" << schema.qvel_sizes[i] << ".";
+      throw std::invalid_argument(msg.str());
+    }
+
+    for (int j = 0; j < target_spec.qpos_size; ++j) {
+      this->d->qpos[target_spec.qpos_adr + j] = state.qpos[qpos_offset + j];
+    }
+    for (int j = 0; j < target_spec.qvel_size; ++j) {
+      this->d->qvel[target_spec.qvel_adr + j] = state.qvel[qvel_offset + j];
     }
 
     qpos_offset += schema.qpos_sizes[i];
     qvel_offset += schema.qvel_sizes[i];
+  }
+
+  for (size_t i = 0; i < this->dynamic_joint_specs.size(); ++i) {
+    if (!matched_target_joints[i]) {
+      std::cerr << "WARNING: Replay model dynamic joint '"
+                << this->dynamic_joint_specs[i].name
+                << "' is missing in the recorded schema. Leaving it at its "
+                   "current value."
+                << std::endl;
+    }
   }
 
   mj_forward(this->m, this->d);
