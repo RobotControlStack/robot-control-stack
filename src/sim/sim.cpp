@@ -5,6 +5,9 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <numeric>
+#include <sstream>
+#include <stdexcept>
 #include <thread>
 
 namespace rcs {
@@ -25,7 +28,65 @@ bool get_last_return_value(ConditionCallback cb) {
   return cb.last_return_value;
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {};
+int Sim::get_joint_qpos_size(int joint_type) {
+  switch (joint_type) {
+    case mjJNT_FREE:
+      return 7;
+    case mjJNT_BALL:
+      return 4;
+    case mjJNT_SLIDE:
+    case mjJNT_HINGE:
+      return 1;
+    default:
+      throw std::runtime_error("Unsupported MuJoCo joint type for qpos size.");
+  }
+}
+
+int Sim::get_joint_qvel_size(int joint_type) {
+  switch (joint_type) {
+    case mjJNT_FREE:
+      return 6;
+    case mjJNT_BALL:
+      return 3;
+    case mjJNT_SLIDE:
+    case mjJNT_HINGE:
+      return 1;
+    default:
+      throw std::runtime_error("Unsupported MuJoCo joint type for qvel size.");
+  }
+}
+
+void Sim::init_dynamic_joint_specs() {
+  this->dynamic_joint_specs.clear();
+  this->dynamic_joint_name_to_index.clear();
+
+  for (int joint_id = 0; joint_id < this->m->njnt; ++joint_id) {
+    const char* joint_name = mj_id2name(this->m, mjOBJ_JOINT, joint_id);
+    if (joint_name == nullptr || joint_name[0] == '\0') {
+      std::ostringstream msg;
+      msg << "Dynamic joint state requires all joints to be named. Joint id "
+          << joint_id << " is unnamed.";
+      throw std::runtime_error(msg.str());
+    }
+
+    DynamicJointSpec spec{
+        .name = joint_name,
+        .type = this->m->jnt_type[joint_id],
+        .qpos_adr = this->m->jnt_qposadr[joint_id],
+        .qvel_adr = this->m->jnt_dofadr[joint_id],
+        .qpos_size = get_joint_qpos_size(this->m->jnt_type[joint_id]),
+        .qvel_size = get_joint_qvel_size(this->m->jnt_type[joint_id]),
+    };
+
+    this->dynamic_joint_name_to_index[spec.name] =
+        this->dynamic_joint_specs.size();
+    this->dynamic_joint_specs.push_back(spec);
+  }
+}
+
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {
+  this->init_dynamic_joint_specs();
+};
 
 bool Sim::set_config(const SimConfig& cfg) {
   this->cfg = cfg;
@@ -116,6 +177,109 @@ void Sim::step(size_t k) {
 void Sim::reset() {
   mj_resetData(this->m, this->d);
   this->reset_callbacks();
+}
+
+DynamicJointSchema Sim::get_dynamic_joint_schema() const {
+  DynamicJointSchema schema;
+  schema.joint_names.reserve(this->dynamic_joint_specs.size());
+  schema.joint_types.reserve(this->dynamic_joint_specs.size());
+  schema.qpos_sizes.reserve(this->dynamic_joint_specs.size());
+  schema.qvel_sizes.reserve(this->dynamic_joint_specs.size());
+
+  for (const DynamicJointSpec& spec : this->dynamic_joint_specs) {
+    schema.joint_names.push_back(spec.name);
+    schema.joint_types.push_back(spec.type);
+    schema.qpos_sizes.push_back(spec.qpos_size);
+    schema.qvel_sizes.push_back(spec.qvel_size);
+  }
+  return schema;
+}
+
+DynamicJointState Sim::get_dynamic_joint_state() const {
+  DynamicJointState state;
+  int total_qpos = 0;
+  int total_qvel = 0;
+  for (const DynamicJointSpec& spec : this->dynamic_joint_specs) {
+    total_qpos += spec.qpos_size;
+    total_qvel += spec.qvel_size;
+  }
+
+  state.qpos = rcs::common::VectorXd(total_qpos);
+  state.qvel = rcs::common::VectorXd(total_qvel);
+
+  int qpos_offset = 0;
+  int qvel_offset = 0;
+  for (const DynamicJointSpec& spec : this->dynamic_joint_specs) {
+    for (int i = 0; i < spec.qpos_size; ++i) {
+      state.qpos[qpos_offset + i] = this->d->qpos[spec.qpos_adr + i];
+    }
+    for (int i = 0; i < spec.qvel_size; ++i) {
+      state.qvel[qvel_offset + i] = this->d->qvel[spec.qvel_adr + i];
+    }
+    qpos_offset += spec.qpos_size;
+    qvel_offset += spec.qvel_size;
+  }
+
+  return state;
+}
+
+void Sim::set_dynamic_joint_state(const DynamicJointSchema& schema,
+                                  const DynamicJointState& state) {
+  size_t joint_count = schema.joint_names.size();
+  if (schema.joint_types.size() != joint_count ||
+      schema.qpos_sizes.size() != joint_count ||
+      schema.qvel_sizes.size() != joint_count) {
+    throw std::invalid_argument(
+        "Dynamic joint schema fields must all have the same length.");
+  }
+
+  int expected_qpos_size = std::accumulate(schema.qpos_sizes.begin(),
+                                           schema.qpos_sizes.end(), 0);
+  int expected_qvel_size = std::accumulate(schema.qvel_sizes.begin(),
+                                           schema.qvel_sizes.end(), 0);
+  if (state.qpos.size() != expected_qpos_size) {
+    std::ostringstream msg;
+    msg << "Dynamic joint qpos size mismatch. Expected "
+        << expected_qpos_size << ", got " << state.qpos.size() << ".";
+    throw std::invalid_argument(msg.str());
+  }
+  if (state.qvel.size() != expected_qvel_size) {
+    std::ostringstream msg;
+    msg << "Dynamic joint qvel size mismatch. Expected "
+        << expected_qvel_size << ", got " << state.qvel.size() << ".";
+    throw std::invalid_argument(msg.str());
+  }
+
+  int qpos_offset = 0;
+  int qvel_offset = 0;
+  for (size_t i = 0; i < joint_count; ++i) {
+    auto spec_iter =
+        this->dynamic_joint_name_to_index.find(schema.joint_names[i]);
+    if (spec_iter != this->dynamic_joint_name_to_index.end()) {
+      const DynamicJointSpec& target_spec =
+          this->dynamic_joint_specs[spec_iter->second];
+      if (target_spec.type != schema.joint_types[i] ||
+          target_spec.qpos_size != schema.qpos_sizes[i] ||
+          target_spec.qvel_size != schema.qvel_sizes[i]) {
+        std::ostringstream msg;
+        msg << "Dynamic joint schema mismatch for joint '"
+            << schema.joint_names[i] << "'.";
+        throw std::invalid_argument(msg.str());
+      }
+
+      for (int j = 0; j < target_spec.qpos_size; ++j) {
+        this->d->qpos[target_spec.qpos_adr + j] = state.qpos[qpos_offset + j];
+      }
+      for (int j = 0; j < target_spec.qvel_size; ++j) {
+        this->d->qvel[target_spec.qvel_adr + j] = state.qvel[qvel_offset + j];
+      }
+    }
+
+    qpos_offset += schema.qpos_sizes[i];
+    qvel_offset += schema.qvel_sizes[i];
+  }
+
+  mj_forward(this->m, this->d);
 }
 
 void Sim::reset_callbacks() {

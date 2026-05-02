@@ -5,10 +5,13 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "boost/interprocess/managed_shared_memory.hpp"
 #include "gui.h"
 #include "mujoco/mujoco.h"
+#include "rcs/utils.h"
 
 namespace rcs {
 namespace sim {
@@ -55,16 +58,42 @@ struct RenderingCallback {
   mjtNum last_call_timestamp;    // in seconds
 };
 
+struct DynamicJointSchema {
+  std::vector<std::string> joint_names;
+  std::vector<int> joint_types;
+  std::vector<int> qpos_sizes;
+  std::vector<int> qvel_sizes;
+};
+
+struct DynamicJointState {
+  rcs::common::VectorXd qpos;
+  rcs::common::VectorXd qvel;
+};
+
 class Sim {
  private:
+  struct DynamicJointSpec {
+    std::string name;
+    int type;
+    int qpos_adr;
+    int qvel_adr;
+    int qpos_size;
+    int qvel_size;
+  };
+
   SimConfig cfg;
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
   std::vector<RenderingCallback> rendering_callbacks;
+  std::vector<DynamicJointSpec> dynamic_joint_specs;
+  std::unordered_map<std::string, size_t> dynamic_joint_name_to_index;
   void invoke_callbacks();
   bool invoke_condition_callbacks();
   void invoke_rendering_callbacks();
+  void init_dynamic_joint_specs();
+  static int get_joint_qpos_size(int joint_type);
+  static int get_joint_qvel_size(int joint_type);
   size_t convergence_steps = 0;
   bool converged = true;
   std::optional<GuiServer> gui;
@@ -82,6 +111,10 @@ class Sim {
   void step(size_t k);
   void reset_callbacks();
   void reset();
+  DynamicJointSchema get_dynamic_joint_schema() const;
+  DynamicJointState get_dynamic_joint_state() const;
+  void set_dynamic_joint_state(const DynamicJointSchema& schema,
+                               const DynamicJointState& state);
   /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the
    * the requested interval. We invoke a callback if the elapsed simulation time
    * since the last call of the callback is greater than the requested time.

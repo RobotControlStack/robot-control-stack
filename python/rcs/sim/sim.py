@@ -11,6 +11,8 @@ from typing import Optional
 import mujoco as mj
 import mujoco.viewer
 import numpy as np
+from rcs._core.sim import DynamicJointSchema as _DynamicJointSchema
+from rcs._core.sim import DynamicJointState as _DynamicJointState
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
 from rcs.sim import SimConfig, egl_bootstrap
@@ -89,6 +91,38 @@ class Sim(_Sim):
             raise ValueError(msg)
         mj.mj_setState(self.model, self.data, state_array, state_spec)
         mj.mj_forward(self.model, self.data)
+
+    def get_dynamic_joint_schema(self) -> dict[str, list[str] | list[int]]:
+        schema = super().get_dynamic_joint_schema()
+        return {
+            "joint_names": list(schema.joint_names),
+            "joint_types": list(schema.joint_types),
+            "qpos_sizes": list(schema.qpos_sizes),
+            "qvel_sizes": list(schema.qvel_sizes),
+        }
+
+    def get_dynamic_joint_state(self) -> dict[str, np.ndarray]:
+        state = super().get_dynamic_joint_state()
+        return {
+            "qpos": np.asarray(state.qpos, dtype=np.float64),
+            "qvel": np.asarray(state.qvel, dtype=np.float64),
+        }
+
+    def set_dynamic_joint_state(
+        self,
+        schema: dict[str, list[str] | list[int]],
+        state: dict[str, np.ndarray],
+    ):
+        dynamic_joint_schema = _DynamicJointSchema()
+        dynamic_joint_schema.joint_names = list(schema["joint_names"])
+        dynamic_joint_schema.joint_types = [int(value) for value in schema["joint_types"]]
+        dynamic_joint_schema.qpos_sizes = [int(value) for value in schema["qpos_sizes"]]
+        dynamic_joint_schema.qvel_sizes = [int(value) for value in schema["qvel_sizes"]]
+
+        dynamic_joint_state = _DynamicJointState()
+        dynamic_joint_state.qpos = np.asarray(state["qpos"], dtype=np.float64)
+        dynamic_joint_state.qvel = np.asarray(state["qvel"], dtype=np.float64)
+        super().set_dynamic_joint_state(dynamic_joint_schema, dynamic_joint_state)
 
     def close_gui(self):
         if self._stop_event is not None:
