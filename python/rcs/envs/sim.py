@@ -44,33 +44,32 @@ class RobotSimWrapper(ActObsInfoWrapper):
 
 
 class SimStateObservationWrapper(ActObsInfoWrapper):
-    DYNAMIC_JOINT_SCHEMA_KEY = "dynamic_joint_schema"
-    DYNAMIC_JOINT_QPOS_KEY = "dynamic_joint_qpos"
-    DYNAMIC_JOINT_QVEL_KEY = "dynamic_joint_qvel"
+    STATE_KEY = "sim_state"
+    STATE_SPEC_KEY = "sim_state_spec"
+    STATE_SIZE_KEY = "sim_state_size"
 
     def __init__(self, env):
         super().__init__(env)
         assert self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.SIMULATION, "Base environment must be simulation."
         self.sim = cast(sim.Sim, self.get_wrapper_attr("sim"))
-        self._dynamic_joint_schema = self.sim.get_dynamic_joint_schema()
-        self._include_schema_in_next_step = True
+        self._state_spec = self.sim.get_state_spec()
+        self._include_state_spec_in_next_step = True
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = dict(observation)
-        dynamic_joint_state = self.sim.get_dynamic_joint_state()
-        observation[self.DYNAMIC_JOINT_QPOS_KEY] = dynamic_joint_state["qpos"]
-        observation[self.DYNAMIC_JOINT_QVEL_KEY] = dynamic_joint_state["qvel"]
-        if self._include_schema_in_next_step:
-            observation[self.DYNAMIC_JOINT_SCHEMA_KEY] = self._dynamic_joint_schema
-            self._include_schema_in_next_step = False
+        sim_state = self.sim.get_state()
+        observation[self.STATE_KEY] = sim_state
+        observation[self.STATE_SIZE_KEY] = sim_state.shape[0]
+        if self._include_state_spec_in_next_step:
+            observation[self.STATE_SPEC_KEY] = self._state_spec
+            self._include_state_spec_in_next_step = False
         return observation, info
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         obs, info = super().reset(seed=seed, options=options)
-        # Re-emit the schema on the first recorded step after each reset.
-        self._include_schema_in_next_step = True
+        self._include_state_spec_in_next_step = True
         return obs, info
 
 

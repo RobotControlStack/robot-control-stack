@@ -39,21 +39,13 @@ class RecordedSimStep:
     observation: dict[str, Any]
 
     @property
-    def dynamic_joint_schema(self) -> dict[str, Any] | None:
-        schema = self.observation.get(SimStateObservationWrapper.DYNAMIC_JOINT_SCHEMA_KEY)
-        return dict(schema) if schema is not None else None
+    def sim_state(self) -> np.ndarray:
+        return np.asarray(self.observation[SimStateObservationWrapper.STATE_KEY], dtype=np.float64)
 
     @property
-    def dynamic_joint_state(self) -> dict[str, np.ndarray] | None:
-        if (
-            SimStateObservationWrapper.DYNAMIC_JOINT_QPOS_KEY not in self.observation
-            or SimStateObservationWrapper.DYNAMIC_JOINT_QVEL_KEY not in self.observation
-        ):
-            return None
-        return {
-            "qpos": np.asarray(self.observation[SimStateObservationWrapper.DYNAMIC_JOINT_QPOS_KEY], dtype=np.float64),
-            "qvel": np.asarray(self.observation[SimStateObservationWrapper.DYNAMIC_JOINT_QVEL_KEY], dtype=np.float64),
-        }
+    def sim_state_spec(self) -> dict[str, Any] | None:
+        schema = self.observation.get(SimStateObservationWrapper.STATE_SPEC_KEY)
+        return dict(schema) if schema is not None else None
 
 
 class DuckDBUnavailableError(RuntimeError):
@@ -161,19 +153,15 @@ def resolve_trajectory_uuid(dataset_path: Path, trajectory_uuid: str | None, pre
 def restore_sim_step(
     env: gym.Env,
     recorded_step: RecordedSimStep,
-    dynamic_joint_schema: dict[str, Any] | None = None,
+    sim_state_spec: dict[str, Any] | None = None,
 ):
-    sim = env.get_wrapper_attr("sim")
-    dynamic_joint_state = recorded_step.dynamic_joint_state
-    if dynamic_joint_state is None:
-        msg = "Recorded step is missing dynamic joint state data."
+    resolved_spec = sim_state_spec or recorded_step.sim_state_spec
+    if resolved_spec is None:
+        msg = "Recorded sim state is missing its schema."
         raise ValueError(msg)
 
-    resolved_schema = dynamic_joint_schema or recorded_step.dynamic_joint_schema
-    if resolved_schema is None:
-        msg = "Recorded dynamic joint state is missing its schema."
-        raise ValueError(msg)
-    sim.set_dynamic_joint_state(resolved_schema, dynamic_joint_state)
+    sim = env.get_wrapper_attr("sim")
+    sim.set_state(recorded_step.sim_state, spec=resolved_spec)
 
 
 def collect_rgb_frames(env: gym.Env) -> dict[str, np.ndarray]:
@@ -209,17 +197,16 @@ def replay_trajectory(
     output_dir: Path | None = None,
 ):
     if not recorded_steps:
-        msg = "No recorded dynamic joint states found in the requested trajectory."
+        msg = "No recorded sim states found in the requested trajectory."
         raise ValueError(msg)
 
-    dynamic_joint_schema = next(
-        (recorded_step.dynamic_joint_schema for recorded_step in recorded_steps if recorded_step.dynamic_joint_schema),
-        None,
+    sim_state_spec = next(
+        (recorded_step.sim_state_spec for recorded_step in recorded_steps if recorded_step.sim_state_spec), None
     )
 
     env.reset()
     for recorded_step in recorded_steps:
-        restore_sim_step(env, recorded_step, dynamic_joint_schema=dynamic_joint_schema)
+        restore_sim_step(env, recorded_step, sim_state_spec=sim_state_spec)
         if output_dir is not None:
             save_rgb_frames(output_dir, recorded_step, collect_rgb_frames(env))
         if sleep_s > 0:

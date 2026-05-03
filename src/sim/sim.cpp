@@ -233,20 +233,20 @@ void Sim::set_dynamic_joint_state(const DynamicJointSchema& schema,
         "Dynamic joint schema fields must all have the same length.");
   }
 
-  int expected_qpos_size = std::accumulate(schema.qpos_sizes.begin(),
-                                           schema.qpos_sizes.end(), 0);
-  int expected_qvel_size = std::accumulate(schema.qvel_sizes.begin(),
-                                           schema.qvel_sizes.end(), 0);
+  int expected_qpos_size =
+      std::accumulate(schema.qpos_sizes.begin(), schema.qpos_sizes.end(), 0);
+  int expected_qvel_size =
+      std::accumulate(schema.qvel_sizes.begin(), schema.qvel_sizes.end(), 0);
   if (state.qpos.size() != expected_qpos_size) {
     std::ostringstream msg;
-    msg << "Dynamic joint qpos size mismatch. Expected "
-        << expected_qpos_size << ", got " << state.qpos.size() << ".";
+    msg << "Dynamic joint qpos size mismatch. Expected " << expected_qpos_size
+        << ", got " << state.qpos.size() << ".";
     throw std::invalid_argument(msg.str());
   }
   if (state.qvel.size() != expected_qvel_size) {
     std::ostringstream msg;
-    msg << "Dynamic joint qvel size mismatch. Expected "
-        << expected_qvel_size << ", got " << state.qvel.size() << ".";
+    msg << "Dynamic joint qvel size mismatch. Expected " << expected_qvel_size
+        << ", got " << state.qvel.size() << ".";
     throw std::invalid_argument(msg.str());
   }
 
@@ -276,8 +276,9 @@ void Sim::set_dynamic_joint_state(const DynamicJointSchema& schema,
       msg << "Dynamic joint schema mismatch for joint '"
           << schema.joint_names[i] << "': expected type=" << target_spec.type
           << ", qpos_size=" << target_spec.qpos_size
-          << ", qvel_size=" << target_spec.qvel_size << " but got type="
-          << schema.joint_types[i] << ", qpos_size=" << schema.qpos_sizes[i]
+          << ", qvel_size=" << target_spec.qvel_size
+          << " but got type=" << schema.joint_types[i]
+          << ", qpos_size=" << schema.qpos_sizes[i]
           << ", qvel_size=" << schema.qvel_sizes[i] << ".";
       throw std::invalid_argument(msg.str());
     }

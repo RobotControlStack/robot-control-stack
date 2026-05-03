@@ -11,6 +11,8 @@ import rcs._core.common
 
 __all__: list[str] = [
     "CameraType",
+    "DynamicJointSchema",
+    "DynamicJointState",
     "FrameSet",
     "GuiClient",
     "Sim",
@@ -32,6 +34,7 @@ __all__: list[str] = [
     "tracking",
 ]
 M = typing.TypeVar("M", bound=int)
+N = typing.TypeVar("N", bound=int)
 
 class CameraType:
     """
@@ -68,6 +71,18 @@ class CameraType:
     @property
     def value(self) -> int: ...
 
+class DynamicJointSchema:
+    joint_names: list[str]
+    joint_types: list[int]
+    qpos_sizes: list[int]
+    qvel_sizes: list[int]
+    def __init__(self) -> None: ...
+
+class DynamicJointState:
+    qpos: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __init__(self) -> None: ...
+
 class FrameSet:
     def __init__(
         self,
@@ -88,18 +103,6 @@ class GuiClient:
     def set_model_and_data(self, arg0: int, arg1: int) -> None: ...
     def sync(self) -> None: ...
 
-class DynamicJointSchema:
-    joint_names: list[str]
-    joint_types: list[int]
-    qpos_sizes: list[int]
-    qvel_sizes: list[int]
-    def __init__(self) -> None: ...
-
-class DynamicJointState:
-    qpos: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    def __init__(self) -> None: ...
-
 class Sim:
     def __init__(self, mjmdl: int, mjdata: int) -> None: ...
     def _start_gui_server(self, id: str) -> None: ...
@@ -113,15 +116,20 @@ class Sim:
     def set_dynamic_joint_state(self, schema: DynamicJointSchema, state: DynamicJointState) -> None: ...
     def step(self, k: int) -> None: ...
     def step_until_convergence(self) -> None: ...
+    def sync_gui(self) -> None: ...
 
 class SimCameraConfig(rcs._core.common.BaseCameraConfig):
     type: CameraType
+    def __copy__(self) -> SimCameraConfig: ...
+    def __deepcopy__(self, arg0: dict) -> SimCameraConfig: ...
     def __init__(
         self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int, type: CameraType = ...
     ) -> None: ...
 
 class SimCameraSet:
-    def __init__(self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True) -> None: ...
+    def __init__(
+        self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True, max_buffer_frames: int = 100
+    ) -> None: ...
     def buffer_size(self) -> int: ...
     def clear_buffer(self) -> None: ...
     def get_latest_frameset(self) -> FrameSet | None: ...
@@ -131,7 +139,7 @@ class SimCameraSet:
 
 class SimConfig:
     async_control: bool
-    frequency: int
+    frequency: float
     max_convergence_steps: int
     realtime: bool
     def __copy__(self) -> SimConfig: ...
@@ -140,7 +148,7 @@ class SimConfig:
         self,
         async_control: bool = False,
         realtime: bool = False,
-        frequency: float = 30,
+        frequency: float = 30.0,
         max_convergence_steps: int = 500,
     ) -> None: ...
 
@@ -157,6 +165,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     collision_geoms_fingers: list[str]
     epsilon_inner: float
     epsilon_outer: float
+    gripper_type: rcs._core.common.GripperType
     ignored_collision_geoms: list[str]
     joints: list[str]
     max_actuator_width: float
@@ -180,8 +189,9 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
         actuator: str = "actuator8",
         max_actuator_width: float = 255.0,
         min_actuator_width: float = 0.0,
+        gripper_type: rcs._core.common.GripperType = ...,
     ) -> None: ...
-    def add_postfix(self, id: str) -> None: ...
+    def add_prefix(self, id: str) -> None: ...
 
 class SimGripperState(rcs._core.common.GripperState):
     def __init__(self) -> None: ...
@@ -208,9 +218,10 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
     actuators: list[str]
     arm_collision_geoms: list[str]
     base: str
+    dof: int
+    joint_limits: numpy.ndarray[tuple[typing.Literal[2], N], numpy.dtype[numpy.float64]]
     joint_rotational_tolerance: float
     joints: list[str]
-    mjcf_scene_path: str
     seconds_between_callbacks: float
     trajectory_trace: bool
     def __copy__(self) -> SimRobotConfig: ...
@@ -223,7 +234,6 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
         joint_rotational_tolerance: float = 0.0008726646259971648,
         seconds_between_callbacks: float = 0.1,
-        mjcf_scene_path: str = "assets/scenes/fr3_empty_world/scene.xml",
         trajectory_trace: bool = False,
         arm_collision_geoms: list[str] = [
             "fr3_link0_collision",
@@ -244,6 +254,7 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
             "fr3_joint6",
             "fr3_joint7",
         ],
+        q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None = None,
         actuators: list[str] = [
             "fr3_joint1",
             "fr3_joint2",
@@ -254,8 +265,10 @@ class SimRobotConfig(rcs._core.common.RobotConfig):
             "fr3_joint7",
         ],
         base: str = "base",
+        dof: int = 7,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], N], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
-    def add_postfix(self, id: str) -> None: ...
+    def add_prefix(self, id: str) -> None: ...
 
 class SimRobotState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
@@ -338,7 +351,7 @@ class SimTilburgHandConfig(rcs._core.common.HandConfig):
         max_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]] = ...,
         min_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
-    def add_postfix(self, id: str) -> None: ...
+    def add_prefix(self, id: str) -> None: ...
 
 class SimTilburgHandState(rcs._core.common.HandState):
     def __init__(self) -> None: ...

@@ -45,8 +45,6 @@ def gui_loop(gui_uuid: str, close_event):
 
 
 class Sim(_Sim):
-    STATE_SPEC = mj.mjtState.mjSTATE_INTEGRATION
-
     def __init__(self, mjmdl: str | PathLike, cfg: SimConfig | None = None):
         mjmdl = Path(mjmdl)
         if mjmdl.suffix == ".xml":
@@ -66,31 +64,38 @@ class Sim(_Sim):
         if cfg is not None:
             self.set_config(cfg)
 
-    def get_state_spec(self) -> int:
-        return int(self.STATE_SPEC)
+    def get_state_spec(self) -> dict[str, list[str] | list[int]]:
+        return self.get_dynamic_joint_schema()
 
-    def get_state_size(self, spec: int | None = None) -> int:
-        state_spec = self.STATE_SPEC if spec is None else mj.mjtState(spec)
-        return mj.mj_stateSize(self.model, state_spec)
+    def get_state_size(self, spec: dict[str, list[str] | list[int]] | None = None) -> int:
+        state_spec = self.get_state_spec() if spec is None else spec
+        qpos_size = sum(int(value) for value in state_spec["qpos_sizes"])
+        qvel_size = sum(int(value) for value in state_spec["qvel_sizes"])
+        return qpos_size + qvel_size
 
-    def get_state(self, spec: int | None = None) -> np.ndarray:
-        state_spec = self.STATE_SPEC if spec is None else mj.mjtState(spec)
-        state = np.empty(self.get_state_size(int(state_spec)), dtype=np.float64)
-        mj.mj_getState(self.model, self.data, state, state_spec)
-        return state
+    def get_state(self, spec: dict[str, list[str] | list[int]] | None = None) -> np.ndarray:
+        del spec
+        dynamic_joint_state = self.get_dynamic_joint_state()
+        return np.concatenate((dynamic_joint_state["qpos"], dynamic_joint_state["qvel"]))
 
-    def set_state(self, state: np.ndarray, spec: int | None = None):
-        state_spec = self.STATE_SPEC if spec is None else mj.mjtState(spec)
+    def set_state(
+        self,
+        state: np.ndarray,
+        spec: dict[str, list[str] | list[int]] | None = None,
+    ):
+        state_spec = self.get_state_spec() if spec is None else spec
         state_array = np.asarray(state, dtype=np.float64)
-        expected_size = self.get_state_size(int(state_spec))
+        expected_size = self.get_state_size(state_spec)
         if state_array.shape != (expected_size,):
-            msg = (
-                f"Expected MuJoCo state with shape ({expected_size},), "
-                f"got {state_array.shape} for spec {int(state_spec)}."
-            )
+            msg = f"Expected state with shape ({expected_size},), got {state_array.shape}."
             raise ValueError(msg)
-        mj.mj_setState(self.model, self.data, state_array, state_spec)
-        mj.mj_forward(self.model, self.data)
+
+        qpos_size = sum(int(value) for value in state_spec["qpos_sizes"])
+        dynamic_joint_state = {
+            "qpos": state_array[:qpos_size],
+            "qvel": state_array[qpos_size:],
+        }
+        self.set_dynamic_joint_state(state_spec, dynamic_joint_state)
 
     def get_dynamic_joint_schema(self) -> dict[str, list[str] | list[int]]:
         schema = super().get_dynamic_joint_schema()
