@@ -23,10 +23,11 @@ def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
     shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
     unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
+    fh: Annotated[bool, typer.Option("-h", help="franka hand open")] = False,
 ):
     """Moves the FR3 to home position"""
     user, pw = load_creds_franka_desk()
-    rcs_fr3.desk.home(ip, user, pw, shut, unlock)
+    rcs_fr3.desk.home(ip, user, pw, shut, unlock, fh)
 
 
 @fr3_app.command()
