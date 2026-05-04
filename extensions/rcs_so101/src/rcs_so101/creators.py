@@ -1,6 +1,8 @@
 import logging
 import typing
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import gymnasium as gym
 from rcs._core.common import BaseCameraConfig
@@ -117,17 +119,24 @@ class RCSSO101ConfigEnvCreator(RCSEnvCreator[SO101HardwareEnvCreatorConfig]):
         msg = "Implement config() in a subclass or pass `cfg=` explicitly."
         raise NotImplementedError(msg)
 
-    # For now, the leader-follower teleop script uses the leader object directly
-    # and doesn't depend on an RCS-provided class.
-    # @staticmethod
-    # def teleoperator(
-    #     id: str,
-    #     port: str,
-    #     calibration_dir: PathLike | str | None = None,
-    # ) -> SO101Leader:
-    #     if isinstance(calibration_dir, str):
-    #         calibration_dir = Path(calibration_dir)
-    #     cfg = SO101LeaderConfig(id=id, calibration_dir=calibration_dir, port=port)
-    #     teleop = make_teleoperator_from_config(cfg)
-    #     teleop.connect()
-    #     return teleop
+
+def make_so101_leader(
+    id: str = "leader",
+    port: str = "/dev/ttyACM1",
+    calibration_dir: str | Path | None = None,
+    use_degrees: bool = True,
+) -> Any:
+    try:
+        from lerobot.teleoperators.so_leader.config_so_leader import SO101LeaderConfig
+        from lerobot.teleoperators.so_leader.so_leader import SO101Leader
+    except ImportError as exc:
+        msg = "lerobot SO101 leader dependencies are not available."
+        raise ImportError(msg) from exc
+
+    if isinstance(calibration_dir, str):
+        calibration_dir = Path(calibration_dir)
+
+    cfg = SO101LeaderConfig(id=id, calibration_dir=calibration_dir, port=port, use_degrees=use_degrees)
+    teleop = SO101Leader(cfg)
+    teleop.connect()
+    return teleop
