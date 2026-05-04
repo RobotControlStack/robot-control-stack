@@ -73,7 +73,7 @@ FrankaConfig* Franka::get_config() {
 
 FrankaState* Franka::get_state() {
   franka::RobotState current_robot_state;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     current_robot_state = this->robot.readOnce();
   } else {
     std::lock_guard<std::mutex> lock(this->interpolator_mutex);
@@ -100,7 +100,7 @@ void Franka::set_default_robot_behavior() {
 common::Pose Franka::get_cartesian_position() {
   this->check_for_background_errors();
   common::Pose x;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
     x = common::Pose(this->curr_state.O_T_EE);
   } else {
@@ -127,7 +127,7 @@ void Franka::set_joint_position(const common::VectorXd& q) {
 common::VectorXd Franka::get_joint_position() {
   this->check_for_background_errors();
   common::Vector7d joints;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
     joints = common::Vector7d(this->curr_state.q.data());
   } else {
@@ -182,15 +182,15 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
     this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
-  } else if (this->running_controller != Controller::jsc) {
+  } else if (this->running_controller.load() != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
         "Controller type must but joint space but is " +
-        std::to_string(this->running_controller) +
+        std::to_string(static_cast<int>(this->running_controller.load())) +
         ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
@@ -202,8 +202,8 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
       policy_rate, traj_rate, traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (this->running_controller == Controller::none) {
-    this->running_controller = Controller::jsc;
+  if (this->running_controller.load() == Controller::none) {
+    this->running_controller.store(Controller::jsc);
     this->control_thread = std::thread(&Franka::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -229,13 +229,17 @@ void Franka::osc_set_cartesian_position(
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
+    {
+      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+      this->curr_state = this->robot.readOnce();
+    }
     this->traj_interpolator = common::LinearPoseTrajInterpolator();
-  } else if (this->running_controller != Controller::osc) {
+  } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
-        std::to_string(this->running_controller) +
+        std::to_string(static_cast<int>(this->running_controller.load())) +
         ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
@@ -249,8 +253,8 @@ void Franka::osc_set_cartesian_position(
       traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (this->running_controller == Controller::none) {
-    this->running_controller = Controller::osc;
+  if (this->running_controller.load() == Controller::none) {
+    this->running_controller.store(Controller::osc);
     this->control_thread = std::thread(&Franka::osc, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -259,10 +263,11 @@ void Franka::osc_set_cartesian_position(
 
 // method to stop thread
 void Franka::stop_control_thread() {
-  if (this->control_thread.has_value() &&
-      this->running_controller != Controller::none) {
-    this->running_controller = Controller::none;
-    this->control_thread->join();
+  if (this->control_thread.has_value()) {
+    this->running_controller.store(Controller::none);
+    if (this->control_thread->joinable()) {
+      this->control_thread->join();
+    }
     this->control_thread.reset();
   }
 }
@@ -291,7 +296,10 @@ void Franka::osc() {
   // translation: [150.0, 150.0, 150.0]
   // rotation: 250.0
 
-  Eigen::Matrix<double, 3, 3> Kp_p, Kp_r, Kd_p, Kd_r;
+  Eigen::Matrix<double, 3, 3> Kp_p = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kp_r = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kd_p = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kd_r = Eigen::Matrix3d::Zero();
   Eigen::Matrix<double, 7, 1> static_q_task_;
   Eigen::Matrix<double, 7, 1> residual_mass_vec_;
   Eigen::Array<double, 7, 1> joint_max_;
@@ -323,7 +331,7 @@ void Franka::osc() {
           std::chrono::high_resolution_clock::now();
 
       // torques handler
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
         return franka::MotionFinished(zero_torques);
       }
@@ -487,7 +495,7 @@ void Franka::osc() {
   }
 
   // Ensure we mark the controller as stopped so we can restart later
-  this->running_controller = Controller::none;
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::joint_controller() {
@@ -524,7 +532,7 @@ void Franka::joint_controller() {
           std::chrono::high_resolution_clock::now();
 
       // torques handler
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         // TODO: test if this also works when the robot is moving
         franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
         return franka::MotionFinished(zero_torques);
@@ -588,16 +596,18 @@ void Franka::joint_controller() {
     std::lock_guard<std::mutex> lock(this->exception_mutex);
     this->background_exception = std::current_exception();
   }
+
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::zero_torque_guiding() {
   this->check_for_background_errors();
-  if (this->running_controller != Controller::none) {
+  if (this->running_controller.load() != Controller::none) {
     throw std::runtime_error(
         "A controller is currently running. Please stop it first.");
   }
   this->controller_time = 0.0;
-  this->running_controller = Controller::ztc;
+  this->running_controller.store(Controller::ztc);
   this->control_thread = std::thread(&Franka::zero_torque_controller, this);
 }
 
@@ -617,7 +627,7 @@ void Franka::zero_torque_controller() {
       this->curr_state = robot_state;
       this->controller_time += period.toSec();
       this->interpolator_mutex.unlock();
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         // stop
         return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
       }
@@ -627,6 +637,8 @@ void Franka::zero_torque_controller() {
     std::lock_guard<std::mutex> lock(this->exception_mutex);
     this->background_exception = std::current_exception();
   }
+
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::move_home() {

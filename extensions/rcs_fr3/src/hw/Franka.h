@@ -4,6 +4,7 @@
 #include <franka/robot.h>
 #include <franka/robot_state.h>
 
+#include <atomic>
 #include <cmath>
 #include <memory>
 #include <mutex>
@@ -89,7 +90,7 @@ class Franka : public common::Robot {
   common::LinearJointPositionTrajInterpolator joint_interpolator;
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
-  Controller running_controller = Controller::none;
+  std::atomic<Controller> running_controller{Controller::none};
   std::exception_ptr background_exception = nullptr;
   std::mutex exception_mutex;
   void osc();
