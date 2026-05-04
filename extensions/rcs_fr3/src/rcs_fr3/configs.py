@@ -125,12 +125,12 @@ class DefaultFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
         return FR3MultiHardwareEnvCreatorConfig(
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfgs={
-                "left": copy.deepcopy(left_cfg.robot_cfg),
-                "right": copy.deepcopy(right_cfg.robot_cfg),
+                "left": left_cfg.robot_cfg,
+                "right": right_cfg.robot_cfg,
             },
             gripper_cfgs={
-                "left": copy.deepcopy(left_cfg.gripper_cfg),
-                "right": copy.deepcopy(right_cfg.gripper_cfg),
+                "left": left_cfg.gripper_cfg,
+                "right": right_cfg.gripper_cfg,
             },
             camera_cfgs=copy.deepcopy(left_cfg.camera_cfgs),
             max_relative_movement=(0.5, np.deg2rad(90)),
@@ -152,8 +152,8 @@ class DefaultFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
 
 
 class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
-    left_gripper_serial_number = "LEFT_GRIPPER_SERIAL_NUMBER"
-    right_gripper_serial_number = "RIGHT_GRIPPER_SERIAL_NUMBER"
+    left_gripper_serial_number = "DAAQMJHX"
+    right_gripper_serial_number = "DAAQMPDC"
 
     def config(self) -> FR3MultiHardwareEnvCreatorConfig:
         try:
@@ -164,6 +164,10 @@ class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
 
         cfg = super().config()
         cfg.camera_cfgs = None
+        cfg.robot_cfgs["left"].tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["left"].q_home = rcs.HOME_POSITIONS["FR3_DUO_LEFT"]
+        cfg.robot_cfgs["right"].q_home = rcs.HOME_POSITIONS["FR3_DUO_RIGHT"]
         cfg.gripper_cfgs = {
             "left": RobotiQ2F85GripperConfig(
                 serial_number=self.left_gripper_serial_number,
