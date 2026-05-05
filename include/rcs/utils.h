@@ -37,6 +37,7 @@ Eigen::Matrix<double, N, M, Eigen::ColMajor> array2eigen(
 }
 void bootstrap_egl(std::uintptr_t fn_addr, std::uintptr_t display,
                    std::uintptr_t context);
+void bootstrap_gl_context();
 void ensure_current();
 
 }  // namespace common

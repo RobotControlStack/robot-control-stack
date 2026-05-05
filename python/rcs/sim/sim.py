@@ -1,6 +1,8 @@
 import atexit
 import contextlib
 import multiprocessing as mp
+import shutil
+import sys
 import typing
 import uuid
 from logging import getLogger
@@ -23,6 +25,21 @@ from rcs.utils import SimpleFrameRate
 
 egl_bootstrap.bootstrap()
 logger = getLogger(__name__)
+
+
+def _configure_spawn_executable() -> None:
+    if sys.platform != "darwin":
+        return
+
+    mjpython = shutil.which("mjpython")
+    if mjpython is None:
+        logger.warning("mjpython was not found on PATH; passive MuJoCo viewer may fail on macOS")
+        return
+
+    mp.set_executable(mjpython)
+
+
+_configure_spawn_executable()
 
 
 # Target frames per second

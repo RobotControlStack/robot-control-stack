@@ -1,4 +1,3 @@
-#include <pybind11/cast.h>
 #include <pybind11/eigen.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -253,6 +252,7 @@ PYBIND11_MODULE(_core, m) {
 
   common.def("_bootstrap_egl", &rcs::common::bootstrap_egl, py::arg("fn_addr"),
              py::arg("display"), py::arg("context"));
+  common.def("_bootstrap_gl_context", &rcs::common::bootstrap_gl_context);
   common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
   common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
