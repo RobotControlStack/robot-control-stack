@@ -117,7 +117,7 @@ def get_env():
                     for name, identifier in ZED_CAMERA_DICT.items()
                 },
                 kwargs={
-                    "enable_depth": False,
+                    "enable_depth": INCLUDE_DEPTH,
                     "enable_imu": False,
                 },
             )
