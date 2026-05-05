@@ -246,6 +246,9 @@ void Franka::osc_set_cartesian_position(
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
+  if (!this->m_cfg.tcp_offset_configured_in_desk) {
+    curr_pose = curr_pose * this->m_cfg.tcp_offset;
+  }
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
@@ -343,7 +346,6 @@ void Franka::osc() {
       Eigen::Vector3d desired_pos_EE_in_base_frame;
       Eigen::Quaterniond desired_quat_EE_in_base_frame;
 
-      common::Pose pose(robot_state.O_T_EE);
       // form deoxys/config/charmander.yml
       int policy_rate = 20;
       int traj_rate = 500;
@@ -384,9 +386,15 @@ void Franka::osc() {
       jacobian_pos << jacobian.block(0, 0, 3, 7);
       jacobian_ori << jacobian.block(3, 0, 3, 7);
 
-      // End effector pose in base frame
-      Eigen::Affine3d T_EE_in_base_frame(
-          Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+      // Express OSC feedback in the same TCP frame exposed by the public
+      // Cartesian API.
+      common::Pose T_EE_in_base_frame_pose =
+          this->m_cfg.tcp_offset_configured_in_desk
+              ? common::Pose(robot_state.O_T_EE)
+              : common::Pose(robot_state.O_T_EE) * this->m_cfg.tcp_offset;
+      Eigen::Affine3d T_EE_in_base_frame =
+          T_EE_in_base_frame_pose.affine_matrix();
+
       Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
       Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
 
@@ -539,7 +547,6 @@ void Franka::joint_controller() {
       }
 
       common::Vector7d desired_q;
-      common::Pose pose(robot_state.O_T_EE);
 
       this->interpolator_mutex.lock();
       this->curr_state = robot_state;
@@ -726,8 +733,12 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
+  common::Pose target_pose = x;
+  if (!this->m_cfg.tcp_offset_configured_in_desk) {
+    target_pose = target_pose * this->m_cfg.tcp_offset.inverse();
+  }
   if (this->m_cfg.async_control) {
-    this->osc_set_cartesian_position(x);
+    this->osc_set_cartesian_position(target_pose);
     return;
   }
   // TODO: this should handled with tcp offset config
@@ -745,10 +756,11 @@ void Franka::set_cartesian_position(const common::Pose& x) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
-    this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
+    this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
+                                          std::nullopt);
 
   } else if (this->m_cfg.ik_solver == IKSolver::rcs_ik) {
-    this->set_cartesian_position_ik(x);
+    this->set_cartesian_position_ik(target_pose);
   }
 }
 
@@ -798,14 +810,17 @@ void Franka::set_cartesian_position_internal(const common::Pose& pose,
 
   this->robot.control(
       [&force_stop_condition, &initial_elbow, &elbow, &max_force, &time,
-       &max_time, &initial_pose, &should_stop,
+       &max_time, &initial_pose, &should_stop, this,
        &pose](const franka::RobotState& state,
               franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          initial_pose = common::Pose(state.O_T_EE);
+          initial_pose =
+              this->m_cfg.tcp_offset_configured_in_desk
+                  ? common::Pose(state.O_T_EE)
+                  : common::Pose(state.O_T_EE) * this->m_cfg.tcp_offset;
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;
