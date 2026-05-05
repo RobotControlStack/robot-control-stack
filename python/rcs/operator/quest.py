@@ -128,6 +128,14 @@ class QuestOperator(BaseOperator):
                 self._last_controller_pose[controller] = Pose()
                 self._grp_pos[controller] = 1
 
+    def _swap_controller_input(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        if not self.config.switched_left_right:
+            return input_data
+        swapped = copy.copy(input_data)
+        swapped["left"] = input_data["right"]
+        swapped["right"] = input_data["left"]
+        return swapped
+
     @staticmethod
     def _normalize_axis(value: bool | float | int) -> float:
         if isinstance(value, bool):
@@ -139,13 +147,6 @@ class QuestOperator(BaseOperator):
         with self._cmd_lock:
             cmds = copy.copy(self._commands)
             self._commands = TeleopCommands()
-            if self.config.switched_left_right:
-                swapped_reset_origin_to_current = {}
-                if "left" in cmds.reset_origin_to_current:
-                    swapped_reset_origin_to_current["right"] = cmds.reset_origin_to_current["left"]
-                if "right" in cmds.reset_origin_to_current:
-                    swapped_reset_origin_to_current["left"] = cmds.reset_origin_to_current["right"]
-                cmds.reset_origin_to_current = swapped_reset_origin_to_current
             return cmds
 
     def reset_operator_state(self):
@@ -176,11 +177,7 @@ class QuestOperator(BaseOperator):
                     tquat=np.concatenate([transform.translation(), transform.rotation_q()]),
                     gripper=np.array([self._grp_pos[controller]]),
                 )
-        return (
-            {"left": transforms["right"], "right": transforms["left"]}
-            if self.config.switched_left_right
-            else transforms
-        )
+        return transforms
 
     def set_camera(self, observation: dict) -> None:
         if not self.config.display_cameras:
@@ -241,6 +238,8 @@ class QuestOperator(BaseOperator):
                 logger.warning("[Quest Reader] packets arriving again")
                 warning_raised = False
 
+            input_data = self._swap_controller_input(input_data)
+
             # === Update Semantic Commands ===
             with self._cmd_lock:
                 if input_data[self._start_btn] and (self._prev_data is None or not self._prev_data[self._start_btn]):
@@ -293,7 +292,8 @@ class QuestOperator(BaseOperator):
 
                 gripper_axis = self._normalize_axis(input_data[controller][self._grp_btn[controller]])
                 # convert from IRIS to RCS gripper logic
-                self._grp_pos[controller] = 1.0 - gripper_axis
+                with self._resource_lock:
+                    self._grp_pos[controller] = 1.0 - gripper_axis
 
             self._prev_data = input_data
             rate_limiter()
