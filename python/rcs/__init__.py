@@ -127,7 +127,7 @@ GRIPPER_PATHS: dict[common.GripperType, str] = {
 
 GRIPPER_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
-    common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0, 0.0, 0.1628])),
+    common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0, 0.0, 0.1493])),
 }
 
 SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.xml"}

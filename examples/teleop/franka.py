@@ -43,6 +43,7 @@ ZED_CAMERA_DICT = {
     "zed": "19928076",
 }
 MQ3_ADDR = "10.42.0.1"
+INCLUDE_DEPTH = False
 
 # DIGIT_DICT = {
 #     "digit_right_left": "D21182",
@@ -69,7 +70,7 @@ config = QuestConfig(
     mq3_addr=MQ3_ADDR,
     simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
     switched_left_right=False,
-    display_cameras=True,
+    display_cameras=False,
 )
 # config = GelloConfig(
 #     arms={
@@ -82,10 +83,10 @@ config = QuestConfig(
 
 def get_env():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import DefaultFR3MultiHardwareEnv
+        from rcs_fr3.configs import FrankaDuoEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-        env_creator = DefaultFR3MultiHardwareEnv()
+        env_creator = FrankaDuoEnv()
         env_creator.left_ip = ROBOT2IP["left"]
         env_creator.right_ip = ROBOT2IP["right"]
         hw_cfg = env_creator.config()
@@ -135,15 +136,13 @@ def get_env():
             )
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = config.operator_class.control_mode[0]
+        hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
         hw_cfg.max_relative_movement = (
             0.5 if config.operator_class.control_mode[0] == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         )
         hw_cfg.relative_to = config.operator_class.control_mode[1]
         hw_cfg.robot_to_shared_base_frame = robot2world
         env_rel = env_creator.create_env(hw_cfg)
-        # env_rel = StorageWrapper(
-        #     env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
-        # )
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:
         # FR3
@@ -154,19 +153,21 @@ def get_env():
             async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500
         )
         sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
+        sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
         # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
         sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
         env_rel = scene.create_env(sim_cfg_data)
-        env_rel = StorageWrapper(
-            env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
-        )
 
         sim = env_rel.get_wrapper_attr("sim")
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
         operator = GelloOperator(config, sim) if isinstance(config, GelloConfig) else QuestOperator(config, sim)
+
+    env_rel = StorageWrapper(
+        env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
+    )
     return env_rel, operator
 
 

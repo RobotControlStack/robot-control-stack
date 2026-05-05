@@ -73,7 +73,7 @@ FrankaConfig* Franka::get_config() {
 
 FrankaState* Franka::get_state() {
   franka::RobotState current_robot_state;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     current_robot_state = this->robot.readOnce();
   } else {
     std::lock_guard<std::mutex> lock(this->interpolator_mutex);
@@ -100,7 +100,7 @@ void Franka::set_default_robot_behavior() {
 common::Pose Franka::get_cartesian_position() {
   this->check_for_background_errors();
   common::Pose x;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
     x = common::Pose(this->curr_state.O_T_EE);
   } else {
@@ -127,7 +127,7 @@ void Franka::set_joint_position(const common::VectorXd& q) {
 common::VectorXd Franka::get_joint_position() {
   this->check_for_background_errors();
   common::Vector7d joints;
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
     joints = common::Vector7d(this->curr_state.q.data());
   } else {
@@ -182,15 +182,15 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
     this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
-  } else if (this->running_controller != Controller::jsc) {
+  } else if (this->running_controller.load() != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
         "Controller type must but joint space but is " +
-        std::to_string(this->running_controller) +
+        std::to_string(static_cast<int>(this->running_controller.load())) +
         ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
@@ -202,8 +202,8 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
       policy_rate, traj_rate, traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (this->running_controller == Controller::none) {
-    this->running_controller = Controller::jsc;
+  if (this->running_controller.load() == Controller::none) {
+    this->running_controller.store(Controller::jsc);
     this->control_thread = std::thread(&Franka::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -229,19 +229,26 @@ void Franka::osc_set_cartesian_position(
   int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller == Controller::none) {
+  if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
+    {
+      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+      this->curr_state = this->robot.readOnce();
+    }
     this->traj_interpolator = common::LinearPoseTrajInterpolator();
-  } else if (this->running_controller != Controller::osc) {
+  } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
-        std::to_string(this->running_controller) +
+        std::to_string(static_cast<int>(this->running_controller.load())) +
         ". To change controller type stop the current controller first.");
   } else {
     this->interpolator_mutex.lock();
   }
 
   common::Pose curr_pose(this->curr_state.O_T_EE);
+  if (!this->m_cfg.tcp_offset_configured_in_desk) {
+    curr_pose = curr_pose * this->m_cfg.tcp_offset;
+  }
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
@@ -249,8 +256,8 @@ void Franka::osc_set_cartesian_position(
       traj_interpolation_time_fraction);
 
   // if not thread is running, then start
-  if (this->running_controller == Controller::none) {
-    this->running_controller = Controller::osc;
+  if (this->running_controller.load() == Controller::none) {
+    this->running_controller.store(Controller::osc);
     this->control_thread = std::thread(&Franka::osc, this);
   } else {
     this->interpolator_mutex.unlock();
@@ -259,10 +266,11 @@ void Franka::osc_set_cartesian_position(
 
 // method to stop thread
 void Franka::stop_control_thread() {
-  if (this->control_thread.has_value() &&
-      this->running_controller != Controller::none) {
-    this->running_controller = Controller::none;
-    this->control_thread->join();
+  if (this->control_thread.has_value()) {
+    this->running_controller.store(Controller::none);
+    if (this->control_thread->joinable()) {
+      this->control_thread->join();
+    }
     this->control_thread.reset();
   }
 }
@@ -291,7 +299,10 @@ void Franka::osc() {
   // translation: [150.0, 150.0, 150.0]
   // rotation: 250.0
 
-  Eigen::Matrix<double, 3, 3> Kp_p, Kp_r, Kd_p, Kd_r;
+  Eigen::Matrix<double, 3, 3> Kp_p = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kp_r = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kd_p = Eigen::Matrix3d::Zero();
+  Eigen::Matrix<double, 3, 3> Kd_r = Eigen::Matrix3d::Zero();
   Eigen::Matrix<double, 7, 1> static_q_task_;
   Eigen::Matrix<double, 7, 1> residual_mass_vec_;
   Eigen::Array<double, 7, 1> joint_max_;
@@ -323,7 +334,7 @@ void Franka::osc() {
           std::chrono::high_resolution_clock::now();
 
       // torques handler
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
         return franka::MotionFinished(zero_torques);
       }
@@ -335,7 +346,6 @@ void Franka::osc() {
       Eigen::Vector3d desired_pos_EE_in_base_frame;
       Eigen::Quaterniond desired_quat_EE_in_base_frame;
 
-      common::Pose pose(robot_state.O_T_EE);
       // form deoxys/config/charmander.yml
       int policy_rate = 20;
       int traj_rate = 500;
@@ -376,9 +386,15 @@ void Franka::osc() {
       jacobian_pos << jacobian.block(0, 0, 3, 7);
       jacobian_ori << jacobian.block(3, 0, 3, 7);
 
-      // End effector pose in base frame
-      Eigen::Affine3d T_EE_in_base_frame(
-          Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+      // Express OSC feedback in the same TCP frame exposed by the public
+      // Cartesian API.
+      common::Pose T_EE_in_base_frame_pose =
+          this->m_cfg.tcp_offset_configured_in_desk
+              ? common::Pose(robot_state.O_T_EE)
+              : common::Pose(robot_state.O_T_EE) * this->m_cfg.tcp_offset;
+      Eigen::Affine3d T_EE_in_base_frame =
+          T_EE_in_base_frame_pose.affine_matrix();
+
       Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
       Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
 
@@ -487,7 +503,7 @@ void Franka::osc() {
   }
 
   // Ensure we mark the controller as stopped so we can restart later
-  this->running_controller = Controller::none;
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::joint_controller() {
@@ -524,14 +540,13 @@ void Franka::joint_controller() {
           std::chrono::high_resolution_clock::now();
 
       // torques handler
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         // TODO: test if this also works when the robot is moving
         franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
         return franka::MotionFinished(zero_torques);
       }
 
       common::Vector7d desired_q;
-      common::Pose pose(robot_state.O_T_EE);
 
       this->interpolator_mutex.lock();
       this->curr_state = robot_state;
@@ -588,16 +603,18 @@ void Franka::joint_controller() {
     std::lock_guard<std::mutex> lock(this->exception_mutex);
     this->background_exception = std::current_exception();
   }
+
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::zero_torque_guiding() {
   this->check_for_background_errors();
-  if (this->running_controller != Controller::none) {
+  if (this->running_controller.load() != Controller::none) {
     throw std::runtime_error(
         "A controller is currently running. Please stop it first.");
   }
   this->controller_time = 0.0;
-  this->running_controller = Controller::ztc;
+  this->running_controller.store(Controller::ztc);
   this->control_thread = std::thread(&Franka::zero_torque_controller, this);
 }
 
@@ -617,7 +634,7 @@ void Franka::zero_torque_controller() {
       this->curr_state = robot_state;
       this->controller_time += period.toSec();
       this->interpolator_mutex.unlock();
-      if (this->running_controller == Controller::none) {
+      if (this->running_controller.load() == Controller::none) {
         // stop
         return franka::MotionFinished(franka::Torques({0, 0, 0, 0, 0, 0, 0}));
       }
@@ -627,6 +644,8 @@ void Franka::zero_torque_controller() {
     std::lock_guard<std::mutex> lock(this->exception_mutex);
     this->background_exception = std::current_exception();
   }
+
+  this->running_controller.store(Controller::none);
 }
 
 void Franka::move_home() {
@@ -714,8 +733,12 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
+  common::Pose target_pose = x;
+  if (!this->m_cfg.tcp_offset_configured_in_desk) {
+    target_pose = target_pose * this->m_cfg.tcp_offset.inverse();
+  }
   if (this->m_cfg.async_control) {
-    this->osc_set_cartesian_position(x);
+    this->osc_set_cartesian_position(target_pose);
     return;
   }
   // TODO: this should handled with tcp offset config
@@ -733,10 +756,11 @@ void Franka::set_cartesian_position(const common::Pose& x) {
     // if gripper is attached the tcp offset will automatically be applied
     // by libfranka
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
-    this->set_cartesian_position_internal(x, 1.0, std::nullopt, std::nullopt);
+    this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
+                                          std::nullopt);
 
   } else if (this->m_cfg.ik_solver == IKSolver::rcs_ik) {
-    this->set_cartesian_position_ik(x);
+    this->set_cartesian_position_ik(target_pose);
   }
 }
 
@@ -786,14 +810,17 @@ void Franka::set_cartesian_position_internal(const common::Pose& pose,
 
   this->robot.control(
       [&force_stop_condition, &initial_elbow, &elbow, &max_force, &time,
-       &max_time, &initial_pose, &should_stop,
+       &max_time, &initial_pose, &should_stop, this,
        &pose](const franka::RobotState& state,
               franka::Duration time_step) -> franka::CartesianPose {
         time += time_step.toSec();
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          initial_pose = common::Pose(state.O_T_EE);
+          initial_pose =
+              this->m_cfg.tcp_offset_configured_in_desk
+                  ? common::Pose(state.O_T_EE)
+                  : common::Pose(state.O_T_EE) * this->m_cfg.tcp_offset;
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;

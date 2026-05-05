@@ -45,7 +45,7 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
     return os.environ[username_key], os.environ[password_key]
 
 
-def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
+def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False, fh: bool = False):
     with Desk.fci(ip, username, password, unlock=unlock):
         default_env = DefaultFR3HardwareEnv()
         default_env.ip = ip
@@ -53,13 +53,14 @@ def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False
         robot_cfg = env_cfg.robot_cfg
         robot_cfg.speed_factor = 0.2
         f = rcs_fr3.hw.Franka(robot_cfg)
-        config_hand = env_cfg.gripper_cfg
-        assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
-        g = rcs_fr3.hw.FrankaHand(config_hand)
-        if shut:
-            g.shut()
-        else:
-            g.open()
+        if fh:
+            config_hand = env_cfg.gripper_cfg
+            assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
+            g = rcs_fr3.hw.FrankaHand(config_hand)
+            if shut:
+                g.shut()
+            else:
+                g.open()
         f.move_home()
 
 

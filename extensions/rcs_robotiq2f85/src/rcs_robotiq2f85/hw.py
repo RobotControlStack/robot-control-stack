@@ -4,6 +4,8 @@ from rcs._core.common import Gripper, GripperConfig, GripperState
 from rcs.common_typing import GripperConfigKwargs
 from Robotiq2F85Driver.Robotiq2F85Driver import GripperStatus, Robotiq2F85Driver
 
+import rcs
+
 
 class RobotiQ2F85GripperConfig(GripperConfig):
 
@@ -27,6 +29,7 @@ class RobotiQ2F85GripperConfig(GripperConfig):
         self.speed = speed
         self.force = force
         self.async_control = async_control
+        self.gripper_type = rcs.common.GripperType("Robotiq2F85")
 
 
 class RobotiQ2F85GripperState(GripperState):
