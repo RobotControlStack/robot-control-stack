@@ -23,6 +23,7 @@ Notes:
 - `~/zed_models` is mounted into `/usr/local/zed/resources` to match the direct `docker run` setup.
 - `/dev/dri` is masked inside the container so host Mesa/AMD render nodes do not override the NVIDIA runtime devices.
 - NVIDIA PRIME/GLX environment variables are exported to bias OpenGL/EGL selection toward the NVIDIA stack when using X11 forwarding.
-- Python source changes are picked up from the mounted repo, including `extensions/rcs_zed`.
+- The simulator still bootstraps EGL for offscreen MuJoCo camera rendering; set `RCS_MUJOCO_DISABLE_EGL=1` only if you intentionally want to disable that path.
+- Python source changes are picked up from the mounted repo.
 - If you change C++ code in `rcs` or `rcs_fr3`, rebuild the image.
 - For non-GPU hosts, comment out the GPU-related lines in `docker/compose/dev.yml`.
