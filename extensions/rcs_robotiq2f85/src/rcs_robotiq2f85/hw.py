@@ -42,7 +42,8 @@ class RobotiQ2F85Gripper(Gripper):
     def __init__(self, cfg: RobotiQ2F85GripperConfig):
         super().__init__()
         self._cfg: RobotiQ2F85GripperConfig = cfg
-        self.gripper = Robotiq2F85Driver(serial_number=cfg.serial_number)
+        self.gripper = Robotiq2F85Driver(serial_number=cfg.serial_number, ignore_read_frequency=True)
+        self.gripper.reset()
 
     def get_normalized_width(self) -> float:
         # value between 0 and 1 (0 is closed)
@@ -61,7 +62,7 @@ class RobotiQ2F85Gripper(Gripper):
         self.set_normalized_width(1.0)
 
     def reset(self) -> None:
-        self.gripper.reset()
+        self.open()
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
         """
