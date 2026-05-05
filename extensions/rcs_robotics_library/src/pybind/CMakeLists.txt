@@ -1,9 +1,15 @@
+if (APPLE)
+    set(_rpath_origin "@loader_path")
+else()
+    set(_rpath_origin "$ORIGIN")
+endif()
+
 pybind11_add_module(_core MODULE rcs.cpp)
 target_link_libraries(_core PRIVATE rcs mdl pinocchio::all)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs;$ORIGIN/../cmeel.prefix/lib"
+    INSTALL_RPATH "${_rpath_origin};${_rpath_origin}/../rcs;${_rpath_origin}/../cmeel.prefix/lib"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 

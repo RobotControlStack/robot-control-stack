@@ -1,5 +1,8 @@
 #ifndef RCS_SIMROBOT_H
 #define RCS_SIMROBOT_H
+
+#include <numbers>
+
 #include <mujoco/mujoco.h>
 #include <rcs/Kinematics.h>
 #include <rcs/Pose.h>
