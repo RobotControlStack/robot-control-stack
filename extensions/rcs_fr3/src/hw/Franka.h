@@ -44,10 +44,6 @@ struct FrankaConfig : common::RobotConfig {
   bool async_control = false;
   bool tcp_offset_configured_in_desk = true;
   bool ignore_realtime = false;
-  std::optional<common::VectorXd> q_home =
-      (common::VectorXd(7) << 0.0, -M_PI_4, 0.0, -3.0 * M_PI_4, 0.0, M_PI_2,
-       M_PI_4)
-          .finished();
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
