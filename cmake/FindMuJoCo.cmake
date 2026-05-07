@@ -74,9 +74,11 @@ if (NOT MuJoCo_FOUND)
     set_target_properties(
         MuJoCo::MuJoCo
         PROPERTIES
-        IMPORTED_NO_SONAME ${APPLE}
         IMPORTED_LOCATION "${mujoco_library_path}"
     )
+    if (APPLE)
+        set_target_properties(MuJoCo::MuJoCo PROPERTIES IMPORTED_NO_SONAME TRUE)
+    endif()
 
     set(MuJoCo_FOUND TRUE)
 endif()
