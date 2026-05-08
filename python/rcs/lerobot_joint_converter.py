@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -269,7 +270,7 @@ class JointDatasetConverter:
 
         return np.concatenate(vectors).astype(np.float32)
 
-    def _convert_action_to_joint_space(self, row: pd.Series) -> np.ndarray:
+    def _convert_action_to_joint_space(self, row: pd.Series) -> np.ndarray | None:
         actions = []
         for robot_key in self.robot_keys:
             observation_joints = row[f"observation_joints_{robot_key}"]
@@ -309,8 +310,9 @@ class JointDatasetConverter:
                     target_pose, observation_joints_vec, tcp_offset=self.tcp_offset
                 )
                 if ik_joints is None:
-                    msg = f"IK failed for robot '{robot_key}' at step {row['step']}"
-                    raise ValueError(msg)
+                    msg = f"IK failed for robot '{robot_key}' at step {row['step']}, ignoring step"
+                    warnings.warn(msg, stacklevel=1)
+                    return None
                 arm_action_vec = np.asarray(ik_joints, dtype=np.float32)
 
             actions.append(np.concatenate([arm_action_vec, action_gripper_vec]).astype(np.float32))
@@ -329,11 +331,13 @@ class JointDatasetConverter:
         df["observation_state"] = df.apply(self._build_observation_state, axis=1)
         df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
+        df = df[df["action_vector"].notna()]  # noqa: PD901
+
         prev_action: np.ndarray | None = None
         keep_mask = []
         for action_vec in df["action_vector"]:
             assert isinstance(action_vec, np.ndarray)
-            keep_mask.append(prev_action is None or not np.array_equal(action_vec, prev_action))
+            keep_mask.append(prev_action is None or not np.allclose(action_vec, prev_action, atol=1e-4, rtol=0))
             prev_action = action_vec
 
         return df.loc[keep_mask].reset_index(drop=True)
