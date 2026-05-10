@@ -99,6 +99,7 @@ class JointDatasetConverter:
         image_batch_size: int = DEFAULT_IMAGE_BATCH_SIZE,
         per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
         video_encoding: bool = False,
+        video_backend: str | None = None,
     ):
         self.root = Path(root)
         self.conn = duckdb.connect()
@@ -133,6 +134,7 @@ class JointDatasetConverter:
             features=self._build_features(),
             image_writer_threads=10,
             image_writer_processes=5,
+            video_backend=video_backend,
         )
 
     def _build_features(self) -> dict[str, dict[str, Any]]:
@@ -416,6 +418,7 @@ def run_conversion(
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
+    video_backend: str | None = None,
 ) -> None:
     robot_type_converted = RobotType(robot_type)
     gripper_type_converted = GripperType(gripper_type)
@@ -432,6 +435,7 @@ def run_conversion(
         image_batch_size=image_batch_size,
         per_robot_arm_dim=per_robot_arm_dim,
         video_encoding=video_encoding,
+        video_backend=video_backend,
     )
     converter.generate_examples(success=success, n=n)
 
