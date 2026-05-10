@@ -147,6 +147,9 @@ def lerobot_convert(
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
+    video_backend: Annotated[
+        str | None, typer.Option(help="Video backend to use if image data is video encoded e.g. torchcodec")
+    ] = None,
 ):
     cameras = camera_specs_to_configs(camera_specs) if camera_specs is not None else list(DEFAULT_CAMERAS)
     run_conversion(
@@ -164,6 +167,7 @@ def lerobot_convert(
         success=success,
         n=n,
         video_encoding=video_encoding,
+        video_backend=video_backend,
     )
 
 
