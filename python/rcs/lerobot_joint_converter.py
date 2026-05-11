@@ -27,6 +27,8 @@ DEFAULT_FPS = 30
 DEFAULT_ROBOT_KEYS = ["left", "right"]
 DEFAULT_JOINTS = False
 DEFAULT_GRIPPER_TYPE = "Robotiq2F85"
+DEFAULT_BINARIZE_GRIPPER = False
+DEFAULT_GRIPPER_BINARIZE_THRESHOLD = 0.2
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,8 @@ class JointDatasetConverter:
         cameras: list[CamConversionConfig] | None = None,
         image_batch_size: int = DEFAULT_IMAGE_BATCH_SIZE,
         per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
+        binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
+        gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
         video_encoding: bool = False,
         video_backend: str | None = None,
     ):
@@ -115,6 +119,8 @@ class JointDatasetConverter:
         self.per_robot_arm_dim = per_robot_arm_dim
         self.per_robot_state_dim = self.per_robot_arm_dim + 1
         self.state_dim = len(self.robot_keys) * self.per_robot_state_dim
+        self.binarize_gripper = binarize_gripper
+        self.gripper_binarize_threshold = gripper_binarize_threshold
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
 
@@ -136,6 +142,11 @@ class JointDatasetConverter:
             image_writer_processes=5,
             video_backend=video_backend,
         )
+
+    def _maybe_binarize_gripper(self, gripper: np.ndarray) -> np.ndarray:
+        if not self.binarize_gripper:
+            return gripper.astype(np.float32)
+        return (gripper > self.gripper_binarize_threshold).astype(np.float32)
 
     def _build_features(self) -> dict[str, dict[str, Any]]:
         state_names = []
@@ -268,6 +279,7 @@ class JointDatasetConverter:
                     f"joints={joints_vec.shape}, gripper={gripper_vec.shape}"
                 )
                 raise ValueError(msg)
+            gripper_vec = self._maybe_binarize_gripper(gripper_vec)
             vectors.append(np.concatenate([joints_vec, gripper_vec]).astype(np.float32))
 
         return np.concatenate(vectors).astype(np.float32)
@@ -300,6 +312,7 @@ class JointDatasetConverter:
                     f"absolute_action={absolute_action_vec.shape}, action_gripper={action_gripper_vec.shape}"
                 )
                 raise ValueError(msg)
+            action_gripper_vec = self._maybe_binarize_gripper(action_gripper_vec)
 
             if self.joints:
                 arm_action_vec = absolute_action_vec.astype(np.float32)
@@ -415,6 +428,8 @@ def run_conversion(
     cameras: list[CamConversionConfig] | None = None,
     image_batch_size: int = DEFAULT_IMAGE_BATCH_SIZE,
     per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
+    binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
+    gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
@@ -434,6 +449,8 @@ def run_conversion(
         cameras=cameras,
         image_batch_size=image_batch_size,
         per_robot_arm_dim=per_robot_arm_dim,
+        binarize_gripper=binarize_gripper,
+        gripper_binarize_threshold=gripper_binarize_threshold,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )
