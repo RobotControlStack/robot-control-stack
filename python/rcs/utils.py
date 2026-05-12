@@ -27,7 +27,6 @@ class SimpleFrameRate:
         if self.t is None:
             self.t = perf_counter()
             self._last_print = self.t
-            sleep(1 / self.frame_rate)
             return
         sleep_time = 1 / self.frame_rate - (perf_counter() - self.t)
         if sleep_time > 0:

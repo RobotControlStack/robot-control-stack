@@ -944,6 +944,14 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper = gripper
         self._last_gripper_cmd = None
 
+    def _command_changed(self, gripper_action: np.ndarray) -> bool:
+        if self._last_gripper_cmd is None:
+            return True
+        last_action = np.asarray(self._last_gripper_cmd, dtype=np.float32)
+        if self.binary:
+            return not np.array_equal(gripper_action, last_action)
+        return not np.allclose(gripper_action, last_action, atol=1e-3, rtol=0.0)
+
     def close(self):
         self.gripper.close()
         super().close()
@@ -975,13 +983,14 @@ class GripperWrapper(ActObsInfoWrapper):
             gripper_action = [gripper_action]  # type: ignore
         if self.binary:
             gripper_action = np.round(gripper_action)
-        gripper_action = np.clip(gripper_action, 0.0, 1.0)
+        gripper_action = np.clip(np.asarray(gripper_action, dtype=np.float32), 0.0, 1.0)
 
-        if self.binary:
-            self.gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self.gripper.open()
-        else:
-            self.gripper.set_normalized_width(gripper_action[0])
-        self._last_gripper_cmd = gripper_action
+        if self._command_changed(gripper_action):
+            if self.binary:
+                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+            else:
+                self.gripper.set_normalized_width(float(gripper_action[0]))
+            self._last_gripper_cmd = gripper_action.tolist()
         del action[self.gripper_key]
         return action
 
