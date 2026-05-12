@@ -30,6 +30,8 @@ class ZEDFrameBundle:
     color: np.ndarray
     timestamp: float
     color_intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]]
+    right_color: np.ndarray | None = None
+    right_color_intrinsics: np.ndarray[tuple[typing.Literal[3], typing.Literal[4]], np.dtype[np.float64]] | None = None
     depth: np.ndarray | None = None
     accel: np.ndarray | None = None
     gyro: np.ndarray | None = None
@@ -47,12 +49,20 @@ def _intrinsics_matrix(fx: float, fy: float, cx: float, cy: float) -> np.ndarray
 
 
 class PyZEDCameraHandle:
-    def __init__(self, camera: typing.Any, device_info: ZEDDeviceInfo, color_intrinsics: np.ndarray):
+    def __init__(
+        self,
+        camera: typing.Any,
+        device_info: ZEDDeviceInfo,
+        color_intrinsics: np.ndarray,
+        right_color_intrinsics: np.ndarray | None = None,
+    ):
         self.camera = camera
         self.device_info = device_info
         self.color_intrinsics = color_intrinsics
+        self.right_color_intrinsics = right_color_intrinsics
         self.runtime_parameters = sl.RuntimeParameters()  # type: ignore[union-attr]
         self.image_mat = sl.Mat()  # type: ignore[union-attr]
+        self.right_image_mat = sl.Mat()  # type: ignore[union-attr]
         self.depth_mat = sl.Mat()  # type: ignore[union-attr]
         self.sensors_data = sl.SensorsData()  # type: ignore[union-attr]
 
@@ -69,7 +79,7 @@ class PyZEDCameraHandle:
             pass
         return time()
 
-    def grab_frame(self) -> ZEDFrameBundle:
+    def grab_frame(self, include_right: bool = False) -> ZEDFrameBundle:
         err = self.camera.grab(self.runtime_parameters)
         if err != sl.ERROR_CODE.SUCCESS:  # type: ignore[union-attr]
             msg = f"Failed to grab ZED frame: {err}"
@@ -81,6 +91,15 @@ class PyZEDCameraHandle:
             msg = f"Unexpected ZED image shape {color_raw.shape}"
             raise RuntimeError(msg)
         color_rgb = color_raw[:, :, :3][:, :, ::-1] if color_raw.shape[2] == 4 else color_raw[:, :, ::-1]
+
+        right_color = None
+        if include_right:
+            self.camera.retrieve_image(self.right_image_mat, sl.VIEW.RIGHT)  # type: ignore[union-attr]
+            right_raw = np.array(self.right_image_mat.get_data(), copy=True)
+            if right_raw.ndim != 3:
+                msg = f"Unexpected ZED right image shape {right_raw.shape}"
+                raise RuntimeError(msg)
+            right_color = right_raw[:, :, :3][:, :, ::-1] if right_raw.shape[2] == 4 else right_raw[:, :, ::-1]
 
         depth = None
         if self.device_info.has_depth:
@@ -105,6 +124,8 @@ class PyZEDCameraHandle:
 
         return ZEDFrameBundle(
             color=color_rgb,
+            right_color=right_color,
+            right_color_intrinsics=self.right_color_intrinsics if right_color is not None else None,
             depth=depth,
             accel=accel,
             gyro=gyro,
@@ -185,6 +206,7 @@ class ZEDCameraSet(HardwareCamera):
         *,
         enable_depth: bool,
         enable_imu: bool,
+        include_right: bool,
     ) -> PyZEDCameraHandle:
         cls._require_sdk()
         assert sl is not None
@@ -206,6 +228,7 @@ class ZEDCameraSet(HardwareCamera):
         information = camera.get_camera_information()
         calibration = information.camera_configuration.calibration_parameters
         left_cam = calibration.left_cam
+        right_cam = calibration.right_cam
         info = ZEDDeviceInfo(
             serial=str(config.identifier),
             model=cls._model_to_string(information.camera_model),
@@ -213,7 +236,15 @@ class ZEDCameraSet(HardwareCamera):
             has_imu=enable_imu and cls._device_has_imu(information),
         )
         intrinsics = _intrinsics_matrix(left_cam.fx, left_cam.fy, left_cam.cx, left_cam.cy)
-        return PyZEDCameraHandle(camera=camera, device_info=info, color_intrinsics=intrinsics)
+        right_intrinsics = None
+        if include_right:
+            right_intrinsics = _intrinsics_matrix(right_cam.fx, right_cam.fy, right_cam.cx, right_cam.cy)
+        return PyZEDCameraHandle(
+            camera=camera,
+            device_info=info,
+            color_intrinsics=intrinsics,
+            right_color_intrinsics=right_intrinsics,
+        )
 
     def __init__(
         self,
@@ -221,6 +252,7 @@ class ZEDCameraSet(HardwareCamera):
         calibration_strategy: dict[str, CalibrationStrategy] | None = None,
         enable_depth: bool = True,
         enable_imu: bool = True,
+        include_right: bool = False,
     ) -> None:
         self.cameras = cameras
         if calibration_strategy is None:
@@ -228,12 +260,14 @@ class ZEDCameraSet(HardwareCamera):
         self.calibration_strategy = calibration_strategy
         self.enable_depth = enable_depth
         self.enable_imu = enable_imu
+        self.include_right = include_right
         self._logger = logging.getLogger(__name__)
-        self._camera_names = list(self.cameras.keys())
+        self._camera_names = self._logical_camera_names()
         self._available_devices: dict[str, ZEDDeviceInfo] = {}
         self._enabled_devices: dict[str, PyZEDCameraHandle] = {}
         self._frame_buffer_lock: dict[str, threading.Lock] = {}
         self._frame_buffer: dict[str, list[Frame]] = {}
+        self._pending_right_bundles: dict[str, ZEDFrameBundle] = {}
 
         assert (
             len({camera.resolution_width for camera in self.cameras.values()}) == 1
@@ -246,7 +280,63 @@ class ZEDCameraSet(HardwareCamera):
         return self._camera_names
 
     def config(self, camera_name) -> common.BaseCameraConfig:
-        return self.cameras[camera_name]
+        return self.cameras[self._physical_camera_name(camera_name)]
+
+    @staticmethod
+    def _right_camera_name(camera_name: str) -> str:
+        return f"{camera_name}_right"
+
+    def _physical_camera_name(self, camera_name: str) -> str:
+        if camera_name in self.cameras:
+            return camera_name
+        if self.include_right and camera_name.endswith("_right"):
+            physical_name = camera_name.removesuffix("_right")
+            if physical_name in self.cameras:
+                return physical_name
+        msg = f"Camera {camera_name} not found in the enabled devices"
+        raise AssertionError(msg)
+
+    def _is_right_camera_name(self, camera_name: str) -> bool:
+        return camera_name not in self.cameras and self._physical_camera_name(camera_name) != camera_name
+
+    def _logical_camera_names(self) -> list[str]:
+        names = list(self.cameras.keys())
+        if self.include_right:
+            names.extend(self._right_camera_name(camera_name) for camera_name in self.cameras)
+        return names
+
+    def _frame_from_bundle(self, camera_name: str, bundle: ZEDFrameBundle) -> Frame:
+        physical_name = self._physical_camera_name(camera_name)
+        extrinsics = self.calibration_strategy[physical_name].get_extrinsics()
+        is_right = self._is_right_camera_name(camera_name)
+        color_data = bundle.right_color if is_right else bundle.color
+        color_intrinsics = bundle.right_color_intrinsics if is_right else bundle.color_intrinsics
+        if color_data is None or color_intrinsics is None:
+            msg = f"Missing {'right' if is_right else 'left'} image data for {camera_name}"
+            raise RuntimeError(msg)
+
+        color = DataFrame(
+            data=color_data,
+            timestamp=bundle.timestamp,
+            intrinsics=color_intrinsics,
+            extrinsics=extrinsics,
+        )
+        depth = None
+        if not is_right and bundle.depth is not None:
+            depth = DataFrame(
+                data=bundle.depth,
+                timestamp=bundle.timestamp,
+                intrinsics=bundle.color_intrinsics,
+                extrinsics=extrinsics,
+            )
+
+        accel = DataFrame(data=bundle.accel, timestamp=bundle.timestamp) if bundle.accel is not None else None
+        gyro = DataFrame(data=bundle.gyro, timestamp=bundle.timestamp) if bundle.gyro is not None else None
+        return Frame(
+            camera=CameraFrame(color=color, depth=depth),
+            imu=IMUFrame(accel=accel, gyro=gyro) if (accel is not None or gyro is not None) else None,
+            avg_timestamp=bundle.timestamp,
+        )
 
     def update_available_devices(self):
         self._available_devices = self.enumerate_connected_devices()
@@ -256,6 +346,7 @@ class ZEDCameraSet(HardwareCamera):
         self._enabled_devices = {}
         self._frame_buffer = {}
         self._frame_buffer_lock = {}
+        self._pending_right_bundles = {}
 
         for camera_name, camera_cfg in self.cameras.items():
             if camera_cfg.identifier not in self._available_devices:
@@ -267,6 +358,7 @@ class ZEDCameraSet(HardwareCamera):
                 camera_cfg,
                 enable_depth=self.enable_depth and device_info.has_depth,
                 enable_imu=self.enable_imu and device_info.has_imu,
+                include_right=self.include_right,
             )
             self._enabled_devices[camera_name] = opened
             self._frame_buffer[camera_name] = []
@@ -274,44 +366,34 @@ class ZEDCameraSet(HardwareCamera):
 
     def poll_frame(self, camera_name: str) -> Frame:
         assert camera_name in self.camera_names, f"Camera {camera_name} not found in the enabled devices"
-        device = self._enabled_devices[camera_name]
-        bundle = device.grab_frame()
-        extrinsics = self.calibration_strategy[camera_name].get_extrinsics()
+        physical_name = self._physical_camera_name(camera_name)
+        device = self._enabled_devices[physical_name]
 
-        color = DataFrame(
-            data=bundle.color,
-            timestamp=bundle.timestamp,
-            intrinsics=bundle.color_intrinsics,
-            extrinsics=extrinsics,
-        )
-        depth = None
-        if bundle.depth is not None:
-            depth = DataFrame(
-                data=bundle.depth,
-                timestamp=bundle.timestamp,
-                intrinsics=bundle.color_intrinsics,
-                extrinsics=extrinsics,
-            )
+        if self._is_right_camera_name(camera_name):
+            bundle = self._pending_right_bundles.pop(physical_name, None)
+            if bundle is None:
+                bundle = device.grab_frame(include_right=True)
+        else:
+            bundle = device.grab_frame(include_right=self.include_right)
+            if self.include_right and bundle.right_color is not None:
+                self._pending_right_bundles[physical_name] = bundle
+            else:
+                self._pending_right_bundles.pop(physical_name, None)
 
-        accel = DataFrame(data=bundle.accel, timestamp=bundle.timestamp) if bundle.accel is not None else None
-        gyro = DataFrame(data=bundle.gyro, timestamp=bundle.timestamp) if bundle.gyro is not None else None
+        frame = self._frame_from_bundle(camera_name, bundle)
 
-        frame = Frame(
-            camera=CameraFrame(color=color, depth=depth),
-            imu=IMUFrame(accel=accel, gyro=gyro) if (accel is not None or gyro is not None) else None,
-            avg_timestamp=bundle.timestamp,
-        )
-
-        with self._frame_buffer_lock[camera_name]:
-            if len(self._frame_buffer[camera_name]) >= self.CALIBRATION_FRAME_SIZE:
-                self._frame_buffer[camera_name].pop(0)
-            self._frame_buffer[camera_name].append(copy.deepcopy(frame))
+        if not self._is_right_camera_name(camera_name):
+            with self._frame_buffer_lock[physical_name]:
+                if len(self._frame_buffer[physical_name]) >= self.CALIBRATION_FRAME_SIZE:
+                    self._frame_buffer[physical_name].pop(0)
+                self._frame_buffer[physical_name].append(copy.deepcopy(frame))
         return frame
 
     def close(self):
         for device in self._enabled_devices.values():
             device.close()
         self._enabled_devices = {}
+        self._pending_right_bundles = {}
 
     def calibrate(self) -> bool:
         for camera_name in self.cameras:
