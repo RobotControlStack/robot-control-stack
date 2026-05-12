@@ -34,19 +34,19 @@ Note that dual arm is only supported for a aloha like setup where the robot face
 
 ### Running
 1. Make sure your computer and quest is in the same subnetwork and they can ping each other.
-2. Check your local machine IP using `ip addr` in the terminal and note the IP address of the network interface in the same subnet as your Quest (e.g. `192.168.1.x` or `10.42.0.1`). Replace it in `teleop/franka.py`: MQ3_ADDR = "that_pc__ip"
-3. Start IRIS meta quest app on your quest (it should be located in the Library under "Unkown Sources" after installation)
+2. Check your local machine IP using `ip addr` in the terminal and note the IP address of the network interface in the same subnet as your Quest (e.g. `192.168.1.x` or `10.42.0.1`). Replace it in `examples/teleop/franka.py`: `MQ3_ADDR = "<your_pc_ip>"`
+3. Start IRIS meta quest app on your quest (it should be located in the Library under "Unknown Sources" after installation)
 4. Run the [`quest_align_frame.py`](quest_align_frame.py) script once. Navigate to the link printed on the top likely [http://127.0.0.1:5000](http://127.0.0.1:5000).
     - click scan
     - your meta quest should show up
     - click change name and type "RCSNode" and click ok (this needs to be done only once)
     - restart both the app and the script
     - the script should now print a bunch of numbers (the controller poses) which means the connection is working
-5. Put on your quest (dont remove it until done with teleop, otherwise the axis might change and you need to recalibrate), you should see a white ball with coordinate axis somewhere in your room (red is x, green is y and blue is z)
+5. Put on your quest (don't remove it until done with teleop, otherwise the axis might change and you need to recalibrate), you should see a white ball with coordinate axis somewhere in your room (red is x, green is y and blue is z)
 6. Use the right controller to change the orientation of the coordinate axis to fit your right robot (for franka: x front, y left, z up)
 7. Click the "teleportation scene" button on the still open website
 8. Cancel the script
-9. Start the teleoperation script [`franka.py`](quest_iris_dual_arm.py) and enjoy.
+9. Start the teleoperation script [`franka.py`](franka.py) and enjoy.
 
 
 ## Teleoperation with Franka GELLO Duo
