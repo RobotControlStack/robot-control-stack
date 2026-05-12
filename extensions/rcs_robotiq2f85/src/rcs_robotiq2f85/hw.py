@@ -42,12 +42,13 @@ class RobotiQ2F85Gripper(Gripper):
     def __init__(self, cfg: RobotiQ2F85GripperConfig):
         super().__init__()
         self._cfg: RobotiQ2F85GripperConfig = cfg
-        self.gripper = Robotiq2F85Driver(serial_number=cfg.serial_number, ignore_read_frequency=True)
+        self.gripper = Robotiq2F85Driver(serial_number=cfg.serial_number)
+        self._last_normalized_width = 1.0
         self.gripper.reset()
 
     def get_normalized_width(self) -> float:
-        # value between 0 and 1 (0 is closed)
-        return self.gripper.opening / 85
+        # Return the last commanded width to avoid a synchronous Modbus read on every env step.
+        return self._last_normalized_width
 
     def grasp(self) -> None:
         """
@@ -71,6 +72,7 @@ class RobotiQ2F85Gripper(Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
+        self._last_normalized_width = width
         abs_width = width * 85
         self.gripper.go_to(
             opening=float(abs_width),
