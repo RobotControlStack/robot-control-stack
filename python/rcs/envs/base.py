@@ -379,7 +379,7 @@ class RobotWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation.update(self.get_robot_obs())
-        observation.update({"robot_type": self.robot.get_config().robot_type.id})
+        info.update({"robot_type": self.robot.get_config().robot_type.id})
         return observation, info
 
     def reset(
@@ -952,7 +952,7 @@ class GripperWrapper(ActObsInfoWrapper):
             )
         else:
             observation[self.gripper_key] = [self.gripper.get_normalized_width()]
-        observation.update({"gripper_type": self.gripper.get_config().gripper_type.id})
+        info.update({"gripper_type": self.gripper.get_config().gripper_type.id})
 
         return observation, info
 
