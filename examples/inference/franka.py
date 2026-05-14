@@ -1,17 +1,17 @@
-from dataclasses import dataclass
 import datetime
 import logging
+from dataclasses import dataclass
 from typing import Any
 
+import gymnasium as gym
 import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
-import gymnasium as gym
+from rcs.envs.tasks import PickTaskConfig
 
 import rcs
-from rcs.envs.tasks import PickTaskConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
 
@@ -73,6 +73,7 @@ robot2world = {
     ),
 }
 
+
 @dataclass
 class InferenceConfig:
     vlagents_host: str
@@ -83,13 +84,15 @@ class InferenceConfig:
     jpeg_encoding: bool = True
     on_same_machine: bool = False
 
+
 class ModelInference:
     def __init__(self, env: gym.Env, cfg: InferenceConfig):
         self.env = env
         self.gripper_state = 1
         self._cfg = cfg
-        self.remote_agent = RemoteAgent(cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding)
-
+        self.remote_agent = RemoteAgent(
+            cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding
+        )
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -108,10 +111,9 @@ class ModelInference:
         for idx, robot in enumerate(self._cfg.robot_keys):
             # TODO: this is currently hard coded for franka joints
             act[robot] = {}
-            act[robot]["joints"] = action.action[idx*8:idx*8+7]
-            act[robot]["gripper"] = action.action[idx*8+7]
+            act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
+            act[robot]["gripper"] = action.action[idx * 8 + 7]
         return act
-
 
     def loop(self):
         obs, _ = self.env.reset()
@@ -186,9 +188,7 @@ def get_env():
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = CONTROL_MODE
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        hw_cfg.max_relative_movement = (
-            0.5 if CONTROL_MODE == ControlMode.JOINTS else (0.5, np.deg2rad(90))
-        )
+        hw_cfg.max_relative_movement = 0.5 if CONTROL_MODE == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
         env_rel = env_creator.create_env(hw_cfg)
@@ -212,24 +212,24 @@ def get_env():
 
 
 def main():
-    env_rel  = get_env()
+    env_rel = get_env()
     env_rel.reset()
 
     VIDEO_PATH.mkdir(parents=True, exist_ok=True)
-    timestamp =  str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-
+    timestamp = str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     camera_set = env_rel.get_wrapper_attr("camera_set")
     camera_set.record_video(VIDEO_PATH, timestamp)
 
     # env = RHCWrapper(env, exec_horizon=1)
 
-    cfg = InferenceConfig(IP, PORT, MODEL, INSTRUCTION, jpeg_encoding=True, on_same_machine=True, robot_keys=["left", "right"])
+    cfg = InferenceConfig(
+        IP, PORT, MODEL, INSTRUCTION, jpeg_encoding=True, on_same_machine=True, robot_keys=["left", "right"]
+    )
     controller = ModelInference(env_rel, cfg)
     input("robot is about to be controlled by AI, press enter to start")
     with env_rel:
         controller.loop()
-
 
 
 if __name__ == "__main__":
