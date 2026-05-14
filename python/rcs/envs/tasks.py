@@ -111,12 +111,12 @@ class RandomSquareObjPos(gym.Wrapper):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
 
         # place randomly in square
-        pos_x = np.random.uniform(-self.x_width / 2, self.x_width / 2)
-        pos_y = np.random.uniform(-self.y_width / 2, self.y_width / 2)
+        pos_x = self.np_random.uniform(-self.x_width / 2, self.x_width / 2)
+        pos_y = self.np_random.uniform(-self.y_width / 2, self.y_width / 2)
 
         if self.include_rotation:
             # 1. Sample a random angle between 0 and 2*pi (360 degrees)
-            theta = np.random.uniform(0, 2 * np.pi)
+            theta = self.np_random.uniform(0, 2 * np.pi)
 
             # 2. Convert the angle to a unit quaternion for the Z-axis
             qw = np.cos(theta / 2)

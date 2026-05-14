@@ -8,6 +8,7 @@ from typing import Annotated, Any, ClassVar, Literal, TypeAlias, cast
 import gymnasium as gym
 import numpy as np
 from greenlet import getcurrent, greenlet
+from gymnasium.utils import seeding
 from rcs._core.common import Hand, RobotPlatform
 from rcs.camera.interface import BaseCameraSet
 from rcs.envs.space_utils import (
@@ -242,16 +243,18 @@ class SimEnv(BaseEnv):
             self.sim.step_until_convergence()
 
     def apply_sim_state(self):
+        # TODO: would a mj.forward be good enough here or even cleaner?
         self.sim.step(2)
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        assert seed is None, "seed should never arrive here, did you forget to add the CoverWrapper?"
         if self.main_greenlet is not None:
             self.main_greenlet.switch()
         else:
             self.apply_sim_state()
-        return super().reset(seed=seed, options=options)
+        return super().reset(seed=None, options=options)
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         sim_state = self.sim.get_state()
@@ -274,7 +277,10 @@ class CoverWrapper(gym.Wrapper):
         if self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.SIMULATION:
             sim = cast(simulation.Sim, self.get_wrapper_attr("sim"))
             sim.reset()
-        return super().reset(seed=seed, options=options)
+            if seed is not None:
+                # seed only once at the top of the stack
+                self.np_random, _ = seeding.np_random(seed)
+        return super().reset(seed=None, options=options)
 
 
 class RobotWrapper(ActObsInfoWrapper):
