@@ -44,3 +44,4 @@ link_compiled_package "$REPO_ROOT/extensions/rcs_fr3/src/rcs_fr3" "$SITE_PACKAGE
 link_pure_python_package "$REPO_ROOT/extensions/rcs_realsense/src/rcs_realsense" "$SITE_PACKAGES/rcs_realsense"
 link_pure_python_package "$REPO_ROOT/extensions/rcs_robotiq2f85/src/rcs_robotiq2f85" "$SITE_PACKAGES/rcs_robotiq2f85"
 link_pure_python_package "$REPO_ROOT/extensions/rcs_zed/src/rcs_zed" "$SITE_PACKAGES/rcs_zed"
+link_pure_python_package "$REPO_ROOT/vlagents" "$SITE_PACKAGES/vlagents"
