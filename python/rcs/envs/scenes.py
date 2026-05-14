@@ -149,7 +149,6 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
         cfg.task_cfg = task_cfg
         return self.create_env(cfg)
 
-
     def is_prefixed(self, cfg: SimEnvCreatorConfig) -> bool:
         return cfg._original_cfg is not None
 

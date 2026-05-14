@@ -156,7 +156,6 @@ class PickTaskConfig(BaseTaskConfig):
 
 
 class PickTask(Task[PickTaskConfig]):
-    # TODO: for the reset it should be possible to access the composer and move things!
 
     @staticmethod
     def add_task_mujoco(cfg: PickTaskConfig, composer: ModelComposer, env_cfg: SimEnvCreatorConfig):
