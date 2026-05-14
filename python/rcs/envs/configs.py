@@ -2,6 +2,7 @@ import copy
 import time
 from typing import ClassVar, Literal
 
+import gymnasium as gym
 import numpy as np
 from rcs._core.common import FrankaHandTCPOffset, GripperType, RobotType
 from rcs._core.sim import (
@@ -482,11 +483,15 @@ class EmptyWorldSO101(EmptyWorldFR3):
         return cfg
 
 
+gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
+gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
+gym.register(id="rcs/ur5e", entry_point=EmptyWorldUR5e())
+gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
+gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
+
+
 if __name__ == "__main__":
-    scene = EmptyWorldFR3Duo()
-    # scene = EmptyWorldFR3()
-    # scene = EmptyWorldUR5e()
-    env = scene.create_env(scene.config())
+    env = gym.make("rcs/duo")
     obs, info = env.reset()
     print(obs)
     # Duo
