@@ -25,6 +25,14 @@ from rcs.sim.replayer import replay as replay_dataset
 app = typer.Typer()
 
 
+def _exec_import_statements(imports: list[str] | None) -> None:
+    if imports is None:
+        return
+
+    for import_statement in imports:
+        exec(import_statement, {})
+
+
 @app.command()
 def consolidate(
     path: Annotated[
@@ -76,7 +84,15 @@ def replay(
         str,
         typer.Option(help="Environment id used in gym.make()."),
     ] = "rcs/duo",
+    imports: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--import",
+            help="Python import statement to execute before resolving the environment. Repeat for multiple imports. Example: --import 'from rcs_duobench.tasks import bin_sort'",
+        ),
+    ] = None,
 ):
+    _exec_import_statements(imports)
     replay_dataset(
         dataset=dataset,
         output=output,
