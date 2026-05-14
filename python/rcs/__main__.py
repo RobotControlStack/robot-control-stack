@@ -72,14 +72,10 @@ def replay(
         str,
         typer.Option(help="RelativeTo enum name: CONFIGURED_ORIGIN, LAST_STEP, or NONE."),
     ] = "CONFIGURED_ORIGIN",
-    scene: Annotated[
+    env_id: Annotated[
         str,
-        typer.Option(help="Python expression that evaluates to a scene instance."),
-    ] = "env_configs.EmptyWorldFR3Duo()",
-    task_cfg: Annotated[
-        str,
-        typer.Option(help="Python expression that evaluates to a task config."),
-    ] = 'env_tasks.PickTaskConfig(robot_name="right")',
+        typer.Option(help="Environment id used in gym.make()."),
+    ] = "rcs/duo",
 ):
     replay_dataset(
         dataset=dataset,
@@ -87,8 +83,7 @@ def replay(
         headless=headless,
         frequency=frequency,
         relative_to=relative_to,
-        scene=scene,
-        task_cfg=task_cfg,
+        env_id=env_id,
     )
 
 

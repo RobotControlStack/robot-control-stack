@@ -1,4 +1,3 @@
-import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -6,8 +5,6 @@ from typing import Any
 import duckdb
 import gymnasium as gym
 import numpy as np
-import rcs.envs.configs as env_configs
-import rcs.envs.tasks as env_tasks
 from rcs._core.sim import SimConfig
 from rcs.envs.base import RelativeTo, SimEnv, SimStateSchema
 from rcs.envs.scenes import SimEnvCreator
@@ -132,14 +129,12 @@ def replay(
     headless: bool = True,
     frequency: int = 30,
     relative_to: str = RelativeTo.CONFIGURED_ORIGIN.name,
-    scene: str = "env_configs.EmptyWorldFR3Duo()",
-    task_cfg: str = 'env_tasks.PickTaskConfig(robot_name="right")',
+    env_id: str = "rcs/duo",
 ):
-    exec_scope = {**globals(), "__builtins__": __builtins__, "env_configs": env_configs, "env_tasks": env_tasks}
-    scene_locals: dict[str, Any] = {}
-    exec(f"_result = {scene}", exec_scope, scene_locals)
-    sc = typing.cast(SimEnvCreator, scene_locals["_result"])
-    sim_cfg_data = sc.config()
+    env_creator = gym.envs.registry[env_id].entry_point
+    assert isinstance(env_creator, SimEnvCreator), "only rcs envs are supported for replay"
+
+    sim_cfg_data = env_creator.config()
     sim_cfg_data.sim_cfg = SimConfig(
         async_control=True,
         realtime=not headless,
@@ -150,22 +145,20 @@ def replay(
     sim_cfg_data.relative_to = RelativeTo[relative_to.upper()]
     if sim_cfg_data.root_frame_objects is None:
         sim_cfg_data.root_frame_objects = {}
-    task_cfg_locals: dict[str, Any] = {}
-    exec(f"_result = {task_cfg}", exec_scope, task_cfg_locals)
-    sim_cfg_data.task_cfg = task_cfg_locals["_result"]
 
     uuids = load_distinct_uuids(dataset)
 
-    env_rel = sc.create_env(sim_cfg_data)
+    env_rel = env_creator.create_env(sim_cfg_data)
     env_rel = StorageWrapper(
-        env_rel,
-        str(output),
-        "",
+        env=env_rel,
+        base_dir=str(output),
+        instruction=None,
         batch_size=32,
         max_rows_per_group=100,
         max_rows_per_file=1000,
         always_record=True,
-        allow_wrapper_instruction=False,
+        allow_wrapper_instruction=True,
+        success_from_env=False,
     )
     try:
         for uuid in uuids:
