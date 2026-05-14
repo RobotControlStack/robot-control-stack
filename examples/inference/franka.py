@@ -1,7 +1,12 @@
+import copy
 import datetime
 import logging
 from dataclasses import dataclass
+from pathlib import Path
+from time import sleep
 from typing import Any
+
+from rcs.utils import SimpleFrameRate
 
 import gymnasium as gym
 import numpy as np
@@ -28,22 +33,26 @@ ROBOT2ID = {
 }
 
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+# ROBOT_INSTANCE = RobotPlatform.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
-# CAMERA_DICT = {
-#     "left_wrist": "230422272017",
-#     "right_wrist": "230422271040",
-#     "side": "243522070385",
-#     "bird_eye": "243522070364",
-# }
-CAMERA_DICT = None
+CAMERA_DICT = {
+    "left_wrist": "230422272017",
+    "right_wrist": "230422271040",
+    # "side": "243522070385",
+    # "bird_eye": "243522070364",
+}
+# CAMERA_DICT = None
 ZED_CAMERA_DICT = {
-    "zed": "19928076",
+    "head": "19928076",
 }
 INCLUDE_DEPTH = False
 
+ROBOTIQ_SERIAL = {
+    "left": "DAAQMPDC",
+    "right": "DAAQMJHX",
+}
 
 # DIGIT_DICT = {
 #     "digit_right_left": "D21182",
@@ -52,16 +61,15 @@ INCLUDE_DEPTH = False
 DIGIT_DICT = None
 
 
-DATASET_PATH = "test_iris"
-INSTRUCTION = "pick up cube"
+INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
 RECORD_FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
 DEBUG = True
 VIDEO_PATH = "videos"
-MODEL = "pi05"
-IP = ""
-PORT = 20997
+MODEL = "lerobot"
+IP = "172.29.5.16"
+PORT = 20000
 
 
 robot2world = {
@@ -93,6 +101,7 @@ class ModelInference:
         self.remote_agent = RemoteAgent(
             cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding
         )
+        self.frame_rate = SimpleFrameRate(RECORD_FPS)
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -104,7 +113,7 @@ class ModelInference:
             state.append(obs[robot]["joints"])
             state.append(obs[robot]["gripper"])
 
-        return Obs(cameras=None, gripper=None, info=info, state=np.concatenate(state))
+        return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
 
     def action_agents2rcs(self, action: Act) -> dict[str, Any]:
         act = {}
@@ -112,7 +121,7 @@ class ModelInference:
             # TODO: this is currently hard coded for franka joints
             act[robot] = {}
             act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
-            act[robot]["gripper"] = action.action[idx * 8 + 7]
+            act[robot]["gripper"] = action.action[idx * 8 + 7 : idx * 8 + 8]
         return act
 
     def loop(self):
@@ -120,16 +129,18 @@ class ModelInference:
 
         obs_dict = self.obs_rcs2agents(obs)
 
-        self.remote_agent.reset(obs_dict, instruction=self._cfg.instruction)
+        self.remote_agent.reset(copy.deepcopy(obs_dict), instruction=self._cfg.instruction)
 
         while True:
-            action = self.remote_agent.act(obs_dict)
+            action = self.remote_agent.act(copy.deepcopy(obs_dict))
             if action.done:
                 logger.info("done issued by agent, shutting down")
                 break
-            obs, _, _, _, info = self.env.step(self.action_agents2rcs(action))
+            a = self.action_agents2rcs(action)
+            obs, _, _, _, info = self.env.step(a)
 
             obs_dict = self.obs_rcs2agents(obs)
+            self.frame_rate()
 
 
 def get_env():
@@ -191,6 +202,12 @@ def get_env():
         hw_cfg.max_relative_movement = 0.5 if CONTROL_MODE == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
+        hw_cfg.robot_cfgs["left"].ignore_realtime = True
+        hw_cfg.robot_cfgs["right"].ignore_realtime = True
+        hw_cfg.robot_cfgs["left"].speed_factor = 0.3
+        hw_cfg.robot_cfgs["right"].speed_factor = 0.3
+        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
+        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
     else:
         # FR3
@@ -215,16 +232,16 @@ def main():
     env_rel = get_env()
     env_rel.reset()
 
-    VIDEO_PATH.mkdir(parents=True, exist_ok=True)
-    timestamp = str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    # Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
+    # timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
-    camera_set = env_rel.get_wrapper_attr("camera_set")
-    camera_set.record_video(VIDEO_PATH, timestamp)
+    # camera_set = env_rel.get_wrapper_attr("camera_set")
+    # camera_set.record_video(Path(VIDEO_PATH), timestamp)
 
     # env = RHCWrapper(env, exec_horizon=1)
 
     cfg = InferenceConfig(
-        IP, PORT, MODEL, INSTRUCTION, jpeg_encoding=True, on_same_machine=True, robot_keys=["left", "right"]
+        IP, PORT, MODEL, INSTRUCTION, jpeg_encoding=True, on_same_machine=False, robot_keys=["left", "right"]
     )
     controller = ModelInference(env_rel, cfg)
     input("robot is about to be controlled by AI, press enter to start")
