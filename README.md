@@ -133,10 +133,16 @@ Make sure that common build tools (i.e., `build-essential`) and a C++ compiler l
 * *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
 
 ```shell
+
+# clone repository
+git clone https://github.com/RobotControlStack/robot-control-stack.git
+cd robot-control-stack
+
 # setup environment
 conda create -n rcs python=3.11
 conda activate rcs
 conda install conda-forge::glfw
+
 # or sudo apt install $(cat debian_deps.txt)
 pip install 'pip>=25.1'
 pip install --group build_deps

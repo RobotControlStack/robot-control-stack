@@ -4,9 +4,11 @@ from typing import Annotated
 import typer
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.lerobot_joint_converter import (
+    DEFAULT_BINARIZE_GRIPPER,
     DEFAULT_CAMERAS,
     DEFAULT_DATASET_PATHS,
     DEFAULT_FPS,
+    DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     DEFAULT_GRIPPER_TYPE,
     DEFAULT_HF_DATA_DIR,
     DEFAULT_IMAGE_BATCH_SIZE,
@@ -144,9 +146,21 @@ def lerobot_convert(
     per_robot_arm_dim: Annotated[
         int, typer.Option(help="Per-robot arm joint/action dimension without gripper. Example: --per-robot-arm-dim 7")
     ] = DEFAULT_PER_ROBOT_ARM_DIM,
+    binarize_gripper: Annotated[
+        bool, typer.Option(help="Binarize gripper values before export. Example: --binarize-gripper")
+    ] = DEFAULT_BINARIZE_GRIPPER,
+    gripper_binarize_threshold: Annotated[
+        float,
+        typer.Option(
+            help="Threshold used when binarizing gripper values; values above this become 1.0. Example: --gripper-binarize-threshold 0.2"
+        ),
+    ] = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
+    video_backend: Annotated[
+        str | None, typer.Option(help="Video backend to use if image data is video encoded e.g. torchcodec")
+    ] = None,
 ):
     cameras = camera_specs_to_configs(camera_specs) if camera_specs is not None else list(DEFAULT_CAMERAS)
     run_conversion(
@@ -161,9 +175,12 @@ def lerobot_convert(
         cameras=cameras,
         image_batch_size=image_batch_size,
         per_robot_arm_dim=per_robot_arm_dim,
+        binarize_gripper=binarize_gripper,
+        gripper_binarize_threshold=gripper_binarize_threshold,
         success=success,
         n=n,
         video_encoding=video_encoding,
+        video_backend=video_backend,
     )
 
 

@@ -41,7 +41,7 @@ class RCSEnvCreator(ABC, EnvCreator, typing.Generic[RCSEnvCreatorConfig]):
         raise NotImplementedError
 
     def __call__(self, **kwargs) -> gym.Env:
-        cfg = kwargs.get("cfg", self.config())
+        cfg: RCSEnvCreatorConfig = kwargs.get("cfg", self.config())
         return self.create_env(cfg)
 
 
@@ -142,6 +142,12 @@ MjModel = ModelComposer | str | PathLike
 class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfig]):
     robot_prefix_template: str = "robot{robot_name}_"
     gripper_prefix_template: str = "gripper{robot_name}_"
+
+    def __call__(self, **kwargs) -> gym.Env:
+        cfg: SimEnvCreatorConfig = kwargs.get("cfg", self.config())
+        task_cfg = kwargs.get("task_cfg", cfg.task_cfg)
+        cfg.task_cfg = task_cfg
+        return self.create_env(cfg)
 
     def is_prefixed(self, cfg: SimEnvCreatorConfig) -> bool:
         return cfg._original_cfg is not None
