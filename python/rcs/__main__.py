@@ -25,6 +25,14 @@ from rcs.sim.replayer import replay as replay_dataset
 app = typer.Typer()
 
 
+def _exec_import_statements(imports: list[str] | None) -> None:
+    if imports is None:
+        return
+
+    for import_statement in imports:
+        exec(import_statement, {})
+
+
 @app.command()
 def consolidate(
     path: Annotated[
@@ -72,23 +80,26 @@ def replay(
         str,
         typer.Option(help="RelativeTo enum name: CONFIGURED_ORIGIN, LAST_STEP, or NONE."),
     ] = "CONFIGURED_ORIGIN",
-    scene: Annotated[
+    env_id: Annotated[
         str,
-        typer.Option(help="Python expression that evaluates to a scene instance."),
-    ] = "env_configs.EmptyWorldFR3Duo()",
-    task_cfg: Annotated[
-        str,
-        typer.Option(help="Python expression that evaluates to a task config."),
-    ] = 'env_tasks.PickTaskConfig(robot_name="right")',
+        typer.Option(help="Environment id used in gym.make()."),
+    ] = "rcs/duo",
+    imports: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--import",
+            help="Python import statement to execute before resolving the environment. Repeat for multiple imports. Example: --import 'from rcs_duobench.tasks import bin_sort'",
+        ),
+    ] = None,
 ):
+    _exec_import_statements(imports)
     replay_dataset(
         dataset=dataset,
         output=output,
         headless=headless,
         frequency=frequency,
         relative_to=relative_to,
-        scene=scene,
-        task_cfg=task_cfg,
+        env_id=env_id,
     )
 
 
