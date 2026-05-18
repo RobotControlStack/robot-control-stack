@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
 from typing import Any
+from PIL import Image
 
 from rcs.utils import SimpleFrameRate
 
@@ -17,6 +18,7 @@ from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.tasks import PickTaskConfig
 
 import rcs
+from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
 
@@ -107,6 +109,8 @@ class ModelInference:
         cameras = {}
         for frame in obs["frames"]:
             cameras[frame] = obs["frames"][frame]["rgb"]["data"]
+            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.LANCZOS))
+
         state = []
         for robot in self._cfg.robot_keys:
             # TODO: currently hardcoded for joints
@@ -212,16 +216,21 @@ def get_env():
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = BinSortEnvConfig()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
-            async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500
+            async_control=True, realtime=False, frequency=RECORD_FPS, max_convergence_steps=500
         )
         sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        if sim_cfg_data.root_frame_objects is None:
-            sim_cfg_data.root_frame_objects = {}
-        sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
+        sim_cfg_data.control_mode = ControlMode.JOINTS
+        sim_cfg_data.relative_to = RELATIVETO
+        sim_cfg_data.wrapper_cfg.binary_gripper = True
+
+
+        # if sim_cfg_data.root_frame_objects is None:
+        #     sim_cfg_data.root_frame_objects = {}
+        # sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
         env_rel = scene.create_env(sim_cfg_data)
 
