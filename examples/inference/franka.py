@@ -142,6 +142,8 @@ class ModelInference:
                 break
             a = self.action_agents2rcs(action)
             obs, _, _, _, info = self.env.step(a)
+            # print(obs["left"]["joints"], obs["left"]["gripper"], obs["right"]["joints"], obs["right"]["gripper"])
+            obs["left"]["gripper"] = obs["right"]["gripper"] = 1.0
 
             obs_dict = self.obs_rcs2agents(obs)
             self.frame_rate()
