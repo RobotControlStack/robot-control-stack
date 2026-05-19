@@ -179,15 +179,19 @@ class HardwareCameraSet(BaseCameraSet):
     def stop(self):
         """Stops the polling of the cameras."""
         self.running = False
-        assert self._thread is not None
-        self._thread.join()
-        self._thread = None
+        if self._thread is not None:
+            self._thread.join()
+            self._thread = None
 
     def close(self):
-        if self.running and self._thread is not None:
+        if self.running:
+            self.running = False
+            for camera in self.cameras:
+                camera.close()
             self.stop()
-        for camera in self.cameras:
-            camera.close()
+        else:
+            for camera in self.cameras:
+                camera.close()
         self.stop_video()
 
     def start(self, warm_up: bool = True):
