@@ -21,6 +21,7 @@ from rcs.lerobot_joint_converter import (
     run_conversion,
 )
 from rcs.sim.replayer import replay as replay_dataset
+from rcs.utils import export_episode_videos
 
 app = typer.Typer()
 
@@ -193,6 +194,28 @@ def lerobot_convert(
         video_encoding=video_encoding,
         video_backend=video_backend,
     )
+
+
+@app.command("episode-videos")
+def episode_videos(
+    dataset: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            help="Parquet dataset file or directory with parquet parts.",
+        ),
+    ],
+    output: Annotated[
+        Path,
+        typer.Argument(
+            exists=False,
+            help="Output directory for episode mp4 files.",
+        ),
+    ],
+    fps: Annotated[int, typer.Option(help="Video frames per second.")] = DEFAULT_FPS,
+    n: Annotated[int, typer.Option(help="Maximum number of episodes to export. -1 means all.")] = -1,
+):
+    export_episode_videos(dataset=dataset, output=output, fps=fps, n=n)
 
 
 if __name__ == "__main__":
