@@ -78,6 +78,11 @@ IP = "localhost"
 PORT = 20000
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+
 
 robot2world = {
     "right": rcs.common.Pose(
@@ -249,7 +254,9 @@ class ModelInference:
             # print(obs["left"]["joints"], obs["left"]["gripper"], obs["right"]["joints"], obs["right"]["gripper"])
 
             obs_dict = self.obs_rcs2agents(obs)
-            self.frame_rate()
+
+            if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+                self.frame_rate()
 
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
