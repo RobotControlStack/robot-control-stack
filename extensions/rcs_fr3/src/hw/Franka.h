@@ -93,6 +93,7 @@ class Franka : public common::Robot {
   void joint_controller();
   void zero_torque_controller();
   void check_for_background_errors();
+  void clear_background_error();
 
  public:
   Franka(const FrankaConfig& cfg,
