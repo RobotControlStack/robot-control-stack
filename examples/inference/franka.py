@@ -105,6 +105,7 @@ class InferenceConfig:
     on_same_machine: bool = False
     fps: int = FPS
     record_path: str = RECORD_PATH
+    n_action_steps: int | None = None
 
 
 def load_inference_config() -> InferenceConfig:
@@ -132,6 +133,7 @@ class ModelInference:
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._listener = keyboard.Listener(on_press=self._on_press)
         self._listener.start()
+        self._action_buffer = []
 
     def _on_press(self, key):
         try:
@@ -165,6 +167,18 @@ class ModelInference:
             state.append(obs[robot]["gripper"])
 
         return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
+
+    def act(self, obs_dict) -> None:
+        done = False
+        if self._cfg.n_action_steps is None:
+            return self.remote_agent.act(obs_dict)
+        if len(self._action_buffer) == 0:
+            action = self.remote_agent.act(obs_dict)
+            selected_action = action.action[:self._cfg.n_action_steps]
+            self._action_buffer = selected_action.tolist()
+            done = action.done
+        act = self._action_buffer.pop(0)
+        return Act(action=act, done=done)
 
     def action_agents2rcs(self, action: Act) -> dict[str, Any]:
         act = {}
@@ -242,7 +256,7 @@ class ModelInference:
                     sleep(0.05)
                     continue
 
-            action = self.remote_agent.act(copy.deepcopy(obs_dict))
+            action = self.act(copy.deepcopy(obs_dict))
             if action.done:
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
@@ -370,7 +384,6 @@ def main():
     # env = RHCWrapper(env, exec_horizon=1)
 
     controller = ModelInference(env_rel, cfg)
-    input("robot is about to be controlled by AI, press enter to enable keyboard control")
     with env_rel:
         controller.loop()
 
