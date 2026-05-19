@@ -174,6 +174,36 @@ class TestSimEnvsTRPY(TestSimEnvs):
         obs, _, _, _, info = env.step(non_zero_action)
         self.assert_no_pose_change(info, obs_initial, expected_obs)
 
+    def test_absolute_action_delta_limit_trpy(self):
+        max_translation = 0.05
+        max_rotation = np.deg2rad(10)
+        env = build_single_robot_env(
+            ControlMode.CARTESIAN_TRPY,
+            with_gripper=False,
+            with_camera=False,
+            max_relative_movement=None,
+        )
+        env = RelativeActionSpace(env, max_mov=(max_translation, max_rotation), relative_to=RelativeTo.NONE)
+        obs_initial, _ = env.reset()
+
+        assert env.action_space.spaces["xyzrpy"].high[0] > max_translation
+
+        target = obs_initial["xyzrpy"].copy()
+        target[0] += 0.2
+        target[5] += np.deg2rad(45)
+        _, _, _, _, info = env.step(TRPYDictType(xyzrpy=target))
+        absolute_action = info[RelativeActionSpace.ABSOLUTE_ACTION_KEY]
+
+        initial_pose = rcs.common.Pose(
+            translation=np.array(obs_initial["xyzrpy"][:3]), rpy_vector=np.array(obs_initial["xyzrpy"][3:])
+        )
+        absolute_pose = rcs.common.Pose(
+            translation=np.array(absolute_action[:3]), rpy_vector=np.array(absolute_action[3:])
+        )
+        pose_diff = absolute_pose * initial_pose.inverse()
+        assert np.linalg.norm(absolute_action[:3] - obs_initial["xyzrpy"][:3]) <= max_translation + 1e-6
+        assert pose_diff.total_angle() <= max_rotation + 1e-6
+
     def test_collision_trpy(self):
         env = build_single_robot_env(
             ControlMode.CARTESIAN_TRPY,
@@ -327,3 +357,61 @@ class TestSimEnvsJoints(TestSimEnvs):
         act.update(GripperDictType(gripper=np.array([1.0])))
         obs, _, _, _, info = env.step(act)
         self.assert_no_pose_change(info, obs_initial, obs)
+
+    def test_absolute_action_delta_limit_joints(self):
+        max_joint_delta = 0.05
+        env = build_single_robot_env(
+            ControlMode.JOINTS,
+            with_gripper=False,
+            with_camera=False,
+            max_relative_movement=None,
+        )
+        env = RelativeActionSpace(env, max_mov=max_joint_delta, relative_to=RelativeTo.NONE)
+        obs_initial, _ = env.reset()
+
+        assert np.max(env.action_space.spaces["joints"].high) > max_joint_delta
+
+        first_target = obs_initial["joints"].copy()
+        first_target[0] += 0.2
+        _, _, _, _, first_info = env.step(JointsDictType(joints=first_target))
+        first_action = first_info[RelativeActionSpace.ABSOLUTE_ACTION_KEY]
+        np.testing.assert_allclose(first_action[0], obs_initial["joints"][0] + max_joint_delta, atol=1e-6, rtol=0)
+
+        second_target = obs_initial["joints"].copy()
+        second_target[0] -= 0.2
+        _, _, _, _, second_info = env.step(JointsDictType(joints=second_target))
+        second_action = second_info[RelativeActionSpace.ABSOLUTE_ACTION_KEY]
+        assert np.max(np.abs(second_action - first_action)) <= max_joint_delta + 1e-6
+
+
+class TestAbsoluteActionSceneCreator:
+    def test_scene_wraps_absolute_actions_when_relative_to_none(self):
+        max_joint_delta = 0.05
+        scene = EmptyWorldFR3()
+        cfg = copy.deepcopy(scene.config())
+        cfg.control_mode = ControlMode.JOINTS
+        cfg.headless = True
+        cfg.sim_cfg.realtime = False
+        cfg.sim_cfg.async_control = False
+        cfg.gripper_cfgs = None
+        cfg.gripper_offsets = None
+        cfg.camera_cfgs = None
+        cfg.camera_adds = None
+        cfg.max_relative_movement = max_joint_delta
+        cfg.relative_to = RelativeTo.NONE
+
+        env = scene.create_env(cfg)
+        obs_initial, _ = env.reset()
+        robot_name = next(iter(obs_initial))
+        target = obs_initial[robot_name]["joints"].copy()
+        target[0] += 0.2
+        _, _, _, _, info = env.step({robot_name: JointsDictType(joints=target)})
+
+        assert RelativeActionSpace.ABSOLUTE_ACTION_KEY in info[robot_name]
+        absolute_action = info[robot_name][RelativeActionSpace.ABSOLUTE_ACTION_KEY]
+        np.testing.assert_allclose(
+            absolute_action[0],
+            obs_initial[robot_name]["joints"][0] + max_joint_delta,
+            atol=1e-6,
+            rtol=0,
+        )

@@ -359,7 +359,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
             if prefixed_cfg.gripper_cfgs is not None:
                 env = self.add_gripper_env(prefixed_cfg, robot_name, simulation, env)
 
-            if prefixed_cfg.relative_to != RelativeTo.NONE:
+            if prefixed_cfg.max_relative_movement is not None or prefixed_cfg.relative_to != RelativeTo.NONE:
                 env = RelativeActionSpace(
                     env, max_mov=prefixed_cfg.max_relative_movement, relative_to=prefixed_cfg.relative_to
                 )

@@ -643,7 +643,9 @@ class RelativeActionSpace(ActObsInfoWrapper):
                 )
         self.max_mov: float | tuple[float, float] = max_mov
 
-        if self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TRPY:
+        if self.relative_to == RelativeTo.NONE:
+            pass
+        elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TRPY:
             assert isinstance(self.max_mov, tuple)
             self.action_space.spaces.update(
                 get_space(
@@ -700,6 +702,7 @@ class RelativeActionSpace(ActObsInfoWrapper):
         self.initial_obs = obs
         self.set_origin_to_current()
         self._last_action = None
+        self._absolute_action = None
         return obs, info
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
@@ -709,105 +712,130 @@ class RelativeActionSpace(ActObsInfoWrapper):
             self.set_origin_to_current()
         action = copy.deepcopy(action)
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS and self.joints_key in action:
-            assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
             assert isinstance(self.max_mov, float)
             low, high = self._robot.get_config().joint_limits
-            # TODO: should we also clip euqally for all joints?
-            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
-                limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
-                self._last_action = limited_joints
+            if self.relative_to == RelativeTo.NONE:
+                reference_joints = self._robot.get_joint_position() if self._last_action is None else self._last_action
+                assert isinstance(reference_joints, np.ndarray), "Invalid reference type given the control mode."
+                limited_joints_diff = np.clip(action[self.joints_key] - reference_joints, -self.max_mov, self.max_mov)
+                clipped_joints = np.clip(reference_joints + limited_joints_diff, low, high)
+                self._last_action = clipped_joints
             else:
-                joints_diff = action[self.joints_key] - self._last_action
-                limited_joints_diff = np.clip(joints_diff, -self.max_mov, self.max_mov)
-                limited_joints = limited_joints_diff + self._last_action
-                self._last_action = limited_joints
-            clipped_joints = np.clip(self._origin + limited_joints, low, high)
+                assert isinstance(self._origin, np.ndarray), "Invalid origin type give the control mode."
+                # TODO: should we also clip euqally for all joints?
+                if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                    limited_joints = np.clip(action[self.joints_key], -self.max_mov, self.max_mov)
+                    self._last_action = limited_joints
+                else:
+                    joints_diff = action[self.joints_key] - self._last_action
+                    limited_joints_diff = np.clip(joints_diff, -self.max_mov, self.max_mov)
+                    limited_joints = limited_joints_diff + self._last_action
+                    self._last_action = limited_joints
+                clipped_joints = np.clip(self._origin + limited_joints, low, high)
             action.update(JointsDictType(joints=clipped_joints))
             self._absolute_action = clipped_joints
 
         elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TRPY and self.trpy_key in action:
-            assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
+            target_pose = common.Pose(
+                translation=action[self.trpy_key][:3],
+                rpy_vector=action[self.trpy_key][3:],
+            )
 
-            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
-                clipped_pose_offset = (
-                    common.Pose(
-                        translation=action[self.trpy_key][:3],
-                        rpy_vector=action[self.trpy_key][3:],
-                    )
-                    .limit_translation_length(self.max_mov[0])
-                    .limit_rotation_angle(self.max_mov[1])
+            if self.relative_to == RelativeTo.NONE:
+                reference_pose = (
+                    self._robot.get_cartesian_position() if self._last_action is None else self._last_action
                 )
-                self._last_action = clipped_pose_offset
-            else:
-                assert isinstance(self._last_action, common.Pose)
-                pose_diff = (
-                    common.Pose(
-                        translation=action[self.trpy_key][:3],
-                        rpy_vector=action[self.trpy_key][3:],
-                    )
-                    * self._last_action.inverse()
-                )
+                assert isinstance(reference_pose, common.Pose), "Invalid reference type given the control mode."
+                pose_diff = target_pose * reference_pose.inverse()
                 clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
                     self.max_mov[1]
                 )
-                clipped_pose_offset = clipped_pose_diff * self._last_action
-                self._last_action = clipped_pose_offset
+                unclipped_pose = common.Pose(
+                    translation=reference_pose.translation() + clipped_pose_diff.translation(),  # type: ignore
+                    rpy_vector=(clipped_pose_diff * reference_pose).rotation_rpy().as_vector(),
+                )
+            else:
+                assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
+                if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                    clipped_pose_offset = target_pose.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                        self.max_mov[1]
+                    )
+                    self._last_action = clipped_pose_offset
+                else:
+                    assert isinstance(self._last_action, common.Pose)
+                    pose_diff = target_pose * self._last_action.inverse()
+                    clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                        self.max_mov[1]
+                    )
+                    clipped_pose_offset = clipped_pose_diff * self._last_action
+                    self._last_action = clipped_pose_offset
 
-            unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
-                rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
-            )
+                unclipped_pose = common.Pose(
+                    translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
+                    rpy_vector=(clipped_pose_offset * self._origin).rotation_rpy().as_vector(),
+                )
             clipped_pose = np.concatenate(  # type: ignore
                 [
                     np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_rpy().as_vector(),
                 ],
             )
+            if self.relative_to == RelativeTo.NONE:
+                self._last_action = common.Pose(translation=clipped_pose[:3], rpy_vector=clipped_pose[3:])
             action.update(TRPYDictType(xyzrpy=clipped_pose))
             self._absolute_action = clipped_pose
 
         elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TQuat and self.tquat_key in action:
-            assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
             assert isinstance(self.max_mov, tuple)
             pose_space = cast(gym.spaces.Box, get_space(TQuatDictType).spaces[self.tquat_key])
+            target_pose = common.Pose(
+                translation=action[self.tquat_key][:3],
+                quaternion=action[self.tquat_key][3:],
+            )
 
-            if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
-                clipped_pose_offset = (
-                    common.Pose(
-                        translation=action[self.tquat_key][:3],
-                        quaternion=action[self.tquat_key][3:],
-                    )
-                    .limit_translation_length(self.max_mov[0])
-                    .limit_rotation_angle(self.max_mov[1])
+            if self.relative_to == RelativeTo.NONE:
+                reference_pose = (
+                    self._robot.get_cartesian_position() if self._last_action is None else self._last_action
                 )
-                self._last_action = clipped_pose_offset
-            else:
-                assert isinstance(self._last_action, common.Pose)
-                pose_diff = (
-                    common.Pose(
-                        translation=action[self.tquat_key][:3],
-                        quaternion=action[self.tquat_key][3:],
-                    )
-                    * self._last_action.inverse()
-                )
+                assert isinstance(reference_pose, common.Pose), "Invalid reference type given the control mode."
+                pose_diff = target_pose * reference_pose.inverse()
                 clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
                     self.max_mov[1]
                 )
-                clipped_pose_offset = clipped_pose_diff * self._last_action
-                self._last_action = clipped_pose_offset
+                unclipped_pose = common.Pose(
+                    translation=reference_pose.translation() + clipped_pose_diff.translation(),  # type: ignore
+                    quaternion=(clipped_pose_diff * reference_pose).rotation_q(),
+                )
+            else:
+                assert isinstance(self._origin, common.Pose), "Invalid origin type given the control mode."
+                if self.relative_to == RelativeTo.LAST_STEP or self._last_action is None:
+                    clipped_pose_offset = target_pose.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                        self.max_mov[1]
+                    )
+                    self._last_action = clipped_pose_offset
+                else:
+                    assert isinstance(self._last_action, common.Pose)
+                    pose_diff = target_pose * self._last_action.inverse()
+                    clipped_pose_diff = pose_diff.limit_translation_length(self.max_mov[0]).limit_rotation_angle(
+                        self.max_mov[1]
+                    )
+                    clipped_pose_offset = clipped_pose_diff * self._last_action
+                    self._last_action = clipped_pose_offset
 
-            unclipped_pose = common.Pose(
-                translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
-                quaternion=(clipped_pose_offset * self._origin).rotation_q(),
-            )
+                unclipped_pose = common.Pose(
+                    translation=self._origin.translation() + clipped_pose_offset.translation(),  # type: ignore
+                    quaternion=(clipped_pose_offset * self._origin).rotation_q(),
+                )
             clipped_pose = np.concatenate(  # type: ignore
                 [
                     np.clip(unclipped_pose.translation(), pose_space.low[:3], pose_space.high[:3]),
                     unclipped_pose.rotation_q(),
                 ],
             )
+            if self.relative_to == RelativeTo.NONE:
+                self._last_action = common.Pose(translation=clipped_pose[:3], quaternion=clipped_pose[3:])
             action.update(TQuatDictType(tquat=clipped_pose))  # type: ignore
             self._absolute_action = clipped_pose
 

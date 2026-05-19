@@ -164,7 +164,7 @@ class RCSPandaConfigEnvCreator(RCSEnvCreator[PandaHardwareEnvCreatorConfig]):
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set)
 
-        if cfg.relative_to != RelativeTo.NONE:
+        if cfg.max_relative_movement is not None or cfg.relative_to != RelativeTo.NONE:
             env = RelativeActionSpace(env, max_mov=cfg.max_relative_movement, relative_to=cfg.relative_to)
         return CoverWrapper(env)
 

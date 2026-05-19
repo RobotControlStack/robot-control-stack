@@ -118,7 +118,7 @@ class RCSXArm7ConfigEnvCreator(RCSEnvCreator[XArm7HardwareEnvCreatorConfig]):
             hand = TilburgHand(cfg=cfg.hand_cfg, verbose=True)
             env = HandWrapper(env, hand, cfg.wrapper_cfg.binary_gripper)
 
-        if cfg.relative_to != RelativeTo.NONE:
+        if cfg.max_relative_movement is not None or cfg.relative_to != RelativeTo.NONE:
             env = RelativeActionSpace(env, max_mov=cfg.max_relative_movement, relative_to=cfg.relative_to)
         return CoverWrapper(env)
 
