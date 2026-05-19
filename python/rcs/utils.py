@@ -1,13 +1,18 @@
 import datetime
 import logging
 import math
+import os
 import subprocess
 from pathlib import Path
 from time import perf_counter, sleep
 
 import duckdb
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+import matplotlib
+matplotlib.use("Agg")
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from torchvision.io import decode_jpeg
 
 logger = logging.getLogger(__name__)
@@ -96,6 +101,43 @@ def _write_mp4(frames: list[np.ndarray], output_path: Path, fps: int) -> None:
     process.wait()
 
 
+def _render_action_panel(
+    joint_history: dict[str, np.ndarray],
+    gripper_history: dict[str, np.ndarray],
+    step: int,
+    height: int,
+    width: int,
+) -> np.ndarray:
+    fig, axes = plt.subplots(
+        len(joint_history),
+        1,
+        figsize=(width / 100, height / 100),
+        dpi=100,
+        squeeze=False,
+    )
+    x = np.arange(len(next(iter(joint_history.values()))))
+    for axis, robot_key in zip(axes[:, 0], joint_history, strict=True):
+        joints = joint_history[robot_key]
+        for joint_idx in range(joints.shape[1]):
+            axis.plot(x, joints[:, joint_idx], linewidth=1)
+        axis.axvline(step, color="tab:red", linewidth=2)
+        axis.set_xlim(0, max(len(x) - 1, 1))
+        axis.set_title(robot_key)
+        axis.set_xlabel("step")
+        axis.set_ylabel("joint")
+
+        gripper_axis = axis.twinx()
+        gripper_axis.plot(x, gripper_history[robot_key], color="black", linestyle="--", linewidth=2)
+        gripper_axis.set_ylabel("gripper")
+        gripper_axis.set_ylim(-0.1, 1.1)
+
+    fig.tight_layout()
+    fig.canvas.draw()
+    image = np.asarray(fig.canvas.buffer_rgba())[..., :3].copy()
+    plt.close(fig)
+    return image
+
+
 def export_episode_videos(
     dataset: str | Path,
     output: str | Path,
@@ -112,6 +154,7 @@ def export_episode_videos(
     relation = conn.sql(f"SELECT * FROM read_parquet('{source_escaped}')")
     frame_struct = relation.select("obs.frames").types[0]
     camera_names = [name for name, _ in frame_struct.children]
+    robot_names = [name for name, _ in relation.select("obs").types[0].children if name != "frames"]
 
     uuids = conn.execute(f"SELECT DISTINCT uuid FROM read_parquet('{source_escaped}') ORDER BY uuid").fetchall()
     for index, (episode_id,) in enumerate(uuids):
@@ -119,10 +162,19 @@ def export_episode_videos(
             break
 
         image_selects = ", ".join(f"obs.frames.{camera}.rgb.data AS {camera}" for camera in camera_names)
+        state_selects = ", ".join(
+            [
+                *(f"obs.{robot}.joints AS joints_{robot}" for robot in robot_names),
+                *(
+                    f"COALESCE(CAST(action.{robot}.gripper[1] AS DOUBLE), obs.{robot}.gripper[1]) AS gripper_{robot}"
+                    for robot in robot_names
+                ),
+            ]
+        )
         not_null_checks = " ".join(f"AND obs.frames.{camera}.rgb.data IS NOT NULL" for camera in camera_names)
         rows = conn.execute(
             f"""
-            SELECT timestamp, {image_selects}
+            SELECT timestamp, {image_selects}, {state_selects}
             FROM read_parquet('{source_escaped}')
             WHERE uuid = ?
               {not_null_checks}
@@ -135,15 +187,24 @@ def export_episode_videos(
 
         timestamp = datetime.datetime.fromtimestamp(float(rows[0][0])).strftime("%Y-%m-%d-%H-%M-%S")
         frames = []
-        cols = math.ceil(math.sqrt(len(camera_names)))
-        rows_per_frame = math.ceil(len(camera_names) / cols)
+        joint_history = {
+            robot: np.asarray([row[1 + len(camera_names) + robot_idx] for row in rows], dtype=np.float32)
+            for robot_idx, robot in enumerate(robot_names)
+        }
+        gripper_history = {
+            robot: np.asarray([row[1 + len(camera_names) + len(robot_names) + robot_idx] for row in rows], dtype=np.float32)
+            for robot_idx, robot in enumerate(robot_names)
+        }
+        cols = math.ceil(math.sqrt(len(camera_names) + 1))
+        rows_per_frame = math.ceil((len(camera_names) + 1) / cols)
 
-        for row in rows:
+        for step_idx, row in enumerate(rows):
             decoded = [
                 decode_jpeg(torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)).permute(1, 2, 0).cpu().numpy()
-                for image_bytes in row[1:]
+                for image_bytes in row[1 : 1 + len(camera_names)]
             ]
             height, width = decoded[0].shape[:2]
+            decoded.append(_render_action_panel(joint_history, gripper_history, step_idx, height, width))
             tiled = np.zeros((rows_per_frame * height, cols * width, 3), dtype=np.uint8)
             for camera_index, image in enumerate(decoded):
                 top = (camera_index // cols) * height
