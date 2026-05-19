@@ -153,8 +153,13 @@ def export_episode_videos(
     conn = duckdb.connect()
     relation = conn.sql(f"SELECT * FROM read_parquet('{source_escaped}')")
     frame_struct = relation.select("obs.frames").types[0]
+    action_struct = relation.select("action").types[0]
     camera_names = [name for name, _ in frame_struct.children]
     robot_names = [name for name, _ in relation.select("obs").types[0].children if name != "frames"]
+    action_fields_by_robot = {
+        robot: {field_name for field_name, _ in robot_struct.children}
+        for robot, robot_struct in action_struct.children
+    }
 
     uuids = conn.execute(f"SELECT DISTINCT uuid FROM read_parquet('{source_escaped}') ORDER BY uuid").fetchall()
     for index, (episode_id,) in enumerate(uuids):
@@ -162,13 +167,26 @@ def export_episode_videos(
             break
 
         image_selects = ", ".join(f"obs.frames.{camera}.rgb.data AS {camera}" for camera in camera_names)
+        joint_selects = ", ".join(
+            (
+                f"COALESCE(action.{robot}.joints, obs.{robot}.joints) AS joints_{robot}"
+                if "joints" in action_fields_by_robot.get(robot, set())
+                else f"obs.{robot}.joints AS joints_{robot}"
+            )
+            for robot in robot_names
+        )
+        gripper_selects = ", ".join(
+            (
+                f"COALESCE(CAST(action.{robot}.gripper[1] AS DOUBLE), obs.{robot}.gripper[1]) AS gripper_{robot}"
+                if "gripper" in action_fields_by_robot.get(robot, set())
+                else f"obs.{robot}.gripper[1] AS gripper_{robot}"
+            )
+            for robot in robot_names
+        )
         state_selects = ", ".join(
             [
-                *(f"obs.{robot}.joints AS joints_{robot}" for robot in robot_names),
-                *(
-                    f"COALESCE(CAST(action.{robot}.gripper[1] AS DOUBLE), obs.{robot}.gripper[1]) AS gripper_{robot}"
-                    for robot in robot_names
-                ),
+                joint_selects,
+                gripper_selects,
             ]
         )
         not_null_checks = " ".join(f"AND obs.frames.{camera}.rgb.data IS NOT NULL" for camera in camera_names)
