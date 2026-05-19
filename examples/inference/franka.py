@@ -1,11 +1,13 @@
 import copy
 import datetime
+import json
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from time import sleep
 from typing import Any
 from PIL import Image
+import threading
 
 from rcs.utils import SimpleFrameRate
 
@@ -22,6 +24,8 @@ from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
 
+from pynput import keyboard
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,8 +39,8 @@ ROBOT2ID = {
 }
 
 
-# ROBOT_INSTANCE = RobotPlatform.SIMULATION
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
 CAMERA_DICT = {
@@ -64,14 +68,14 @@ DIGIT_DICT = None
 
 
 INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
-RECORD_FPS = 30
+FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
-DEBUG = True
-VIDEO_PATH = "videos"
+RECORD_PATH = "inference_recordings"
 MODEL = "lerobot"
-IP = "172.29.5.16"
+IP = "localhost"
 PORT = 20000
+CONFIG_PATH = Path(__file__).with_suffix(".json")
 
 
 robot2world = {
@@ -86,13 +90,23 @@ robot2world = {
 
 @dataclass
 class InferenceConfig:
-    vlagents_host: str
-    vlagents_port: int
-    vlagents_model: str
-    instruction: str
-    robot_keys: list[str]
+    vlagents_host: str = IP
+    vlagents_port: int = PORT
+    vlagents_model: str = MODEL
+    instruction: str = INSTRUCTION
+    robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
     jpeg_encoding: bool = True
     on_same_machine: bool = False
+    fps: int = FPS
+    record_path: str = RECORD_PATH
+
+
+def load_inference_config() -> InferenceConfig:
+    if not CONFIG_PATH.exists():
+        CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
+        return InferenceConfig()
+    return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+
 
 
 class ModelInference:
@@ -100,10 +114,33 @@ class ModelInference:
         self.env = env
         self.gripper_state = 1
         self._cfg = cfg
+        self._episode_running = False
+        self._start_requested = False
+        self._stop_requested = False
+        self._reload_requested = False
+        self._cmd_lock = threading.Lock()
         self.remote_agent = RemoteAgent(
             cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding
         )
-        self.frame_rate = SimpleFrameRate(RECORD_FPS)
+        self.frame_rate = SimpleFrameRate(self._cfg.fps)
+        self._listener = keyboard.Listener(on_press=self._on_press)
+        self._listener.start()
+
+    def _on_press(self, key):
+        try:
+            if not hasattr(key, "char"):
+                return
+            if key.char == "e":
+                with self._cmd_lock:
+                    self._start_requested = True
+            elif key.char == "q":
+                with self._cmd_lock:
+                    self._stop_requested = True
+            elif key.char == "o":
+                with self._cmd_lock:
+                    self._reload_requested = True
+        except AttributeError:
+            pass
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -130,26 +167,78 @@ class ModelInference:
 
     def loop(self):
         obs, _ = self.env.reset()
-
         obs_dict = self.obs_rcs2agents(obs)
-
-        self.remote_agent.reset(copy.deepcopy(obs_dict), instruction=self._cfg.instruction)
+        logger.info("waiting for 'e' to start an episode, 'q' to stop and reset, and 'o' to reload config")
 
         while True:
+            with self._cmd_lock:
+                start_requested = self._start_requested
+                stop_requested = self._stop_requested
+                reload_requested = self._reload_requested
+                self._start_requested = False
+                self._stop_requested = False
+                self._reload_requested = False
+
+            if reload_requested:
+                self._cfg = load_inference_config()
+                try:
+                    self.remote_agent.reconnect(
+                        host=self._cfg.vlagents_host,
+                        port=self._cfg.vlagents_port,
+                        model=self._cfg.vlagents_model,
+                        on_same_machine=self._cfg.on_same_machine,
+                        jpeg_encoding=self._cfg.jpeg_encoding,
+                    )
+                    logger.info(
+                        "reloaded config from %s with host=%s port=%s model=%s",
+                        CONFIG_PATH,
+                        self._cfg.vlagents_host,
+                        self._cfg.vlagents_port,
+                        self._cfg.vlagents_model,
+                    )
+                except Exception:
+                    logger.exception("failed to reconnect after reloading %s", CONFIG_PATH)
+                obs, _ = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs)
+                self._episode_running = False
+
+            if stop_requested:
+                if self._episode_running:
+                    logger.info("stopping episode and resetting environment")
+                obs, _ = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs)
+                self._episode_running = False
+
+            if not self._episode_running:
+                try:
+                    self.remote_agent.ensure_connected()
+                except Exception:
+                    sleep(0.5)
+                    continue
+                if start_requested:
+                    logger.info("starting episode")
+                    self.remote_agent.reset(copy.deepcopy(obs_dict), instruction=self._cfg.instruction)
+                    self._episode_running = True
+                else:
+                    sleep(0.05)
+                    continue
+
             action = self.remote_agent.act(copy.deepcopy(obs_dict))
             if action.done:
-                logger.info("done issued by agent, shutting down")
-                break
+                logger.info("done issued by agent, resetting environment")
+                obs, _ = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs)
+                self._episode_running = False
+                continue
             a = self.action_agents2rcs(action)
             obs, _, _, _, info = self.env.step(a)
             # print(obs["left"]["joints"], obs["left"]["gripper"], obs["right"]["joints"], obs["right"]["gripper"])
-            obs["left"]["gripper"] = obs["right"]["gripper"] = 1.0
 
             obs_dict = self.obs_rcs2agents(obs)
             self.frame_rate()
 
 
-def get_env():
+def get_env(cfg: InferenceConfig) -> gym.Env:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         from rcs_fr3.configs import FrankaDuoEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
@@ -210,8 +299,8 @@ def get_env():
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["left"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.3
-        hw_cfg.robot_cfgs["right"].speed_factor = 0.3
+        hw_cfg.robot_cfgs["left"].speed_factor = 0.1
+        hw_cfg.robot_cfgs["right"].speed_factor = 0.1
         hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
@@ -221,7 +310,7 @@ def get_env():
         scene = BinSortEnvConfig()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
-            async_control=True, realtime=False, frequency=RECORD_FPS, max_convergence_steps=500
+            async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
         )
         sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
@@ -240,7 +329,7 @@ def get_env():
 
 
 def main():
-    env_rel = get_env()
+    env_rel = get_env(cfg)
     env_rel.reset()
 
     # Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
@@ -251,11 +340,9 @@ def main():
 
     # env = RHCWrapper(env, exec_horizon=1)
 
-    cfg = InferenceConfig(
-        IP, PORT, MODEL, INSTRUCTION, jpeg_encoding=True, on_same_machine=False, robot_keys=["left", "right"]
-    )
+    cfg = load_inference_config()
     controller = ModelInference(env_rel, cfg)
-    input("robot is about to be controlled by AI, press enter to start")
+    input("robot is about to be controlled by AI, press enter to enable keyboard control")
     with env_rel:
         controller.loop()
 
