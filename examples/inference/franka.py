@@ -1,13 +1,14 @@
 import copy
-import datetime
 import json
 import logging
+import threading
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from queue import Empty, Queue
 from time import sleep
 from typing import Any
+
 from PIL import Image
-import threading
 
 from rcs.utils import SimpleFrameRate
 
@@ -24,8 +25,6 @@ import rcs
 from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
-
-from pynput import keyboard
 
 logger = logging.getLogger(__name__)
 
@@ -122,41 +121,45 @@ class ModelInference:
         self.gripper_state = 1
         self._cfg = cfg
         self._episode_running = False
-        self._start_requested = False
-        self._record_requested = False
-        self._success_requested = False
-        self._stop_requested = False
-        self._reload_requested = False
-        self._cmd_lock = threading.Lock()
+        self._command_queue: Queue[str] = Queue()
+        self._shutdown_requested = threading.Event()
         self.remote_agent = RemoteAgent(
             cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding
         )
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
-        self._listener = keyboard.Listener(on_press=self._on_press)
-        self._listener.start()
         self._action_buffer = []
 
-    def _on_press(self, key):
-        try:
-            if not hasattr(key, "char"):
-                return
-            if key.char == "e":
-                with self._cmd_lock:
-                    self._start_requested = True
-            elif key.char == "r":
-                with self._cmd_lock:
-                    self._record_requested = True
-            elif key.char == "s":
-                with self._cmd_lock:
-                    self._success_requested = True
-            elif key.char == "q":
-                with self._cmd_lock:
-                    self._stop_requested = True
-            elif key.char == "o":
-                with self._cmd_lock:
-                    self._reload_requested = True
-        except AttributeError:
-            pass
+    def submit_command(self, command: str) -> None:
+        self._command_queue.put(command)
+
+    def request_shutdown(self) -> None:
+        self._shutdown_requested.set()
+
+    def _drain_commands(self) -> tuple[bool, bool, bool, bool, bool]:
+        start_requested = False
+        record_requested = False
+        success_requested = False
+        stop_requested = False
+        reload_requested = False
+
+        while True:
+            try:
+                command = self._command_queue.get_nowait()
+            except Empty:
+                break
+
+            if command == "e":
+                start_requested = True
+            elif command == "r":
+                record_requested = True
+            elif command == "s":
+                success_requested = True
+            elif command == "q":
+                stop_requested = True
+            elif command == "o":
+                reload_requested = True
+
+        return start_requested, record_requested, success_requested, stop_requested, reload_requested
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -200,21 +203,13 @@ class ModelInference:
         obs, _ = self.env.reset()
         obs_dict = self.obs_rcs2agents(obs)
         logger.info(
-            "waiting for 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
+            "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
         )
 
-        while True:
-            with self._cmd_lock:
-                start_requested = self._start_requested
-                record_requested = self._record_requested
-                success_requested = self._success_requested
-                stop_requested = self._stop_requested
-                reload_requested = self._reload_requested
-                self._start_requested = False
-                self._record_requested = False
-                self._success_requested = False
-                self._stop_requested = False
-                self._reload_requested = False
+        while not self._shutdown_requested.is_set():
+            start_requested, record_requested, success_requested, stop_requested, reload_requested = (
+                self._drain_commands()
+            )
 
             if reload_requested:
                 self._cfg = load_inference_config()
@@ -294,6 +289,28 @@ class ModelInference:
 
             if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
                 self.frame_rate()
+
+
+def command_loop(controller: ModelInference) -> None:
+    prompt = "Command [e=start, r=record, s=success/reset, q=stop/reset, o=reload, x=exit]: "
+    while True:
+        try:
+            command = input(prompt).strip().lower()
+        except EOFError:
+            command = "x"
+        except KeyboardInterrupt:
+            print()
+            command = "x"
+
+        if not command:
+            continue
+        if command == "x":
+            controller.request_shutdown()
+            return
+        if command in {"e", "r", "s", "q", "o"}:
+            controller.submit_command(command)
+            continue
+        logger.info("unknown command %r", command)
 
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
@@ -409,7 +426,10 @@ def main():
 
     controller = ModelInference(env_rel, cfg)
     with env_rel:
-        controller.loop()
+        worker = threading.Thread(target=controller.loop, name="model-inference", daemon=True)
+        worker.start()
+        command_loop(controller)
+        worker.join()
 
 
 if __name__ == "__main__":
