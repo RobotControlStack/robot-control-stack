@@ -177,6 +177,9 @@ class ModelInference:
             selected_action = action.action[:self._cfg.n_action_steps]
             self._action_buffer = selected_action.tolist()
             done = action.done
+            if RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
+                for robot in self.env.get_wrapper_attr("envs"):
+                    self.env.get_wrapper_attr("envs")[robot].get_wrapper_attr("set_origin_to_current")()
         act = self._action_buffer.pop(0)
         return Act(action=act, done=done)
 
