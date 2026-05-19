@@ -17,6 +17,7 @@ from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
 
 import rcs
@@ -116,6 +117,7 @@ class ModelInference:
         self._cfg = cfg
         self._episode_running = False
         self._start_requested = False
+        self._record_requested = False
         self._stop_requested = False
         self._reload_requested = False
         self._cmd_lock = threading.Lock()
@@ -133,6 +135,9 @@ class ModelInference:
             if key.char == "e":
                 with self._cmd_lock:
                     self._start_requested = True
+            elif key.char == "r":
+                with self._cmd_lock:
+                    self._record_requested = True
             elif key.char == "q":
                 with self._cmd_lock:
                     self._stop_requested = True
@@ -168,14 +173,16 @@ class ModelInference:
     def loop(self):
         obs, _ = self.env.reset()
         obs_dict = self.obs_rcs2agents(obs)
-        logger.info("waiting for 'e' to start an episode, 'q' to stop and reset, and 'o' to reload config")
+        logger.info("waiting for 'e' to start, 'r' to start and record, 'q' to stop and reset, and 'o' to reload config")
 
         while True:
             with self._cmd_lock:
                 start_requested = self._start_requested
+                record_requested = self._record_requested
                 stop_requested = self._stop_requested
                 reload_requested = self._reload_requested
                 self._start_requested = False
+                self._record_requested = False
                 self._stop_requested = False
                 self._reload_requested = False
 
@@ -198,6 +205,9 @@ class ModelInference:
                     )
                 except Exception:
                     logger.exception("failed to reconnect after reloading %s", CONFIG_PATH)
+                if isinstance(self.env, StorageWrapper):
+                    self.env.base_dir = self._cfg.record_path
+                    self.env.set_instruction(self._cfg.instruction)
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
                 self._episode_running = False
@@ -215,8 +225,12 @@ class ModelInference:
                 except Exception:
                     sleep(0.5)
                     continue
-                if start_requested:
-                    logger.info("starting episode")
+                if start_requested or record_requested:
+                    if isinstance(self.env, StorageWrapper):
+                        self.env.set_instruction(self._cfg.instruction)
+                        if record_requested:
+                            self.env.start_record()
+                    logger.info("starting episode%s", " with recording" if record_requested else "")
                     self.remote_agent.reset(copy.deepcopy(obs_dict), instruction=self._cfg.instruction)
                     self._episode_running = True
                 else:
@@ -325,10 +339,18 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
 
         env_rel = scene.create_env(sim_cfg_data)
 
-    return env_rel
+    return StorageWrapper(
+        env_rel,
+        cfg.record_path,
+        cfg.instruction,
+        batch_size=32,
+        max_rows_per_group=2,
+        max_rows_per_file=10,
+    )
 
 
 def main():
+    cfg = load_inference_config()
     env_rel = get_env(cfg)
     env_rel.reset()
 
@@ -340,7 +362,6 @@ def main():
 
     # env = RHCWrapper(env, exec_horizon=1)
 
-    cfg = load_inference_config()
     controller = ModelInference(env_rel, cfg)
     input("robot is about to be controlled by AI, press enter to enable keyboard control")
     with env_rel:
