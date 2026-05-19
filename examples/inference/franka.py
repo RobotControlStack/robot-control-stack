@@ -124,6 +124,7 @@ class ModelInference:
         self._episode_running = False
         self._start_requested = False
         self._record_requested = False
+        self._success_requested = False
         self._stop_requested = False
         self._reload_requested = False
         self._cmd_lock = threading.Lock()
@@ -145,6 +146,9 @@ class ModelInference:
             elif key.char == "r":
                 with self._cmd_lock:
                     self._record_requested = True
+            elif key.char == "s":
+                with self._cmd_lock:
+                    self._success_requested = True
             elif key.char == "q":
                 with self._cmd_lock:
                     self._stop_requested = True
@@ -195,16 +199,20 @@ class ModelInference:
     def loop(self):
         obs, _ = self.env.reset()
         obs_dict = self.obs_rcs2agents(obs)
-        logger.info("waiting for 'e' to start, 'r' to start and record, 'q' to stop and reset, and 'o' to reload config")
+        logger.info(
+            "waiting for 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
+        )
 
         while True:
             with self._cmd_lock:
                 start_requested = self._start_requested
                 record_requested = self._record_requested
+                success_requested = self._success_requested
                 stop_requested = self._stop_requested
                 reload_requested = self._reload_requested
                 self._start_requested = False
                 self._record_requested = False
+                self._success_requested = False
                 self._stop_requested = False
                 self._reload_requested = False
 
@@ -232,6 +240,16 @@ class ModelInference:
                     self.env.set_instruction(self._cfg.instruction)
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
+                self._action_buffer = []
+                self._episode_running = False
+
+            if success_requested:
+                if self._episode_running:
+                    logger.info("marking episode successful and resetting environment")
+                self.env.get_wrapper_attr("success")()
+                obs, _ = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs)
+                self._action_buffer = []
                 self._episode_running = False
 
             if stop_requested:
@@ -239,6 +257,7 @@ class ModelInference:
                     logger.info("stopping episode and resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
+                self._action_buffer = []
                 self._episode_running = False
 
             if not self._episode_running:
@@ -264,6 +283,7 @@ class ModelInference:
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
+                self._action_buffer = []
                 self._episode_running = False
                 continue
             a = self.action_agents2rcs(action)
@@ -370,6 +390,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         batch_size=32,
         max_rows_per_group=2,
         max_rows_per_file=10,
+        allow_wrapper_instruction=False
     )
 
 
