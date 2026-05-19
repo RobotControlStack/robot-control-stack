@@ -182,15 +182,18 @@ class StorageWrapper(gym.Wrapper):
                 ),
             )
 
-    def _flush(self):
+    def _flush(self, keep_last: bool = False):
+        rows = self.buffer[:-1] if keep_last else self.buffer
+        if len(rows) == 0:
+            return
         if self.schema is None:
-            temp_batch = pa.RecordBatch.from_pylist(self.buffer)
+            temp_batch = pa.RecordBatch.from_pylist(rows)
             self.schema = temp_batch.schema
 
-        self.buffer[-1]["success"] = self._success
-        batch = pa.RecordBatch.from_pylist(self.buffer, schema=self.schema)
+        rows[-1]["success"] = self._success
+        batch = pa.RecordBatch.from_pylist(rows, schema=self.schema)
         self.queue.put(batch)
-        self.buffer.clear()
+        self.buffer = self.buffer[-1:] if keep_last else []
 
     def _flatten_arrays(self, d: dict[str, Any]):
         # NOTE: list / tuples of arrays not supported
@@ -284,7 +287,9 @@ class StorageWrapper(gym.Wrapper):
 
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:
-                self._flush()
+                # Keep the most recent row in memory so a success() right before reset()
+                # can still mark the episode as successful even if the batch boundary was hit.
+                self._flush(keep_last=True)
 
         return obs_original, reward, terminated, truncated, info
 
