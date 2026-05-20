@@ -15,6 +15,7 @@ from rcs.envs.base import (
     GripperWrapper,
     HandWrapper,
     HardwareEnv,
+    LimitedAbsoluteAction,
     MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
@@ -207,6 +208,8 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
 
         if cfg.relative_to != RelativeTo.NONE:
             env = RelativeActionSpace(env, max_mov=cfg.max_relative_movement, relative_to=cfg.relative_to)
+        else:
+            env = LimitedAbsoluteAction(env, max_mov=cfg.max_relative_movement)
         return CoverWrapper(env)
 
     def config(self) -> FR3HardwareEnvCreatorConfig:

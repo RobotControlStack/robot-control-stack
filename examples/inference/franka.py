@@ -76,6 +76,8 @@ MODEL = "lerobot"
 IP = "localhost"
 PORT = 20000
 CONFIG_PATH = Path(__file__).with_suffix(".json")
+MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
+MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -105,6 +107,8 @@ class InferenceConfig:
     fps: int = FPS
     record_path: str = RECORD_PATH
     n_action_steps: int | None = None
+    max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
+    max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
 
 
 def load_inference_config() -> InferenceConfig:
@@ -369,7 +373,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = CONTROL_MODE
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        hw_cfg.max_relative_movement = 0.5 if CONTROL_MODE == ControlMode.JOINTS else (0.5, np.deg2rad(90))
+        hw_cfg.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["left"].ignore_realtime = True
@@ -392,6 +396,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         sim_cfg_data.control_mode = ControlMode.JOINTS
         sim_cfg_data.relative_to = RELATIVETO
         sim_cfg_data.wrapper_cfg.binary_gripper = True
+        sim_cfg_data.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
 
 
         # if sim_cfg_data.root_frame_objects is None:
