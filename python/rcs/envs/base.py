@@ -593,6 +593,94 @@ class RelativeTo(Enum):
     CONFIGURED_ORIGIN = auto()
     NONE = auto()
 
+class LimitedAbsoluteAction(ActObsInfoWrapper):
+    ABSOLUTE_ACTION_KEY = "limited_absolute_action"
+
+    def __init__(
+        self,
+        env,
+        max_mov: float | tuple[float, float] | None = None,
+    ):
+        super().__init__(env)
+        self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
+        self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
+        self.tquat_key = get_space_keys(LimitedTQuatRelDictType)[0]
+        self._absolute_action: common.Pose | VecType | None = None
+        self.max_mov = max_mov
+
+    def _get_current(self) -> np.ndarray:
+        if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
+            return self._robot.get_joint_position()
+        else:
+            return self._robot.get_cartesian_position()
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if self.max_mov is None:
+            return action
+        if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
+            assert isinstance(self.max_mov, float)
+            low, high = self._robot.get_config().joint_limits
+            curr = self._get_current()
+            delta = action[self.joints_key] - curr
+            limited_delta = np.clip(delta, -self.max_mov, self.max_mov)
+            clipped_joints = np.clip(curr + limited_delta, low, high)
+            action.update(JointsDictType(joints=clipped_joints))
+            self._absolute_action = clipped_joints
+
+        elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TRPY:
+            assert isinstance(self.max_mov, tuple)
+            curr = cast(common.Pose, self._get_current())
+            pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
+            target_pose = common.Pose(
+                translation=action[self.trpy_key][:3],
+                rpy_vector=action[self.trpy_key][3:],
+            )
+            pose_delta = common.Pose(
+                translation=target_pose.translation() - curr.translation(),  # type: ignore
+                rpy_vector=(target_pose * curr.inverse()).rotation_rpy().as_vector(),
+            )
+            limited_delta = pose_delta.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+            clipped_pose = np.concatenate(
+                [
+                    np.clip(curr.translation() + limited_delta.translation(), pose_space.low[:3], pose_space.high[:3]),
+                    (limited_delta * curr).rotation_rpy().as_vector(),
+                ]
+            )
+            action.update(TRPYDictType(xyzrpy=clipped_pose))
+            self._absolute_action = clipped_pose
+
+        elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TQuat:
+            assert isinstance(self.max_mov, tuple)
+            curr = cast(common.Pose, self._get_current())
+            pose_space = cast(gym.spaces.Box, get_space(TQuatDictType).spaces[self.tquat_key])
+            target_pose = common.Pose(
+                translation=action[self.tquat_key][:3],
+                quaternion=action[self.tquat_key][3:],
+            )
+            pose_delta = target_pose * curr.inverse()
+            limited_delta = pose_delta.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+            clipped_pose = np.concatenate(
+                [
+                    np.clip(curr.translation() + limited_delta.translation(), pose_space.low[:3], pose_space.high[:3]),
+                    (limited_delta * curr).rotation_q(),
+                ]
+            )
+            action.update(TQuatDictType(tquat=clipped_pose))  # type: ignore
+            self._absolute_action = clipped_pose
+        else:
+            msg = "Control mode not recognized!"
+            raise ValueError(msg)
+        return action
+
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        if self._absolute_action is not None:
+            info[self.ABSOLUTE_ACTION_KEY] = (
+                list(self._absolute_action.translation()) + list(self._absolute_action.rotation_q())
+                if isinstance(self._absolute_action, common.Pose)
+                else self._absolute_action
+            )
+        return observation, info
+
 
 class RelativeActionSpace(ActObsInfoWrapper):
     DEFAULT_MAX_CART_MOV = 0.5
