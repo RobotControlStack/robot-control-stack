@@ -14,6 +14,7 @@ from rcs.envs.base import (
     ControlMode,
     CoverWrapper,
     GripperWrapper,
+    LimitedAbsoluteAction,
     MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
@@ -363,6 +364,8 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                 env = RelativeActionSpace(
                     env, max_mov=prefixed_cfg.max_relative_movement, relative_to=prefixed_cfg.relative_to
                 )
+            else:
+                env = LimitedAbsoluteAction(env, max_mov=cfg.max_relative_movement)
             envs[robot_name] = env
 
         env = MultiRobotWrapper(envs, prefixed_cfg.robot_to_shared_base_frame)
