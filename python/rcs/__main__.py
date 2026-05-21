@@ -13,6 +13,8 @@ from rcs.lerobot_joint_converter import (
     DEFAULT_HF_DATA_DIR,
     DEFAULT_IMAGE_BATCH_SIZE,
     DEFAULT_JOINTS,
+    DEFAULT_MIRROR,
+    DEFAULT_MIRROR_CAMERA_PAIRS,
     DEFAULT_PER_ROBOT_ARM_DIM,
     DEFAULT_REPO_ID,
     DEFAULT_ROBOT_KEYS,
@@ -24,6 +26,20 @@ from rcs.sim.replayer import replay as replay_dataset
 from rcs.utils import export_episode_videos
 
 app = typer.Typer()
+
+
+def _parse_mirror_camera_pairs(camera_pairs: list[str] | None) -> list[tuple[str, str]]:
+    if camera_pairs is None:
+        return list(DEFAULT_MIRROR_CAMERA_PAIRS)
+
+    parsed = []
+    for camera_pair in camera_pairs:
+        left_name, sep, right_name = camera_pair.partition(":")
+        if not left_name or not sep or not right_name:
+            msg = f"Invalid --mirror-camera-pair '{camera_pair}', expected LEFT_NAME:RIGHT_NAME"
+            raise typer.BadParameter(msg)
+        parsed.append((left_name, right_name))
+    return parsed
 
 
 def _exec_import_statements(imports: list[str] | None) -> None:
@@ -169,12 +185,29 @@ def lerobot_convert(
     ] = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
+    mirror: Annotated[
+        bool,
+        typer.Option(
+            help="Append a mirrored copy of each converted episode, including mirrored images and mirrored left/right arm state."
+        ),
+    ] = DEFAULT_MIRROR,
+    mirror_camera_pairs: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mirror-camera-pair",
+            help=(
+                "Camera names that should be swapped before mirroring, formatted as LEFT_NAME:RIGHT_NAME. "
+                "Repeat for multiple pairs. Example: --mirror-camera-pair image_left_wrist:image_right_wrist"
+            ),
+        ),
+    ] = None,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
     video_backend: Annotated[
         str | None, typer.Option(help="Video backend to use if image data is video encoded e.g. torchcodec")
     ] = None,
 ):
     cameras = camera_specs_to_configs(camera_specs) if camera_specs is not None else list(DEFAULT_CAMERAS)
+    parsed_mirror_camera_pairs = _parse_mirror_camera_pairs(mirror_camera_pairs)
     run_conversion(
         root=output,
         dataset_paths=dataset_paths or list(DEFAULT_DATASET_PATHS),
@@ -189,6 +222,8 @@ def lerobot_convert(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        mirror=mirror,
+        mirror_camera_pairs=parsed_mirror_camera_pairs,
         success=success,
         n=n,
         video_encoding=video_encoding,

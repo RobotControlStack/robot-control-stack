@@ -57,6 +57,8 @@ DEFAULT_CAMERAS = [
 ]
 DEFAULT_IMAGE_BATCH_SIZE = 32
 DEFAULT_PER_ROBOT_ARM_DIM = 7
+DEFAULT_MIRROR = False
+DEFAULT_MIRROR_CAMERA_PAIRS = [("image_left_wrist", "image_right_wrist")]
 
 
 def parse_camera_spec(spec: str) -> CamConversionConfig:
@@ -102,6 +104,8 @@ class JointDatasetConverter:
         per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
         binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
         gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+        mirror: bool = DEFAULT_MIRROR,
+        mirror_camera_pairs: list[tuple[str, str]] | None = None,
         video_encoding: bool = False,
         video_backend: str | None = None,
     ):
@@ -121,15 +125,19 @@ class JointDatasetConverter:
         self.state_dim = len(self.robot_keys) * self.per_robot_state_dim
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
+        self.mirror = mirror
+        self.mirror_camera_pairs = mirror_camera_pairs or list(DEFAULT_MIRROR_CAMERA_PAIRS)
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_OFFSETS[self.gripper_type]
+        self.q_home = np.asarray(rcs.ROBOTS[robot_type].q_home, dtype=np.float64)
         self.ik = rcs.common.Pin(
             rcs.ROBOTS[robot_type].mjcf_model_path,
             rcs.ROBOTS[robot_type].attachment_site,
         )
         self.camera_resizers = {camera.name: v2.Resize(camera.resolution) for camera in self.cameras}
+        self._mirror_matrix = np.diag([1.0, -1.0, 1.0])
 
         self.lrds = LeRobotDataset.create(
             repo_id=self.repo_id,
@@ -187,8 +195,11 @@ class JointDatasetConverter:
         for (episode_id,) in uuids:
             table = self._fetch_transition_table(episode_id)
 
-            converted = self.parse_episode(episode_id, table, success)
-            if converted:
+            converted_any = self.parse_episode(episode_id, table, success, mirrored=False)
+            if self.mirror:
+                converted_any = self.parse_episode(episode_id, table, success, mirrored=True) or converted_any
+
+            if converted_any:
                 n -= 1
                 if n == 0:
                     break
@@ -262,92 +273,195 @@ class JointDatasetConverter:
             return bool(np.isnan(value))
         return False
 
-    def _build_observation_state(self, row: pd.Series) -> np.ndarray:
-        vectors = []
+    def _mirrored_robot_key(self, robot_key: str) -> str:
+        if len(self.robot_keys) != 2:
+            msg = "--mirror currently expects exactly two robot keys"
+            raise ValueError(msg)
+        return self.robot_keys[1] if robot_key == self.robot_keys[0] else self.robot_keys[0]
+
+    def _mirror_pose(self, pose: rcs.common.Pose) -> rcs.common.Pose:
+        mirrored_translation = self._mirror_matrix @ pose.translation()
+        mirrored_rotation = self._mirror_matrix @ pose.rotation_m() @ self._mirror_matrix
+        return rcs.common.Pose(rotation=mirrored_rotation, translation=mirrored_translation)
+
+    def _inverse_with_seeds(self, target_pose: rcs.common.Pose, seeds: list[np.ndarray]) -> np.ndarray | None:
+        for seed in seeds:
+            ik_joints = self.ik.inverse(target_pose, seed, tcp_offset=self.tcp_offset)
+            if ik_joints is not None:
+                return np.asarray(ik_joints, dtype=np.float32)
+        return None
+
+    def _mirror_joint_state(
+        self,
+        joints: np.ndarray,
+        seeds: list[np.ndarray],
+        row: pd.Series,
+        robot_key: str,
+        what: str,
+    ) -> np.ndarray | None:
+        pose = self.ik.forward(joints, self.tcp_offset)
+        mirrored_pose = self._mirror_pose(pose)
+        mirrored_joints = self._inverse_with_seeds(mirrored_pose, seeds)
+        if mirrored_joints is None:
+            msg = f"IK failed for mirrored {what} of robot '{robot_key}' at step {row['step']}, ignoring step"
+            warnings.warn(msg, stacklevel=1)
+            return None
+        return mirrored_joints
+
+    def _mirror_cartesian_action(self, absolute_action: np.ndarray) -> rcs.common.Pose:
+        return self._mirror_pose(
+            rcs.common.Pose(
+                translation=absolute_action[:3],
+                quaternion=absolute_action[3:7],
+            )
+        )
+
+    def _build_state_vectors(
+        self,
+        row: pd.Series,
+        mirrored: bool,
+        prev_observation_seeds: dict[str, np.ndarray],
+        prev_action_seeds: dict[str, np.ndarray],
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        observation_vectors = []
+        action_vectors = []
+        next_observation_seeds = prev_observation_seeds.copy()
+        next_action_seeds = prev_action_seeds.copy()
+
         for robot_key in self.robot_keys:
-            joints = row[f"observation_joints_{robot_key}"]
-            gripper = row[f"observation_gripper_{robot_key}"]
-            if self._is_missing(joints) or self._is_missing(gripper):
-                msg = f"Missing observation state for robot '{robot_key}' at step {row['step']}"
-                raise ValueError(msg)
-
-            joints_vec = np.asarray(joints, dtype=np.float32)
-            gripper_vec = np.asarray(gripper, dtype=np.float32)
-            if joints_vec.shape != (self.per_robot_arm_dim,) or gripper_vec.shape != (1,):
-                msg = (
-                    f"Unexpected observation shapes for robot '{robot_key}' at step {row['step']}: "
-                    f"joints={joints_vec.shape}, gripper={gripper_vec.shape}"
-                )
-                raise ValueError(msg)
-            gripper_vec = self._maybe_binarize_gripper(gripper_vec)
-            vectors.append(np.concatenate([joints_vec, gripper_vec]).astype(np.float32))
-
-        return np.concatenate(vectors).astype(np.float32)
-
-    def _convert_action_to_joint_space(self, row: pd.Series) -> np.ndarray | None:
-        actions = []
-        for robot_key in self.robot_keys:
-            observation_joints = row[f"observation_joints_{robot_key}"]
-            absolute_action = row[f"absolute_action_{robot_key}"]
-            action_gripper = row[f"action_gripper_{robot_key}"]
+            source_robot_key = self._mirrored_robot_key(robot_key) if mirrored else robot_key
+            observation_joints = row[f"observation_joints_{source_robot_key}"]
+            observation_gripper = row[f"observation_gripper_{source_robot_key}"]
+            absolute_action = row[f"absolute_action_{source_robot_key}"]
+            action_gripper = row[f"action_gripper_{source_robot_key}"]
             if (
                 self._is_missing(observation_joints)
+                or self._is_missing(observation_gripper)
                 or self._is_missing(absolute_action)
                 or self._is_missing(action_gripper)
             ):
-                msg = f"Missing action inputs for robot '{robot_key}' at step {row['step']}"
+                msg = f"Missing state inputs for robot '{source_robot_key}' at step {row['step']}"
                 raise ValueError(msg)
 
             observation_joints_vec = np.asarray(observation_joints, dtype=np.float64)
+            observation_gripper_vec = self._maybe_binarize_gripper(np.asarray(observation_gripper, dtype=np.float32))
             absolute_action_vec = np.asarray(absolute_action, dtype=np.float64)
-            action_gripper_vec = np.asarray(action_gripper, dtype=np.float32)
+            action_gripper_vec = self._maybe_binarize_gripper(np.asarray(action_gripper, dtype=np.float32))
             if (
                 observation_joints_vec.shape != (self.per_robot_arm_dim,)
+                or observation_gripper_vec.shape != (1,)
                 or absolute_action_vec.shape != (self.per_robot_arm_dim,)
                 or action_gripper_vec.shape != (1,)
             ):
                 msg = (
-                    f"Unexpected action shapes for robot '{robot_key}' at step {row['step']}: "
+                    f"Unexpected state shapes for robot '{source_robot_key}' at step {row['step']}: "
                     f"observation_joints={observation_joints_vec.shape}, "
+                    f"observation_gripper={observation_gripper_vec.shape}, "
                     f"absolute_action={absolute_action_vec.shape}, action_gripper={action_gripper_vec.shape}"
                 )
                 raise ValueError(msg)
-            action_gripper_vec = self._maybe_binarize_gripper(action_gripper_vec)
 
-            if self.joints:
-                arm_action_vec = absolute_action_vec.astype(np.float32)
-            else:
-                target_pose = rcs.common.Pose(
-                    translation=absolute_action_vec[:3],
-                    quaternion=absolute_action_vec[3:7],
+            if mirrored:
+                mirrored_observation_joints = self._mirror_joint_state(
+                    observation_joints_vec,
+                    [
+                        prev_observation_seeds.get(robot_key, observation_joints_vec).astype(np.float64),
+                        observation_joints_vec,
+                        self.q_home,
+                    ],
+                    row,
+                    robot_key,
+                    "observation",
                 )
-                ik_joints: np.ndarray | None = self.ik.inverse(
-                    target_pose, observation_joints_vec, tcp_offset=self.tcp_offset
+                if mirrored_observation_joints is None:
+                    return None
+
+                if self.joints:
+                    source_action_joints = absolute_action_vec
+                    action_pose = self.ik.forward(source_action_joints, self.tcp_offset)
+                    mirrored_action_pose = self._mirror_pose(action_pose)
+                else:
+                    mirrored_action_pose = self._mirror_cartesian_action(absolute_action_vec)
+                mirrored_action_joints = self._inverse_with_seeds(
+                    mirrored_action_pose,
+                    [
+                        prev_action_seeds.get(robot_key, mirrored_observation_joints.astype(np.float64)).astype(
+                            np.float64
+                        ),
+                        mirrored_observation_joints.astype(np.float64),
+                        prev_observation_seeds.get(robot_key, observation_joints_vec).astype(np.float64),
+                        self.q_home,
+                    ],
                 )
-                if ik_joints is None:
-                    msg = f"IK failed for robot '{robot_key}' at step {row['step']}, ignoring step"
+                if mirrored_action_joints is None:
+                    msg = f"IK failed for mirrored action of robot '{robot_key}' at step {row['step']}, ignoring step"
                     warnings.warn(msg, stacklevel=1)
                     return None
-                arm_action_vec = np.asarray(ik_joints, dtype=np.float32)
 
-            actions.append(np.concatenate([arm_action_vec, action_gripper_vec]).astype(np.float32))
+                observation_arm_vec = mirrored_observation_joints.astype(np.float32)
+                action_arm_vec = np.asarray(mirrored_action_joints, dtype=np.float32)
+                next_observation_seeds[robot_key] = observation_arm_vec.astype(np.float64)
+                next_action_seeds[robot_key] = action_arm_vec.astype(np.float64)
+            else:
+                observation_arm_vec = observation_joints_vec.astype(np.float32)
+                if self.joints:
+                    action_arm_vec = absolute_action_vec.astype(np.float32)
+                else:
+                    target_pose = rcs.common.Pose(
+                        translation=absolute_action_vec[:3],
+                        quaternion=absolute_action_vec[3:7],
+                    )
+                    ik_joints = self._inverse_with_seeds(
+                        target_pose,
+                        [
+                            observation_joints_vec,
+                            self.q_home,
+                        ],
+                    )
+                    if ik_joints is None:
+                        msg = f"IK failed for robot '{robot_key}' at step {row['step']}, ignoring step"
+                        warnings.warn(msg, stacklevel=1)
+                        return None
+                    action_arm_vec = ik_joints
 
-        concatenated = np.concatenate(actions).astype(np.float32)
-        if concatenated.shape != (self.state_dim,):
-            msg = f"Unexpected concatenated action shape {concatenated.shape} at step {row['step']}"
+            observation_vectors.append(np.concatenate([observation_arm_vec, observation_gripper_vec]).astype(np.float32))
+            action_vectors.append(np.concatenate([action_arm_vec, action_gripper_vec]).astype(np.float32))
+
+        observation_vector = np.concatenate(observation_vectors).astype(np.float32)
+        action_vector = np.concatenate(action_vectors).astype(np.float32)
+        if observation_vector.shape != (self.state_dim,):
+            msg = f"Unexpected observation shape {observation_vector.shape} at step {row['step']}"
             raise ValueError(msg)
-        return concatenated
+        if action_vector.shape != (self.state_dim,):
+            msg = f"Unexpected action shape {action_vector.shape} at step {row['step']}"
+            raise ValueError(msg)
 
-    def _prepare_transition_table(self, table: pd.DataFrame) -> pd.DataFrame:
+        prev_observation_seeds.clear()
+        prev_observation_seeds.update(next_observation_seeds)
+        prev_action_seeds.clear()
+        prev_action_seeds.update(next_action_seeds)
+        return observation_vector, action_vector
+
+    def _prepare_transition_table(self, table: pd.DataFrame, mirrored: bool) -> pd.DataFrame:
         if len(table) == 0:
             return table
 
-        df = table.copy()  # noqa: PD901
-        df["observation_state"] = df.apply(self._build_observation_state, axis=1)
-        df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
+        rows = []
+        prev_observation_seeds: dict[str, np.ndarray] = {}
+        prev_action_seeds: dict[str, np.ndarray] = {}
+        for _, row in table.iterrows():
+            converted = self._build_state_vectors(row, mirrored, prev_observation_seeds, prev_action_seeds)
+            if converted is None:
+                continue
+            observation_state, action_vector = converted
+            row_copy = row.copy()
+            row_copy["observation_state"] = observation_state
+            row_copy["action_vector"] = action_vector
+            rows.append(row_copy)
 
-        df = df[df["action_vector"].notna()]  # noqa: PD901
-
+        df = pd.DataFrame(rows)
+        if len(df) == 0:
+            return df
         prev_action: np.ndarray | None = None
         keep_mask = []
         for action_vec in df["action_vector"]:
@@ -357,8 +471,16 @@ class JointDatasetConverter:
 
         return df.loc[keep_mask].reset_index(drop=True)
 
-    def parse_episode(self, episode_id: str, table: pd.DataFrame, success: bool):
-        table = self._prepare_transition_table(table)
+    def _mirror_image_name(self, image_name: str) -> str:
+        for left_name, right_name in self.mirror_camera_pairs:
+            if image_name == left_name:
+                return right_name
+            if image_name == right_name:
+                return left_name
+        return image_name
+
+    def parse_episode(self, episode_id: str, table: pd.DataFrame, success: bool, mirrored: bool = False):
+        table = self._prepare_transition_table(table, mirrored=mirrored)
         if len(table) == 0:
             return False
 
@@ -383,7 +505,12 @@ class JointDatasetConverter:
                 continue
             images = frames_by_step[step]
 
-            frame: dict[str, Any] = {camera.dataset_key: images[camera.name] for camera in self.cameras}
+            frame_images = {}
+            for camera in self.cameras:
+                image = images[self._mirror_image_name(camera.name)] if mirrored else images[camera.name]
+                frame_images[camera.dataset_key] = np.ascontiguousarray(np.flip(image, axis=1)) if mirrored else image
+
+            frame: dict[str, Any] = frame_images
             frame["observation.state"] = curr["observation_state"]
             frame["action"] = curr["action_vector"]
             frame["task"] = str(curr["instruction"])
@@ -430,6 +557,8 @@ def run_conversion(
     per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
     binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
     gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+    mirror: bool = DEFAULT_MIRROR,
+    mirror_camera_pairs: list[tuple[str, str]] | None = None,
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
@@ -451,6 +580,8 @@ def run_conversion(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        mirror=mirror,
+        mirror_camera_pairs=mirror_camera_pairs,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )
