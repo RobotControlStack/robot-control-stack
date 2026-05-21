@@ -141,7 +141,7 @@ cd robot-control-stack
 # setup environment
 conda create -n rcs python=3.11
 conda activate rcs
-conda install conda-forge::glfw
+conda install -c conda-forge urdfdom urdfdom_headers glfw
 
 # or sudo apt install $(cat debian_deps.txt)
 pip install 'pip>=25.1'
