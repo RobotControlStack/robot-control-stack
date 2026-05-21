@@ -326,4 +326,4 @@ class StorageWrapper(gym.Wrapper):
         self.queue.put(self.QueueSentinel)
         wait([self._writer_future])
 
-        StorageWrapper.consolidate(self.base_dir, self.schema)
+        # StorageWrapper.consolidate(self.base_dir, self.schema)

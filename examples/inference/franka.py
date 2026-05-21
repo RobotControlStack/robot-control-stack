@@ -22,7 +22,7 @@ from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
 
 import rcs
-from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
+# from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
 
@@ -39,8 +39,8 @@ ROBOT2ID = {
 }
 
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+# ROBOT_INSTANCE = RobotPlatform.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
 CAMERA_DICT = {
@@ -71,6 +71,7 @@ INSTRUCTION = "pick up the black cube with the right arm and place it into the b
 FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
+# RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
 RECORD_PATH = "inference_recordings"
 MODEL = "lerobot"
 IP = "localhost"
@@ -373,6 +374,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = CONTROL_MODE
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        hw_cfg.wrapper_cfg.binary_gripper = True
         hw_cfg.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
@@ -386,12 +388,11 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
     else:
         # FR3
 
-        scene = BinSortEnvConfig()
+        # scene = BinSortEnvConfig()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
         )
-        sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
         sim_cfg_data.control_mode = ControlMode.JOINTS
         sim_cfg_data.relative_to = RELATIVETO

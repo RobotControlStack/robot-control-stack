@@ -56,7 +56,8 @@ RUN chmod +x /usr/local/bin/link-editable-source \
     && uv pip install /opt/rcs-src/extensions/rcs_zed \
     && uv pip install /opt/rcs-src/examples/teleop/SimPublisher \
     && uv pip install /opt/rcs-src/2f85-python-driver \
-    && uv pip install /opt/rcs-src/vlagents
+    && uv pip install /opt/rcs-src/vlagents \
+    && uv pip install /opt/rcs-src/rcs_duobench
 
 WORKDIR /workspace/robot-control-stack
 
