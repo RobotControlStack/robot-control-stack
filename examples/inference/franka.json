@@ -1,0 +1,20 @@
+{
+  "vlagents_host": "localhost",
+  "vlagents_port": 20000,
+  "vlagents_model": "lerobot",
+  "instruction": "open the box with the right arm and place the cube inside the box with the left arm",
+  "robot_keys": [
+    "left",
+    "right"
+  ],
+  "jpeg_encoding": true,
+  "on_same_machine": false,
+  "fps": 30,
+  "record_path": "inference_recordings_hinge_chest_duobench_act_hinge_chest_real_2026-05-18_21-55-00",
+  "n_action_steps": 100,
+  "max_rel_mov_joints": 0.08726646259971647,
+  "max_rel_mov_cart": [
+    0.5,
+    1.5707963267948966
+  ]
+}

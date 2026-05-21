@@ -518,11 +518,11 @@ void Franka::joint_controller() {
   this->set_default_robot_behavior();
 
   // high collision threshold values for high impedance
-  // this->robot.setCollisionBehavior(
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   // deoxys/config/joint-impedance-controller.yml
   common::Vector7d Kp;

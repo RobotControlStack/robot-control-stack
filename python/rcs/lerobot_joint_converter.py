@@ -9,11 +9,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import torch
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from rcs._core.common import GripperType, RobotType
-from torchvision.io import decode_jpeg
-from torchvision.transforms import v2
 
 import rcs
 
@@ -435,6 +431,10 @@ def run_conversion(
     video_encoding: bool = False,
     video_backend: str | None = None,
 ) -> None:
+    import torch
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    from torchvision.io import decode_jpeg
+    from torchvision.transforms import v2
     robot_type_converted = RobotType(robot_type)
     gripper_type_converted = GripperType(gripper_type)
     converter = JointDatasetConverter(

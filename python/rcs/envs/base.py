@@ -3,6 +3,7 @@
 import copy
 import logging
 from enum import Enum, auto
+from time import sleep
 from typing import Annotated, Any, ClassVar, Literal, TypeAlias, cast
 
 import gymnasium as gym
@@ -394,7 +395,17 @@ class RobotWrapper(ActObsInfoWrapper):
         self.prev_action = None
         self.robot.reset()
         if self.home_on_reset:
-            self.robot.move_home()
+            exception = True
+            # sleep(1)
+            while exception: 
+                try:
+                    self.robot.move_home()
+                    exception = False
+                except Exception:
+                    # sleep(0.1)
+                    self.robot.automatic_error_recovery()
+                    sleep(0.1)
+            # sleep(4)
         return super().reset(seed=seed, options=options)
 
     def close(self):
@@ -606,6 +617,7 @@ class LimitedAbsoluteAction(ActObsInfoWrapper):
         self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
         self.tquat_key = get_space_keys(LimitedTQuatRelDictType)[0]
         self._absolute_action: common.Pose | VecType | None = None
+        self._robot = cast(common.Robot, self.get_wrapper_attr("robot"))
         self.max_mov = max_mov
 
     def _get_current(self) -> np.ndarray:
