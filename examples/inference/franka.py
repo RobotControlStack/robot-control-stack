@@ -44,8 +44,8 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
 CAMERA_DICT = {
-    "left_wrist": "230422272017",
-    "right_wrist": "230422271040",
+    "right_wrist": "230422272017",
+    "left_wrist": "230422271040",
     # "side": "243522070385",
     # "bird_eye": "243522070364",
 }
