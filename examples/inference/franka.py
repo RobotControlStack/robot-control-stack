@@ -170,7 +170,7 @@ class ModelInference:
         cameras = {}
         for frame in obs["frames"]:
             cameras[frame] = obs["frames"][frame]["rgb"]["data"]
-            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.LANCZOS))
+            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
 
         state = []
         for robot in self._cfg.robot_keys:
