@@ -204,8 +204,8 @@ class RobotEnv(gym.Env):
     y
     """
 
-    # TODO: home pos reset set to false
-    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = False):
+    # TODO: home pos reset set to false  
+    def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = True):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.action_space: gym.spaces.Dict
@@ -727,18 +727,17 @@ class GripperWrapper(ActObsInfoWrapper):
         action = copy.deepcopy(action)
         assert self.gripper_key in action, "Gripper action not found."
 
-        gripper_action = action[self.gripper_key]
-        if isinstance(gripper_action, int | float):
-            gripper_action = [gripper_action]  # type: ignore
-        if self.binary:
-            gripper_action = np.round(gripper_action)
-        gripper_action = np.clip(gripper_action, 0.0, 1.0)
+        gripper_action = np.asarray(action[self.gripper_key], dtype=float).reshape(-1)
+        assert gripper_action.size > 0, "Gripper action must contain at least one value."
+
+        gripper_cmd = float(np.clip(gripper_action[0], 0.0, 1.0))
 
         if self.binary:
-            self.gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self.gripper.open()
+            gripper_cmd = float(np.round(gripper_cmd))
+            self.gripper.grasp() if gripper_cmd == self.BINARY_GRIPPER_CLOSED[0] else self.gripper.open()
         else:
-            self.gripper.set_normalized_width(next(gripper_action))
-        self._last_gripper_cmd = gripper_action
+            self.gripper.set_normalized_width(gripper_cmd)
+        self._last_gripper_cmd = [gripper_cmd]
         del action[self.gripper_key]
         return action
 

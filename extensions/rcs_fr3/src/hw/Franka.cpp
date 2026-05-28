@@ -255,10 +255,11 @@ void Franka::osc_set_cartesian_position(
 
 // method to stop thread
 void Franka::stop_control_thread() {
-  if (this->control_thread.has_value() &&
-      this->running_controller != Controller::none) {
+  if (this->control_thread.has_value()) {
     this->running_controller = Controller::none;
-    this->control_thread->join();
+    if (this->control_thread->joinable()) {
+      this->control_thread->join();
+    }
     this->control_thread.reset();
   }
 }
@@ -629,6 +630,7 @@ void Franka::move_home() {
 }
 
 void Franka::automatic_error_recovery() {
+  this->stop_control_thread();
   this->robot.automaticErrorRecovery();
 }
 

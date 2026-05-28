@@ -47,25 +47,28 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
     return os.environ[username_key], os.environ[password_key]
 
 
-def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False):
-    with Desk.fci(ip, username, password, unlock=unlock):
-        robot_cfg = default_fr3_hw_robot_cfg()
-        robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-        robot_cfg.speed_factor = 0.2
-        ik = rcs.common.Pin(
-            robot_cfg.kinematic_model_path,
-            robot_cfg.attachment_site,
-            urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
-        f = rcs_fr3.hw.Franka(ip, ik)
-        f.set_config(robot_cfg)
+def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False, franka_hand: bool = False):
+    # with Desk.fci(ip, username, password, unlock=unlock):
+    robot_cfg = default_fr3_hw_robot_cfg()
+    # robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+    robot_cfg.speed_factor = 0.2
+    ik = rcs.common.Pin(
+        robot_cfg.kinematic_model_path,
+        robot_cfg.attachment_site,
+        urdf=robot_cfg.kinematic_model_path.endswith(".urdf"),
+    )
+
+    f = rcs_fr3.hw.Franka(ip, ik)
+    f.set_config(robot_cfg)
+    if franka_hand:
+        
         config_hand = rcs_fr3.hw.FHConfig()
         g = rcs_fr3.hw.FrankaHand(ip, config_hand)
         if shut:
             g.shut()
         else:
             g.open()
-        f.move_home()
+    f.move_home()
 
 
 def info(ip: str, username: str, password: str, include_hand: bool = False):

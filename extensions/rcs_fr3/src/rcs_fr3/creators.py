@@ -58,7 +58,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         control_mode: ControlMode,
         robot_cfg: hw.FR3Config,
         collision_guard: str | PathLike | None = None,
-        gripper_cfg: hw.FHConfig | rcs.hand.tilburg_hand.THConfig | None = None,
+        gripper_cfg: hw.FHConfig | rcs.hand.tilburg_hand.THConfig | rcs.common.Gripper | None = None,
         camera_set: HardwareCameraSet | None = None,
         max_relative_movement: float | tuple[float, float] | None = None,
         relative_to: RelativeTo = RelativeTo.LAST_STEP,
@@ -100,7 +100,9 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         elif isinstance(gripper_cfg, rcs.hand.tilburg_hand.THConfig):
             hand = TilburgHand(gripper_cfg)
             env = HandWrapper(env, hand, binary=True)
-
+        elif isinstance(gripper_cfg, rcs.common.Gripper):
+            env = GripperWrapper(env, gripper_cfg, binary=True)
+       
         if camera_set is not None:
             camera_set.start()
             camera_set.wait_for_frames(60)

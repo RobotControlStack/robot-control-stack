@@ -93,7 +93,7 @@ class HardwareCameraSet(BaseCameraSet):
     """
 
     def __init__(
-        self, cameras: Sequence[HardwareCamera], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 1000
+        self, cameras: Sequence[HardwareCamera], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 500
     ):
         self.cameras = cameras
         self.camera_dict, self._camera_names = self._cameras_util()
@@ -225,7 +225,10 @@ class HardwareCameraSet(BaseCameraSet):
     def warm_up(self):
         for _ in range(self.warm_up_disposal_frames):
             for camera_name in self.camera_names:
-                self.poll_frame(camera_name)
+                try:
+                    self.poll_frame(camera_name)
+                except Exception as e:
+                    self._logger.warning("Warm-up frame poll failed for camera '%s': %s", camera_name, e)
             self.rate_limiter()
 
     def calibrate(self) -> bool:
@@ -236,12 +239,23 @@ class HardwareCameraSet(BaseCameraSet):
         return True
 
     def polling_thread(self, warm_up: bool = True):
-        for camera in self.cameras:
-            camera.open()
-        if warm_up:
-            self.warm_up()
+        try:
+            for camera in self.cameras:
+                camera.open()
+            if warm_up:
+                self.warm_up()
+        except Exception as e:
+            self._logger.error("Camera polling setup failed: %s", e)
+            self.running = False
+            return
+
         while self.running:
-            frame_set = self.poll_frame_set()
+            try:
+                frame_set = self.poll_frame_set()
+            except Exception as e:
+                self._logger.warning("Camera poll failed, retrying: %s", e)
+                self.rate_limiter()
+                continue
             # buffering
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
