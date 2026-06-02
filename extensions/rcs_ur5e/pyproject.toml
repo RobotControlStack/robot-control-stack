@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_ur5e"
-version = "0.7.0"
+version = "0.7.1"
 description = "RCS UR5e module"
-dependencies = ["rcs>=0.7.0", "ur_rtde==1.6.1"]
+dependencies = ["rcs>=0.7.1", "ur_rtde==1.6.1"]
 readme = "README.md"
 maintainers = [
   { name = "Johannes Hechtl", email = "johannes.hechtl@siemens.com" },

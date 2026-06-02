@@ -12,10 +12,10 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_robotics_library"
-version = "0.7.0"
+version = "0.7.1"
 description = "RCS robotics library integration"
 readme = "README.md"
-dependencies = ["rcs>=0.7.0"]
+dependencies = ["rcs>=0.7.1"]
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
 authors = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },

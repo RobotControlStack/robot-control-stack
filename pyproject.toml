@@ -14,7 +14,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs"
-version = "0.7.0"
+version = "0.7.1"
 description = "A Lean Ecosystem for Robot Learning at Scale"
 dependencies = [
   "websockets>=11.0",
