@@ -187,3 +187,37 @@ class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
             "right": copy.deepcopy(rcs.DEFAULT_TRANSFORMS["FR3_DUOMOUNT_RIGHT_ROBOT"]),
         }
         return cfg
+
+class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
+    right_ip = "192.168.100.1"
+
+    def config(self) -> FR3MultiHardwareEnvCreatorConfig:
+        base = DefaultFR3HardwareEnv()
+        base.ip = self.right_ip
+        right_cfg = base.config()
+        right_cfg.robot_cfg.async_control = True
+        right_cfg.robot_cfg.ignore_realtime = True
+        if isinstance(right_cfg.gripper_cfg, hw.FHConfig):
+            right_cfg.gripper_cfg.async_control = True
+
+        return FR3MultiHardwareEnvCreatorConfig(
+            control_mode=ControlMode.CARTESIAN_TRPY,
+            robot_cfgs={
+                "right": right_cfg.robot_cfg,
+            },
+            gripper_cfgs={
+                "right": right_cfg.gripper_cfg,
+            },
+            camera_cfgs=copy.deepcopy(right_cfg.camera_cfgs),
+            max_relative_movement=(0.5, np.deg2rad(90)),
+            relative_to=RelativeTo.LAST_STEP,
+            # this is an example how the robots are oriented to each other
+            # in this example the have an aloha like mounting, facing each other
+            # with a distance of 1.5m
+            robot_to_shared_base_frame={
+                "right": common.Pose(
+                    translation=np.array([0, 0, 0]),
+                    rpy_vector=np.array([0, 0, 0]),
+                ),
+            },
+        )
