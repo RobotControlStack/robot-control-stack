@@ -63,7 +63,7 @@ if HAS_SIMPUB:
 class QuestOperator(BaseOperator):
 
     control_mode = (ControlMode.CARTESIAN_TQuat, RelativeTo.CONFIGURED_ORIGIN)
-    controller_names: list[str] = ["left", "right"]  # noqa: RUF012
+    controller_names: list[str] = ["right"]  # noqa: RUF012
 
     def __init__(self, config: "QuestConfig", sim: Sim | None = None):
         super().__init__(config, sim)
