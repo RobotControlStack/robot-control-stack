@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
 from rcs.operator.gello import GelloConfig, GelloOperator
@@ -18,38 +18,36 @@ logger = logging.getLogger(__name__)
 
 
 ROBOT2IP = {
-    "right": "192.168.102.1",
-    "left": "192.168.101.1",
+    # "right": "192.168.102.1",
+    "right": "192.168.100.1",
 }
 ROBOT2ID = {
-    "left": "1",
+    # "left": "0",
     "right": "0",
 }
 
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+# ROBOT_INSTANCE = RobotPlatform.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 RECORD_FPS = 30
 # set camera dict to none disable cameras
-# CAMERA_DICT = {
-#     "left_wrist": "230422272017",
-#     "right_wrist": "230422271040",
-#     "side": "243522070385",
-#     "bird_eye": "243522070364",
-# }
-CAMERA_DICT = None
-ZED_CAMERA_DICT = {
-    "zed": "19928076",
+CAMERA_DICT = {
+    "wrist": "243222074728",
+    "side": "327122079439",
 }
-MQ3_ADDR = "10.42.0.1"
+# CAMERA_DICT = None
+ZED_CAMERA_DICT = None
+MQ3_ADDR = "10.134.110.182" # Jin: IPv4 address of the wifi you are connected, join the same network with Quest
+# Jin: After configuring this, run quest_align_frame.py, THEN start the IRIS app. If you see the controller pose in print, youre good
+# Jin: After that, exit quest_align_frame.py (ctrl c a few times), then run franka.py; then you are ready to teleop
 INCLUDE_DEPTH = False
 
-# DIGIT_DICT = {
-#     "digit_right_left": "D21182",
-#     "digit_right_right": "D21193"
-# }
-DIGIT_DICT = None
+DIGIT_DICT = {
+    "digit_right_left": "D20747",
+    "digit_right_right": "D21319"
+}
+# DIGIT_DICT = None
 
 
 DATASET_PATH = "test_iris"
@@ -57,11 +55,14 @@ INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
 robot2world = {
+    # "right": rcs.common.Pose(
+    #     translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
+    # ),
+    # "left": rcs.common.Pose(
+        # translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+    # ),
     "right": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
-    ),
-    "left": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+        translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])
     ),
 }
 
@@ -83,12 +84,12 @@ config = QuestConfig(
 
 def get_env():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv
+        from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-        env_creator = FrankaDuoEnv()
-        env_creator.left_ip = ROBOT2IP["left"]
-        env_creator.right_ip = ROBOT2IP["right"]
+        env_creator = SingleArmFR3MultiHardwareEnv()
+        # env_creator.left_ip = ROBOT2IP["left"]
+        env_creator.ip = ROBOT2IP["right"]
         hw_cfg = env_creator.config()
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
@@ -147,7 +148,7 @@ def get_env():
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = EmptyWorldFR3()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500
