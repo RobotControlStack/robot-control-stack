@@ -33,6 +33,7 @@ from rcs import (
 class EmptyWorldFR3(SimEnvCreator):
     robot_prefix_template = "robot"
     gripper_prefix_template = "gripper"
+    _robot_name = "right"
 
     def config(self) -> SimEnvCreatorConfig:
         q_home = rcs.ROBOTS[RobotType.FR3].q_home
@@ -79,7 +80,7 @@ class EmptyWorldFR3(SimEnvCreator):
             q_home=q_home,
         )
 
-        robot_cfgs: dict[str, SimRobotConfig] = {"robot": robot_cfg}
+        robot_cfgs: dict[str, SimRobotConfig] = {self._robot_name: robot_cfg}
         sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=500)
 
         control_mode: ControlMode = ControlMode.CARTESIAN_TQuat
@@ -100,7 +101,7 @@ class EmptyWorldFR3(SimEnvCreator):
             min_actuator_width=0.0,
             gripper_type=GripperType.FrankaHand,
         )
-        gripper_cfgs: dict[str, SimGripperConfig] = {"robot": gripper_cfg}
+        gripper_cfgs: dict[str, SimGripperConfig] = {self._robot_name: gripper_cfg}
         camera_cfgs: dict[str, SimCameraConfig] | None = {
             "bird_eye": SimCameraConfig(
                 identifier="bird_eye",
@@ -120,7 +121,7 @@ class EmptyWorldFR3(SimEnvCreator):
         max_relative_movement: float | tuple[float, float] | None = None
         relative_to: RelativeTo = RelativeTo.LAST_STEP
 
-        robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = {"robot": rcs.common.Pose()}
+        robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = {self._robot_name: rcs.common.Pose()}
         wrapper_cfg: WrapperConfig = WrapperConfig(binary_gripper=True, home_on_reset=True)
         headless = False
         add_gravcomp = True
@@ -149,11 +150,11 @@ class EmptyWorldFR3(SimEnvCreator):
                 * rcs.common.Pose(
                     translation=np.array([0.062, -0.009, 0.05245]), rpy_vector=np.array([0.0, np.pi, -np.pi / 2])
                 ),
-                robot_name="robot",
+                robot_name=self._robot_name,
             ),
         }
         gripper_offsets: dict[str, rcs.common.Pose] | None = {
-            "robot": rcs.common.Pose(rotation=FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0]))
+            self._robot_name: rcs.common.Pose(rotation=FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0]))
         }
         return SimEnvCreatorConfig(
             robot_cfgs=robot_cfgs,
