@@ -39,6 +39,9 @@ dependencies = [
   "simplejpeg",
   "mujoco==3.2.6",
   "pin==3.7.0",
+  # pin 3.7.0 currently resolves against older urdfdom/tinyxml SONAMEs at runtime
+  "cmeel-urdfdom<5",
+  "cmeel-tinyxml2<11",
   "greenlet",
   "duckdb",
   "pandas",
@@ -74,6 +77,8 @@ dev = [
 build_deps = [
   "mujoco==3.2.6",
   "pin==3.7.0",
+  "cmeel-urdfdom<5",
+  "cmeel-tinyxml2<11",
 ]
 
 [tool.cibuildwheel]
