@@ -10,12 +10,15 @@ import ctypes.util
 import os
 
 _egl_available = False
+_egl_error = None
 _addr_make_current = None
 _egl_display = None
 _egl_context = None
 
 name = ctypes.util.find_library("EGL")
-if name is not None:
+if name is None:
+    _egl_error = "Could not find libEGL via ctypes.util.find_library('EGL')."
+else:
     try:
         import mujoco.egl
         from mujoco.egl import GLContext
@@ -26,8 +29,28 @@ if name is not None:
         _egl_display = int(mujoco.egl.EGL_DISPLAY.address)
         _egl_context = int(_ctx._context.address)
         _egl_available = True
-    except Exception:
-        pass
+    except Exception as exc:
+        _egl_error = f"Failed to initialize MuJoCo EGL context: {exc!r}"
+
+
+def is_available() -> bool:
+    return _egl_available
+
+
+def failure_reason() -> str | None:
+    return _egl_error
+
+
+def require(feature: str = "offscreen rendering"):
+    if _egl_available:
+        return
+    reason = _egl_error or "unknown EGL initialization failure"
+    message = (
+        f"EGL is required for {feature}, but it is not available. {reason} "
+        "If you do not need rendering, run RCS without simulation cameras/viewers. "
+        "If you do need headless rendering, install the system EGL/OpenGL runtime libraries."
+    )
+    raise RuntimeError(message)
 
 
 def bootstrap():
