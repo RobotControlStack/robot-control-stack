@@ -152,6 +152,16 @@ pip install -ve .
 
 ```
 
+### RCS Asset Cache
+
+RCS resolves its asset directory from the `RCS_PREFIX` environment variable. When it is unset, RCS defaults to `~/.rcs`.
+
+On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+
+```shell
+export RCS_PREFIX=/path/to/rcs-assets
+```
+
 ### Via PyPI/pip
 
 *Coming soon...*
