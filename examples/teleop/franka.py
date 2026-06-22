@@ -38,7 +38,7 @@ CAMERA_DICT = {
 }
 # CAMERA_DICT = None
 ZED_CAMERA_DICT = None
-MQ3_ADDR = "10.134.110.182" # Jin: IPv4 address of the wifi you are connected, join the same network with Quest
+MQ3_ADDR = "10.42.0.1" # Jin: IPv4 address of the wifi you are connected, join the same network with Quest
 # Jin: After configuring this, run quest_align_frame.py, THEN start the IRIS app. If you see the controller pose in print, youre good
 # Jin: After that, exit quest_align_frame.py (ctrl c a few times), then run franka.py; then you are ready to teleop
 INCLUDE_DEPTH = False
@@ -50,7 +50,7 @@ DIGIT_DICT = {
 # DIGIT_DICT = None
 
 
-DATASET_PATH = "test_iris"
+DATASET_PATH = "test_digit"
 INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
@@ -98,8 +98,8 @@ def get_env():
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=1280,
-                        resolution_height=720,
+                        resolution_width=640,
+                        resolution_height=480,
                         frame_rate=30,
                     )
                     for name, identifier in CAMERA_DICT.items()
@@ -111,8 +111,8 @@ def get_env():
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=1280,
-                        resolution_height=720,
+                        resolution_width=640,
+                        resolution_height=480,
                         frame_rate=30,
                     )
                     for name, identifier in ZED_CAMERA_DICT.items()
