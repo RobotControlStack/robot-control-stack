@@ -58,7 +58,7 @@ DIGIT_DICT = {
 # DIGIT_DICT = None
 
 
-DATASET_PATH = "test_iris"
+DATASET_PATH = "test_digit"
 INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
@@ -106,8 +106,8 @@ def get_env():
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=1280,
-                        resolution_height=720,
+                        resolution_width=640,
+                        resolution_height=480,
                         frame_rate=30,
                     )
                     for name, identifier in CAMERA_DICT.items()
@@ -119,8 +119,8 @@ def get_env():
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=1280,
-                        resolution_height=720,
+                        resolution_width=640,
+                        resolution_height=480,
                         frame_rate=30,
                     )
                     for name, identifier in ZED_CAMERA_DICT.items()
