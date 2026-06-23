@@ -86,10 +86,7 @@ logging.basicConfig(
 
 robot2world = {
     "right": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
-    ),
-    "left": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+        translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])
     ),
 }
 
@@ -100,7 +97,7 @@ class InferenceConfig:
     vlagents_port: int = PORT
     vlagents_model: str = MODEL
     instruction: str = INSTRUCTION
-    robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
+    robot_keys: list[str] = field(default_factory=lambda: ["right"])
     jpeg_encoding: bool = True
     on_same_machine: bool = False
     fps: int = FPS
@@ -114,7 +111,15 @@ def load_inference_config() -> InferenceConfig:
     if not CONFIG_PATH.exists():
         CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
         return InferenceConfig()
-    return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+    cfg = InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+    # Keep inference single-arm even if existing config stores two-arm keys.
+    cfg.robot_keys = [key for key in cfg.robot_keys if key == "right"]
+    if "right" not in cfg.robot_keys:
+        cfg.robot_keys = ["right"]
+    if len(cfg.robot_keys) != 1:
+        logger.warning("Forcing single-arm inference mode: using robot key ['right']")
+        cfg.robot_keys = ["right"]
+    return cfg
 
 
 class ModelInference:
@@ -171,10 +176,12 @@ class ModelInference:
 
         state = []
         for robot in self._cfg.robot_keys:
+            if robot not in obs:
+                logger.warning("Observation missing robot %s; skipping", robot)
+                continue
             # TODO: currently hardcoded for joints
             state.append(obs[robot]["joints"])
             state.append(obs[robot]["gripper"])
-
         return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
 
     def act(self, obs_dict) -> None:
@@ -194,11 +201,21 @@ class ModelInference:
 
     def action_agents2rcs(self, action: Act) -> dict[str, Any]:
         act = {}
+        action_values = np.asarray(action.action, dtype=np.float32) if action.action is not None else np.array([])
         for idx, robot in enumerate(self._cfg.robot_keys):
             # TODO: this is currently hard coded for franka joints
+            start = idx * 8
+            end = start + 8
+            if end > len(action_values):
+                logger.warning(
+                    "Action vector too short for robot %s: expected 8 values, got %d",
+                    robot,
+                    max(0, len(action_values) - start),
+                )
+                continue
             act[robot] = {}
-            act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
-            act[robot]["gripper"] = action.action[idx * 8 + 7 : idx * 8 + 8]
+            act[robot]["joints"] = action_values[start:end - 1]
+            act[robot]["gripper"] = action_values[end - 1 : end]
         return act
 
     def loop(self):
@@ -317,12 +334,11 @@ def command_loop(controller: ModelInference) -> None:
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv
+        from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-        env_creator = FrankaDuoEnv()
-        env_creator.left_ip = ROBOT2IP["left"]
-        env_creator.right_ip = ROBOT2IP["right"]
+        env_creator = SingleArmFR3MultiHardwareEnv()
+        env_creator.ip = ROBOT2IP["right"]
         hw_cfg = env_creator.config()
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
@@ -377,12 +393,8 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         )
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
-        hw_cfg.robot_cfgs["left"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.1
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
-        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
     else:
         # FR3
