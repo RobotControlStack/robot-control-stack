@@ -6,25 +6,31 @@ class RobotiQGripper(Gripper):
     def __init__(self, serial_number):
         super().__init__()
         self.gripper = Robotiq2F85Driver(serial_number=serial_number)
+        # self.gripper.reset()
+        # self.gripper.deactivate()
+        # self.gripper.activate()
+
 
     def get_normalized_width(self) -> float:
         # value between 0 and 1 (0 is closed)
-        return self.gripper.opening / 85
+        return self.gripper.opening / 85.0
 
     def grasp(self) -> None:
         """
         Close the gripper to grasp an object.
         """
-        self.set_normalized_width(0.0)
+        self.gripper.go_to(opening=0, speed=150.0, force=30.0)
 
     def open(self) -> None:
         """
         Open the gripper to its maximum width.
         """
-        self.set_normalized_width(1.0)
+        self.gripper.go_to(opening=85.0, speed=150.0, force=30.0)
 
     def reset(self) -> None:
         self.gripper.reset()
+        self.gripper.deactivate()
+        self.gripper.activate()
 
     def set_normalized_width(self, width: float, _: float = 0) -> None:
         """
@@ -40,12 +46,11 @@ class RobotiQGripper(Gripper):
         """
         Close the gripper.
         """
-        self.set_normalized_width(0.0)
+        self.gripper.go_to(opening=0, speed=150.0, force=30.0)
 
     def close(self) -> None:
-        close = getattr(self.gripper, "close", None)
-        if callable(close):
-            close()
+        self.gripper.go_to(opening=0, speed=150.0, force=30.0)
+        
 
 if __name__ == "__main__":
     print("[DEBUG] Creating Robotiq2F85Driver instance...")

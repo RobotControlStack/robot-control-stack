@@ -204,7 +204,7 @@ class RobotEnv(gym.Env):
     y
     """
 
-    # TODO: home pos reset set to false  
+    # TODO: home pos reset set to false    
     def __init__(self, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = True):
         self.robot = robot
         self._control_mode_overrides = [control_mode]
@@ -714,9 +714,7 @@ class GripperWrapper(ActObsInfoWrapper):
         observation = copy.deepcopy(observation)
         # breakpoint()
         if self.binary:
-            observation[self.gripper_key] = (
-                self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
-            )
+            observation[self.gripper_key] = [self.gripper.get_normalized_width()]
         else:
             observation[self.gripper_key] = [self.gripper.get_normalized_width()]
 

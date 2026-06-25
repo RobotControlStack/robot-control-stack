@@ -89,6 +89,7 @@ class RCSFR3EnvCreator(RCSHardwareEnvCreator):
         # ik = FastIK
         # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(robot_cfg.kinematic_model_path)
         robot = hw.Franka(ip, ik)
+        breakpoint()
         robot.set_config(robot_cfg)
 
         env: gym.Env = RobotEnv(robot, ControlMode.JOINTS if collision_guard is not None else control_mode)
