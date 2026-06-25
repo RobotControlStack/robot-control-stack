@@ -1,3 +1,11 @@
+## v0.7.2 (2026-06-24)
+
+### Fix
+
+- **egl**: fail fast when rendering is requested without egl
+- **pypi**: pin compatible pinocchio runtime deps
+- sim reset (#314)
+
 ## v0.7.1 (2026-06-02)
 
 ### Feat
