@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_taxim"
+version = "0.6.3"
+description = "RCS integration of mujoco-taxim"
+dependencies = [
+  "rcs>=0.6.3",
+  "omegaconf",
+  "mujoco-taxim@git+https://github.com/utn-air/mujoco-taxim.git@956b7d05e1f28d6d186eb1d386f4c13d7b014308",
+]
+readme = "README.md"
+maintainers = [
+  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
+]
+authors = [{ name = "Seongjin Bien", email = "seongjin.bien@utn.de" }]
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
