@@ -53,10 +53,15 @@ class ModelComposer:
         return None
 
     def _find_body(self, name: str) -> Optional[mujoco._specs.MjsBody]:
-        try:
-            return self.spec.find_body(name)
-        except ValueError:
-            return None
+        if hasattr(self.spec, "find_body"):
+            try:
+                return self.spec.find_body(name)
+            except ValueError:
+                return None
+        for body in self.spec.bodies:
+            if body.name == name:
+                return body
+        return None
 
     def _find_camera(self, name: str) -> Optional[mujoco._specs.MjsCamera]:
         for camera in self.spec.cameras:
@@ -67,6 +72,30 @@ class ModelComposer:
     def _apply_pose(self, body: mujoco._specs.MjsBody, pose: Pose):
         body.pos = list(pose.translation())
         body.quat = list(pose.rotation_q_wxyz())
+
+    def _attach_to_frame(self, frame: mujoco._specs.MjsFrame, child_spec: mujoco.MjSpec, prefix: str):
+        """Attach a child spec to a frame across MuJoCo model-editing API versions."""
+        if hasattr(frame, "attach"):
+            return frame.attach(child_spec, prefix, "")
+        return self.spec.attach(child_spec, frame=frame, prefix=prefix, suffix="")
+
+    def _attach_spec_body_to_site(
+        self,
+        site: mujoco._specs.MjsSite,
+        child_spec: mujoco.MjSpec,
+        body: mujoco._specs.MjsBody,
+        prefix: str,
+    ) -> mujoco._specs.MjsBody:
+        """Attach a body to a site across MuJoCo model-editing API versions."""
+        if hasattr(site, "attach"):
+            return site.attach(body, prefix, "")
+        body_name = body.name
+        self.spec.attach(child_spec, prefix=prefix, suffix="", site=site)
+        attached_body = self._find_body(f"{prefix}{body_name}")
+        if attached_body is None:
+            msg = f"Could not find attached body '{prefix}{body_name}' after site attachment."
+            raise ValueError(msg)
+        return attached_body
 
     def _prefixed_free_joint_names(self, spec: mujoco.MjSpec, prefix: str) -> list[str]:
         free_joint_type = int(mujoco.mjtJoint.mjJNT_FREE)
@@ -102,9 +131,10 @@ class ModelComposer:
                 msg = f"Attachment site '{site_name}' not found."
                 raise ValueError(msg)
 
-            camera_mount = mujoco.MjSpec().worldbody.add_body()
+            camera_spec = mujoco.MjSpec()
+            camera_mount = camera_spec.worldbody.add_body()
             camera_mount.name = "mount"
-            camera_mount = attachment_site.attach(camera_mount, f"{name}_", "")
+            camera_mount = self._attach_spec_body_to_site(attachment_site, camera_spec, camera_mount, f"{name}_")
 
         self._apply_pose(camera_mount, pose)
 
@@ -137,6 +167,7 @@ class ModelComposer:
         if root_body is None:
             msg = f"Camera MJCF '{xml_path}' must contain a root body."
             raise ValueError(msg)
+        root_body_name = root_body.name
 
         camera_names = [camera.name for camera in camera_spec.cameras]
         if len(camera_names) != 1 or camera_names[0] is None:
@@ -147,8 +178,8 @@ class ModelComposer:
 
         if robot_prefix is None:
             attach_frame = self.spec.worldbody.add_frame()
-            attach_frame.attach(camera_spec, prefix, "")
-            attached_root_name = f"{prefix}{root_body.name}"
+            self._attach_to_frame(attach_frame, camera_spec, prefix)
+            attached_root_name = f"{prefix}{root_body_name}"
             attached_root = self._find_body(attached_root_name)
             if attached_root is None:
                 msg = f"Could not find camera root body '{attached_root_name}' after attachment."
@@ -161,7 +192,7 @@ class ModelComposer:
                 msg = f"Attachment site '{site_name}' not found."
                 raise ValueError(msg)
 
-            attached_root = attachment_site.attach(root_body, prefix, "")
+            attached_root = self._attach_spec_body_to_site(attachment_site, camera_spec, root_body, prefix)
 
         self._apply_pose(attached_root, pose)
 
@@ -186,13 +217,13 @@ class ModelComposer:
 
         child_spec = mujoco.MjSpec.from_file(xml_path)
         self._resolve_asset_paths(child_spec, xml_path)
+        child_root_name = child_spec.worldbody.first_body().name
 
         # 1. Use a frame to attach the child spec (most comprehensive)
         frame = self.spec.worldbody.add_frame()
-        frame.attach(child_spec, prefix, "")
+        self._attach_to_frame(frame, child_spec, prefix)
 
         # 2. Identify the robot root body (it was prefixed)
-        child_root_name = child_spec.worldbody.first_body().name
         prefixed_root_name = f"{prefix}{child_root_name}"
 
         robot_root = self._find_body(prefixed_root_name)
@@ -229,7 +260,7 @@ class ModelComposer:
         self._resolve_asset_paths(gripper_spec, xml_path)
 
         gripper_root = gripper_spec.worldbody.first_body()
-        gripper_root = attachment_site.attach(gripper_root, gripper_prefix, "")
+        gripper_root = self._attach_spec_body_to_site(attachment_site, gripper_spec, gripper_root, gripper_prefix)
         self._apply_pose(gripper_root, pose)
         if gripper_prefix:
             self._gravcomp_prefixes.add(gripper_prefix)
@@ -261,7 +292,7 @@ class ModelComposer:
             self.register_root_relative_replay_free_joints(self._prefixed_free_joint_names(object_spec, object_prefix))
 
         object_root = object_spec.worldbody.first_body()
-        object_root = attachment_site.attach(object_root, object_prefix, "")
+        object_root = self._attach_spec_body_to_site(attachment_site, object_spec, object_root, object_prefix)
         self._apply_pose(object_root, pose)
         return object_root
 
@@ -288,13 +319,13 @@ class ModelComposer:
         self._resolve_asset_paths(child_spec, xml_path)
         if register_root_relative_replay_free_joints:
             self.register_root_relative_replay_free_joints(self._prefixed_free_joint_names(child_spec, object_prefix))
+        child_root_name = child_spec.worldbody.first_body().name
 
         # Attach using a frame
         frame = self.spec.worldbody.add_frame()
-        frame.attach(child_spec, object_prefix, "")
+        self._attach_to_frame(frame, child_spec, object_prefix)
 
         # Identify the root of the added object
-        child_root_name = child_spec.worldbody.first_body().name
         prefixed_root_name = f"{object_prefix}{child_root_name}"
         obj_root = self._find_body(prefixed_root_name)
         if not obj_root:
