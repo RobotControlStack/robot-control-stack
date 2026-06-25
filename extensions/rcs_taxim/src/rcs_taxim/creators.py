@@ -14,11 +14,11 @@ from rcs_taxim.taxim_wrapper import TaximSimWrapper
 
 import rcs
 
-_TAXIM_GRIPPER_TYPE = GripperType("TaximDigit")
+_TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
 
 
 def _digit_model_path() -> Path:
-    return Path(rcs.RCS_PREFIX, "assets", "sensors", "digit", "digit.xml")
+    return Path("/home/sbien/Documents/Development/V2T/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
 
 
 def _prefixed(name: str) -> str:
@@ -49,38 +49,20 @@ def _make_camera_cfgs(
 
 def _taxim_gripper_cfg() -> SimGripperConfig:
     return SimGripperConfig(
-        epsilon_inner=0.005,
-        epsilon_outer=0.005,
-        seconds_between_callbacks=0.1,
-        ignored_collision_geoms=[],
-        collision_geoms=[
-            "finger_a_left",
-            "finger_b_left",
-            "finger_c_left",
-            "finger_1_left",
-            "finger_a_right",
-            "finger_b_right",
-            "finger_c_right",
-            "finger_1_right",
-        ],
-        collision_geoms_fingers=[
-            "finger_a_left",
-            "finger_b_left",
-            "finger_c_left",
-            "finger_1_left",
-            "finger_a_right",
-            "finger_b_right",
-            "finger_c_right",
-            "finger_1_right",
-        ],
-        joints=["finger_joint1", "finger_joint2"],
-        max_joint_width=0.04,
-        min_joint_width=0.0,
-        actuator="hand_actuator",
-        max_actuator_width=255.0,
-        min_actuator_width=0.0,
-        gripper_type=_TAXIM_GRIPPER_TYPE,
-    )
+            epsilon_inner=0.005,
+            epsilon_outer=0.005,
+            seconds_between_callbacks=0.1,
+            ignored_collision_geoms=[],
+            collision_geoms=[],
+            collision_geoms_fingers=[],
+            joints=["right_driver_joint", "left_driver_joint"],
+            max_joint_width=0.005,
+            min_joint_width=1.0,
+            actuator="fingers_actuator",
+            max_actuator_width=0,
+            min_actuator_width=255,
+            gripper_type=_TAXIM_GRIPPER_TYPE,
+        )
 
 
 class FR3TaximSimplePickUpSimEnvCreator:
@@ -141,13 +123,13 @@ class FR3TaximSimplePickUpSimEnvCreator:
 
         env = scene.create_env(cfg)
         merged_taxim_kwargs: dict[str, Any] = {
-            "taxim_sites": [_prefixed("left_taxim_pad"), _prefixed("right_taxim_pad")],
-            "taxim_pad_geoms": [_prefixed("finger_1_left"), _prefixed("finger_1_right")],
+            "taxim_sites": [_prefixed("left_digit_pad"), _prefixed("right_digit_pad")],
+            "taxim_pad_geoms": [_prefixed("left_digit_pad"), _prefixed("right_digit_pad")],
             "target_geom_mesh_dict": {"_box_geom": "_box_geom"},
             "taxim_sensor_type": "digit",
             "taxim_fps": 60,
             "enable_depth": True,
-            "visualize": False,
+            "visualize": True,
         }
         if taxim_kwargs is not None:
             merged_taxim_kwargs.update(taxim_kwargs)
