@@ -228,4 +228,12 @@ version_files = [
   "extensions/rcs_robotiq2f85/pyproject.toml:version",
   "extensions/rcs_robotiq2f85/src/rcs_robotiq2f85/__init__.py:__version__",
   "extensions/rcs_robotiq2f85/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_usb_cam/pyproject.toml:version",
+  "extensions/rcs_usb_cam/src/rcs_usb_cam/__init__.py:__version__",
+  "extensions/rcs_usb_cam/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_zed/pyproject.toml:version",
+  "extensions/rcs_zed/src/rcs_zed/__init__.py:__version__",
+  "extensions/rcs_zed/pyproject.toml:\"rcs-core>=(.*)\"",
 ]

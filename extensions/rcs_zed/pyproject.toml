@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_zed"
-version = "0.6.3"
+version = "0.7.2"
 description = "RCS ZED camera module"
 dependencies = [
-  "rcs>=0.6.3",
+  "rcs-core>=0.7.2",
   "opencv-python~=4.10.0",
   "pupil_apriltags",
   "diskcache",

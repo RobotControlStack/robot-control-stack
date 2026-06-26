@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_usb_cam"
-version = "0.5.0"
+version = "0.7.2"
 description = "RCS USB Camera module"
-dependencies = ["rcs>=0.5.2", "opencv-python~=4.10.0"]
+dependencies = ["rcs-core>=0.7.2", "opencv-python~=4.10.0"]
 maintainers = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
   { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
