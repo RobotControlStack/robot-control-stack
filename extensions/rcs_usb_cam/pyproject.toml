@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "rcs_usb_cam"
 version = "0.7.2"
 description = "RCS USB Camera module"
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
 dependencies = ["rcs-core>=0.7.2", "opencv-python~=4.10.0"]
 maintainers = [
   { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
