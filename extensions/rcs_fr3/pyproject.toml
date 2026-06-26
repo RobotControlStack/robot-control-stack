@@ -32,6 +32,9 @@ build-dir = "build"
 wheel.packages = ["src/rcs_fr3"]
 install.components = ["python_package"]
 
+[tool.cibuildwheel]
+skip = ["cp314*", "*-musllinux*"]
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]
