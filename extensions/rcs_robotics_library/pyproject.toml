@@ -16,6 +16,7 @@ name = "rcs_robotics_library"
 version = "0.7.2"
 description = "RCS robotics library integration"
 readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
 dependencies = ["rcs-core>=0.7.2"]
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
 authors = [

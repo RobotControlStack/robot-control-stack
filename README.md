@@ -176,6 +176,9 @@ To install a specific robot extension (example for Franka FR3):
 
 ```shell
 sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
+pip install rcs-fr3
+
+# or install it locally
 pip install -ve extensions/rcs_fr3
 ```
 

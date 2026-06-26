@@ -8,6 +8,7 @@ version = "0.7.2"
 description = "RCS UR5e module"
 dependencies = ["rcs-core>=0.7.2", "ur_rtde==1.6.1"]
 readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
 maintainers = [
   { name = "Johannes Hechtl", email = "johannes.hechtl@siemens.com" },
 ]
