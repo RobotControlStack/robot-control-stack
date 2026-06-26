@@ -7,6 +7,7 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
+  "rcs-core>=0.7.2",
 ]
 build-backend = "scikit_build_core.build"
 
@@ -14,7 +15,7 @@ build-backend = "scikit_build_core.build"
 name = "rcs_panda"
 version = "0.7.2"
 description = "RCS libfranka integration"
-dependencies = ["rcs>=0.7.2"]
+dependencies = ["rcs-core>=0.7.2"]
 readme = "README.md"
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
 authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]

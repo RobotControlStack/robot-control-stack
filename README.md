@@ -148,8 +148,13 @@ pip install 'pip>=25.1'
 pip install --group build_deps
 
 # install rcs
-pip install -ve .
+pip install -ve . --no-build-isolation
+```
 
+### Via PyPI/pip
+
+```shell
+pip install rcs-core
 ```
 
 ### RCS Asset Cache
@@ -162,9 +167,6 @@ On import, RCS checks whether that path exists. If it does not, it downloads the
 export RCS_PREFIX=/path/to/rcs-assets
 ```
 
-### Via PyPI/pip
-
-*Coming soon...*
 
 ## 🦾 Hardware Extensions
 

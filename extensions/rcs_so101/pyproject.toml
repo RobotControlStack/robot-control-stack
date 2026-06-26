@@ -7,6 +7,7 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
+  "rcs-core>=0.7.2",
 ]
 build-backend = "scikit_build_core.build"
 
@@ -14,7 +15,7 @@ build-backend = "scikit_build_core.build"
 name = "rcs_so101"
 version = "0.7.2"
 description = "RCS SO101 module"
-dependencies = ["rcs>=0.7.2", "lerobot==0.3.3"]
+dependencies = ["rcs-core>=0.7.2", "lerobot==0.3.3"]
 readme = "README.md"
 maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
 authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
