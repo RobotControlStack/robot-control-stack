@@ -34,6 +34,8 @@ pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_panda --no-build-isolation
 ```
 
+For `libfranka` version details, see <https://robotcontrolstack.org/extensions/libfranka_versions>.
+
 Add your Panda Desk credentials to a `.env` file:
 
 ```env

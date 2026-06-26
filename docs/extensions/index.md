@@ -4,6 +4,7 @@
 :maxdepth: 2
 
 overview
+libfranka_versions
 rcs_fr3
 rcs_panda
 rcs_xarm7
