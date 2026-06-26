@@ -7,7 +7,7 @@ name = "rcs_tacto"
 version = "0.7.2"
 description = "RCS integration of tacto"
 dependencies = [
-  "rcs>=0.7.2",
+  "rcs-core>=0.7.2",
   "omegaconf",
   "mujoco-tacto@git+https://github.com/utn-air/mujoco-tacto.git@main",
 ]
