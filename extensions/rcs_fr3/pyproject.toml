@@ -18,9 +18,9 @@ version = "0.7.2"
 description = "RCS libfranka integration"
 dependencies = ["rcs-core>=0.7.2", "frankik"]
 readme = "README.md"
-license = { text = "AGPL-3.0-or-later" }
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
-authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+license = "AGPL-3.0-or-later"
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 

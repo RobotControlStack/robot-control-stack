@@ -7,15 +7,15 @@ name = "rcs_realsense"
 version = "0.7.2"
 description = "RCS realsense module"
 readme = "README.md"
-license = { text = "AGPL-3.0-or-later" }
+license = "AGPL-3.0-or-later"
 dependencies = [
   "rcs-core>=0.7.2",
   "pyrealsense2~=2.55.1",
   "pupil_apriltags",
   "diskcache",
 ]
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
-authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 [tool.black]
