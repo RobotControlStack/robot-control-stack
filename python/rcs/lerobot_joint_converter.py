@@ -125,9 +125,12 @@ class JointDatasetConverter:
             rcs.ROBOTS[robot_type].mjcf_model_path,
             rcs.ROBOTS[robot_type].attachment_site,
         )
-        self.camera_resizers = {camera.name: v2.Resize(camera.resolution) for camera in self.cameras}  # noqa: F821
+        self.camera_resizers = {
+            camera.name: v2.Resize(camera.resolution)  # type: ignore[name-defined]  # noqa: F821
+            for camera in self.cameras
+        }
 
-        self.lrds = LeRobotDataset.create(  # noqa: F821
+        self.lrds = LeRobotDataset.create(  # type: ignore[name-defined]  # noqa: F821
             repo_id=self.repo_id,
             robot_type=self.robot_type.id,
             root=self.root,
@@ -394,11 +397,11 @@ class JointDatasetConverter:
 
     def _decode_and_resize_batch(self, image_bytes_list: list[bytes], camera: CamConversionConfig) -> np.ndarray:
         image_tensors = [
-            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)  # noqa: F821
+            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)  # type: ignore[name-defined]  # noqa: F821
             for image_bytes in image_bytes_list
         ]
-        decoded = decode_jpeg(image_tensors)  # noqa: F821
-        batch = torch.stack(decoded)  # noqa: F821
+        decoded = decode_jpeg(image_tensors)  # type: ignore[name-defined]  # noqa: F821
+        batch = torch.stack(decoded)  # type: ignore[name-defined]  # noqa: F821
         resized = self.camera_resizers[camera.name](batch)
         return resized.permute(0, 2, 3, 1).cpu().numpy()
 

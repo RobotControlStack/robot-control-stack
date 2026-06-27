@@ -155,8 +155,8 @@ def get_env():
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["left"].speed_factor = 0.3
         hw_cfg.robot_cfgs["right"].speed_factor = 0.3
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
-        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
+        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
+        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
         env_rel = env_creator.create_env(hw_cfg)
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:

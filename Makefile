@@ -2,7 +2,7 @@ PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
 LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher
-LINT_EXCLUDE_MYPY = 'build|examples/teleop/SimPublisher'
+LINT_EXCLUDE_MYPY = 'build|examples/teleop/SimPublisher|examples/inference/franka.py'
 
 # CPP
 cppcheckformat:

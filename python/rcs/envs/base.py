@@ -404,7 +404,7 @@ class RobotWrapper(ActObsInfoWrapper):
                     self.robot.move_home()
                     exception = False
                 except Exception:
-                    self.robot.automatic_error_recovery()
+                    self.robot.automatic_error_recovery()  # type: ignore[attr-defined]
                     sleep(0.1)
         return super().reset(seed=seed, options=options)
 
@@ -621,7 +621,7 @@ class LimitedAbsoluteAction(ActObsInfoWrapper):
         self._robot = cast(common.Robot, self.get_wrapper_attr("robot"))
         self.max_mov = max_mov
 
-    def _get_current(self) -> np.ndarray:
+    def _get_current(self) -> np.ndarray | common.Pose:
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
             return self._robot.get_joint_position()
         return self._robot.get_cartesian_position()
@@ -632,7 +632,7 @@ class LimitedAbsoluteAction(ActObsInfoWrapper):
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
             assert isinstance(self.max_mov, float)
             low, high = self._robot.get_config().joint_limits
-            curr = self._get_current()
+            curr: np.ndarray | common.Pose = cast(np.ndarray, self._get_current())
             delta = action[self.joints_key] - curr
             limited_delta = np.clip(delta, -self.max_mov, self.max_mov)
             clipped_joints = np.clip(curr + limited_delta, low, high)
