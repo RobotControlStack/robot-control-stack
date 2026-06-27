@@ -83,6 +83,7 @@ class ZeroSB3Model(PPO):
         episode_start: np.ndarray | None = None,
         deterministic: bool = False,
     ) -> tuple[dict[str, np.ndarray], Any]:
+        breakpoint()
         del observation, episode_start, deterministic
         return _zero_closed_action(self.action_space), state
 
@@ -235,7 +236,7 @@ def main() -> None:
         zero_model,
         deterministic=False,
         flatten_actions=False,
-        flatten_observations=True,
+        flatten_observations=False,
     )
 
     obs, info = env.reset(seed=args.seed)
