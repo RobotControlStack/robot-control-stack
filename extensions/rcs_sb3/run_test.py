@@ -29,8 +29,10 @@ import rcs
 
 _TAXIM_GRIPPER_TYPE_ID = "Robotiq2F85Digit"
 _TAXIM_GRIPPER_XML = Path("/home/sbien/Documents/Development/V2T/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
+_BOX_XML = "/home/sbien/Documents/Development/V2T/norm2tex/grasp_assets/box/box.xml"
 _ROBOT_NAME = "robot"
 _CUBE_GEOM = "_box_geom"
+_CUBE_MESH = "_box_mesh"
 
 
 def _taxim_gripper_type() -> GripperType:
@@ -177,7 +179,8 @@ def make_franka_taxim_sim_env(
     cfg.gripper_offsets = None
     cfg.root_frame_objects = {
         "": (
-            rcs.OBJECT_PATHS["green_cube"],
+            # rcs.OBJECT_PATHS["green_cube"],
+            _BOX_XML,
             Pose(translation=np.array([0.31, 0.0, 0.425]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])),
         )
     }
@@ -193,7 +196,7 @@ def make_franka_taxim_sim_env(
         env,
         taxim_sites=["gripperleft_digit_pad", "gripperright_digit_pad"],
         taxim_pad_geoms=["gripperleft_digit_pad", "gripperright_digit_pad"],
-        target_geom_mesh_dict={_CUBE_GEOM: _CUBE_GEOM},
+        target_geom_mesh_dict={_CUBE_GEOM: _CUBE_MESH},
         taxim_sensor_type="digit",
         taxim_fps=60,
         enable_depth=enable_depth,

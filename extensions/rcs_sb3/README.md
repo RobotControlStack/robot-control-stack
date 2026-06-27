@@ -4,7 +4,7 @@
 - training: `run_test.py --mode train --num-envs <n> --total-timesteps <n> --n-steps <n> --batch-size <n>`
     - setting `--num-envs 0` runs it on the main thread for breakpointing
 - inference: `run_test.py --mode infer --infer-steps 100`
-
+- Change the paths of the variables `_BOX_XML` and `_TAXIM_GRIPPER_XML` accordingly
 
 Installation:
 ```
