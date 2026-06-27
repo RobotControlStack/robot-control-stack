@@ -21,6 +21,7 @@ from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
 from rcs_sb3 import StableBaselines3PolicyWrapper
 from rcs_taxim.taxim_wrapper import TaximSimWrapper
+from stable_baselines3 import PPO
 
 import rcs
 
@@ -64,8 +65,13 @@ def _taxim_gripper_cfg() -> SimGripperConfig:
     )
 
 
-class ZeroSB3Model:
-    """Minimal SB3-compatible model for pipeline testing."""
+class ZeroSB3Model(PPO):
+    """PPO-shaped zero-action model for pipeline testing.
+
+    This deliberately does not call ``PPO.__init__`` yet: the smoke test only
+    needs the runtime ``predict`` surface, while keeping this class as the local
+    starting point for a real PPO-backed implementation.
+    """
 
     def __init__(self, action_space: gym.Space):
         self.action_space = action_space
@@ -208,7 +214,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--gui", action="store_true", help="Open the MuJoCo GUI.")
     parser.add_argument("--visualize-taxim", action="store_true", help="Show nonblocking Taxim tactile windows.")
-    parser.add_argument("--disable-taxim-depth", action="store_true", help="Do not include Taxim depth frames.")
+    parser.add_argument("--disable-taxim-depth", type=bool, default=True, help="Do not include Taxim depth frames.")
     parser.add_argument("--no-start-grasped", action="store_true", help="Do not close the gripper after reset.")
     parser.add_argument("--grasp-settle-steps", type=int, default=30)
     parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
@@ -237,6 +243,29 @@ def main() -> None:
 
     for step_idx in range(args.steps):
         obs, reward, terminated, truncated, info = env.step()
+        # # Save some images to disk for visual inspection.
+        # if step_idx == 0:
+        #     frames = obs.get("frames", {})
+        #     for site, tactile_obs in frames.items():
+        #         rgb = tactile_obs.get("rgb", {}).get("data")
+        #         if rgb is not None:
+        #             from PIL import Image
+        #             rgb_path = Path(f"taxim_{site}_rgb.png")
+        #             print(f"Saving {rgb_path}")
+        #             Image.fromarray(rgb).save(rgb_path)
+        #         depth = tactile_obs.get("depth", {}).get("data")
+        #         # Normalize then repeat to 3 channels for saving as PNG.
+        #         depth = depth.astype(np.float32)
+        #         depth_min, depth_max = np.nanmin(depth), np.nanmax(depth)
+                    
+        #         if depth is not None:
+        #             if depth_max > depth_min:
+        #                 gt_vis = np.repeat(depth[:, :, np.newaxis], 3, axis=2)
+        #                 div = 1 if np.max(gt_vis) == 0 else np.max(gt_vis)
+        #                 gt_vis = (gt_vis / div * 255).astype(np.uint8)
+        #             depth_path = Path(f"taxim_{site}_depth.png")
+        #             print(f"Saving {depth_path}")
+        #             Image.fromarray(gt_vis).save(depth_path)
         action = info.get(StableBaselines3PolicyWrapper.ACTION_INFO_KEY)
         action_keys = list(action.keys()) if isinstance(action, dict) else type(action).__name__
         frame_keys = list(obs.get("frames", {}).keys()) if isinstance(obs, dict) else []

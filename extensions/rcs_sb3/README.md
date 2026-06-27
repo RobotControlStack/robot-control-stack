@@ -1,34 +1,53 @@
 # rcs_sb3
 
-Stable-Baselines3 integration for RCS Gymnasium environments.
+Entry: `run_test.py`
 
-The package keeps SB3-specific code behind a small algorithm interface so another
-RL backend can be added later without changing the environment creation code.
 
-```python
-from rcs_sb3 import SB3PPO, SB3PPOConfig
-
-trainer = SB3PPO(SB3PPOConfig(total_timesteps=100_000))
-model = trainer.build(env)
-trainer.learn()
+Installation:
 ```
+git clone git@github.com:RobotControlStack/robot-control-stack.git
+<cd to robot-control-stack>
+git checkout jin/sb3
 
-For runtime control, load or build the algorithm and insert it into the RCS
-wrapper stack:
+# Install RCS
+conda create -n rcs12 python=3.12
+conda activate rcs12
+conda install -c conda-forge urdfdom urdfdom_headers glfw
 
-```python
-ppo = SB3PPO.load("ppo_rcs_model")
-env = ppo.as_wrapper(env)
+# or sudo apt install $(cat debian_deps.txt)
+pip install 'pip>=25.1'
+pip install --group build_deps
+sudo apt install liburdfdom-dev
 
-obs, info = env.reset()
-obs, reward, terminated, truncated, info = env.step()
-```
+# install rcs
+pip install -ve .
 
-`StableBaselines3PolicyWrapper` stores the latest observation returned by the
-wrapped RCS stack. On each `step()`, it asks the SB3 model for an action, converts
-that action back into the RCS action dict, and passes it down to the robot layer.
+## Install the dependencies for sb3
+# clone and install norm2tex main branch
+git clone git@github.com:utn-air/norm2tex.git
+<cd to norm2tex>
+pip install -e . 
 
-By default, `SB3PPO.build()` prepares environments with `StableBaselines3Wrapper`,
-which flattens RCS dict actions and optionally flattens dict observations for
-`MlpPolicy`. Use `policy="MultiInputPolicy"` and `flatten_observations=False`
-when you want SB3 to consume dictionary observations directly.
+# clone and install mujoco-taxim norm2tex branch
+git clone git@github.com:utn-air/mujoco-taxim.git
+<cd to mujoco-taxim>
+git checkout norm2tex
+pip install -e .
+
+# install rcs_taxim 
+<cd to robot-control-stack>
+pip install -e extensions/rcs_taxim
+
+# finally install rcs-sb3
+<cd to robot-control-stack>
+pip install -e extensions/rcs_sb3
+
+# now try running the run_test.py
+python run_test.py --gui --visualize-taxim --steps 1000
+
+``
+
+## To-do
+- Add json file interpreter for feeding geom-texture png files into mujoco-taxim for easier management
+- Make the textures for the cube
+- Investigate parallelization
