@@ -604,6 +604,7 @@ class RelativeTo(Enum):
     CONFIGURED_ORIGIN = auto()
     NONE = auto()
 
+
 class LimitedAbsoluteAction(ActObsInfoWrapper):
     ABSOLUTE_ACTION_KEY = "limited_absolute_action"
 

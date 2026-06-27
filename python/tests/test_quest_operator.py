@@ -2,7 +2,6 @@ import threading
 from typing import Any, cast
 
 import numpy as np
-
 from rcs._core.common import Pose
 from rcs.operator.interface import TeleopCommands
 from rcs.operator.quest import QuestOperator

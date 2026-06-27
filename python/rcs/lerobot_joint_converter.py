@@ -435,6 +435,7 @@ def run_conversion(
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
     from torchvision.io import decode_jpeg
     from torchvision.transforms import v2
+
     robot_type_converted = RobotType(robot_type)
     gripper_type_converted = GripperType(gripper_type)
     converter = JointDatasetConverter(
