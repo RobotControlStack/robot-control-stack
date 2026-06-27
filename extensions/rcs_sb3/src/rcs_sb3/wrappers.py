@@ -31,6 +31,87 @@ class FlattenActionWrapper(gym.ActionWrapper):
     def action(self, action: np.ndarray) -> dict[str, Any]:
         return space_utils.unflatten(self.env.action_space, np.asarray(action, dtype=self.action_space.dtype))
 
+class TaximSB3ObservationWrapper(gym.ObservationWrapper):
+    def __init__(
+        self,
+        env: gym.Env,
+        *,
+        left_frame_key: str = "tactile_gripperleft_digit_pad",
+        right_frame_key: str = "tactile_gripperright_digit_pad",
+    ):
+        super().__init__(env)
+        self.left_frame_key = left_frame_key
+        self.right_frame_key = right_frame_key
+
+        left_space = env.observation_space["frames"][left_frame_key]["rgb"]["data"]
+        h, w, c = left_space.shape
+
+        gripper_space = env.observation_space["robot"]["gripper"]
+
+        state_space = copy.deepcopy(env.observation_space)
+        del state_space.spaces["frames"]
+
+        self._state_space = state_space
+        flat_state_space = space_utils.flatten_space(state_space)
+
+        self.observation_space = gym.spaces.Dict(
+            {
+                "left_rgb": gym.spaces.Box(0, 255, shape=(c, h, w), dtype=np.uint8),
+                "right_rgb": gym.spaces.Box(0, 255, shape=(c, h, w), dtype=np.uint8),
+                "state": gripper_space
+            }
+        )
+
+    def observation(self, obs):
+        left_rgb = obs["frames"][self.left_frame_key]["rgb"]["data"]
+        right_rgb = obs["frames"][self.right_frame_key]["rgb"]["data"]
+        gripper_state = obs['robot']['gripper']
+        state_obs = copy.deepcopy(obs)
+        del state_obs["frames"]
+
+        return {
+            "left_rgb": np.transpose(left_rgb, (2, 0, 1)),
+            "right_rgb": np.transpose(right_rgb, (2, 0, 1)),
+            "state": gripper_state,
+        }
+
+class GripperOnlyActionWrapper(gym.ActionWrapper):
+    def __init__(
+        self,
+        env: gym.Env,
+        *,
+        robot_key: str = "robot",
+        gripper_key: str = "gripper",
+        joints_key: str = "joints",
+    ):
+        super().__init__(env)
+        self.robot_key = robot_key
+        self.gripper_key = gripper_key
+        self.joints_key = joints_key
+
+        robot_action_space = env.action_space[robot_key]
+        self._robot_action_space = robot_action_space
+
+        gripper_space = robot_action_space[gripper_key]
+        self.action_space = gym.spaces.Box(
+            low=np.asarray(gripper_space.low, dtype=np.float32),
+            high=np.asarray(gripper_space.high, dtype=np.float32),
+            shape=gripper_space.shape,
+            dtype=np.float32,
+        )
+
+    def action(self, action: np.ndarray) -> dict[str, Any]:
+        robot_action = self._robot_action_space.sample()
+
+        for key, space in self._robot_action_space.spaces.items():
+            if isinstance(space, gym.spaces.Box):
+                robot_action[key] = np.zeros(space.shape, dtype=space.dtype)
+
+        robot_action[self.gripper_key] = np.asarray(action, dtype=np.float32)
+
+        return {
+            self.robot_key: robot_action,
+        }
 
 class StableBaselines3Wrapper(gym.Wrapper):
     """Prepare an RCS environment for Stable-Baselines3 training.
@@ -50,8 +131,12 @@ class StableBaselines3Wrapper(gym.Wrapper):
     ):
         if flatten_actions and isinstance(env.action_space, DictSpace):
             env = FlattenActionWrapper(env)
+        elif not flatten_actions and isinstance(env.action_space, DictSpace):
+            env = GripperOnlyActionWrapper(env)
         if flatten_observations and isinstance(env.observation_space, DictSpace):
             env = gym.wrappers.FlattenObservation(env)
+        elif not flatten_observations and isinstance(env.observation_space, DictSpace):
+            env = TaximSB3ObservationWrapper(env)
         super().__init__(env)
 
 

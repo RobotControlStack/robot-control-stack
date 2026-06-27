@@ -1,6 +1,9 @@
 # rcs_sb3
 
-Entry: `run_test.py`
+- Entry: `run_test.py`\
+- training: `run_test.py --mode train --num-envs <n> --total-timesteps <n> --n-steps <n> --batch-size <n>`
+    - setting `--num-envs 0` runs it on the main thread for breakpointing
+- inference: `run_test.py --mode infer --infer-steps 100`
 
 
 Installation:
@@ -50,4 +53,6 @@ python run_test.py --gui --visualize-taxim --steps 1000
 ## To-do
 - Add json file interpreter for feeding geom-texture png files into mujoco-taxim for easier management
 - Make the textures for the cube
-- Investigate parallelization
+- Investigate parallelization (Done)
+- Add wrapper for truncation condition
+- Add wrapper for reward calculation

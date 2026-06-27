@@ -1,7 +1,6 @@
 """Smoke-test the RCS SB3 policy wrapper on a simulated FR3 + Taxim stack.
 
-This does not train PPO. It uses a tiny SB3-like zero model with a ``predict``
-method to verify the runtime pipeline:
+This uses a tiny PPO model to verify the runtime pipeline:
 
     RCS + Taxim observations -> policy wrapper -> generated action dict -> robot wrappers
 """
@@ -15,20 +14,27 @@ from typing import Any
 import gymnasium as gym
 import mujoco
 import numpy as np
+from gymnasium.spaces import Dict as DictSpace
 from rcs._core.common import GripperType, Pose
 from rcs._core.sim import SimGripperConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
-from rcs_sb3 import StableBaselines3PolicyWrapper
+from rcs_sb3 import StableBaselines3PolicyWrapper, StableBaselines3Wrapper
 from rcs_taxim.taxim_wrapper import TaximSimWrapper
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import SubprocVecEnv
+
 
 import rcs
 
-_TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
+_TAXIM_GRIPPER_TYPE_ID = "Robotiq2F85Digit"
 _TAXIM_GRIPPER_XML = Path("/home/sbien/Documents/Development/V2T/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
 _ROBOT_NAME = "robot"
 _CUBE_GEOM = "_box_geom"
+
+
+def _taxim_gripper_type() -> GripperType:
+    return GripperType(_TAXIM_GRIPPER_TYPE_ID)
 
 
 def _zero_closed_action(space: gym.Space) -> dict[str, Any]:
@@ -61,31 +67,26 @@ def _taxim_gripper_cfg() -> SimGripperConfig:
         actuator="fingers_actuator",
         max_actuator_width=0,
         min_actuator_width=255,
-        gripper_type=_TAXIM_GRIPPER_TYPE,
+        gripper_type=_taxim_gripper_type(),
     )
 
 
-class ZeroSB3Model(PPO):
-    """PPO-shaped zero-action model for pipeline testing.
+class DummySB3Model(PPO):
+    """PPO subclass used as the starting point for real SB3 training logic."""
 
-    This deliberately does not call ``PPO.__init__`` yet: the smoke test only
-    needs the runtime ``predict`` surface, while keeping this class as the local
-    starting point for a real PPO-backed implementation.
-    """
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
 
-    def __init__(self, action_space: gym.Space):
-        self.action_space = action_space
 
-    def predict(
-        self,
-        observation: Any,
-        state: Any = None,
-        episode_start: np.ndarray | None = None,
-        deterministic: bool = False,
-    ) -> tuple[dict[str, np.ndarray], Any]:
-        breakpoint()
-        del observation, episode_start, deterministic
-        return _zero_closed_action(self.action_space), state
+def make_zero_sb3_model(env: gym.Env, args: argparse.Namespace) -> DummySB3Model:
+    return DummySB3Model(
+        "MultiInputPolicy",
+        env,
+        n_steps=args.n_steps,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        verbose=1,
+    )
 
 
 class StartGraspedWrapper(gym.Wrapper):
@@ -159,7 +160,7 @@ def make_franka_taxim_sim_env(
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
 ) -> gym.Env:
-    rcs.GRIPPER_PATHS[_TAXIM_GRIPPER_TYPE] = str(_TAXIM_GRIPPER_XML)
+    rcs.GRIPPER_PATHS[_taxim_gripper_type()] = str(_TAXIM_GRIPPER_XML)
 
     scene = EmptyWorldFR3()
     cfg = scene.config()
@@ -209,29 +210,22 @@ def make_franka_taxim_sim_env(
     return env
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a zero-policy SB3 wrapper smoke test in FR3 + Taxim simulation.")
-    parser.add_argument("--steps", type=int, default=20)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--gui", action="store_true", help="Open the MuJoCo GUI.")
-    parser.add_argument("--visualize-taxim", action="store_true", help="Show nonblocking Taxim tactile windows.")
-    parser.add_argument("--disable-taxim-depth", type=bool, default=True, help="Do not include Taxim depth frames.")
-    parser.add_argument("--no-start-grasped", action="store_true", help="Do not close the gripper after reset.")
-    parser.add_argument("--grasp-settle-steps", type=int, default=30)
-    parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
-    args = parser.parse_args()
-
-    env = make_franka_taxim_sim_env(
+def make_inference_env(args: argparse.Namespace) -> gym.Env:
+    raw_env = make_franka_taxim_sim_env(
         render_mode="human" if args.gui else "rgb_array",
         visualize_taxim=args.visualize_taxim,
-        enable_depth=not args.disable_taxim_depth,
+        enable_depth=args.enable_taxim_depth,
         start_grasped=not args.no_start_grasped,
         grasp_settle_steps=args.grasp_settle_steps,
         post_gravity_settle_steps=args.post_gravity_settle_steps,
     )
-
-    zero_model = ZeroSB3Model(env.action_space)
-    env = StableBaselines3PolicyWrapper(
+    env = StableBaselines3Wrapper(
+        raw_env,
+        flatten_actions=False,
+        flatten_observations=False,
+    )
+    zero_model = make_zero_sb3_model(env, args)
+    return StableBaselines3PolicyWrapper(
         env,
         zero_model,
         deterministic=False,
@@ -239,34 +233,14 @@ def main() -> None:
         flatten_observations=False,
     )
 
+
+def run_inference_smoke(args: argparse.Namespace) -> None:
+    env = make_inference_env(args)
     obs, info = env.reset(seed=args.seed)
     print(f"reset: obs_keys={list(obs.keys())}, info_keys={list(info.keys())}")
 
-    for step_idx in range(args.steps):
+    for step_idx in range(args.infer_steps):
         obs, reward, terminated, truncated, info = env.step()
-        # # Save some images to disk for visual inspection.
-        # if step_idx == 0:
-        #     frames = obs.get("frames", {})
-        #     for site, tactile_obs in frames.items():
-        #         rgb = tactile_obs.get("rgb", {}).get("data")
-        #         if rgb is not None:
-        #             from PIL import Image
-        #             rgb_path = Path(f"taxim_{site}_rgb.png")
-        #             print(f"Saving {rgb_path}")
-        #             Image.fromarray(rgb).save(rgb_path)
-        #         depth = tactile_obs.get("depth", {}).get("data")
-        #         # Normalize then repeat to 3 channels for saving as PNG.
-        #         depth = depth.astype(np.float32)
-        #         depth_min, depth_max = np.nanmin(depth), np.nanmax(depth)
-                    
-        #         if depth is not None:
-        #             if depth_max > depth_min:
-        #                 gt_vis = np.repeat(depth[:, :, np.newaxis], 3, axis=2)
-        #                 div = 1 if np.max(gt_vis) == 0 else np.max(gt_vis)
-        #                 gt_vis = (gt_vis / div * 255).astype(np.uint8)
-        #             depth_path = Path(f"taxim_{site}_depth.png")
-        #             print(f"Saving {depth_path}")
-        #             Image.fromarray(gt_vis).save(depth_path)
         action = info.get(StableBaselines3PolicyWrapper.ACTION_INFO_KEY)
         action_keys = list(action.keys()) if isinstance(action, dict) else type(action).__name__
         frame_keys = list(obs.get("frames", {}).keys()) if isinstance(obs, dict) else []
@@ -280,6 +254,120 @@ def main() -> None:
             print(f"reset: obs_keys={list(obs.keys())}, info_keys={list(info.keys())}")
 
     env.close()
+
+
+def make_train_env(
+    rank: int,
+    seed: int,
+    start_grasped: bool,
+    grasp_settle_steps: int,
+    post_gravity_settle_steps: int,
+):
+    def _init():
+        env = make_franka_taxim_sim_env(
+            render_mode="rgb_array",
+            visualize_taxim=False,
+            enable_depth=False,
+            start_grasped=start_grasped,
+            grasp_settle_steps=grasp_settle_steps,
+            post_gravity_settle_steps=post_gravity_settle_steps,
+        )
+        env.reset(seed=seed + rank)
+        return env
+
+    return _init
+
+
+def make_sb3_train_env(
+    rank: int,
+    seed: int,
+    start_grasped: bool,
+    grasp_settle_steps: int,
+    post_gravity_settle_steps: int,
+):
+    raw_env_fn = make_train_env(
+        rank,
+        seed,
+        start_grasped,
+        grasp_settle_steps,
+        post_gravity_settle_steps,
+    )
+
+    def _init():
+        return StableBaselines3Wrapper(
+            raw_env_fn(),
+            flatten_actions=False,
+            flatten_observations=False,
+        )
+
+    return _init
+
+
+def run_training_smoke(args: argparse.Namespace) -> None:
+    if args.num_envs < 0:
+        msg = "--num-envs must be >= 0. Use 0 for single-process breakpoint debugging."
+        raise ValueError(msg)
+
+    if args.num_envs == 0:
+        train_env = make_sb3_train_env(
+            0,
+            args.seed,
+            not args.no_start_grasped,
+            args.grasp_settle_steps,
+            args.post_gravity_settle_steps,
+        )()
+    else:
+        train_env = SubprocVecEnv(
+            [
+                make_sb3_train_env(
+                    rank,
+                    args.seed,
+                    not args.no_start_grasped,
+                    args.grasp_settle_steps,
+                    args.post_gravity_settle_steps,
+                )
+                for rank in range(args.num_envs)
+            ],
+            start_method="spawn",
+        )
+    try:
+        if isinstance(train_env.action_space, DictSpace):
+            msg = (
+                "Raw RCS envs expose Dict action spaces, but SB3 PPO does not support Dict actions. "
+                "Expected make_sb3_train_env to adapt actions before constructing PPO."
+            )
+            raise TypeError(msg)
+        model = make_zero_sb3_model(train_env, args)
+        model.learn(total_timesteps=args.total_timesteps)
+    finally:
+        train_env.close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Smoke-test RCS + Taxim with SB3.")
+    parser.add_argument("--mode", choices=("infer", "train"), default="infer")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--enable-taxim-depth", action="store_true")
+    parser.add_argument("--no-start-grasped", action="store_true", help="Do not close the gripper after reset.")
+    parser.add_argument("--grasp-settle-steps", type=int, default=30)
+    parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
+
+    # Inference mode args
+    parser.add_argument("--infer-steps", type=int, default=20, help="Inference smoke-test steps.")
+    parser.add_argument("--gui", action="store_true", help="Open the MuJoCo GUI for inference mode.")
+    parser.add_argument("--visualize-taxim", action="store_true", help="Show nonblocking Taxim tactile windows.")
+
+    # Training mode args
+    parser.add_argument("--num-envs", type=int, default=2, help="Parallel env count for train mode. Use 0 to disable subprocess vectorization for debugging.",)
+    parser.add_argument("--total-timesteps", type=int, default=32)
+    parser.add_argument("--n-steps", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=16)
+    args = parser.parse_args()
+
+    if args.mode == "infer":
+        run_inference_smoke(args)
+    else:
+        run_training_smoke(args)
 
 
 if __name__ == "__main__":
