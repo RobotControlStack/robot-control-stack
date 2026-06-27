@@ -182,12 +182,27 @@ class StorageWrapper(gym.Wrapper):
                 ),
             )
 
+    @staticmethod
+    def _has_null_typed_field(fields: pa.Schema | pa.StructType) -> bool:
+        return any(
+            pa.types.is_null(field.type)
+            or (pa.types.is_struct(field.type) and StorageWrapper._has_null_typed_field(field.type))
+            for field in fields
+        )
+
     def _flush(self, keep_last: bool = False):
         rows = self.buffer[:-1] if keep_last else self.buffer
         if len(rows) == 0:
             return
         if self.schema is None:
             temp_batch = pa.RecordBatch.from_pylist(rows)
+            # All-None columns (e.g. the very first frame's "action") infer as pyarrow's
+            # null type. Writing a fragment with that schema poisons every later read of
+            # the dataset once a real value for that field shows up, so hold these rows
+            # back in the buffer until enough data has accumulated to resolve a concrete
+            # schema instead.
+            if self._has_null_typed_field(temp_batch.schema):
+                return
             self.schema = temp_batch.schema
 
         rows[-1]["success"] = self._success
@@ -320,10 +335,11 @@ class StorageWrapper(gym.Wrapper):
         return obs, info
 
     def close(self):
-        if len(self.buffer) > 0:
-            self._flush()
-
-        self.queue.put(self.QueueSentinel)
-        wait([self._writer_future])
+        try:
+            if len(self.buffer) > 0:
+                self._flush()
+        finally:
+            self.queue.put(self.QueueSentinel)
+            wait([self._writer_future])
 
         # StorageWrapper.consolidate(self.base_dir, self.schema)

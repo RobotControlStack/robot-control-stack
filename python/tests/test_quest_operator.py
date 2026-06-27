@@ -9,6 +9,7 @@ from rcs.operator.quest import QuestOperator
 
 class _Config:
     switched_left_right = True
+    include_rotation = True
 
 
 def test_swap_controller_input_swaps_left_and_right_packets():
