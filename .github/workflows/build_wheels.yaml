@@ -23,19 +23,62 @@ jobs:
           name: core-wheels
           path: ./wheelhouse/*.whl
 
-  build_extension_wheels:
-    name: Build ${{ matrix.extension }} wheels on Python ${{ matrix.python-version }}
+  build_cpp_extension_wheels:
+    name: Build C++ extension wheels for ${{ matrix.extension }}
     needs: [build_core_wheels]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
         extension:
           - rcs_fr3
           - rcs_panda
           - rcs_robotics_library
           - rcs_so101
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-wheels
+          path: dist/core
+
+      - name: Install root Debian dependencies
+        run: |
+          sudo apt-get update
+          sudo xargs -a debian_deps.txt apt-get install -y
+
+      - name: Install extension Debian dependencies
+        run: |
+          deps_file="extensions/${{ matrix.extension }}/debian_deps.txt"
+          if [ -f "${deps_file}" ]; then
+            sudo xargs -a "${deps_file}" apt-get install -y
+          fi
+
+      - name: Build C++ extension wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_BUILD: cp311-* cp312-* cp313-*
+          PIP_FIND_LINKS: /project/dist/core
+        with:
+          package-dir: extensions/${{ matrix.extension }}
+          output-dir: extensions/${{ matrix.extension }}/wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.extension }}
+          path: extensions/${{ matrix.extension }}/wheelhouse/*.whl
+
+  build_python_extension_wheels:
+    name: Build pure Python wheel for ${{ matrix.extension }}
+    needs: [build_core_wheels]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension:
           - rcs_realsense
           - rcs_robotiq2f85
           - rcs_tacto
@@ -67,10 +110,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
           cache: pip
 
-      - name: Build extension wheel
+      - name: Build pure Python wheel
         env:
           PIP_FIND_LINKS: ${{ github.workspace }}/dist/core
         run: |
@@ -80,11 +123,11 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.extension }}-py${{ matrix.python-version }}
+          name: wheels-${{ matrix.extension }}
           path: extensions/${{ matrix.extension }}/dist/*.whl
 
   upload_pypi:
-    needs: [build_core_wheels, build_extension_wheels]
+    needs: [build_core_wheels, build_cpp_extension_wheels, build_python_extension_wheels]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
     environment: pypi
