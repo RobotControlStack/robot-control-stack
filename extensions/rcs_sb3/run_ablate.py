@@ -2,16 +2,18 @@
 
 The environment setup mirrors ``run_test.py`` but swaps in generated box XML
 files with different MuJoCo friction/density values. Each rollout starts with
-``StartGraspedWrapper`` so the box is already held, then commands a fixed
-gripper width while recording the box z-position over time. Taxim rendering is
-intentionally skipped because it does not affect these physics measurements.
+``StartGraspedWrapper`` so the box is already held, then opens the gripper in
+small increments while recording the box z-position over time. Taxim rendering
+is intentionally skipped because it does not affect these physics measurements.
 """
 
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import itertools
+import os
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +34,9 @@ _SOURCE_FRICTION = 'friction="1 0.3 0.1"'
 _SOURCE_DENSITY = 'density="50"'
 _BOX_BODY_NAMES = ("_box_body", "box_body")
 _BOX_JOINT_NAMES = ("_box_joint", "box_joint")
+_GRIPPER_PAD_GEOM_NAME_PART = "digit_pad"
 _CONTROL_FREQUENCY_HZ = 30.0
+_GRIPPER_OPEN_STEP = 0.01
 
 
 def _taxim_gripper_type() -> GripperType:
@@ -75,6 +79,11 @@ def _format_filename_float(value: float) -> str:
 
 def _format_friction(friction: tuple[float, float, float]) -> str:
     return " ".join(_format_float(value) for value in friction)
+
+
+def _gripper_opening_schedule() -> list[float]:
+    step_count = round(1.0 / _GRIPPER_OPEN_STEP)
+    return [idx / step_count for idx in range(step_count + 1)]
 
 
 def _make_gripper_width_action(space: gym.Space, width: float) -> dict[str, Any]:
@@ -129,6 +138,43 @@ def _write_box_xml(
     return xml_path
 
 
+def _make_gripper_pad_friction_neutral(env: gym.Env) -> None:
+    sim = env.get_wrapper_attr("sim")
+    changed_geom_names = []
+    for geom_id in range(sim.model.ngeom):
+        geom_name = mujoco.mj_id2name(sim.model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)
+        if geom_name is None or _GRIPPER_PAD_GEOM_NAME_PART not in geom_name:
+            continue
+
+        sim.model.geom_friction[geom_id, :] = 0.0
+        changed_geom_names.append(geom_name)
+
+    if not changed_geom_names:
+        msg = f"Could not find gripper pad geoms containing {_GRIPPER_PAD_GEOM_NAME_PART!r}."
+        raise ValueError(msg)
+
+
+def _box_z_csv_path(
+    *,
+    output_dir: Path,
+    friction: tuple[float, float, float],
+    density: float,
+    seed: int,
+) -> Path:
+    stem_values = [*friction, density]
+    param_stem = "_".join(_format_filename_float(value) for value in stem_values)
+    return output_dir / f"box_z_records_{param_stem}.csv"
+
+
+def _format_width_schedule(gripper_widths: list[float]) -> str:
+    if not gripper_widths:
+        return "none"
+    return (
+        f"{_format_float(gripper_widths[0])}..{_format_float(gripper_widths[-1])} "
+        f"step={_format_float(_GRIPPER_OPEN_STEP)}"
+    )
+
+
 class BoxZRecorderWrapper(gym.Wrapper):
     """Append one CSV row per reset/step with the box z-position."""
 
@@ -142,6 +188,9 @@ class BoxZRecorderWrapper(gym.Wrapper):
         "friction_spin",
         "friction_roll",
         "density",
+        "loaded_friction_slide",
+        "loaded_friction_spin",
+        "loaded_friction_roll",
         "commanded_gripper_width",
         "box_z",
         "z_drop_from_reset",
@@ -167,7 +216,8 @@ class BoxZRecorderWrapper(gym.Wrapper):
         self.reset_z: float | None = None
 
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
-        self._needs_header = not self.csv_path.exists() or self.csv_path.stat().st_size == 0
+        self.csv_path.unlink(missing_ok=True)
+        self._needs_header = True
 
     def _box_z(self) -> float:
         sim = self.env.get_wrapper_attr("sim")
@@ -184,6 +234,17 @@ class BoxZRecorderWrapper(gym.Wrapper):
         msg = f"Could not find box joint/body using names {_BOX_JOINT_NAMES} / {_BOX_BODY_NAMES}."
         raise ValueError(msg)
 
+    def _box_geom_friction(self) -> tuple[float, float, float]:
+        sim = self.env.get_wrapper_attr("sim")
+        for geom_name in ("_box_geom", "box_geom"):
+            geom_id = mujoco.mj_name2id(sim.model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
+            if geom_id >= 0:
+                friction = sim.model.geom_friction[geom_id]
+                return float(friction[0]), float(friction[1]), float(friction[2])
+
+        msg = "Could not find box geom using names ('_box_geom', 'box_geom')."
+        raise ValueError(msg)
+
     def _append_row(
         self,
         *,
@@ -195,6 +256,7 @@ class BoxZRecorderWrapper(gym.Wrapper):
         truncated: bool = False,
     ) -> None:
         box_z = self._box_z()
+        loaded_friction = self._box_geom_friction()
         if self.reset_z is None:
             self.reset_z = box_z
         z_drop = self.reset_z - box_z
@@ -203,6 +265,9 @@ class BoxZRecorderWrapper(gym.Wrapper):
             "phase": phase,
             "step": step,
             "time_s": max(step, 0) / _CONTROL_FREQUENCY_HZ,
+            "loaded_friction_slide": loaded_friction[0],
+            "loaded_friction_spin": loaded_friction[1],
+            "loaded_friction_roll": loaded_friction[2],
             "commanded_gripper_width": commanded_gripper_width,
             "box_z": box_z,
             "z_drop_from_reset": z_drop,
@@ -294,9 +359,6 @@ class StartGraspedWrapper(gym.Wrapper):
             gripper.grasp()
             sim.step(1)
 
-        obs, _, terminated, truncated, info = self.env.step(self._closed_gripper_hold_action())
-        if terminated or truncated:
-            obs, info = self.env.reset(seed=seed, options=options)
         sim.sync_gui()
         return obs, info
 
@@ -318,7 +380,7 @@ def make_franka_sim_env_without_taxim(
     cfg.sim_cfg.realtime = render_mode == "human"
     cfg.sim_cfg.async_control = render_mode == "human"
     cfg.sim_cfg.frequency = int(_CONTROL_FREQUENCY_HZ)
-    cfg.wrapper_cfg.binary_gripper = True
+    cfg.wrapper_cfg.binary_gripper = False
     cfg.wrapper_cfg.home_on_reset = True
     cfg.max_relative_movement = np.deg2rad(5)
     cfg.relative_to = RelativeTo.LAST_STEP
@@ -338,6 +400,7 @@ def make_franka_sim_env_without_taxim(
     cfg.camera_adds = None
 
     env = scene.create_env(cfg)
+    _make_gripper_pad_friction_neutral(env)
     if start_grasped:
         env = StartGraspedWrapper(
             env,
@@ -371,78 +434,158 @@ def make_ablation_env(
     )
 
 
-def run_ablation(args: argparse.Namespace) -> None:
-    output_dir = args.output_dir.expanduser().resolve()
-    csv_path = output_dir / "box_z_records.csv"
-    source_xml = Path(_BOX_XML)
-
+def _make_ablation_jobs(args: argparse.Namespace) -> list[tuple[int, tuple[float, float, float], float]]:
     friction_grid = itertools.product(
         args.friction_slide_values,
         args.friction_spin_values,
         args.friction_roll_values,
     )
-    run_idx = 0
-    for friction_values, density, gripper_width in itertools.product(
-        friction_grid,
-        args.density_values,
-        args.gripper_widths,
-    ):
+    jobs = []
+    for run_idx, (friction_values, density) in enumerate(itertools.product(friction_grid, args.density_values)):
         friction = tuple(float(value) for value in friction_values)
-        run_id = f"run_{run_idx:04d}"
-        box_xml_path = _write_box_xml(
-            source_xml=source_xml,
-            friction=friction,
-            density=float(density),
-        )
-        metadata = {
-            "run_id": run_id,
-            "seed": args.seed + run_idx,
-            "friction_slide": friction[0],
-            "friction_spin": friction[1],
-            "friction_roll": friction[2],
-            "density": float(density),
-        }
+        jobs.append((run_idx, friction, float(density)))
+    return jobs
 
-        print(
-            f"{run_id}: friction={_format_friction(friction)} "
-            f"density={_format_float(float(density))} width={_format_float(float(gripper_width))}"
-        )
-        env = make_ablation_env(
-            box_xml_path=box_xml_path,
-            args=args,
-            metadata=metadata,
-            csv_path=csv_path,
-        )
-        try:
-            env.reset(seed=args.seed + run_idx)
-            action = _make_gripper_width_action(env.action_space, float(gripper_width))
+
+def _num_parallel_envs(args: argparse.Namespace, job_count: int) -> int:
+    if job_count == 0 or args.gui:
+        return 1
+    if args.num_envs <= 0:
+        return min(job_count, os.cpu_count() or 1)
+    return min(job_count, args.num_envs)
+
+
+def _run_ablation_job(
+    run_idx: int,
+    friction: tuple[float, float, float],
+    density: float,
+    args: argparse.Namespace,
+    output_dir: Path,
+    source_xml: Path,
+    gripper_widths: list[float],
+) -> Path:
+    run_id = f"run_{run_idx:04d}"
+    seed = args.seed + run_idx
+    box_xml_path = _write_box_xml(
+        source_xml=source_xml,
+        friction=friction,
+        density=density,
+    )
+    csv_path = _box_z_csv_path(
+        output_dir=output_dir,
+        friction=friction,
+        density=density,
+        seed=seed,
+    )
+    metadata = {
+        "run_id": run_id,
+        "seed": seed,
+        "friction_slide": friction[0],
+        "friction_spin": friction[1],
+        "friction_roll": friction[2],
+        "density": density,
+    }
+
+    env = make_ablation_env(
+        box_xml_path=box_xml_path,
+        args=args,
+        metadata=metadata,
+        csv_path=csv_path,
+    )
+    try:
+        env.reset(seed=seed)
+        done = False
+        for gripper_width in gripper_widths:
+            action = _make_gripper_width_action(env.action_space, gripper_width)
             for _ in range(args.steps):
                 _, _, terminated, truncated, _ = env.step(action)
                 if args.stop_on_done and (terminated or truncated):
+                    done = True
                     break
-        finally:
-            env.close()
-        run_idx += 1
+            if done:
+                break
+    finally:
+        env.close()
 
-    print(f"Wrote {run_idx} ablation rollouts to {csv_path}")
+    return csv_path
+
+
+def _print_job_start(run_idx: int, friction: tuple[float, float, float], density: float, csv_path: Path) -> None:
+    print(
+        f"run_{run_idx:04d}: friction={_format_friction(friction)} "
+        f"density={_format_float(density)} csv={csv_path}"
+    )
+
+
+def run_ablation(args: argparse.Namespace) -> None:
+    output_dir = args.output_dir.expanduser().resolve()
+    source_xml = Path(_BOX_XML)
+    gripper_widths = _gripper_opening_schedule()
+    jobs = _make_ablation_jobs(args)
+    num_envs = _num_parallel_envs(args, len(jobs))
+
+    print(f"Running {len(jobs)} ablation rollouts with {num_envs} parallel environment(s).")
+    print(f"Gripper schedule: {_format_width_schedule(gripper_widths)}")
+    if args.gui and args.num_envs not in (0, 1):
+        print("--gui uses one environment even when --num-envs requests more.")
+
+    if num_envs == 1:
+        for run_idx, friction, density in jobs:
+            csv_path = _box_z_csv_path(
+                output_dir=output_dir,
+                friction=friction,
+                density=density,
+                seed=args.seed + run_idx,
+            )
+            _print_job_start(run_idx, friction, density, csv_path)
+            _run_ablation_job(run_idx, friction, density, args, output_dir, source_xml, gripper_widths)
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_envs) as executor:
+            future_to_job = {}
+            for run_idx, friction, density in jobs:
+                csv_path = _box_z_csv_path(
+                    output_dir=output_dir,
+                    friction=friction,
+                    density=density,
+                    seed=args.seed + run_idx,
+                )
+                _print_job_start(run_idx, friction, density, csv_path)
+                future = executor.submit(
+                    _run_ablation_job,
+                    run_idx,
+                    friction,
+                    density,
+                    args,
+                    output_dir,
+                    source_xml,
+                    gripper_widths,
+                )
+                future_to_job[future] = (run_idx, csv_path)
+
+            for future in concurrent.futures.as_completed(future_to_job):
+                run_idx, csv_path = future_to_job[future]
+                future.result()
+                print(f"run_{run_idx:04d}: wrote {csv_path}")
+
+    print(f"Wrote {len(jobs)} ablation rollouts to {output_dir}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ablate box friction/density and record z slippage.")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--output-dir", type=Path, default=Path("ablation_runs"))
-    parser.add_argument("--steps", type=int, default=120)
+    parser.add_argument("--steps", type=int, default=30, help="Settling steps to run after each gripper width command.")
+    parser.add_argument("--num-envs", type=int, default=0, help="Parallel environments to run. Use 0 for all CPU cores.")
     parser.add_argument("--slip-threshold", type=float, default=0.01, help="Meters of z-drop counted as slipped.")
     parser.add_argument("--stop-on-done", action="store_true")
     parser.add_argument("--gui", action="store_true")
     parser.add_argument("--grasp-settle-steps", type=int, default=30)
     parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
 
-    parser.add_argument("--friction-slide-values", type=_float_list, default=[0.25, 0.5, 1.0, 2.0])
+    parser.add_argument("--friction-slide-values", type=_float_list, default=[0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1])#, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
     parser.add_argument("--friction-spin-values", type=_float_list, default=[0.3])
     parser.add_argument("--friction-roll-values", type=_float_list, default=[0.1])
     parser.add_argument("--density-values", type=_float_list, default=[50.0])
-    parser.add_argument("--gripper-widths", type=_float_list, default=[0.0, 0.25, 0.5, 0.75, 1.0])
 
     args = parser.parse_args()
     run_ablation(args)
