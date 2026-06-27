@@ -125,9 +125,9 @@ class JointDatasetConverter:
             rcs.ROBOTS[robot_type].mjcf_model_path,
             rcs.ROBOTS[robot_type].attachment_site,
         )
-        self.camera_resizers = {camera.name: v2.Resize(camera.resolution) for camera in self.cameras}
+        self.camera_resizers = {camera.name: v2.Resize(camera.resolution) for camera in self.cameras}  # noqa: F821
 
-        self.lrds = LeRobotDataset.create(
+        self.lrds = LeRobotDataset.create(  # noqa: F821
             repo_id=self.repo_id,
             robot_type=self.robot_type.id,
             root=self.root,
@@ -394,10 +394,11 @@ class JointDatasetConverter:
 
     def _decode_and_resize_batch(self, image_bytes_list: list[bytes], camera: CamConversionConfig) -> np.ndarray:
         image_tensors = [
-            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8) for image_bytes in image_bytes_list
+            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)  # noqa: F821
+            for image_bytes in image_bytes_list
         ]
-        decoded = decode_jpeg(image_tensors)
-        batch = torch.stack(decoded)
+        decoded = decode_jpeg(image_tensors)  # noqa: F821
+        batch = torch.stack(decoded)  # noqa: F821
         resized = self.camera_resizers[camera.name](batch)
         return resized.permute(0, 2, 3, 1).cpu().numpy()
 
@@ -431,10 +432,10 @@ def run_conversion(
     video_encoding: bool = False,
     video_backend: str | None = None,
 ) -> None:
-    import torch
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
-    from torchvision.io import decode_jpeg
-    from torchvision.transforms import v2
+    import torch  # noqa: F401
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset  # noqa: F401
+    from torchvision.io import decode_jpeg  # noqa: F401
+    from torchvision.transforms import v2  # noqa: F401
 
     robot_type_converted = RobotType(robot_type)
     gripper_type_converted = GripperType(gripper_type)

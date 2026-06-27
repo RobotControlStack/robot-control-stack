@@ -11,6 +11,10 @@ from rcs import common
 logger = logging.getLogger(__name__)
 zed_app = typer.Typer(help="CLI tools for the ZED camera module of rcs.")
 
+DEFAULT_RGB_SNAPSHOT_OUTPUT_OPTION = typer.Option(
+    Path("zed_latest.png"), "--output", "-o", help="PNG file to write."
+)
+
 
 def _display_frame(window_name: str, frame):
     cv2.imshow(window_name, frame.camera.color.data[:, :, ::-1])
@@ -95,7 +99,7 @@ def rgb_view(
 @zed_app.command("rgb-snapshot")
 def rgb_snapshot(
     serial: str | None = typer.Argument(None, help="Optional ZED serial number. Uses the first device if omitted."),
-    output: Path = typer.Option(Path("zed_latest.png"), "--output", "-o", help="PNG file to write."),
+    output: Path = DEFAULT_RGB_SNAPSHOT_OUTPUT_OPTION,
     width: int = typer.Option(1280, help="Requested capture width."),
     height: int = typer.Option(720, help="Requested capture height."),
     fps: int = typer.Option(30, help="Requested capture frame rate."),

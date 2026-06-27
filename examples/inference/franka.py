@@ -16,7 +16,6 @@ from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
-from rcs.envs.tasks import PickTaskConfig
 from rcs.utils import SimpleFrameRate
 
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
@@ -388,7 +387,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
     else:
         # FR3
 
-        # scene = BinSortEnvConfig()
+        scene = EmptyWorldFR3Duo()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
