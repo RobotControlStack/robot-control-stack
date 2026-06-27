@@ -143,7 +143,6 @@ def export_episode_videos(
 
     matplotlib.use("Agg")
     import torch
-    from matplotlib import pyplot as plt
     from torchvision.io import decode_jpeg
 
     dataset = Path(dataset)

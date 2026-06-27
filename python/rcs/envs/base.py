@@ -624,8 +624,7 @@ class LimitedAbsoluteAction(ActObsInfoWrapper):
     def _get_current(self) -> np.ndarray:
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
             return self._robot.get_joint_position()
-        else:
-            return self._robot.get_cartesian_position()
+        return self._robot.get_cartesian_position()
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         if self.max_mov is None:

@@ -26,6 +26,8 @@ ROBOT2ID = {
     "right": "0",
 }
 
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+
 # use `udevadm info -a -n /dev/ttyUSB0 | grep serial`
 # to find out the serial numbers
 ROBOTIQ_SERIAL = {
