@@ -5,6 +5,13 @@ This extension provides support for Robotiq 2F-85 Gripper in RCS.
 ## Installation
 
 ```shell
+pip install rcs-robotiq2f85
+```
+
+For local development:
+
+```shell
+pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_robotiq2f85
 ```
 
@@ -20,9 +27,9 @@ chmod 777 /dev/ttyUSB0
 
 ## Usage
 ```python
-from rcs_robotiq2f85 import RobotiQGripper
+from rcs_robotiq2f85 import RobotiQ2F85GripperConfig, RobotiQGripper
 
-gripper = RobotiQGripper('<YOUR_SERIAL_NUMBER>')
+gripper = RobotiQGripper(RobotiQ2F85GripperConfig(serial_number="<YOUR_SERIAL_NUMBER>"))
 gripper.reset()
 gripper.shut()
 print(gripper.get_normalized_width())

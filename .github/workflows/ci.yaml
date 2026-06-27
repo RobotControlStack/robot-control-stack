@@ -141,7 +141,7 @@ jobs:
       - name: Install RCS
         run: pip install -ve . --group dev
       - name: Install extension
-        run: pip install -ve extensions/${{ matrix.extension }}
+        run: pip install -ve extensions/${{ matrix.extension }} --no-build-isolation
       - name: Check that stub files are up-to-date
         run: make -C extensions/${{ matrix.extension }} stubgen && git diff --exit-code
       - name: Check clang format

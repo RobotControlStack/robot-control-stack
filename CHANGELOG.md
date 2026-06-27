@@ -1,3 +1,40 @@
+## v0.7.2 (2026-06-24)
+
+### Fix
+
+- **egl**: fail fast when rendering is requested without egl
+- **pypi**: pin compatible pinocchio runtime deps
+- sim reset (#314)
+
+## v0.7.1 (2026-06-02)
+
+### Feat
+
+- download missing assets on import
+- **replayer**: gym make for env creators
+- task_cfg option in sim env creator gym make call
+- **converter**: binarize gripper (#307)
+- **convert**: lerobot data convert video codec (#306)
+- **teleop**: include depth option, duo and optimizations
+
+### Fix
+
+- **converter**: conversion threshold
+- **sim**: env to use correct seeding form gym np random
+- **env**: type in info dict
+- **converter**: skip identity and ik failure steps (#305)
+- **robotiq**: tcp of open pose
+- **franka**: redefine q_home
+- **fr3**: tcp in desk applied in controllers
+- **franka**: random jumping induced by uninitialized matrixes
+- **robotiq**: gripper type
+- **fr3**: duo config, gipper offset and copy
+- **fr3:desk**: home command possible without franka hand
+- **env**: zero cart. cut off limitation
+- **sim**: d405 rotation on duo
+- **robotiq**: tcp offset
+- grasp demo to use multirobot convention
+
 ## v0.7.0 (2026-05-04)
 
 ### Feat

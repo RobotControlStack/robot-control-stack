@@ -4,18 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_robotiq2f85"
-version = "0.7.0"
+version = "0.7.2"
 description="RCS RobotiQ module"
 dependencies = [
-    "rcs>=0.7.0",
+    "rcs-core>=0.7.2",
     "2f85-python-driver @ git+https://github.com/RobotControlStack/2f85-python-driver.git",
 ]
 readme = "README.md"
 maintainers = [
-  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
 ]
 authors = [
-  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
 ]
 requires-python = ">=3.11"
-license = { text = "AGPL-3.0-or-later" }
+license = "AGPL-3.0-or-later"

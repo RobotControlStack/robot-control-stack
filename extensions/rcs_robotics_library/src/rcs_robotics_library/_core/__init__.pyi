@@ -16,4 +16,4 @@ from __future__ import annotations
 from . import rl
 
 __all__: list[str] = ["rl"]
-__version__: str = "0.7.0"
+__version__: str = "0.7.2"

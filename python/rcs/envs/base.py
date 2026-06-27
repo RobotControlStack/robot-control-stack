@@ -281,7 +281,10 @@ class CoverWrapper(gym.Wrapper):
             if seed is not None:
                 # seed only once at the top of the stack
                 self.np_random, _ = seeding.np_random(seed)
-        return super().reset(seed=None, options=options)
+        re = super().reset(seed=None, options=options)
+        if self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.SIMULATION:
+            self.sim.step(30)  # apply reset state
+        return re
 
 
 class RobotWrapper(ActObsInfoWrapper):

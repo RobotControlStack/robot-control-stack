@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(
     rcs_panda
     LANGUAGES C CXX
-    VERSION 0.7.0
+    VERSION 0.7.2
     DESCRIPTION "RCS Libfranka integration"
 )
 
@@ -44,6 +44,16 @@ find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
+set(RCS_PANDA_MATERIALIZED_SRC_DIR "${CMAKE_CURRENT_BINARY_DIR}/materialized_src_fr3")
+execute_process(
+    COMMAND
+        ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/materialize_fr3_sources.py"
+        --project-root "${CMAKE_CURRENT_SOURCE_DIR}"
+        --output-dir "${RCS_PANDA_MATERIALIZED_SRC_DIR}"
+    COMMAND_ERROR_IS_FATAL ANY
+)
+
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
@@ -75,7 +85,23 @@ FetchContent_Declare(
     OVERRIDE_FIND_PACKAGE
 )
 
-FetchContent_MakeAvailable(pybind11 Eigen3 console_bridge)
+# --- POCO C++ Libraries ---
+set(ENABLE_TESTS OFF CACHE BOOL "Disable POCO tests" FORCE)
+set(ENABLE_DATA_MYSQL OFF CACHE BOOL "Disable POCO MySQL" FORCE)
+set(ENABLE_DATA_ODBC OFF CACHE BOOL "Disable POCO ODBC" FORCE)
+set(ENABLE_PAGECOMPILER OFF CACHE BOOL "Disable POCO PageCompiler" FORCE)
+set(ENABLE_PAGECOMPILER_FILE2PAGE OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    Poco
+    GIT_REPOSITORY https://github.com/pocoproject/poco.git
+    GIT_TAG        poco-1.13.3-release
+    GIT_PROGRESS   TRUE
+    EXCLUDE_FROM_ALL
+    OVERRIDE_FIND_PACKAGE
+)
+
+FetchContent_MakeAvailable(pybind11 Eigen3 console_bridge Poco)
 if(NOT TARGET Eigen3::Eigen3)
     add_library(Eigen3::Eigen3 ALIAS eigen)
 endif()
@@ -85,4 +111,4 @@ endif()
 FetchContent_MakeAvailable(libfranka)
 set_target_properties(franka PROPERTIES CXX_STANDARD 17)
 
-add_subdirectory(src_fr3)
+add_subdirectory("${RCS_PANDA_MATERIALIZED_SRC_DIR}" src_fr3)
