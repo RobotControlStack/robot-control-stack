@@ -7,7 +7,7 @@ name = "rcs_zed"
 version = "0.7.2"
 description = "RCS ZED camera module"
 readme = "README.md"
-license = { text = "AGPL-3.0-or-later" }
+license = "AGPL-3.0-or-later"
 dependencies = [
   "rcs-core>=0.7.2",
   "opencv-python~=4.10.0",
@@ -15,8 +15,8 @@ dependencies = [
   "diskcache",
   "typer~=0.9",
 ]
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
-authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 [tool.black]
