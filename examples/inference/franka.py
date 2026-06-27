@@ -8,23 +8,22 @@ from queue import Empty, Queue
 from time import sleep
 from typing import Any
 
-from PIL import Image
-
-from rcs.utils import SimpleFrameRate
-
 import gymnasium as gym
 import numpy as np
+from PIL import Image
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
+from rcs.utils import SimpleFrameRate
 
-import rcs
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
+
+import rcs
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +118,6 @@ def load_inference_config() -> InferenceConfig:
     return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
 
 
-
 class ModelInference:
     def __init__(self, env: gym.Env, cfg: InferenceConfig):
         self.env = env
@@ -186,7 +184,7 @@ class ModelInference:
             return self.remote_agent.act(obs_dict)
         if len(self._action_buffer) == 0:
             action = self.remote_agent.act(obs_dict)
-            selected_action = action.action[:self._cfg.n_action_steps]
+            selected_action = action.action[: self._cfg.n_action_steps]
             self._action_buffer = selected_action.tolist()
             done = action.done
             if RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
@@ -375,7 +373,9 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.control_mode = CONTROL_MODE
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
         hw_cfg.wrapper_cfg.binary_gripper = True
-        hw_cfg.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
+        hw_cfg.max_relative_movement = (
+            cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
+        )
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["left"].ignore_realtime = True
@@ -397,8 +397,9 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         sim_cfg_data.control_mode = ControlMode.JOINTS
         sim_cfg_data.relative_to = RELATIVETO
         sim_cfg_data.wrapper_cfg.binary_gripper = True
-        sim_cfg_data.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
-
+        sim_cfg_data.max_relative_movement = (
+            cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
+        )
 
         # if sim_cfg_data.root_frame_objects is None:
         #     sim_cfg_data.root_frame_objects = {}
@@ -413,7 +414,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         batch_size=32,
         max_rows_per_group=2,
         max_rows_per_file=10,
-        allow_wrapper_instruction=False
+        allow_wrapper_instruction=False,
     )
 
 

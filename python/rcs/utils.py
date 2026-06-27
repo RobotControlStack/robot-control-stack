@@ -140,10 +140,12 @@ def export_episode_videos(
     n: int = -1,
 ) -> None:
     import matplotlib
+
     matplotlib.use("Agg")
     import torch
     from matplotlib import pyplot as plt
     from torchvision.io import decode_jpeg
+
     dataset = Path(dataset)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -157,8 +159,7 @@ def export_episode_videos(
     camera_names = [name for name, _ in frame_struct.children]
     robot_names = [name for name, _ in relation.select("obs").types[0].children if name != "frames"]
     action_fields_by_robot = {
-        robot: {field_name for field_name, _ in robot_struct.children}
-        for robot, robot_struct in action_struct.children
+        robot: {field_name for field_name, _ in robot_struct.children} for robot, robot_struct in action_struct.children
     }
 
     uuids = conn.execute(f"SELECT DISTINCT uuid FROM read_parquet('{source_escaped}') ORDER BY uuid").fetchall()
@@ -210,7 +211,9 @@ def export_episode_videos(
             for robot_idx, robot in enumerate(robot_names)
         }
         gripper_history = {
-            robot: np.asarray([row[1 + len(camera_names) + len(robot_names) + robot_idx] for row in rows], dtype=np.float32)
+            robot: np.asarray(
+                [row[1 + len(camera_names) + len(robot_names) + robot_idx] for row in rows], dtype=np.float32
+            )
             for robot_idx, robot in enumerate(robot_names)
         }
         cols = math.ceil(math.sqrt(len(camera_names) + 1))
