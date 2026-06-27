@@ -132,7 +132,7 @@ pip install rcs-core
 
 ### From Source
 
-Make sure that common build tools (i.e., `build-essential`) and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
+Make sure that common build tools (i.e., `build-essential`), python headers and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
 
 *RCS works best in Python 3.11, and all extensions have been tested to work in 3.11.*
 
