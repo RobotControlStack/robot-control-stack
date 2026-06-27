@@ -26,7 +26,7 @@ Traditional robotics middleware (like ROS/ROS2) and complex motion planning pipe
 * **Zero ROS Overhead:** No complex message-passing, middleware, or network configuration required. Run natively in Python with a lightweight C++ backend.
 * **Frictionless Sim-to-Real:** Train your Reinforcement Learning or VLA policies in our MuJoCo Gymnasium wrapper, and deploy the *exact same code* directly to physical hardware.
 * **Synchronous Execution:** Optimized specifically for the highly parallelized, synchronous data collection required by modern ML workflows.
-* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
+* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents). See [examples/teleop/README.md](examples/teleop/README.md) and [examples/inference/README.md](examples/inference/README.md).
 
 ## 🧩 Wrapper-Based Architecture
 
@@ -196,6 +196,7 @@ For full documentation, including advanced installation, modular usage, and API 
 Useful quick-reference pages:
 - **[RCS Conventions](https://robotcontrolstack.org/user_guide/conventions)** for quaternion order, frames, Euler angles, and gripper semantics
 - **[Sim Scene Configuration](https://robotcontrolstack.org/user_guide/scene_configuration)** for `SimEnvCreatorConfig`, scene frames, and example setup patterns
+- **[Apps](https://robotcontrolstack.org/apps/index)** for the teleoperation and inference example entry points
 - **[libfranka Version Info](https://robotcontrolstack.org/extensions/libfranka_versions)** for the currently pinned `rcs_fr3` and `rcs_panda` `libfranka` versions and local-install guidance
 
 ## 🤝 Contribution
