@@ -158,8 +158,8 @@ def test_zed_include_right_adds_logical_right_camera_without_double_grab(patch_z
     assert opened.grab_calls == [True]
     assert np.array_equal(left_frame.camera.color.data, left_color)
     assert np.array_equal(right_frame.camera.color.data, right_color)
-    assert np.array_equal(left_frame.camera.color.intrinsics, left_intrinsics)
-    assert np.array_equal(right_frame.camera.color.intrinsics, right_intrinsics)
+    assert np.array_equal(left_frame.camera.color.intrinsics, left_intrinsics)  # type: ignore[arg-type]
+    assert np.array_equal(right_frame.camera.color.intrinsics, right_intrinsics)  # type: ignore[arg-type]
     assert left_frame.avg_timestamp == right_frame.avg_timestamp == 12.5
     assert left_frame.camera.depth is None
     assert right_frame.camera.depth is None

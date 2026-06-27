@@ -158,7 +158,8 @@ def export_episode_videos(
     camera_names = [name for name, _ in frame_struct.children]
     robot_names = [name for name, _ in relation.select("obs").types[0].children if name != "frames"]
     action_fields_by_robot = {
-        robot: {field_name for field_name, _ in robot_struct.children} for robot, robot_struct in action_struct.children
+        robot: {field_name for field_name, _ in robot_struct.children}  # type: ignore[union-attr]
+        for robot, robot_struct in action_struct.children
     }
 
     uuids = conn.execute(f"SELECT DISTINCT uuid FROM read_parquet('{source_escaped}') ORDER BY uuid").fetchall()

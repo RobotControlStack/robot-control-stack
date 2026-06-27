@@ -11,9 +11,7 @@ from rcs import common
 logger = logging.getLogger(__name__)
 zed_app = typer.Typer(help="CLI tools for the ZED camera module of rcs.")
 
-DEFAULT_RGB_SNAPSHOT_OUTPUT_OPTION = typer.Option(
-    Path("zed_latest.png"), "--output", "-o", help="PNG file to write."
-)
+DEFAULT_RGB_SNAPSHOT_OUTPUT_OPTION = typer.Option(Path("zed_latest.png"), "--output", "-o", help="PNG file to write.")
 
 
 def _display_frame(window_name: str, frame):
