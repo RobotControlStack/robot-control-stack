@@ -4,7 +4,8 @@
 - training: `run_test.py --mode train --num-envs <n> --total-timesteps <n> --n-steps <n> --batch-size <n>`
     - setting `--num-envs 0` runs it on the main thread for breakpointing
 - inference: `run_test.py --mode infer --infer-steps 100`
-- Change the paths of the variables `_BOX_XML` and `_TAXIM_GRIPPER_XML` accordingly
+- Change the paths of the variables `_BOX_XML`, `_TAXIM_GRIPPER_XML` and `_NORM2TEX_DIR` accordingly
+- To enable textures, you need to pass the flag `--with-textures` with the generated files (`_uv,_normal,_color`) in `norm2tex/grasp_assets/box/assets`; without the flag, it should just run the "smooth" version.
 
 Installation:
 ```
@@ -51,8 +52,9 @@ python run_test.py --gui --visualize-taxim --steps 1000
 ``
 
 ## To-do
-- Add json file interpreter for feeding geom-texture png files into mujoco-taxim for easier management
-- Make the textures for the cube
+- Add json file interpreter for feeding geom-texture png files into mujoco-taxim for easier management (Done)
+- Make the textures for the cube (Done, for now)
+- Enable norm2tex (Done)
 - Investigate parallelization (Done)
 - Add wrapper for truncation condition
 - Add wrapper for reward calculation

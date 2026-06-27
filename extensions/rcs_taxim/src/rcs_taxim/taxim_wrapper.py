@@ -14,6 +14,7 @@ class TaximSimWrapper(gym.Wrapper):
         taxim_sites: list[str],
         taxim_pad_geoms: list[str],
         target_geom_mesh_dict: dict[str, str],
+        target_geom_normal_map_dict: dict[str, str] | None = None,
         taxim_sensor_type: str = "digit",
         taxim_bg_idx: int = 0,
         taxim_bg_randomize: bool = False,
@@ -30,6 +31,7 @@ class TaximSimWrapper(gym.Wrapper):
         self.taxim_sites = taxim_sites
         self.taxim_pad_geoms = taxim_pad_geoms
         self.target_geom_mesh_dict = target_geom_mesh_dict
+        self.target_geom_normal_map_dict = target_geom_normal_map_dict
         self.taxim_sensor_type = taxim_sensor_type
         self.taxim_bg_idx = taxim_bg_idx
         self.taxim_bg_randomize = taxim_bg_randomize
@@ -79,7 +81,10 @@ class TaximSimWrapper(gym.Wrapper):
             sensor.add_camera_mujoco(site, self.model, self.data)
             sensor.change_bg(self.taxim_bg_idx)
             for geom, mesh in self.target_geom_mesh_dict.items():
-                sensor.add_geom_mujoco(geom, self.model, self.data, mesh)
+                normal_map_path = None
+                if self.target_geom_normal_map_dict is not None and geom in self.target_geom_normal_map_dict:
+                    normal_map_path = self.target_geom_normal_map_dict[geom]
+                sensor.add_geom_mujoco(geom, self.model, self.data, mesh, normal_map_path=normal_map_path)
             sensor.set_sensor_pad_geom(pad_geom)
             self.taxim_sensors.append(sensor)
         self.initialized = True

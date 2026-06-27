@@ -23,13 +23,14 @@ from rcs_sb3 import StableBaselines3PolicyWrapper, StableBaselines3Wrapper
 from rcs_taxim.taxim_wrapper import TaximSimWrapper
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
-
+import os
 
 import rcs
 
 _TAXIM_GRIPPER_TYPE_ID = "Robotiq2F85Digit"
 _TAXIM_GRIPPER_XML = Path("/home/sbien/Documents/Development/V2T/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
 _BOX_XML = "/home/sbien/Documents/Development/V2T/norm2tex/grasp_assets/box/box.xml"
+_NORM2TEX_DIR = Path("/home/sbien/Documents/Development/V2T/norm2tex")
 _ROBOT_NAME = "robot"
 _CUBE_GEOM = "_box_geom"
 _CUBE_MESH = "_box_mesh"
@@ -152,6 +153,40 @@ class StartGraspedWrapper(gym.Wrapper):
         sim.sync_gui()
         return obs, info
 
+def _make_obj_xml_from_mesh_path(mesh_path: Path) -> str:
+    material_type = mesh_path.name.split('/')[-1].split('_')[1].lower()
+    # TODO: Depending on material type, different friction and mass
+
+    mesh_name = mesh_path.name.split('/')[-1]
+    xml_path = mesh_path.parent.parent / f"{mesh_name.split('.')[0]}.xml"
+    source_xml_path = mesh_path.parent.parent / "box.xml"
+
+    # Open xml, replace box.obj with mesh name, and write to new xml path
+    with open(source_xml_path, 'r') as f:
+        xml_content = f.read()
+    xml_content = xml_content.replace("box.obj", mesh_name)
+    if xml_path.exists():
+        os.remove(xml_path)
+    with open(xml_path, 'w') as f:
+        f.write(xml_content)
+    return str(xml_path)
+
+def _get_normal_map_path_from_mesh_path(mesh_path: Path) -> Path:
+    # assert that the normal map exists
+    normal_name = mesh_path.stem.split('.')[0][:-3] + "_normal.png"
+    normal_path = mesh_path.parent / normal_name
+    assert normal_path.exists(), f"Normal map {normal_path} does not exist."
+    print(f"Normal map {normal_path} exists. Preparing Taxim texture...")
+    return normal_path
+
+def _select_random_texture():
+    # Randomly select a box material from the json files
+    json_dir = Path(__file__).parent
+    json_files = ["fabric_textures.json",]
+    with open(json_dir / np.random.choice(json_files), 'r') as f:
+        import json
+        texture_dict = json.load(f)
+    return Path(os.path.join(_NORM2TEX_DIR, np.random.choice(texture_dict)['path']))
 
 def make_franka_taxim_sim_env(
     *,
@@ -161,6 +196,7 @@ def make_franka_taxim_sim_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
+    uv_obj_path: Path | None = None,
 ) -> gym.Env:
     rcs.GRIPPER_PATHS[_taxim_gripper_type()] = str(_TAXIM_GRIPPER_XML)
 
@@ -177,10 +213,20 @@ def make_franka_taxim_sim_env(
     cfg.relative_to = RelativeTo.LAST_STEP
     cfg.gripper_cfgs = {_ROBOT_NAME: _taxim_gripper_cfg()}
     cfg.gripper_offsets = None
+
+
+    # Prepare the box XML and normal map as input if argument is given
+    box_xml_path = _BOX_XML
+    target_normal_map_dict = None
+    if uv_obj_path is not None:
+        box_xml_path = _make_obj_xml_from_mesh_path(uv_obj_path)
+        box_normal_map_path = _get_normal_map_path_from_mesh_path(uv_obj_path)
+        target_normal_map_dict = {_CUBE_GEOM: str(box_normal_map_path)}
+
     cfg.root_frame_objects = {
         "": (
             # rcs.OBJECT_PATHS["green_cube"],
-            _BOX_XML,
+            box_xml_path,
             Pose(translation=np.array([0.31, 0.0, 0.425]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])),
         )
     }
@@ -197,6 +243,7 @@ def make_franka_taxim_sim_env(
         taxim_sites=["gripperleft_digit_pad", "gripperright_digit_pad"],
         taxim_pad_geoms=["gripperleft_digit_pad", "gripperright_digit_pad"],
         target_geom_mesh_dict={_CUBE_GEOM: _CUBE_MESH},
+        target_geom_normal_map_dict=target_normal_map_dict,
         taxim_sensor_type="digit",
         taxim_fps=60,
         enable_depth=enable_depth,
@@ -214,6 +261,7 @@ def make_franka_taxim_sim_env(
 
 
 def make_inference_env(args: argparse.Namespace) -> gym.Env:
+
     raw_env = make_franka_taxim_sim_env(
         render_mode="human" if args.gui else "rgb_array",
         visualize_taxim=args.visualize_taxim,
@@ -221,6 +269,7 @@ def make_inference_env(args: argparse.Namespace) -> gym.Env:
         start_grasped=not args.no_start_grasped,
         grasp_settle_steps=args.grasp_settle_steps,
         post_gravity_settle_steps=args.post_gravity_settle_steps,
+        uv_obj_path=_select_random_texture() if args.with_texture else None,
     )
     env = StableBaselines3Wrapper(
         raw_env,
@@ -265,6 +314,7 @@ def make_train_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
+    with_texture: bool = False
 ):
     def _init():
         env = make_franka_taxim_sim_env(
@@ -274,6 +324,7 @@ def make_train_env(
             start_grasped=start_grasped,
             grasp_settle_steps=grasp_settle_steps,
             post_gravity_settle_steps=post_gravity_settle_steps,
+            uv_obj_path=_select_random_texture() if with_texture else None
         )
         env.reset(seed=seed + rank)
         return env
@@ -287,6 +338,7 @@ def make_sb3_train_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
+    with_texture: bool = False
 ):
     raw_env_fn = make_train_env(
         rank,
@@ -294,6 +346,7 @@ def make_sb3_train_env(
         start_grasped,
         grasp_settle_steps,
         post_gravity_settle_steps,
+        with_texture=with_texture
     )
 
     def _init():
@@ -318,6 +371,7 @@ def run_training_smoke(args: argparse.Namespace) -> None:
             not args.no_start_grasped,
             args.grasp_settle_steps,
             args.post_gravity_settle_steps,
+            with_texture=args.with_texture
         )()
     else:
         train_env = SubprocVecEnv(
@@ -328,6 +382,7 @@ def run_training_smoke(args: argparse.Namespace) -> None:
                     not args.no_start_grasped,
                     args.grasp_settle_steps,
                     args.post_gravity_settle_steps,
+                    with_texture=args.with_texture
                 )
                 for rank in range(args.num_envs)
             ],
@@ -354,6 +409,7 @@ def main() -> None:
     parser.add_argument("--no-start-grasped", action="store_true", help="Do not close the gripper after reset.")
     parser.add_argument("--grasp-settle-steps", type=int, default=30)
     parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
+    parser.add_argument("--with-texture", action="store_true", help="Use a random texture for the box object.")
 
     # Inference mode args
     parser.add_argument("--infer-steps", type=int, default=20, help="Inference smoke-test steps.")
