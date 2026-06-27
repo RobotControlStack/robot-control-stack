@@ -399,16 +399,13 @@ class RobotWrapper(ActObsInfoWrapper):
         self.robot.reset()
         if self.home_on_reset:
             exception = True
-            # sleep(1)
-            while exception: 
+            while exception:
                 try:
                     self.robot.move_home()
                     exception = False
                 except Exception:
-                    # sleep(0.1)
                     self.robot.automatic_error_recovery()
                     sleep(0.1)
-            # sleep(4)
         return super().reset(seed=seed, options=options)
 
     def close(self):

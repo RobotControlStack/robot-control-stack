@@ -1,13 +1,11 @@
 import datetime
 import logging
 import math
-import os
 import subprocess
 from pathlib import Path
 from time import perf_counter, sleep
 
 import duckdb
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -44,138 +42,6 @@ class SimpleFrameRate:
             self._last_print = perf_counter()
             logger.debug(f"FPS {self.loop_name}: {1 / (perf_counter() - self.t)}")
 
-        self.t = perf_counter()
-
-
-class SimpleFrameRateN:
-    def __init__(self, frame_rate: float | None, loop_name: str = "HybridFrameRate", spin_buffer: float = 0.002):
-        """
-        Utility class to manage frame rates with high precision using a hybrid sleep/spin technique.
-
-        Args:
-            frame_rate (float | None): The desired frame rate in frames per second.
-            loop_name (str): Identifier for logging.
-            spin_buffer (float): Seconds to wake up early for the precision spin-wait (default 2ms).
-        """
-        self.frame_rate = frame_rate
-        self.loop_name = loop_name
-        self.frame_interval = 1.0 / frame_rate if frame_rate else 0.0
-        self.spin_buffer = spin_buffer
-        
-        # Timing state
-        self.next_target_time: float | None = None
-        
-        # Logging state
-        self.frames_since_print = 0
-        self.last_print_time: float | None = None
-
-    def reset(self):
-        """Resets the internal timers."""
-        self.next_target_time = None
-        self.frames_since_print = 0
-        self.last_print_time = None
-
-    def __call__(self):
-        """Limits the loop to the target frame rate."""
-        if self.frame_rate is None:
-            return
-
-        now = perf_counter()
-
-        # 1. Initialize on the very first frame
-        if self.next_target_time is None:
-            self.next_target_time = now + self.frame_interval
-            self.last_print_time = now
-            self.frames_since_print = 0
-            return
-
-        # 2. Hybrid Wait Strategy
-        wait_time = self.next_target_time - now
-        
-        if wait_time > 0:
-            # Step A: Sleep and yield CPU for the bulk of the waiting time
-            sleep_time = wait_time - self.spin_buffer
-            if sleep_time > 0:
-                sleep(sleep_time)
-            
-            # Step B: "Spin" for the remaining sub-millisecond precision
-            # This loops infinitely and hogs the CPU until the exact microsecond is reached
-            while perf_counter() < self.next_target_time:
-                pass
-
-        # 3. Advance target time strictly by interval to prevent long-term drift
-        self.next_target_time += self.frame_interval
-        
-        # Anti-Spam: If the system lagged massively (e.g., loading a large file),
-        # fast-forward the target time so we don't try to rapidly catch up without sleeping.
-        now_after_wait = perf_counter()
-        if now_after_wait > self.next_target_time + self.frame_interval * 2:
-            self.next_target_time = now_after_wait
-
-        # 4. Accurate FPS Logging
-        self.frames_since_print += 1
-        elapsed_since_print = now_after_wait - self.last_print_time
-        
-        if elapsed_since_print > 10.0:
-            actual_fps = self.frames_since_print / elapsed_since_print
-            logger.debug(f"FPS {self.loop_name}: {actual_fps:.2f}")
-            self.last_print_time = now_after_wait
-            self.frames_since_print = 0
-
-
-
-class SimpleFrameRateNN:
-    def __init__(self, frame_rate: float | None, loop_name: str = "PrecisionInterval", spin_buffer: float = 0.0015):
-        self.frame_rate = frame_rate
-        self.loop_name = loop_name
-        self.frame_interval = 1.0 / frame_rate if frame_rate else 0.0
-        self.spin_buffer = spin_buffer
-        
-        self.t = None
-        self._last_print = None
-        self._frame_count = 0
-
-    def reset(self):
-        self.t = None
-        self._frame_count = 0
-
-    def __call__(self):
-        if self.frame_rate is None:
-            return
-
-        now = perf_counter()
-
-        # Initial call setup
-        if self.t is None:
-            self.t = now
-            self._last_print = now
-            return
-
-        # 1. Calculate how much time is left for THIS frame
-        elapsed = now - self.t
-        remaining = self.frame_interval - elapsed
-
-        if remaining > 0:
-            # 2. Hybrid Sleep: yield the majority of the time to the OS
-            if remaining > self.spin_buffer:
-                sleep(remaining - self.spin_buffer)
-            
-            # 3. Precision Spin: busy-wait for the last tiny fraction
-            target = self.t + self.frame_interval
-            while perf_counter() < target:
-                pass
-
-        # 4. Logging logic (Average over time)
-        self._frame_count += 1
-        curr_time = perf_counter()
-        if curr_time - self._last_print > 10:
-            fps = self._frame_count / (curr_time - self._last_print)
-            logger.debug(f"FPS {self.loop_name}: {fps:.2f}")
-            self._last_print = curr_time
-            self._frame_count = 0
-
-        # 5. Reset the stopwatch AFTER the wait
-        # This prevents the 'oscillating jitter' by not forcing a catch-up
         self.t = perf_counter()
 
 
@@ -235,6 +101,8 @@ def _render_action_panel(
     height: int,
     width: int,
 ) -> np.ndarray:
+    from matplotlib import pyplot as plt
+
     fig, axes = plt.subplots(
         len(joint_history),
         1,
