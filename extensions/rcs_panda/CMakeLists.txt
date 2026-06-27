@@ -44,6 +44,16 @@ find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
+set(RCS_PANDA_MATERIALIZED_SRC_DIR "${CMAKE_CURRENT_BINARY_DIR}/materialized_src_fr3")
+execute_process(
+    COMMAND
+        ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/materialize_fr3_sources.py"
+        --project-root "${CMAKE_CURRENT_SOURCE_DIR}"
+        --output-dir "${RCS_PANDA_MATERIALIZED_SRC_DIR}"
+    COMMAND_ERROR_IS_FATAL ANY
+)
+
 FetchContent_Declare(
     libfranka
     GIT_REPOSITORY https://github.com/frankaemika/libfranka.git
@@ -101,4 +111,4 @@ endif()
 FetchContent_MakeAvailable(libfranka)
 set_target_properties(franka PROPERTIES CXX_STANDARD 17)
 
-add_subdirectory(src_fr3)
+add_subdirectory("${RCS_PANDA_MATERIALIZED_SRC_DIR}" src_fr3)
