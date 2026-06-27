@@ -34,6 +34,7 @@ install.components = ["python_package"]
 
 [tool.cibuildwheel]
 skip = ["cp314*", "*-musllinux*"]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude librcs.so --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.black]
 line-length = 120
