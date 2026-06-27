@@ -4,17 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_zed"
-version = "0.6.3"
+version = "0.7.2"
 description = "RCS ZED camera module"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
 dependencies = [
-  "rcs>=0.6.3",
+  "rcs-core>=0.7.2",
   "opencv-python~=4.10.0",
   "pupil_apriltags",
   "diskcache",
   "typer~=0.9",
 ]
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
-authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 [tool.black]

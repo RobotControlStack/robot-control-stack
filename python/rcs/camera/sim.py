@@ -11,6 +11,7 @@ from rcs._core.sim import FrameSet as _FrameSet
 from rcs._core.sim import SimCameraConfig
 from rcs._core.sim import SimCameraSet as _SimCameraSet
 from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, FrameSet
+from rcs.sim import egl_bootstrap
 
 from rcs import sim
 
@@ -31,6 +32,7 @@ class SimCameraSet(_SimCameraSet):
         self.cameras = cameras
         self.physical_units = physical_units
 
+        egl_bootstrap.require("simulation camera rendering")
         super().__init__(simulation, cameras, render_on_demand=render_on_demand)
         self._sim: sim.Sim
 

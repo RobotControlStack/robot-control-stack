@@ -1,0 +1,143 @@
+name: Build and Publish Wheels
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build_core_wheels:
+    name: Build core wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build core wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_BUILD: cp311-* cp312-* cp313-*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-wheels
+          path: ./wheelhouse/*.whl
+
+  build_cpp_extension_wheels:
+    name: Build C++ extension wheels for ${{ matrix.extension }}
+    needs: [build_core_wheels]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension:
+          - rcs_fr3
+          - rcs_panda
+          - rcs_robotics_library
+          - rcs_so101
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-wheels
+          path: dist/core
+
+      - name: Install root Debian dependencies
+        run: |
+          sudo apt-get update
+          sudo xargs -a debian_deps.txt apt-get install -y
+
+      - name: Install extension Debian dependencies
+        run: |
+          deps_file="extensions/${{ matrix.extension }}/debian_deps.txt"
+          if [ -f "${deps_file}" ]; then
+            sudo xargs -a "${deps_file}" apt-get install -y
+          fi
+
+      - name: Build C++ extension wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_BUILD: cp311-* cp312-* cp313-*
+          PIP_FIND_LINKS: /project/dist/core
+        with:
+          package-dir: extensions/${{ matrix.extension }}
+          output-dir: extensions/${{ matrix.extension }}/wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.extension }}
+          path: extensions/${{ matrix.extension }}/wheelhouse/*.whl
+
+  build_python_extension_wheels:
+    name: Build pure Python wheel for ${{ matrix.extension }}
+    needs: [build_core_wheels]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension:
+          - rcs_realsense
+          - rcs_robotiq2f85
+          - rcs_tacto
+          - rcs_ur5e
+          - rcs_usb_cam
+          - rcs_xarm7
+          - rcs_zed
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-wheels
+          path: dist/core
+
+      - name: Install root Debian dependencies
+        run: |
+          sudo apt-get update
+          sudo xargs -a debian_deps.txt apt-get install -y
+
+      - name: Install extension Debian dependencies
+        run: |
+          deps_file="extensions/${{ matrix.extension }}/debian_deps.txt"
+          if [ -f "${deps_file}" ]; then
+            sudo xargs -a "${deps_file}" apt-get install -y
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Build pure Python wheel
+        env:
+          PIP_FIND_LINKS: ${{ github.workspace }}/dist/core
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          python -m build --wheel "extensions/${{ matrix.extension }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.extension }}
+          path: extensions/${{ matrix.extension }}/dist/*.whl
+
+  upload_pypi:
+    needs: [build_core_wheels, build_cpp_extension_wheels, build_python_extension_wheels]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*wheels*"
+          merge-multiple: true
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

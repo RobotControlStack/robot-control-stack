@@ -36,6 +36,16 @@ pip install -ve .
 
 For a docker deployment, see the `docker` folder in the repository.
 
+## RCS Asset Cache
+
+RCS resolves its asset directory from the `RCS_PREFIX` environment variable. If `RCS_PREFIX` is not set, it defaults to `~/.rcs`.
+
+On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+
+```shell
+export RCS_PREFIX=/path/to/rcs-assets
+```
+
 ## Basic Usage
 
 The python package is called `rcs`.

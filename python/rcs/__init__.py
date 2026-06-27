@@ -15,6 +15,7 @@ from rcs._core import __version__, common
 from rcs import camera, envs, hand, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
+REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
 
 
 def download_assets(
@@ -56,6 +57,9 @@ def get_prefix(
     assets_dirname: str = "assets",
     download_fn: Callable[[str, Path, str, str], None] = download_assets,
 ) -> str:
+    def has_required_assets(prefix: Path) -> bool:
+        return (prefix / REQUIRED_ASSET).is_file()
+
     if env_prefix:
         prefix = Path(env_prefix).expanduser().resolve()
     else:
@@ -65,7 +69,7 @@ def get_prefix(
         prefix = default_prefix.resolve()
 
     assets_dir = prefix / assets_dirname
-    if not assets_dir.is_dir():
+    if not assets_dir.is_dir() or not has_required_assets(prefix):
         prefix.mkdir(parents=True, exist_ok=True)
         print(f"Assets not found at {assets_dir}, downloading them now.")
         download_fn(version, prefix, github_asset_archive_url, assets_dirname)

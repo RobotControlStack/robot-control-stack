@@ -122,6 +122,13 @@ if __name__ == "__main__":
 > **Note:** This and other examples can be found in the [`examples/`]() folder.
 
 ## 🛠️ Installation
+* *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
+* *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
+### Via PyPI/pip
+
+```shell
+pip install rcs-core
+```
 
 ### From Source
 
@@ -129,11 +136,7 @@ Make sure that common build tools (i.e., `build-essential`) and a C++ compiler l
 
 *RCS works best in Python 3.11, and all extensions have been tested to work in 3.11.*
 
-* *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
-* *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
-
 ```shell
-
 # clone repository
 git clone https://github.com/RobotControlStack/robot-control-stack.git
 cd robot-control-stack
@@ -148,13 +151,20 @@ pip install 'pip>=25.1'
 pip install --group build_deps
 
 # install rcs
-pip install -ve .
-
+pip install -ve . --no-build-isolation
 ```
 
-### Via PyPI/pip
 
-*Coming soon...*
+### RCS Asset Cache
+
+RCS resolves its asset directory from the `RCS_PREFIX` environment variable. When it is unset, RCS defaults to `~/.rcs`.
+
+On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+
+```shell
+export RCS_PREFIX=/path/to/rcs-assets
+```
+
 
 ## 🦾 Hardware Extensions
 
@@ -164,6 +174,9 @@ To install a specific robot extension (example for Franka FR3):
 
 ```shell
 sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
+pip install rcs-fr3
+
+# or install it locally
 pip install -ve extensions/rcs_fr3
 ```
 
@@ -183,6 +196,7 @@ For full documentation, including advanced installation, modular usage, and API 
 Useful quick-reference pages:
 - **[RCS Conventions](https://robotcontrolstack.org/user_guide/conventions)** for quaternion order, frames, Euler angles, and gripper semantics
 - **[Sim Scene Configuration](https://robotcontrolstack.org/user_guide/scene_configuration)** for `SimEnvCreatorConfig`, scene frames, and example setup patterns
+- **[libfranka Version Info](https://robotcontrolstack.org/extensions/libfranka_versions)** for the currently pinned `rcs_fr3` and `rcs_panda` `libfranka` versions and local-install guidance
 
 ## 🤝 Contribution
 

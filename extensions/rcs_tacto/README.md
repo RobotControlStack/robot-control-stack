@@ -1,8 +1,33 @@
-# TACTO integration for RCS
-This package can be installed by running `pip install -e extensions/rcs_tacto` from the RCS repository root.
+# RCS Tacto Extension
 
-An example on how to create the environment is found in `{REPO_ROOT}/examples/grasp_digit_demo.py`. 
+Integration with the Tacto tactile sensor simulator.
 
-Particularly, take a look at `FR3TactoSimplePickUpSimEnvCreator` to understand how Tacto is inserted into the RCS stack.
+This extension depends on [`rcs-core`](https://pypi.org/project/rcs-core/).
+Documentation: <https://robotcontrolstack.org/extensions/rcs_tacto>
 
-Note that it is rather tricky to get the correct contact simulation settings to allow for a robust grasping of objects, so when using it, you will need to play around with the simulation settings. We recommend taking a look at the corresponding [MuJoCo documentation](https://mujoco.readthedocs.io/en/stable/computation/index.html) for more tips.
+## Installation
+
+Install from PyPI:
+
+```shell
+pip install rcs-tacto
+```
+
+Warning: plain `pip install rcs-tacto` will install the published `rcs-core` dependency from PyPI.
+
+Install from a local checkout:
+
+```shell
+pip install -ve .
+```
+
+If you want this extension to use your local RCS checkout instead of the published `rcs-core` package, first install the main package from the repository root:
+
+```shell
+pip install -ve . --no-build-isolation
+pip install -ve extensions/rcs_tacto
+```
+
+An example environment is available in [examples/fr3/grasp_digit_demo.py](../../examples/fr3/grasp_digit_demo.py).
+
+In particular, `FR3TactoSimplePickUpSimEnvCreator` shows how Tacto is integrated into the RCS stack.
