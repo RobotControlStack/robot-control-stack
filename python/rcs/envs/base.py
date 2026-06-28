@@ -283,7 +283,8 @@ class CoverWrapper(gym.Wrapper):
                 self.np_random, _ = seeding.np_random(seed)
         re = super().reset(seed=None, options=options)
         if self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.SIMULATION:
-            self.sim.step(30)  # apply reset state
+            sim = cast(simulation.Sim, self.get_wrapper_attr("sim"))
+            sim.step(30)  # apply reset state
         return re
 
 
