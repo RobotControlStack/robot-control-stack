@@ -1,0 +1,41 @@
+{
+    "name": "rcs",
+    "build": {
+        "dockerfile": "../Dockerfile"
+    },
+    "remoteUser": "vscode",
+    "runArgs": [
+        "--gpus",
+        "all",
+        "--name",
+        "rcs",
+        "--ipc=host",
+        "--network=host",
+        "--env=DISPLAY=${localEnv:DISPLAY}",
+        "--env=XAUTHORITY=/tmp/.Xauthority",
+        "--volume=${localEnv:HOME}/.Xauthority:/tmp/.Xauthority:ro",
+        "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    ],
+    "shutdownAction": "stopContainer",
+    "postStartCommand": "bash -lc 'grep -qxF \"source /home/vscode/venv/bin/activate\" ~/.bashrc || echo \"source /home/vscode/venv/bin/activate\" >> ~/.bashrc'",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "python.defaultInterpreterPath": "/home/vscode/venv/bin/python"
+            },
+            "extensions": [
+                "charliermarsh.ruff",
+                "eamodio.gitlens",
+                "ms-python.debugpy",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.vscode-python-envs",
+                "openai.chatgpt"
+            ]
+        }
+    },
+    "mounts": [
+        "source=/mnt/disk_air_fast_2/scannetpp,target=/workspaces/datasets,type=bind"
+    ],
+}
