@@ -19,7 +19,6 @@ from rcs._core.common import GripperType, Pose
 from rcs._core.sim import SimGripperConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
-from rcs.envs.tasks import TaximPickHoldOpenTaskConfig
 from rcs_sb3 import StableBaselines3PolicyWrapper, StableBaselines3Wrapper
 from rcs_taxim.taxim_wrapper import TaximSimWrapper
 from stable_baselines3 import PPO
@@ -27,7 +26,6 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 import os
 
 import rcs
-import rcs.envs.tasks as _taxim_tasks  # noqa: F401
 
 _TAXIM_GRIPPER_TYPE_ID = "Robotiq2F85Digit"
 _TAXIM_GRIPPER_XML = Path("/workspaces/robot-control-stack/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
@@ -94,6 +92,102 @@ def make_zero_sb3_model(env: gym.Env, args: argparse.Namespace) -> DummySB3Model
     )
 
 
+class StartGraspedWrapper(gym.Wrapper):
+    """Close the gripper after reset so the episode starts with the object held."""
+
+    def __init__(self, env: gym.Env, settle_steps: int = 30, post_gravity_settle_steps: int = 10, drop_z_threshold: float = 0.1, hold_bonus: float = 1.0, max_steps: int = 100):
+        super().__init__(env)
+        self.settle_steps = settle_steps
+        self.post_gravity_settle_steps = post_gravity_settle_steps
+        self.drop_z_threshold = drop_z_threshold
+        self.hold_bonus = hold_bonus
+        self._step_count = 0
+        self._start_obj_z: float | None = None
+        self.max_step_count = max_steps
+
+    def _closed_gripper_hold_action(self) -> dict[str, Any]:
+        return _zero_closed_action(self.env.action_space)
+
+    def _command_gripper_width(self, sim: Any, gripper: Any, width: float) -> None:
+        cfg = gripper.get_config()
+        actuator_id = mujoco.mj_name2id(sim.model, mujoco.mjtObj.mjOBJ_ACTUATOR, cfg.actuator)
+        if actuator_id < 0:
+            msg = f"Could not find gripper actuator {cfg.actuator!r}."
+            raise ValueError(msg)
+        ctrl = width * (cfg.max_actuator_width - cfg.min_actuator_width) + cfg.min_actuator_width
+        ctrl_low, ctrl_high = sim.model.actuator_ctrlrange[actuator_id]
+        sim.data.ctrl[actuator_id] = np.clip(ctrl, ctrl_low, ctrl_high)
+
+    def _object_z(self) -> float:
+        return float(np.asarray(self.sim.data.joint("_box_joint").qpos).reshape(-1)[2])
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
+        obs, _, terminated, truncated, info = self.env.step(action)
+        obj_z = self._object_z()
+        self._step_count += 1
+        gripper_width = info["robot"]["gripper_width"]
+        dropped = self._start_obj_z is not None and obj_z < self._start_obj_z - self.drop_z_threshold
+
+        if dropped:
+            reward = 0.0
+            terminated = True
+        else:
+            reward = (self.hold_bonus +  (1 - gripper_width)) / 2
+            truncated  = truncated or self._step_count >= self.max_step_count
+
+        info["rl_result"] = {
+            "reward": reward,
+            "terminated": terminated,
+            "truncated": truncated,
+            "gripper_width": gripper_width,
+            "dropped": dropped,
+        }
+        return obs, reward, terminated, truncated, info
+
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        sim = self.env.get_wrapper_attr("sim")
+        gravity = np.array(sim.model.opt.gravity, copy=True)
+
+        # CoverWrapper steps the simulation during reset. Disable gravity before
+        # the wrapped reset so the cube does not fall before we can close.
+        sim.model.opt.gravity[:] = 0
+        obs, info = self.env.reset(seed=seed, options=options)
+        self._step_count = 0
+
+        robot = self.env.get_wrapper_attr("robot")
+        gripper = self.env.get_wrapper_attr("gripper")
+        if isinstance(robot, dict):
+            robot = robot["robot"]
+        if isinstance(gripper, dict):
+            gripper = gripper["robot"]
+        hold_joints = robot.get_joint_position().copy()
+
+        try:
+            for step_idx in range(self.settle_steps):
+                width = 1.0 - (step_idx + 1) / max(self.settle_steps, 1)
+                self._command_gripper_width(sim, gripper, width)
+                robot.set_joint_position(hold_joints)
+                sim.step(1)
+        finally:
+            sim.model.opt.gravity[:] = gravity
+
+        gripper.grasp()
+        for _ in range(self.post_gravity_settle_steps):
+            robot.set_joint_position(hold_joints)
+            gripper.grasp()
+            sim.step(1)
+
+        self._start_obj_z = self._object_z()
+
+        obs, _, terminated, truncated, info = self.env.step(self._closed_gripper_hold_action())
+        if terminated or truncated:
+            obs, info = self.env.reset(seed=seed, options=options)
+        sim.sync_gui()
+        return obs, info
+
 def _make_obj_xml_from_mesh_path(mesh_path: Path) -> str:
     material_type = mesh_path.name.split('/')[-1].split('_')[1].lower()
     # TODO: Depending on material type, different friction and mass
@@ -137,8 +231,6 @@ def make_franka_taxim_sim_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
-    max_episode_steps: int,
-    hold_bonus: float,
     uv_obj_path: Path | None = None,
 ) -> gym.Env:
     rcs.GRIPPER_PATHS[_taxim_gripper_type()] = str(_TAXIM_GRIPPER_XML)
@@ -156,13 +248,6 @@ def make_franka_taxim_sim_env(
     cfg.relative_to = RelativeTo.LAST_STEP
     cfg.gripper_cfgs = {_ROBOT_NAME: _taxim_gripper_cfg()}
     cfg.gripper_offsets = None
-    cfg.task_cfg = TaximPickHoldOpenTaskConfig(
-        robot_name=_ROBOT_NAME,
-        grasp_settle_steps=grasp_settle_steps,
-        post_gravity_settle_steps=post_gravity_settle_steps,
-        max_episode_steps=max_episode_steps,
-        hold_bonus=hold_bonus,
-    )
 
 
     # Prepare the box XML and normal map as input if argument is given
@@ -199,6 +284,12 @@ def make_franka_taxim_sim_env(
         enable_depth=enable_depth,
         visualize=visualize_taxim,
     )
+    if start_grasped:
+        env = StartGraspedWrapper(
+            env,
+            settle_steps=grasp_settle_steps,
+            post_gravity_settle_steps=post_gravity_settle_steps,
+        )
     if render_mode == "human":
         env.get_wrapper_attr("sim").open_gui()
     return env
@@ -213,8 +304,6 @@ def make_inference_env(args: argparse.Namespace) -> gym.Env:
         start_grasped=not args.no_start_grasped,
         grasp_settle_steps=args.grasp_settle_steps,
         post_gravity_settle_steps=args.post_gravity_settle_steps,
-        max_episode_steps=args.max_episode_steps,
-        hold_bonus=args.hold_bonus,
         uv_obj_path=_select_random_texture() if args.with_texture else None,
     )
     env = StableBaselines3Wrapper(
@@ -260,8 +349,6 @@ def make_train_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
-    max_episode_steps: int,
-    hold_bonus: float,
     with_texture: bool = False
 ):
     def _init():
@@ -272,8 +359,6 @@ def make_train_env(
             start_grasped=start_grasped,
             grasp_settle_steps=grasp_settle_steps,
             post_gravity_settle_steps=post_gravity_settle_steps,
-            max_episode_steps=max_episode_steps,
-            hold_bonus=hold_bonus,
             uv_obj_path=_select_random_texture() if with_texture else None
         )
         env.reset(seed=seed + rank)
@@ -288,8 +373,6 @@ def make_sb3_train_env(
     start_grasped: bool,
     grasp_settle_steps: int,
     post_gravity_settle_steps: int,
-    max_episode_steps: int,
-    hold_bonus: float,
     with_texture: bool = False
 ):
     raw_env_fn = make_train_env(
@@ -298,8 +381,6 @@ def make_sb3_train_env(
         start_grasped,
         grasp_settle_steps,
         post_gravity_settle_steps,
-        max_episode_steps,
-        hold_bonus,
         with_texture=with_texture
     )
 
@@ -325,8 +406,6 @@ def run_training_smoke(args: argparse.Namespace) -> None:
             not args.no_start_grasped,
             args.grasp_settle_steps,
             args.post_gravity_settle_steps,
-            args.max_episode_steps,
-            args.hold_bonus,
             with_texture=args.with_texture
         )()
     else:
@@ -338,8 +417,6 @@ def run_training_smoke(args: argparse.Namespace) -> None:
                     not args.no_start_grasped,
                     args.grasp_settle_steps,
                     args.post_gravity_settle_steps,
-                    args.max_episode_steps,
-                    args.hold_bonus,
                     with_texture=args.with_texture
                 )
                 for rank in range(args.num_envs)
@@ -368,8 +445,6 @@ def main() -> None:
     parser.add_argument("--grasp-settle-steps", type=int, default=30)
     parser.add_argument("--post-gravity-settle-steps", type=int, default=10)
     parser.add_argument("--with-texture", action="store_true", help="Use a random texture for the box object.")
-    parser.add_argument("--max-episode-steps", type=int, default=100, help="Truncate the hold-open task after this many steps.")
-    parser.add_argument("--hold-bonus", type=float, default=1.0, help="Reward added while the cube stays held and the gripper stays open.")
 
     # Inference mode args
     parser.add_argument("--infer-steps", type=int, default=20, help="Inference smoke-test steps.")
