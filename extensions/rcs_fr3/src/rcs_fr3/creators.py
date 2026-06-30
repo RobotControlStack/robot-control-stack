@@ -15,6 +15,7 @@ from rcs.envs.base import (
     GripperWrapper,
     HandWrapper,
     HardwareEnv,
+    LimitedAbsoluteAction,
     MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
@@ -203,10 +204,12 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
             camera_set.start()
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
-            env = CameraSetWrapper(env, camera_set)
+            env = CameraSetWrapper(env, camera_set, cfg.wrapper_cfg.include_depth)
 
         if cfg.relative_to != RelativeTo.NONE:
             env = RelativeActionSpace(env, max_mov=cfg.max_relative_movement, relative_to=cfg.relative_to)
+        else:
+            env = LimitedAbsoluteAction(env, max_mov=cfg.max_relative_movement)
         return CoverWrapper(env)
 
     def config(self) -> FR3HardwareEnvCreatorConfig:
@@ -236,7 +239,7 @@ class RCSFR3MultiConfigEnvCreator(RCSEnvCreator[FR3MultiHardwareEnvCreatorConfig
             camera_set.start()
             camera_set.wait_for_frames()
             logger.info("CameraSet started")
-            env = CameraSetWrapper(env, camera_set)
+            env = CameraSetWrapper(env, camera_set, cfg.wrapper_cfg.include_depth)
         return CoverWrapper(env)
 
     def config(self) -> FR3MultiHardwareEnvCreatorConfig:

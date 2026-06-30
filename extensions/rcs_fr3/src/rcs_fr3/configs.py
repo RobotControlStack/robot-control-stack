@@ -152,6 +152,7 @@ class DefaultFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
 
 
 class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
+    # use `udevadm info -a -n /dev/ttyUSB0 | grep serial` to find out the serial numbers
     left_gripper_serial_number = "DAAQMJHX"
     right_gripper_serial_number = "DAAQMPDC"
 

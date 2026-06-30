@@ -182,15 +182,33 @@ class StorageWrapper(gym.Wrapper):
                 ),
             )
 
-    def _flush(self):
+    @staticmethod
+    def _has_null_typed_field(fields: pa.Schema | pa.StructType) -> bool:
+        return any(
+            pa.types.is_null(field.type)
+            or (pa.types.is_struct(field.type) and StorageWrapper._has_null_typed_field(field.type))
+            for field in fields
+        )
+
+    def _flush(self, keep_last: bool = False):
+        rows = self.buffer[:-1] if keep_last else self.buffer
+        if len(rows) == 0:
+            return
         if self.schema is None:
-            temp_batch = pa.RecordBatch.from_pylist(self.buffer)
+            temp_batch = pa.RecordBatch.from_pylist(rows)
+            # All-None columns (e.g. the very first frame's "action") infer as pyarrow's
+            # null type. Writing a fragment with that schema poisons every later read of
+            # the dataset once a real value for that field shows up, so hold these rows
+            # back in the buffer until enough data has accumulated to resolve a concrete
+            # schema instead.
+            if self._has_null_typed_field(temp_batch.schema):
+                return
             self.schema = temp_batch.schema
 
-        self.buffer[-1]["success"] = self._success
-        batch = pa.RecordBatch.from_pylist(self.buffer, schema=self.schema)
+        rows[-1]["success"] = self._success
+        batch = pa.RecordBatch.from_pylist(rows, schema=self.schema)
         self.queue.put(batch)
-        self.buffer.clear()
+        self.buffer = self.buffer[-1:] if keep_last else []
 
     def _flatten_arrays(self, d: dict[str, Any]):
         # NOTE: list / tuples of arrays not supported
@@ -284,7 +302,9 @@ class StorageWrapper(gym.Wrapper):
 
             self.step_cnt += 1
             if len(self.buffer) == self.batch_size:
-                self._flush()
+                # Keep the most recent row in memory so a success() right before reset()
+                # can still mark the episode as successful even if the batch boundary was hit.
+                self._flush(keep_last=True)
 
         return obs_original, reward, terminated, truncated, info
 
@@ -315,10 +335,11 @@ class StorageWrapper(gym.Wrapper):
         return obs, info
 
     def close(self):
-        if len(self.buffer) > 0:
-            self._flush()
+        try:
+            if len(self.buffer) > 0:
+                self._flush()
+        finally:
+            self.queue.put(self.QueueSentinel)
+            wait([self._writer_future])
 
-        self.queue.put(self.QueueSentinel)
-        wait([self._writer_future])
-
-        StorageWrapper.consolidate(self.base_dir, self.schema)
+        # StorageWrapper.consolidate(self.base_dir, self.schema)

@@ -26,22 +26,28 @@ ROBOT2ID = {
     "right": "0",
 }
 
-
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
-# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+
+# use `udevadm info -a -n /dev/ttyUSB0 | grep serial`
+# to find out the serial numbers
+ROBOTIQ_SERIAL = {
+    "left": "DAAQMPDC",
+    "right": "DAAQMJHX",
+}
 
 RECORD_FPS = 30
 # set camera dict to none disable cameras
-# CAMERA_DICT = {
-#     "left_wrist": "230422272017",
-#     "right_wrist": "230422271040",
-#     "side": "243522070385",
-#     "bird_eye": "243522070364",
-# }
-CAMERA_DICT = None
-ZED_CAMERA_DICT = {
-    "zed": "19928076",
+CAMERA_DICT = {
+    "right_wrist": "230422272017",
+    "left_wrist": "230422271040",
+    # "side": "243522070385",
+    # "bird_eye": "243522070364",
 }
+# CAMERA_DICT = None
+ZED_CAMERA_DICT = {
+    "head": "19928076",
+}
+# ZED_CAMERA_DICT = None
 MQ3_ADDR = "10.42.0.1"
 INCLUDE_DEPTH = False
 
@@ -117,8 +123,9 @@ def get_env():
                     for name, identifier in ZED_CAMERA_DICT.items()
                 },
                 kwargs={
-                    "enable_depth": False,
+                    "enable_depth": INCLUDE_DEPTH,
                     "enable_imu": False,
+                    "include_right": True,
                 },
             )
         if DIGIT_DICT is not None:
@@ -137,11 +144,19 @@ def get_env():
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = config.operator_class.control_mode[0]
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        hw_cfg.wrapper_cfg.binary_gripper = False
+        # hw_cfg.wrapper_cfg.binary_gripper = True
         hw_cfg.max_relative_movement = (
             0.5 if config.operator_class.control_mode[0] == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         )
         hw_cfg.relative_to = config.operator_class.control_mode[1]
         hw_cfg.robot_to_shared_base_frame = robot2world
+        hw_cfg.robot_cfgs["left"].ignore_realtime = True
+        hw_cfg.robot_cfgs["right"].ignore_realtime = True
+        hw_cfg.robot_cfgs["left"].speed_factor = 0.3
+        hw_cfg.robot_cfgs["right"].speed_factor = 0.3
+        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
+        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
         env_rel = env_creator.create_env(hw_cfg)
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:

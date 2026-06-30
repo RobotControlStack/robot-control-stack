@@ -3,6 +3,7 @@
 import copy
 import logging
 from enum import Enum, auto
+from time import sleep
 from typing import Annotated, Any, ClassVar, Literal, TypeAlias, cast
 
 import gymnasium as gym
@@ -282,7 +283,8 @@ class CoverWrapper(gym.Wrapper):
                 self.np_random, _ = seeding.np_random(seed)
         re = super().reset(seed=None, options=options)
         if self.env.get_wrapper_attr("PLATFORM") == RobotPlatform.SIMULATION:
-            self.sim.step(30)  # apply reset state
+            sim = cast(simulation.Sim, self.get_wrapper_attr("sim"))
+            sim.step(30)  # apply reset state
         return re
 
 
@@ -397,7 +399,14 @@ class RobotWrapper(ActObsInfoWrapper):
         self.prev_action = None
         self.robot.reset()
         if self.home_on_reset:
-            self.robot.move_home()
+            exception = True
+            while exception:
+                try:
+                    self.robot.move_home()
+                    exception = False
+                except Exception:
+                    self.robot.automatic_error_recovery()  # type: ignore[attr-defined]
+                    sleep(0.1)
         return super().reset(seed=seed, options=options)
 
     def close(self):
@@ -595,6 +604,95 @@ class RelativeTo(Enum):
     LAST_STEP = auto()
     CONFIGURED_ORIGIN = auto()
     NONE = auto()
+
+
+class LimitedAbsoluteAction(ActObsInfoWrapper):
+    ABSOLUTE_ACTION_KEY = "limited_absolute_action"
+
+    def __init__(
+        self,
+        env,
+        max_mov: float | tuple[float, float] | None = None,
+    ):
+        super().__init__(env)
+        self.joints_key = get_space_keys(LimitedJointsRelDictType)[0]
+        self.trpy_key = get_space_keys(LimitedTRPYRelDictType)[0]
+        self.tquat_key = get_space_keys(LimitedTQuatRelDictType)[0]
+        self._absolute_action: common.Pose | VecType | None = None
+        self._robot = cast(common.Robot, self.get_wrapper_attr("robot"))
+        self.max_mov = max_mov
+
+    def _get_current(self) -> np.ndarray | common.Pose:
+        if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
+            return self._robot.get_joint_position()
+        return self._robot.get_cartesian_position()
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if self.max_mov is None:
+            return action
+        if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
+            assert isinstance(self.max_mov, float)
+            low, high = self._robot.get_config().joint_limits
+            curr: np.ndarray | common.Pose = cast(np.ndarray, self._get_current())
+            delta = action[self.joints_key] - curr
+            limited_delta = np.clip(delta, -self.max_mov, self.max_mov)
+            clipped_joints = np.clip(curr + limited_delta, low, high)
+            action.update(JointsDictType(joints=clipped_joints))
+            self._absolute_action = clipped_joints
+
+        elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TRPY:
+            assert isinstance(self.max_mov, tuple)
+            curr = cast(common.Pose, self._get_current())
+            pose_space = cast(gym.spaces.Box, get_space(TRPYDictType).spaces[self.trpy_key])
+            target_pose = common.Pose(
+                translation=action[self.trpy_key][:3],
+                rpy_vector=action[self.trpy_key][3:],
+            )
+            pose_delta = common.Pose(
+                translation=target_pose.translation() - curr.translation(),  # type: ignore
+                rpy_vector=(target_pose * curr.inverse()).rotation_rpy().as_vector(),
+            )
+            limited_delta = pose_delta.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+            clipped_pose = np.concatenate(
+                [
+                    np.clip(curr.translation() + limited_delta.translation(), pose_space.low[:3], pose_space.high[:3]),
+                    (limited_delta * curr).rotation_rpy().as_vector(),
+                ]
+            )
+            action.update(TRPYDictType(xyzrpy=clipped_pose))
+            self._absolute_action = clipped_pose
+
+        elif self.get_wrapper_attr("get_control_mode")() == ControlMode.CARTESIAN_TQuat:
+            assert isinstance(self.max_mov, tuple)
+            curr = cast(common.Pose, self._get_current())
+            pose_space = cast(gym.spaces.Box, get_space(TQuatDictType).spaces[self.tquat_key])
+            target_pose = common.Pose(
+                translation=action[self.tquat_key][:3],
+                quaternion=action[self.tquat_key][3:],
+            )
+            pose_delta = target_pose * curr.inverse()
+            limited_delta = pose_delta.limit_translation_length(self.max_mov[0]).limit_rotation_angle(self.max_mov[1])
+            clipped_pose = np.concatenate(
+                [
+                    np.clip(curr.translation() + limited_delta.translation(), pose_space.low[:3], pose_space.high[:3]),
+                    (limited_delta * curr).rotation_q(),
+                ]
+            )
+            action.update(TQuatDictType(tquat=clipped_pose))  # type: ignore
+            self._absolute_action = clipped_pose
+        else:
+            msg = "Control mode not recognized!"
+            raise ValueError(msg)
+        return action
+
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        if self._absolute_action is not None:
+            info[self.ABSOLUTE_ACTION_KEY] = (
+                list(self._absolute_action.translation()) + list(self._absolute_action.rotation_q())
+                if isinstance(self._absolute_action, common.Pose)
+                else self._absolute_action
+            )
+        return observation, info
 
 
 class RelativeActionSpace(ActObsInfoWrapper):
@@ -944,6 +1042,14 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper = gripper
         self._last_gripper_cmd = None
 
+    def _command_changed(self, gripper_action: np.ndarray) -> bool:
+        if self._last_gripper_cmd is None:
+            return True
+        last_action = np.asarray(self._last_gripper_cmd, dtype=np.float32)
+        if self.binary:
+            return not np.array_equal(gripper_action, last_action)
+        return not np.allclose(gripper_action, last_action, atol=1e-3, rtol=0.0)
+
     def close(self):
         self.gripper.close()
         super().close()
@@ -975,13 +1081,14 @@ class GripperWrapper(ActObsInfoWrapper):
             gripper_action = [gripper_action]  # type: ignore
         if self.binary:
             gripper_action = np.round(gripper_action)
-        gripper_action = np.clip(gripper_action, 0.0, 1.0)
+        gripper_action = np.clip(np.asarray(gripper_action, dtype=np.float32), 0.0, 1.0)
 
-        if self.binary:
-            self.gripper.grasp() if gripper_action == self.BINARY_GRIPPER_CLOSED else self.gripper.open()
-        else:
-            self.gripper.set_normalized_width(gripper_action[0])
-        self._last_gripper_cmd = gripper_action
+        if self._command_changed(gripper_action):
+            if self.binary:
+                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+            else:
+                self.gripper.set_normalized_width(float(gripper_action[0]))
+            self._last_gripper_cmd = gripper_action.tolist()
         del action[self.gripper_key]
         return action
 

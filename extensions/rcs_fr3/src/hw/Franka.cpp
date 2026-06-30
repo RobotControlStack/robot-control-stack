@@ -220,6 +220,11 @@ void Franka::check_for_background_errors() {
   }
 }
 
+void Franka::clear_background_error() {
+  std::lock_guard<std::mutex> lock(this->exception_mutex);
+  this->background_exception = nullptr;
+}
+
 void Franka::osc_set_cartesian_position(
     const common::Pose& desired_pose_EE_in_base_frame) {
   this->check_for_background_errors();
@@ -335,8 +340,7 @@ void Franka::osc() {
 
       // torques handler
       if (this->running_controller.load() == Controller::none) {
-        franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
-        return franka::MotionFinished(zero_torques);
+        return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
       // TO BE replaced
       // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
@@ -514,11 +518,11 @@ void Franka::joint_controller() {
   this->set_default_robot_behavior();
 
   // high collision threshold values for high impedance
-  // this->robot.setCollisionBehavior(
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  //     {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   // deoxys/config/joint-impedance-controller.yml
   common::Vector7d Kp;
@@ -541,9 +545,7 @@ void Franka::joint_controller() {
 
       // torques handler
       if (this->running_controller.load() == Controller::none) {
-        // TODO: test if this also works when the robot is moving
-        franka::Torques zero_torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
-        return franka::MotionFinished(zero_torques);
+        return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
 
       common::Vector7d desired_q;
@@ -667,6 +669,7 @@ void Franka::automatic_error_recovery() {
 void Franka::reset() {
   this->stop_control_thread();
   this->automatic_error_recovery();
+  this->clear_background_error();
 }
 
 void Franka::wait_milliseconds(int milliseconds) {
