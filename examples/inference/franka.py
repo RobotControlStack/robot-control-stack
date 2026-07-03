@@ -11,10 +11,10 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 from PIL import Image
-from rcs._core.common import BaseCameraConfig, RobotPlatform
+from rcs._core.common import BaseCameraConfig, RobotPlatform, Pose
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.utils import SimpleFrameRate
 
@@ -37,8 +37,8 @@ ROBOT2ID = {
 }
 
 
-# ROBOT_INSTANCE = RobotPlatform.SIMULATION
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
 CAMERA_DICT = {
@@ -65,13 +65,18 @@ ROBOTIQ_SERIAL = {
 DIGIT_DICT = None
 
 
-INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
+INSTRUCTION = "pick up the green cube"
 FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
 # RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
 RECORD_PATH = "inference_recordings"
-MODEL = "lerobot"
+MODEL = "maniflow"
+
+# Map rcs sim camera frame names (EmptyWorldFR3 ships "bird_eye" + "wrist")
+# onto the obs keys the ManiFlow checkpoint was trained on (shape_meta.obs,
+# e.g. "front_rgb"/"gripper_rgb"). Adjust to match your checkpoint.
+MANIFLOW_CAMERA_MAP = {"bird_eye": "front_rgb", "wrist": "gripper_rgb"}
 IP = "localhost"
 PORT = 20000
 CONFIG_PATH = Path(__file__).with_suffix(".json")
@@ -100,11 +105,15 @@ class InferenceConfig:
     vlagents_port: int = PORT
     vlagents_model: str = MODEL
     instruction: str = INSTRUCTION
-    robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
+    # Single FR3 sim env (EmptyWorldFR3) exposes its arm under the "robot" key.
+    # For the hardware Duo use ["left", "right"].
+    robot_keys: list[str] = field(default_factory=lambda: ["robot"])
     jpeg_encoding: bool = True
     on_same_machine: bool = False
     fps: int = FPS
     record_path: str = RECORD_PATH
+    # None: forward the agent's action as-is each step. ManiFlowPolicy buffers
+    # its own action chunk internally (execution_horizon), so leave this None.
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
@@ -166,12 +175,15 @@ class ModelInference:
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
         for frame in obs["frames"]:
-            cameras[frame] = obs["frames"][frame]["rgb"]["data"]
-            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
+            # Rename rcs sim cameras to the keys the ManiFlow checkpoint expects.
+            key = MANIFLOW_CAMERA_MAP.get(frame, frame)
+            img = obs["frames"][frame]["rgb"]["data"]
+            cameras[key] = np.array(Image.fromarray(img).resize((224, 224), Image.Resampling.BILINEAR))
 
         state = []
         for robot in self._cfg.robot_keys:
             # TODO: currently hardcoded for joints
+            # Single-arm: -> ManiFlow agent_pos = [7 joints, 1 gripper] (8-dim).
             state.append(obs[robot]["joints"])
             state.append(obs[robot]["gripper"])
 
@@ -196,6 +208,8 @@ class ModelInference:
         act = {}
         for idx, robot in enumerate(self._cfg.robot_keys):
             # TODO: this is currently hard coded for franka joints
+            # ManiFlow single-arm action is 9-dim [7 joints, gripper, pd_mode];
+            # the slices below take joints + gripper and drop pd_mode (index 8).
             act[robot] = {}
             act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
             act[robot]["gripper"] = action.action[idx * 8 + 7 : idx * 8 + 8]
@@ -387,7 +401,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = EmptyWorldFR3()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
@@ -398,6 +412,10 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         sim_cfg_data.wrapper_cfg.binary_gripper = True
         sim_cfg_data.max_relative_movement = (
             cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
+        )
+        sim_cfg_data.root_frame_objects["green_cube"] = (
+            rcs.OBJECT_PATHS["green_cube"],
+            Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1])
         )
 
         # if sim_cfg_data.root_frame_objects is None:

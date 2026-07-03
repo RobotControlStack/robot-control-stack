@@ -161,6 +161,7 @@ def get_env():
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:
         # FR3
+        # Use this type of code to do inference
 
         scene = EmptyWorldFR3Duo()
         sim_cfg_data = scene.config()
@@ -171,7 +172,7 @@ def get_env():
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
-        # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
+        cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
         sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
         env_rel = scene.create_env(sim_cfg_data)
