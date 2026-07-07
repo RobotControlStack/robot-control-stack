@@ -326,7 +326,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
 
     def create_env_from_model(self, cfg: SimEnvCreatorConfig, mjmodel: MjModel) -> gym.Env:
         # save the composed scene for debugging
-        # mjmodel.save_mjcf("scene.xml")
+        mjmodel.save_mjcf("scene.xml")
         # you can also apply a scene path e.g. the saved one
         # mjmodel = "scene.xml"
 

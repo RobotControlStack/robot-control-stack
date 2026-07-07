@@ -108,6 +108,14 @@ class GripperDictType(RCSpaceType):
     gripper: Annotated[Vec1Type, gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)]
 
 
+class GripperWithForceDictType(RCSpaceType):
+    # [normalized width, normalized force], both in [0, 1]
+    gripper: Annotated[
+        VecType,
+        gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([1.0, 1.0]), dtype=np.float32),
+    ]
+
+
 class HandBinDictType(RCSpaceType):
     # 0 for closed, 1 for open (>=0.5 for open)
     gripper: Annotated[Vec1Type, gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)]
@@ -1034,10 +1042,12 @@ class GripperWrapper(ActObsInfoWrapper):
     def __init__(self, env, gripper: common.Gripper, binary: bool = True):
         super().__init__(env)
         self.binary = binary
+        self.enable_force_action = gripper.get_config().enable_force_action
         self.observation_space: gym.spaces.Dict
         self.observation_space.spaces.update(get_space(GripperDictType).spaces)
         self.action_space: gym.spaces.Dict
-        self.action_space.spaces.update(get_space(GripperDictType).spaces)
+        action_space_type = GripperWithForceDictType if self.enable_force_action else GripperDictType
+        self.action_space.spaces.update(get_space(action_space_type).spaces)
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self.gripper = gripper
         self._last_gripper_cmd = None
@@ -1079,15 +1089,27 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = action[self.gripper_key]
         if isinstance(gripper_action, int | float):
             gripper_action = [gripper_action]  # type: ignore
+        gripper_action = np.atleast_1d(np.asarray(gripper_action, dtype=np.float32))
         if self.binary:
-            gripper_action = np.round(gripper_action)
-        gripper_action = np.clip(np.asarray(gripper_action, dtype=np.float32), 0.0, 1.0)
+            gripper_action[0] = np.round(gripper_action[0])
+        gripper_action = np.clip(gripper_action, 0.0, 1.0)
+        if self.enable_force_action:
+            assert gripper_action.shape == (2,), "Force-enabled gripper action must be [width, force]."
+        else:
+            gripper_action = gripper_action[:1]
 
         if self._command_changed(gripper_action):
             if self.binary:
-                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+                if gripper_action[0] < 0.5:
+                    if self.enable_force_action:
+                        self.gripper.set_normalized_width(0.0, float(gripper_action[1]))
+                    else:
+                        self.gripper.grasp()
+                else:
+                    self.gripper.open()
             else:
-                self.gripper.set_normalized_width(float(gripper_action[0]))
+                force = float(gripper_action[1]) if self.enable_force_action else 0
+                self.gripper.set_normalized_width(float(gripper_action[0]), force)
             self._last_gripper_cmd = gripper_action.tolist()
         del action[self.gripper_key]
         return action

@@ -39,6 +39,7 @@ __all__: list[str] = [
 
 class FHConfig(rcs._core.common.GripperConfig):
     async_control: bool
+    enable_force_action: bool
     epsilon_inner: float
     epsilon_outer: float
     force: float
@@ -54,6 +55,7 @@ class FHConfig(rcs._core.common.GripperConfig):
         epsilon_inner: float = 0.005,
         epsilon_outer: float = 0.005,
         async_control: bool = False,
+        enable_force_action: bool = False,
     ) -> None: ...
 
 class FHState(rcs._core.common.GripperState):

@@ -434,13 +434,19 @@ PYBIND11_MODULE(_core, m) {
 
   rcs::common::GripperConfig default_gripper_config;
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig")
-      .def(py::init([](rcs::common::GripperType gripper_type) {
+      .def(py::init([](rcs::common::GripperType gripper_type,
+                       bool enable_force_action) {
              rcs::common::GripperConfig config;
              config.gripper_type = gripper_type;
+             config.enable_force_action = enable_force_action;
              return config;
            }),
-           py::arg("gripper_type") = default_gripper_config.gripper_type)
-      .def_readwrite("gripper_type", &rcs::common::GripperConfig::gripper_type);
+           py::arg("gripper_type") = default_gripper_config.gripper_type,
+           py::arg("enable_force_action") =
+               default_gripper_config.enable_force_action)
+      .def_readwrite("gripper_type", &rcs::common::GripperConfig::gripper_type)
+      .def_readwrite("enable_force_action",
+                     &rcs::common::GripperConfig::enable_force_action);
   py::class_<rcs::common::GripperState>(common, "GripperState")
       .def(py::init<>());
   py::enum_<rcs::common::GraspType>(common, "GraspType")
@@ -624,7 +630,8 @@ PYBIND11_MODULE(_core, m) {
                        std::vector<std::string> joints, double max_joint_width,
                        double min_joint_width, std::string actuator,
                        double max_actuator_width, double min_actuator_width,
-                       rcs::common::GripperType gripper_type) {
+                       rcs::common::GripperType gripper_type,
+                       bool enable_force_action) {
              rcs::sim::SimGripperConfig config;
              config.epsilon_inner = epsilon_inner;
              config.epsilon_outer = epsilon_outer;
@@ -639,6 +646,7 @@ PYBIND11_MODULE(_core, m) {
              config.max_actuator_width = max_actuator_width;
              config.min_actuator_width = min_actuator_width;
              config.gripper_type = gripper_type;
+             config.enable_force_action = enable_force_action;
              return config;
            }),
            py::arg("epsilon_inner") = default_simgripper_cfg.epsilon_inner,
@@ -658,7 +666,9 @@ PYBIND11_MODULE(_core, m) {
                default_simgripper_cfg.max_actuator_width,
            py::arg("min_actuator_width") =
                default_simgripper_cfg.min_actuator_width,
-           py::arg("gripper_type") = default_simgripper_cfg.gripper_type)
+           py::arg("gripper_type") = default_simgripper_cfg.gripper_type,
+           py::arg("enable_force_action") =
+               default_simgripper_cfg.enable_force_action)
       .def_readwrite("epsilon_inner",
                      &rcs::sim::SimGripperConfig::epsilon_inner)
       .def_readwrite("epsilon_outer",
@@ -682,6 +692,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("min_actuator_width",
                      &rcs::sim::SimGripperConfig::min_actuator_width)
       .def_readwrite("gripper_type", &rcs::sim::SimGripperConfig::gripper_type)
+      .def_readwrite("enable_force_action",
+                     &rcs::sim::SimGripperConfig::enable_force_action)
       .def("__copy__",
            [](const rcs::sim::SimGripperConfig& self) {
              return rcs::sim::SimGripperConfig(self);

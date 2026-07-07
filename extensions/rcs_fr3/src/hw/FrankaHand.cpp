@@ -57,9 +57,9 @@ FHState* FrankaHand::get_state() {
 }
 
 void FrankaHand::set_normalized_width(double width, double force) {
-  if (width < 0 || width > 1 || force < 0) {
+  if (width < 0 || width > 1 || force < 0 || force > 1) {
     throw std::invalid_argument(
-        "width must be between 0 and 1, force must be positive");
+        "width and force must be between 0 and 1");
   }
   franka::GripperState gripper_state = this->gripper.readOnce();
   width = width * gripper_state.max_width;
@@ -67,7 +67,7 @@ void FrankaHand::set_normalized_width(double width, double force) {
   if (force < 0.01) {
     this->gripper.move(width, this->m_cfg.speed);
   } else {
-    this->gripper.grasp(width, this->m_cfg.speed, force,
+    this->gripper.grasp(width, this->m_cfg.speed, force * this->m_cfg.force,
                         this->m_cfg.epsilon_inner, this->m_cfg.epsilon_outer);
   }
 }

@@ -30,3 +30,4 @@ class RobotConfigKwargs(TypedDict, total=False):
 
 class GripperConfigKwargs(TypedDict, total=False):
     gripper_type: common.GripperType
+    enable_force_action: bool
