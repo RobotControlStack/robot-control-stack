@@ -1,7 +1,8 @@
 import logging
 
 import gymnasium as gym
-from rcs._core.common import RobotPlatform
+from rcs._core import common
+from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
@@ -19,6 +20,9 @@ from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs
 from rcs import sim
+from rcs_fr3.creators import HardwareCameraCreatorConfig
+
+from rcs_robotiq2f85.hw import RobotiQ2F85GripperConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -34,8 +38,8 @@ put it into FCI mode before running this script. For a scripted way of unlocking
 fr3_direct_control.py example which uses the FCI context manager.
 """
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
-FR3_IP = "192.168.101.1"
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
+FR3_IP = "192.168.1.12"
 
 
 def main():
@@ -83,10 +87,41 @@ def main():
         env_creator = DefaultFR3HardwareEnv()
         env_creator.ip = FR3_IP
         hw_cfg = env_creator.config()
+        hw_cfg.robot_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        hw_cfg.robot_cfg.ignore_realtime = True
         hw_cfg.control_mode = ControlMode.CARTESIAN_TQuat
-        hw_cfg.camera_cfgs = None
+        ZED_CAMERA_DICT = {
+            "wrist": "35115330",
+            "side": "14943057",
+        }
+        hw_cfg.camera_cfgs = {}
+        hw_cfg.camera_cfgs["zed"] = HardwareCameraCreatorConfig(
+                camera_type_id="zed",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=1280,
+                        resolution_height=720,
+                        frame_rate=30,
+                    )
+                    for name, identifier in ZED_CAMERA_DICT.items()
+                },
+                kwargs={
+                    "enable_depth": False,
+                    "enable_imu": False,
+                    "include_right": True,
+                },
+        )
+
         hw_cfg.max_relative_movement = 0.5
         hw_cfg.relative_to = RelativeTo.LAST_STEP
+        left_gripper_serial_number = "DAANTG8W"
+        hw_cfg.gripper_cfg = RobotiQ2F85GripperConfig(
+                serial_number=left_gripper_serial_number,
+                speed=100,
+                force=50,
+                async_control=False,
+            )
         env_rel = env_creator.create_env(hw_cfg)
         input("the robot is going to move, press enter whenever you are ready")
 

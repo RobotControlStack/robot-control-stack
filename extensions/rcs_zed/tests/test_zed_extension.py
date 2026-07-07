@@ -14,6 +14,99 @@ from rcs_zed.camera import ZEDCameraSet, ZEDDeviceInfo, ZEDFrameBundle  # noqa: 
 from rcs import common  # noqa: E402
 
 
+class _FakeResolution:
+    HD2K = "HD2K"
+    HD1080 = "HD1080"
+    HD720 = "HD720"
+    VGA = "VGA"
+
+
+class _FakeUnit:
+    METER = "METER"
+
+
+class _FakeDepthMode:
+    NONE = "NONE"
+    QUALITY = "QUALITY"
+
+
+class _FakeErrorCode:
+    SUCCESS = "SUCCESS"
+
+
+class _FakeInitParameters:
+    def __init__(self):
+        self.camera_resolution = None
+        self.camera_fps = None
+        self.coordinate_units = None
+        self.depth_mode = None
+        self.sdk_verbose = None
+        self.serial_number = None
+
+    def set_from_serial_number(self, serial_number: int):
+        self.serial_number = serial_number
+
+
+class _FakeCameraInformation:
+    def __init__(self):
+        self.camera_model = "ZED2i"
+        self.camera_configuration = type(
+            "CameraConfiguration",
+            (),
+            {
+                "calibration_parameters": type(
+                    "CalibrationParameters",
+                    (),
+                    {
+                        "left_cam": type("LeftCam", (), {"fx": 100.0, "fy": 101.0, "cx": 50.0, "cy": 51.0})(),
+                        "right_cam": type("RightCam", (), {"fx": 102.0, "fy": 103.0, "cx": 52.0, "cy": 53.0})(),
+                    },
+                )()
+            },
+        )()
+
+
+class _FakeCamera:
+    def __init__(self):
+        self.init = None
+
+    def open(self, init):
+        self.init = init
+        if not isinstance(init.sdk_verbose, int):
+            raise TypeError(f"Argument 'value' has incorrect type (expected int, got {type(init.sdk_verbose).__name__})")
+        return _FakeErrorCode.SUCCESS
+
+    def get_camera_information(self):
+        return _FakeCameraInformation()
+
+    def close(self):
+        return None
+
+
+class _FakeRuntimeParameters:
+    pass
+
+
+class _FakeMat:
+    pass
+
+
+class _FakeSensorsData:
+    pass
+
+
+class _FakeSL:
+    InitParameters = _FakeInitParameters
+    RuntimeParameters = _FakeRuntimeParameters
+    Mat = _FakeMat
+    SensorsData = _FakeSensorsData
+    Camera = _FakeCamera
+    RESOLUTION = _FakeResolution
+    UNIT = _FakeUnit
+    DEPTH_MODE = _FakeDepthMode
+    ERROR_CODE = _FakeErrorCode
+
+
 class FakeOpenedZEDCamera:
     def __init__(self, device_info: ZEDDeviceInfo, color_intrinsics: np.ndarray, frame_bundle: ZEDFrameBundle):
         self.device_info = device_info
@@ -163,3 +256,18 @@ def test_zed_include_right_adds_logical_right_camera_without_double_grab(patch_z
     assert left_frame.avg_timestamp == right_frame.avg_timestamp == 12.5
     assert left_frame.camera.depth is None
     assert right_frame.camera.depth is None
+
+
+def test_open_camera_uses_integer_sdk_verbose(monkeypatch):
+    monkeypatch.setattr("rcs_zed.camera.sl", _FakeSL)
+
+    camera = ZEDCameraSet.open_camera(
+        common.BaseCameraConfig(identifier="35115330", resolution_width=1280, resolution_height=720, frame_rate=30),
+        enable_depth=False,
+        enable_imu=False,
+        include_right=False,
+    )
+
+    assert camera.camera.init.sdk_verbose == 0
+    assert camera.camera.init.serial_number == 35115330
+    assert camera.camera.init.depth_mode == _FakeDepthMode.NONE

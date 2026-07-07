@@ -37,7 +37,7 @@ fr3_direct_control.py example which uses the FCI context manager.
 """
 
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
-FR3_IP = "192.168.101.1"
+FR3_IP = "192.168.1.12"
 
 
 def main():

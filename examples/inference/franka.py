@@ -8,13 +8,14 @@ from queue import Empty, Queue
 from time import sleep
 from typing import Any
 
+import cv2
 import gymnasium as gym
 import numpy as np
 from PIL import Image
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.configs import EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.utils import SimpleFrameRate
 
@@ -28,8 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 ROBOT2IP = {
-    "right": "192.168.102.1",
-    "left": "192.168.101.1",
+    "right": "192.168.1.12",
 }
 ROBOT2ID = {
     "left": "1",
@@ -41,21 +41,15 @@ ROBOT2ID = {
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
-CAMERA_DICT = {
-    "right_wrist": "230422272017",
-    "left_wrist": "230422271040",
-    # "side": "243522070385",
-    # "bird_eye": "243522070364",
-}
-# CAMERA_DICT = None
+CAMERA_DICT = None
 ZED_CAMERA_DICT = {
-    "head": "19928076",
+    "wrist_image_left": "14943057",
+    "exterior_image_1_left":"35115330",
 }
 INCLUDE_DEPTH = False
 
 ROBOTIQ_SERIAL = {
-    "left": "DAAQMPDC",
-    "right": "DAAQMJHX",
+    "right": "DAANTG8W",
 }
 
 # DIGIT_DICT = {
@@ -65,15 +59,15 @@ ROBOTIQ_SERIAL = {
 DIGIT_DICT = None
 
 
-INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
-FPS = 30
+INSTRUCTION = "pick up the green cube"
+FPS = 15
 CONTROL_MODE = ControlMode.JOINTS
-RELATIVETO = RelativeTo.NONE
+RELATIVETO = RelativeTo.LAST_STEP
 # RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
 RECORD_PATH = "inference_recordings"
-MODEL = "lerobot"
+MODEL = "openpi"
 IP = "localhost"
-PORT = 20000
+PORT = 8080
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
@@ -86,10 +80,7 @@ logging.basicConfig(
 
 robot2world = {
     "right": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
-    ),
-    "left": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+        translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])
     ),
 }
 
@@ -100,11 +91,12 @@ class InferenceConfig:
     vlagents_port: int = PORT
     vlagents_model: str = MODEL
     instruction: str = INSTRUCTION
-    robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
+    robot_keys: list[str] = field(default_factory=lambda: ["right"])
     jpeg_encoding: bool = True
     on_same_machine: bool = False
     fps: int = FPS
     record_path: str = RECORD_PATH
+    show_camera_windows: bool = False
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
@@ -115,6 +107,13 @@ def load_inference_config() -> InferenceConfig:
         CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
         return InferenceConfig()
     return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+
+
+def normalize_robot_keys(cfg: InferenceConfig, available_robots: set[str]) -> InferenceConfig:
+    cfg.robot_keys = [robot for robot in cfg.robot_keys if robot in available_robots]
+    if not cfg.robot_keys and "right" in available_robots:
+        cfg.robot_keys = ["right"]
+    return cfg
 
 
 class ModelInference:
@@ -130,6 +129,7 @@ class ModelInference:
         )
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
+        self._camera_windows_enabled = False
 
     def submit_command(self, command: str) -> None:
         self._command_queue.put(command)
@@ -166,14 +166,17 @@ class ModelInference:
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
         for frame in obs["frames"]:
+            # if frame == "base_right":
+            #     continue
             cameras[frame] = obs["frames"][frame]["rgb"]["data"]
-            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
+            # cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
+        # cameras["wrist_right"] = np.zeros_like(cameras["wrist"])
 
         state = []
         for robot in self._cfg.robot_keys:
             # TODO: currently hardcoded for joints
             state.append(obs[robot]["joints"])
-            state.append(obs[robot]["gripper"])
+            state.append(1-np.array(obs[robot]["gripper"]))
 
         return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
 
@@ -197,12 +200,32 @@ class ModelInference:
         for idx, robot in enumerate(self._cfg.robot_keys):
             # TODO: this is currently hard coded for franka joints
             act[robot] = {}
-            act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
-            act[robot]["gripper"] = action.action[idx * 8 + 7 : idx * 8 + 8]
+            act[robot]["joints"] = np.array(action.action[idx * 8 : idx * 8 + 7])
+            act[robot]["gripper"] = 1 - np.array(action.action[idx * 8 + 7 : idx * 8 + 8])  # 0 means open
         return act
+
+    def _set_camera_windows_enabled(self, enabled: bool) -> None:
+        if enabled == self._camera_windows_enabled:
+            return
+        if not enabled:
+            cv2.destroyAllWindows()
+        self._camera_windows_enabled = enabled
+
+    def _show_camera_windows(self, obs: dict[str, Any]) -> None:
+        if not self._camera_windows_enabled:
+            return
+        frames = obs.get("frames", {})
+        for frame_name, frame_data in frames.items():
+            rgb_frame = frame_data.get("rgb", {}).get("data")
+            if rgb_frame is None:
+                continue
+            cv2.imshow(f"camera:{frame_name}", cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
 
     def loop(self):
         obs, _ = self.env.reset()
+        self._set_camera_windows_enabled(self._cfg.show_camera_windows)
+        self._show_camera_windows(obs)
         obs_dict = self.obs_rcs2agents(obs)
         logger.info(
             "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
@@ -215,6 +238,8 @@ class ModelInference:
 
             if reload_requested:
                 self._cfg = load_inference_config()
+                self._set_camera_windows_enabled(self._cfg.show_camera_windows)
+                # self._cfg = normalize_robot_keys(self._cfg, set(self.env.get_wrapper_attr("envs")))
                 try:
                     self.remote_agent.reconnect(
                         host=self._cfg.vlagents_host,
@@ -236,6 +261,7 @@ class ModelInference:
                     self.env.base_dir = self._cfg.record_path
                     self.env.set_instruction(self._cfg.instruction)
                 obs, _ = self.env.reset()
+                self._show_camera_windows(obs)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -245,6 +271,7 @@ class ModelInference:
                     logger.info("marking episode successful and resetting environment")
                 self.env.get_wrapper_attr("success")()
                 obs, _ = self.env.reset()
+                self._show_camera_windows(obs)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -253,6 +280,7 @@ class ModelInference:
                 if self._episode_running:
                     logger.info("stopping episode and resetting environment")
                 obs, _ = self.env.reset()
+                self._show_camera_windows(obs)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -275,22 +303,31 @@ class ModelInference:
                     sleep(0.05)
                     continue
 
+            # print(obs_dict.cameras.keys())
+            # breakpoint()
             action = self.act(copy.deepcopy(obs_dict))
             if action.done:
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
+                self._show_camera_windows(obs)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
                 continue
             a = self.action_agents2rcs(action)
+            # print("step ################")
+            print(a)
             obs, _, _, _, info = self.env.step(a)
+            # breakpoint()
             # print(obs["left"]["joints"], obs["left"]["gripper"], obs["right"]["joints"], obs["right"]["gripper"])
 
+            self._show_camera_windows(obs)
             obs_dict = self.obs_rcs2agents(obs)
 
             if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
                 self.frame_rate()
+
+        self._set_camera_windows_enabled(False)
 
 
 def command_loop(controller: ModelInference) -> None:
@@ -317,13 +354,16 @@ def command_loop(controller: ModelInference) -> None:
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv
+        from rcs_fr3.configs import FrankaDuoEnv, DROIDEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
         env_creator = FrankaDuoEnv()
-        env_creator.left_ip = ROBOT2IP["left"]
-        env_creator.right_ip = ROBOT2IP["right"]
+        env_creator = DROIDEnv()
+        # env_creator.right_ip = ROBOT2IP["right"]
+        env_creator.robot_ip = ROBOT2IP["right"]
+        env_creator.gripper_serial_number = ROBOTIQ_SERIAL["right"]
         hw_cfg = env_creator.config()
+        # del hw_cfg.robot_cfgs["left"]
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
             camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
@@ -353,6 +393,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
                 kwargs={
                     "enable_depth": False,
                     "enable_imu": False,
+                    # "include_right": True,
                 },
             )
         if DIGIT_DICT is not None:
@@ -377,17 +418,19 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         )
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
-        hw_cfg.robot_cfgs["left"].ignore_realtime = True
+        # hw_cfg.robot_to_shared_base_frame = {
+        #     robot: pose for robot, pose in robot2world.items() if robot in hw_cfg.robot_cfgs
+        # }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.1
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
-        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
+        # del hw_cfg.gripper_cfgs["left"]
+        # hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
+        # cfg = normalize_robot_keys(cfg, set(hw_cfg.robot_cfgs))
         env_rel = env_creator.create_env(hw_cfg)
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = EmptyWorldFR3()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
@@ -404,6 +447,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         #     sim_cfg_data.root_frame_objects = {}
         # sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
+        # cfg = normalize_robot_keys(cfg, {"right"})
         env_rel = scene.create_env(sim_cfg_data)
 
     return StorageWrapper(

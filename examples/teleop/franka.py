@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.configs import EmptyWorldFR3, EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
 from rcs.operator.gello import GelloConfig, GelloOperator
@@ -18,34 +18,35 @@ logger = logging.getLogger(__name__)
 
 
 ROBOT2IP = {
-    "right": "192.168.102.1",
-    "left": "192.168.101.1",
+    "right": "192.168.1.12",
+    #"left": "192.168.101.1",
 }
 ROBOT2ID = {
     "left": "1",
     "right": "0",
 }
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # use `udevadm info -a -n /dev/ttyUSB0 | grep serial`
 # to find out the serial numbers
 ROBOTIQ_SERIAL = {
-    "left": "DAAQMPDC",
-    "right": "DAAQMJHX",
+    #"left": "DAAQMPDC",
+    "right": "DAANTG8W",
 }
 
 RECORD_FPS = 30
 # set camera dict to none disable cameras
-CAMERA_DICT = {
-    "right_wrist": "230422272017",
-    "left_wrist": "230422271040",
-    # "side": "243522070385",
-    # "bird_eye": "243522070364",
-}
-# CAMERA_DICT = None
+# CAMERA_DICT = {
+#     "right_wrist": "230422272017",
+#     "left_wrist": "230422271040",
+#     # "side": "243522070385",
+#     # "bird_eye": "243522070364",
+# }
+CAMERA_DICT = None
 ZED_CAMERA_DICT = {
-    "head": "19928076",
+    "head": "14943057",
+    "wrist":"35115330",
 }
 # ZED_CAMERA_DICT = None
 MQ3_ADDR = "10.42.0.1"
@@ -64,11 +65,14 @@ RECORD_FPS = 30
 
 robot2world = {
     "right": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
+        translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])
     ),
-    "left": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
-    ),
+    # "right": rcs.common.Pose(
+    #     translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
+    # ),
+    # "left": rcs.common.Pose(
+    #     translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+    # ),
 }
 
 config: QuestConfig | GelloConfig
@@ -89,13 +93,16 @@ config = QuestConfig(
 
 def get_env():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv
+        from rcs_fr3.configs import FrankaDuoEnv, DROIDEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-        env_creator = FrankaDuoEnv()
-        env_creator.left_ip = ROBOT2IP["left"]
-        env_creator.right_ip = ROBOT2IP["right"]
+        # env_creator = FrankaDuoEnv()
+        env_creator = DROIDEnv()
+        # env_creator.left_ip = ROBOT2IP["left"]
+        env_creator.robot_ip = ROBOT2IP["right"]
+        env_creator.gripper_serial_number = ROBOTIQ_SERIAL["right"]
         hw_cfg = env_creator.config()
+        # del hw_cfg.robot_cfgs["left"]
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
             camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
@@ -151,18 +158,19 @@ def get_env():
         )
         hw_cfg.relative_to = config.operator_class.control_mode[1]
         hw_cfg.robot_to_shared_base_frame = robot2world
-        hw_cfg.robot_cfgs["left"].ignore_realtime = True
+        # hw_cfg.robot_cfgs["left"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.3
+        # hw_cfg.robot_cfgs["left"].speed_factor = 0.3
         hw_cfg.robot_cfgs["right"].speed_factor = 0.3
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
-        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
+        # hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
+        # del hw_cfg.gripper_cfgs["left"]
+        # hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
         env_rel = env_creator.create_env(hw_cfg)
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = EmptyWorldFR3()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500

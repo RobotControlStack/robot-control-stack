@@ -6,4 +6,4 @@ publisher = FakeSimPublisher(FakeSimScene(), MQ3_ADDR)
 reader = MetaQuest3("RCSNode")
 while True:
     data = reader.get_controller_data()
-    print(data)
+    # print(data)
