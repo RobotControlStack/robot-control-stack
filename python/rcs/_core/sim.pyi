@@ -162,6 +162,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     actuator: str
     collision_geoms: list[str]
     collision_geoms_fingers: list[str]
+    enable_force_action: bool
     epsilon_inner: float
     epsilon_outer: float
     gripper_type: rcs._core.common.GripperType
@@ -189,6 +190,7 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
         max_actuator_width: float = 255.0,
         min_actuator_width: float = 0.0,
         gripper_type: rcs._core.common.GripperType = ...,
+        enable_force_action: bool = False,
     ) -> None: ...
     def add_prefix(self, id: str) -> None: ...
 

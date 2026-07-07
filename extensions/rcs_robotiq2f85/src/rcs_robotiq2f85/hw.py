@@ -39,6 +39,8 @@ class RobotiQ2F85GripperState(GripperState):
 
 
 class RobotiQ2F85Gripper(Gripper):
+    MIN_FORCE = 20.0
+
     def __init__(self, cfg: RobotiQ2F85GripperConfig):
         super().__init__()
         self._cfg: RobotiQ2F85GripperConfig = cfg
@@ -54,7 +56,7 @@ class RobotiQ2F85Gripper(Gripper):
         """
         Close the gripper to grasp an object.
         """
-        self.set_normalized_width(0.0, force=self._cfg.force)
+        self.set_normalized_width(0.0, force=1.0)
 
     def open(self) -> None:
         """
@@ -67,17 +69,25 @@ class RobotiQ2F85Gripper(Gripper):
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
         """
-        Set the gripper width to a normalized value between 0 and 1.
+        Set the gripper width and force to normalized values between 0 and 1.
         """
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
+        if not (0 <= force <= 1):
+            msg = f"Force must be between 0 and 1, got {force}."
+            raise ValueError(msg)
         self._last_normalized_width = width
         abs_width = width * 85
+        if self._cfg.enable_force_action:
+            max_force = max(self.MIN_FORCE, self._cfg.force)
+            abs_force = self.MIN_FORCE + force * (max_force - self.MIN_FORCE)
+        else:
+            abs_force = self._cfg.force
         self.gripper.go_to(
             opening=float(abs_width),
             speed=self._cfg.speed,
-            force=force if force != 0 else self._cfg.force,
+            force=abs_force,
             blocking_call=not self._cfg.async_control,
         )
 

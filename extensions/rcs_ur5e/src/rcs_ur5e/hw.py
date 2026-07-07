@@ -361,14 +361,23 @@ class RobotiQGripper(common.Gripper):
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
         """
-        Set the gripper width to a normalized value between 0 and 1.
+        Set the gripper width and force to normalized values between 0 and 1.
         """
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
+        if not (0 <= force <= 1):
+            msg = f"Force must be between 0 and 1, got {force}."
+            raise ValueError(msg)
         abs_width = (1 - width) * self.gripper.get_max_position()
+        if self._cfg.enable_force_action:
+            abs_force = self.gripper._min_force + force * (
+                self.gripper._max_force - self.gripper._min_force
+            )
+        else:
+            abs_force = self.gripper._max_force
         # print(f"Setting gripper width to {width:.2f} (absolute: {abs_width:.2f})")
-        self.gripper.move(int(abs_width), int(self.gripper._max_speed), int(self.gripper._max_force))
+        self.gripper.move(int(abs_width), int(self.gripper._max_speed), int(abs_force))
 
     def shut(self) -> None:
         """
