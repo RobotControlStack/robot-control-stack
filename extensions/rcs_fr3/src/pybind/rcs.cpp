@@ -230,7 +230,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::FHConfig>(hw, "FHConfig", gripper_config)
       .def(py::init([](const std::string& ip, double grasping_width,
                        double speed, double force, double epsilon_inner,
-                       double epsilon_outer, bool async_control) {
+                       double epsilon_outer, bool async_control,
+                       bool enable_force_action) {
              rcs::hw::FHConfig cfg;
              cfg.ip = ip;
              cfg.grasping_width = grasping_width;
@@ -239,6 +240,7 @@ PYBIND11_MODULE(_core, m) {
              cfg.epsilon_inner = epsilon_inner;
              cfg.epsilon_outer = epsilon_outer;
              cfg.async_control = async_control;
+             cfg.enable_force_action = enable_force_action;
              return cfg;
            }),
            py::arg("ip"),
@@ -247,14 +249,18 @@ PYBIND11_MODULE(_core, m) {
            py::arg("force") = default_gripper_config.force,
            py::arg("epsilon_inner") = default_gripper_config.epsilon_inner,
            py::arg("epsilon_outer") = default_gripper_config.epsilon_outer,
-           py::arg("async_control") = default_gripper_config.async_control)
+           py::arg("async_control") = default_gripper_config.async_control,
+           py::arg("enable_force_action") =
+               default_gripper_config.enable_force_action)
       .def_readwrite("ip", &rcs::hw::FHConfig::ip)
       .def_readwrite("grasping_width", &rcs::hw::FHConfig::grasping_width)
       .def_readwrite("speed", &rcs::hw::FHConfig::speed)
       .def_readwrite("force", &rcs::hw::FHConfig::force)
       .def_readwrite("epsilon_inner", &rcs::hw::FHConfig::epsilon_inner)
       .def_readwrite("epsilon_outer", &rcs::hw::FHConfig::epsilon_outer)
-      .def_readwrite("async_control", &rcs::hw::FHConfig::async_control);
+      .def_readwrite("async_control", &rcs::hw::FHConfig::async_control)
+      .def_readwrite("enable_force_action",
+                     &rcs::hw::FHConfig::enable_force_action);
 
   py::object gripper_state =
       (py::object)py::module_::import("rcs").attr("common").attr(

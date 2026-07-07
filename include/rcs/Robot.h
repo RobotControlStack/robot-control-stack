@@ -81,6 +81,7 @@ inline const GripperType GripperType::FrankaHand{"FrankaHand"};
 
 struct GripperConfig {
   GripperType gripper_type = GripperType::FrankaHand;
+  bool enable_force_action = false;
   virtual ~GripperConfig() {};
 };
 struct GripperState {
