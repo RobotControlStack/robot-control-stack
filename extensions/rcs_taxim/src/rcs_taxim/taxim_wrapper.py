@@ -92,7 +92,9 @@ class TaximSimWrapper(gym.Wrapper):
     def _render_tactile_frames(self, visualize: bool) -> dict[str, dict[str, dict[str, Any]]]:
         frames: dict[str, dict[str, dict[str, Any]]] = {}
         for site, sensor in zip(self.taxim_sites, self.taxim_sensors, strict=True):
-            rgb, depth, _ = sensor.render_taxim(self.model, self.data, visualize=self.visualize, cycle_bg=self.taxim_bg_randomize)
+            rgb, depth, _ = sensor.render_taxim(
+                self.model, self.data, visualize=self.visualize, cycle_bg=self.taxim_bg_randomize
+            )
             tactile_obs: dict[str, dict[str, Any]] = {"rgb": {"data": rgb}}
             if self.enable_depth:
                 tactile_obs["depth"] = {"data": depth}

@@ -49,20 +49,20 @@ def _make_camera_cfgs(
 
 def _taxim_gripper_cfg() -> SimGripperConfig:
     return SimGripperConfig(
-            epsilon_inner=0.005,
-            epsilon_outer=0.005,
-            seconds_between_callbacks=0.1,
-            ignored_collision_geoms=[],
-            collision_geoms=[],
-            collision_geoms_fingers=[],
-            joints=["right_driver_joint", "left_driver_joint"],
-            max_joint_width=0.005,
-            min_joint_width=1.0,
-            actuator="fingers_actuator",
-            max_actuator_width=0,
-            min_actuator_width=255,
-            gripper_type=_TAXIM_GRIPPER_TYPE,
-        )
+        epsilon_inner=0.005,
+        epsilon_outer=0.005,
+        seconds_between_callbacks=0.1,
+        ignored_collision_geoms=[],
+        collision_geoms=[],
+        collision_geoms_fingers=[],
+        joints=["right_driver_joint", "left_driver_joint"],
+        max_joint_width=0.005,
+        min_joint_width=1.0,
+        actuator="fingers_actuator",
+        max_actuator_width=0,
+        min_actuator_width=255,
+        gripper_type=_TAXIM_GRIPPER_TYPE,
+    )
 
 
 class FR3TaximSimplePickUpSimEnvCreator:
