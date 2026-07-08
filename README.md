@@ -166,6 +166,14 @@ export RCS_PREFIX=/path/to/rcs-assets
 ```
 
 
+### Blocksuite assets
+
+To download the `ai2-blocksuite` assets just run the following command:
+
+```bash
+get-toyblocks-assets --type mjcf --asset-manifest blocksuite_assets_manifest_mjcf.json --install-dir assets/blocksuite/
+```
+
 ## 🦾 Hardware Extensions
 
 RCS supports various hardware extensions to seamlessly connect your policies to the real world (e.g., FR3, xArm7, RealSense). These are located in the `extensions` directory.

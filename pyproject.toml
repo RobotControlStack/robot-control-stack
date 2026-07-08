@@ -44,6 +44,7 @@ dependencies = [
   "greenlet",
   "duckdb",
   "pandas",
+  "molmospaces-resources==0.0.1b9",
 ]
 readme = "README.md"
 maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]

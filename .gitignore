@@ -25,3 +25,5 @@ CLAUDE.md
 uv.lock
 *.parquet
 
+/assets/blocksuite/*
+!/assets/blocksuite/.gitkeep

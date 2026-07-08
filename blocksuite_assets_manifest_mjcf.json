@@ -1,0 +1,13 @@
+{
+    "objects": {
+        "train_blocks": "20260701",
+        "train_blocks_legacy_match": "20260701",
+        "robot_workstation": "20260701"
+    },
+    "robots": {
+        "franka_droid": "20260527"
+    },
+    "scenes": {
+        "toyblocks_real": "20260527"
+    }
+}
