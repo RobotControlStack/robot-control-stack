@@ -20,9 +20,9 @@ from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs
 from rcs import sim
-from rcs_fr3.creators import HardwareCameraCreatorConfig
+# from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-from rcs_robotiq2f85.hw import RobotiQ2F85GripperConfig
+# from rcs_robotiq2f85.hw import RobotiQ2F85GripperConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -38,7 +38,7 @@ put it into FCI mode before running this script. For a scripted way of unlocking
 fr3_direct_control.py example which uses the FCI context manager.
 """
 
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
 FR3_IP = "192.168.1.12"
 
 
