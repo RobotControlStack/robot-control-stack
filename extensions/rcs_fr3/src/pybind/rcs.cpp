@@ -300,6 +300,9 @@ PYBIND11_MODULE(_core, m) {
       .def("controller_set_joint_position",
            &rcs::hw::Franka::controller_set_joint_position,
            py::arg("desired_q"))
+      .def("controller_set_joint_torque",
+           &rcs::hw::Franka::controller_set_joint_torque,
+           py::arg("desired_tau"))
       .def("stop_control_thread", &rcs::hw::Franka::stop_control_thread)
       .def("automatic_error_recovery",
            &rcs::hw::Franka::automatic_error_recovery)

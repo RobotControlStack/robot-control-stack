@@ -29,9 +29,9 @@ struct FrankaLoad {
   std::optional<Eigen::Matrix3d> load_inertia;
 };
 enum IKSolver { franka_ik = 0, rcs_ik };
-// modes: joint-space control, operational-space control, zero-torque
-// control
-enum Controller { none = 0, jsc, osc, ztc };
+// modes: joint-space control, operational-space control, zero-torque control,
+// torque control
+enum Controller { none = 0, jsc, osc, ztc, tc };
 struct FrankaConfig : common::RobotConfig {
   std::string ip;
   common::RobotType robot_type = common::RobotType::FR3;
@@ -84,6 +84,7 @@ class Franka : public common::Robot {
   common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
   common::LinearJointPositionTrajInterpolator joint_interpolator;
+  common::Vector7d desired_joint_torque = common::Vector7d::Zero();
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
@@ -92,6 +93,7 @@ class Franka : public common::Robot {
   void osc();
   void joint_controller();
   void zero_torque_controller();
+  void torque_controller();
   void check_for_background_errors();
   void clear_background_error();
 
@@ -118,6 +120,7 @@ class Franka : public common::Robot {
                         bool elbow);
 
   void controller_set_joint_position(const common::Vector7d& desired_q);
+  void controller_set_joint_torque(const common::Vector7d& desired_tau);
   void osc_set_cartesian_position(
       const common::Pose& desired_pose_EE_in_base_frame);
   void zero_torque_guiding();
