@@ -44,6 +44,14 @@ struct FrankaConfig : common::RobotConfig {
   bool async_control = false;
   bool tcp_offset_configured_in_desk = true;
   bool ignore_realtime = false;
+  common::Vector7d joint_controller_Kp =
+      (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
+  common::Vector7d joint_controller_Kd =
+      (common::Vector7d() << 20., 20., 20., 20., 7.5, 15., 5.).finished();
+  Eigen::Vector3d osc_Kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
+  Eigen::Vector3d osc_Kp_r = (Eigen::Vector3d() << 250., 250., 250.).finished();
+  std::optional<Eigen::Vector3d> osc_Kd_p = std::nullopt;
+  std::optional<Eigen::Vector3d> osc_Kd_r = std::nullopt;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<

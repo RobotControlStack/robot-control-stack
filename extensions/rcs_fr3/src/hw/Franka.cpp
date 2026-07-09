@@ -318,15 +318,6 @@ void Franka::osc() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
-  // from bench mark
-  // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
-  // ([60.0, 150.0, 150.0], 250.0), // kd_translation, kd_rotation
-
-  // from config file
-  // Kp:
-  // translation: [150.0, 150.0, 150.0]
-  // rotation: 250.0
-
   Eigen::Matrix<double, 3, 3> Kp_p = Eigen::Matrix3d::Zero();
   Eigen::Matrix<double, 3, 3> Kp_r = Eigen::Matrix3d::Zero();
   Eigen::Matrix<double, 3, 3> Kd_p = Eigen::Matrix3d::Zero();
@@ -337,12 +328,14 @@ void Franka::osc() {
   Eigen::Array<double, 7, 1> joint_min_;
   Eigen::Array<double, 7, 1> avoidance_weights_;
 
-  // values from deoxys/config/osc-position-controller.yml
-  Kp_p.diagonal() << 150, 150, 150;
-  Kp_r.diagonal() << 250, 250, 250;
-
-  Kd_p << Kp_p.cwiseSqrt() * 2.0;
-  Kd_r << Kp_r.cwiseSqrt() * 2.0;
+  const Eigen::Vector3d osc_Kd_p =
+      this->m_cfg.osc_Kd_p.value_or(this->m_cfg.osc_Kp_p.cwiseSqrt() * 2.0);
+  const Eigen::Vector3d osc_Kd_r =
+      this->m_cfg.osc_Kd_r.value_or(this->m_cfg.osc_Kp_r.cwiseSqrt() * 2.0);
+  Kp_p.diagonal() = this->m_cfg.osc_Kp_p;
+  Kp_r.diagonal() = this->m_cfg.osc_Kp_r;
+  Kd_p.diagonal() = osc_Kd_p;
+  Kd_r.diagonal() = osc_Kd_r;
 
   static_q_task_ << 0.09017809387254755, -0.9824203501652151,
       0.030509718397568178, -2.694229634937343, 0.057700675144720104,
@@ -547,12 +540,8 @@ void Franka::joint_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
-  // deoxys/config/joint-impedance-controller.yml
-  common::Vector7d Kp;
-  Kp << 100., 100., 100., 100., 75., 150., 50.;
-
-  common::Vector7d Kd;
-  Kd << 20., 20., 20., 20., 7.5, 15.0, 5.0;
+  common::Vector7d Kp = this->m_cfg.joint_controller_Kp;
+  common::Vector7d Kd = this->m_cfg.joint_controller_Kd;
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;

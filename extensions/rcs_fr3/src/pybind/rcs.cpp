@@ -136,6 +136,14 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::hw::FrankaConfig::tcp_offset_configured_in_desk)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
+      .def_readwrite("joint_controller_Kp",
+                     &rcs::hw::FrankaConfig::joint_controller_Kp)
+      .def_readwrite("joint_controller_Kd",
+                     &rcs::hw::FrankaConfig::joint_controller_Kd)
+      .def_readwrite("osc_Kp_p", &rcs::hw::FrankaConfig::osc_Kp_p)
+      .def_readwrite("osc_Kp_r", &rcs::hw::FrankaConfig::osc_Kp_r)
+      .def_readwrite("osc_Kd_p", &rcs::hw::FrankaConfig::osc_Kd_p)
+      .def_readwrite("osc_Kd_r", &rcs::hw::FrankaConfig::osc_Kd_r)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
   rcs::hw::FR3Config default_fr3_config;
@@ -148,8 +156,12 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::common::Pose> world_to_robot,
                   bool async_control, bool tcp_offset_configured_in_desk,
                   bool ignore_realtime, rcs::common::Pose tcp_offset,
-                  std::string attachment_site,
-                  std::string kinematic_model_path) {
+                  std::string attachment_site, std::string kinematic_model_path,
+                  rcs::common::Vector7d joint_controller_Kp,
+                  rcs::common::Vector7d joint_controller_Kd,
+                  Eigen::Vector3d osc_Kp_p, Eigen::Vector3d osc_Kp_r,
+                  std::optional<Eigen::Vector3d> osc_Kd_p,
+                  std::optional<Eigen::Vector3d> osc_Kd_r) {
                  rcs::hw::FR3Config cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
@@ -164,6 +176,12 @@ PYBIND11_MODULE(_core, m) {
                  cfg.tcp_offset = tcp_offset;
                  cfg.attachment_site = attachment_site;
                  cfg.kinematic_model_path = kinematic_model_path;
+                 cfg.joint_controller_Kp = joint_controller_Kp;
+                 cfg.joint_controller_Kd = joint_controller_Kd;
+                 cfg.osc_Kp_p = osc_Kp_p;
+                 cfg.osc_Kp_r = osc_Kp_r;
+                 cfg.osc_Kd_p = osc_Kd_p;
+                 cfg.osc_Kd_r = osc_Kd_r;
                  return cfg;
                }),
            py::arg("ip"), py::arg("ik_solver") = default_fr3_config.ik_solver,
@@ -179,7 +197,15 @@ PYBIND11_MODULE(_core, m) {
            py::arg("tcp_offset") = default_fr3_config.tcp_offset,
            py::arg("attachment_site") = default_fr3_config.attachment_site,
            py::arg("kinematic_model_path") =
-               default_fr3_config.kinematic_model_path);
+               default_fr3_config.kinematic_model_path,
+           py::arg("joint_controller_Kp") =
+               default_fr3_config.joint_controller_Kp,
+           py::arg("joint_controller_Kd") =
+               default_fr3_config.joint_controller_Kd,
+           py::arg("osc_Kp_p") = default_fr3_config.osc_Kp_p,
+           py::arg("osc_Kp_r") = default_fr3_config.osc_Kp_r,
+           py::arg("osc_Kd_p") = default_fr3_config.osc_Kd_p,
+           py::arg("osc_Kd_r") = default_fr3_config.osc_Kd_r);
   rcs::hw::PandaConfig default_panda_config;
   py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
       .def(py::init(
@@ -190,8 +216,12 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::common::Pose> world_to_robot,
                   bool async_control, bool tcp_offset_configured_in_desk,
                   bool ignore_realtime, rcs::common::Pose tcp_offset,
-                  std::string attachment_site,
-                  std::string kinematic_model_path) {
+                  std::string attachment_site, std::string kinematic_model_path,
+                  rcs::common::Vector7d joint_controller_Kp,
+                  rcs::common::Vector7d joint_controller_Kd,
+                  Eigen::Vector3d osc_Kp_p, Eigen::Vector3d osc_Kp_r,
+                  std::optional<Eigen::Vector3d> osc_Kd_p,
+                  std::optional<Eigen::Vector3d> osc_Kd_r) {
                  rcs::hw::PandaConfig cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
@@ -206,6 +236,12 @@ PYBIND11_MODULE(_core, m) {
                  cfg.tcp_offset = tcp_offset;
                  cfg.attachment_site = attachment_site;
                  cfg.kinematic_model_path = kinematic_model_path;
+                 cfg.joint_controller_Kp = joint_controller_Kp;
+                 cfg.joint_controller_Kd = joint_controller_Kd;
+                 cfg.osc_Kp_p = osc_Kp_p;
+                 cfg.osc_Kp_r = osc_Kp_r;
+                 cfg.osc_Kd_p = osc_Kd_p;
+                 cfg.osc_Kd_r = osc_Kd_r;
                  return cfg;
                }),
            py::arg("ip"), py::arg("ik_solver") = default_panda_config.ik_solver,
@@ -221,7 +257,15 @@ PYBIND11_MODULE(_core, m) {
            py::arg("tcp_offset") = default_panda_config.tcp_offset,
            py::arg("attachment_site") = default_panda_config.attachment_site,
            py::arg("kinematic_model_path") =
-               default_panda_config.kinematic_model_path);
+               default_panda_config.kinematic_model_path,
+           py::arg("joint_controller_Kp") =
+               default_panda_config.joint_controller_Kp,
+           py::arg("joint_controller_Kd") =
+               default_panda_config.joint_controller_Kd,
+           py::arg("osc_Kp_p") = default_panda_config.osc_Kp_p,
+           py::arg("osc_Kp_r") = default_panda_config.osc_Kp_r,
+           py::arg("osc_Kd_p") = default_panda_config.osc_Kd_p,
+           py::arg("osc_Kd_r") = default_panda_config.osc_Kd_r);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
