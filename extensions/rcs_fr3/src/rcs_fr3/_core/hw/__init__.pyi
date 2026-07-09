@@ -112,12 +112,14 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
-    kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
-    kp_r: float
+    joint_controller_Kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    joint_controller_Kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     load_parameters: FrankaLoad | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
+    osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
+    osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
+    osc_Kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     speed_factor: float
     tcp_offset_configured_in_desk: bool
     world_to_robot: rcs._core.common.Pose | None
@@ -320,6 +322,12 @@ class FR3Config(FrankaConfig):
         tcp_offset: rcs._core.common.Pose = ...,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        joint_controller_Kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        joint_controller_Kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
+        osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
     ) -> None: ...
 
 class PandaConfig(FrankaConfig):
@@ -341,6 +349,12 @@ class PandaConfig(FrankaConfig):
         tcp_offset: rcs._core.common.Pose = ...,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        joint_controller_Kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        joint_controller_Kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
+        osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
     ) -> None: ...
 
 class FrankaState(rcs._core.common.RobotState):
