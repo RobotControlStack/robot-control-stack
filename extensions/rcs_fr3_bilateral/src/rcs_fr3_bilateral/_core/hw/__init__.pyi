@@ -5,11 +5,9 @@ from numpy.typing import NDArray
 from rcs._core.common import Kinematics
 from rcs_fr3._core.hw import Franka, FrankaConfig
 
-
 class BilateralControlMode:
     bilateral: "BilateralControlMode"
     gravity_only: "BilateralControlMode"
-
 
 class BilateralFrankaConfig:
     leader_cfg: FrankaConfig
@@ -37,7 +35,6 @@ class BilateralFrankaConfig:
         feedback_avoidance_alpha: NDArray[np.float64] = ...,
     ) -> None: ...
 
-
 class BilateralFrankaState:
     leader_q: NDArray[np.float64]
     leader_dq: NDArray[np.float64]
@@ -50,7 +47,6 @@ class BilateralFrankaState:
     has_reference: bool
 
     def __init__(self) -> None: ...
-
 
 class BilateralFranka:
     def __init__(

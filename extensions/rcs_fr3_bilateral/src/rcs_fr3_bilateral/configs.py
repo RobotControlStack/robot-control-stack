@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from rcs_fr3._core import hw as fr3_hw
 from rcs_fr3.configs import DefaultFR3HardwareEnv
-
 from rcs_fr3_bilateral._core import hw
 
 
@@ -30,9 +29,9 @@ class DefaultFR3BilateralTeleop:
         return hw.BilateralFrankaConfig(
             leader_cfg=self._robot_config(self.leader_ip),
             follower_cfg=self._robot_config(self.follower_ip),
-            control_mode=hw.BilateralControlMode.gravity_only
-            if self.gravity_only
-            else hw.BilateralControlMode.bilateral,
+            control_mode=(
+                hw.BilateralControlMode.gravity_only if self.gravity_only else hw.BilateralControlMode.bilateral
+            ),
             update_rate_hz=self.update_rate_hz,
             relative_joint_mapping=self.relative_joint_mapping,
             max_follower_joint_step=self.max_follower_joint_step,

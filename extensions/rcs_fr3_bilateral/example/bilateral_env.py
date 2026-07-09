@@ -2,15 +2,12 @@ import argparse
 import time
 
 import numpy as np
-
 from rcs_fr3_bilateral._core import hw
 from rcs_fr3_bilateral.configs import DefaultFR3BilateralTeleop
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Start the RCS FR3 bilateral teleoperation wrapper."
-    )
+    parser = argparse.ArgumentParser(description="Start the RCS FR3 bilateral teleoperation wrapper.")
     parser.add_argument("--leader-ip", default="192.168.102.1")
     parser.add_argument("--follower-ip", default="192.168.101.1")
     parser.add_argument("--update-rate-hz", type=float, default=1000.0)
@@ -51,11 +48,7 @@ def main() -> None:
     ).config()
 
     teleop = hw.BilateralFranka(cfg)
-    mode_name = (
-        "gravity_only"
-        if cfg.control_mode == hw.BilateralControlMode.gravity_only
-        else "bilateral"
-    )
+    mode_name = "gravity_only" if cfg.control_mode == hw.BilateralControlMode.gravity_only else "bilateral"
     print(f"Starting bilateral FR3 setup in {mode_name} mode.")
     print("Press Ctrl-C to stop.")
 
@@ -67,9 +60,7 @@ def main() -> None:
         teleop.start()
         while args.duration <= 0.0 or time.monotonic() - start_time < args.duration:
             state = teleop.get_state()
-            leader_follower_error = np.linalg.norm(
-                state.leader_q - state.follower_q
-            )
+            leader_follower_error = np.linalg.norm(state.leader_q - state.follower_q)
             follower_tau_norm = np.linalg.norm(state.follower_external_tau)
             leader_cmd_norm = np.linalg.norm(state.leader_torque_command)
             print(
