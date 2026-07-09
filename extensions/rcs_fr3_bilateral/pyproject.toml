@@ -1,0 +1,43 @@
+[build-system]
+requires = [
+  "build",
+  "wheel",
+  "setuptools>=45",
+  "scikit-build-core>=0.3.3",
+  "pybind11",
+  "cmake",
+  "ninja",
+  "pin==3.7.0",
+  "rcs-core>=0.7.2",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "rcs_fr3_bilateral"
+version = "0.1.0"
+description = "Bilateral teleoperation wrapper for two RCS Franka robots"
+dependencies = ["rcs-core>=0.7.2", "rcs_fr3>=0.7.2"]
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+maintainers = [{ name = "Seongjin Bien", email = "seongjin.bien@utn.de" }]
+authors = [{ name = "Seongjin Bien", email = "seongjin.bien@utn.de" }]
+requires-python = ">=3.11"
+
+[tool.scikit-build]
+build.verbose = true
+build.targets = ["_core"]
+logging.level = "INFO"
+build-dir = "build"
+wheel.packages = ["src/rcs_fr3_bilateral"]
+install.components = ["python_package"]
+
+[tool.cibuildwheel]
+skip = ["cp314*", "*-musllinux*"]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude librcs.so --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
