@@ -210,6 +210,29 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   }
 }
 
+void Franka::controller_set_joint_torque(const common::Vector7d& desired_tau) {
+  this->check_for_background_errors();
+
+  if (this->running_controller.load() == Controller::none) {
+    this->controller_time = 0.0;
+    {
+      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+      this->curr_state = this->robot.readOnce();
+      this->desired_joint_torque = desired_tau;
+    }
+    this->running_controller.store(Controller::tc);
+    this->control_thread = std::thread(&Franka::torque_controller, this);
+  } else if (this->running_controller.load() != Controller::tc) {
+    throw std::runtime_error(
+        "Controller type must be torque control but is " +
+        std::to_string(static_cast<int>(this->running_controller.load())) +
+        ". To change controller type stop the current controller first.");
+  } else {
+    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+    this->desired_joint_torque = desired_tau;
+  }
+}
+
 void Franka::check_for_background_errors() {
   std::lock_guard<std::mutex> lock(this->exception_mutex);
   if (this->background_exception) {
@@ -592,6 +615,49 @@ void Franka::joint_controller() {
       // deoxys/config/control_config.yml
       std::array<double, 7> torque_limit = {5, 5, 5, 5, 5, 5, 5};
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
+
+      return tau_d_rate_limited;
+    });
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(this->exception_mutex);
+    this->background_exception = std::current_exception();
+  }
+
+  this->running_controller.store(Controller::none);
+}
+
+void Franka::torque_controller() {
+  this->robot.setCollisionBehavior(
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+  this->controller_time = 0.0;
+  try {
+    this->robot.control([&](const franka::RobotState& robot_state,
+                            franka::Duration period) -> franka::Torques {
+      if (this->running_controller.load() == Controller::none) {
+        return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
+      }
+
+      common::Vector7d desired_tau;
+      {
+        std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+        this->curr_state = robot_state;
+        this->controller_time += period.toSec();
+        desired_tau = this->desired_joint_torque;
+      }
+
+      std::array<double, 7> tau_d_array{};
+      Eigen::VectorXd::Map(&tau_d_array[0], 7) = desired_tau;
+
+      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
+          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+
+      double min_torque = -5;
+      double max_torque = 5;
+      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
       return tau_d_rate_limited;
     });
