@@ -149,7 +149,7 @@ class ModelComposer:
         if robot_prefix is None:
             attach_frame = self.spec.worldbody.add_frame()
             self.spec.attach(camera_spec, prefix=prefix, suffix="", frame=attach_frame)
-            attached_root_name = f"{prefix}{root_body.name}"
+            attached_root_name = f"{prefix}{root_body_name}"
             attached_root = self._find_body(attached_root_name)
             if attached_root is None:
                 msg = f"Could not find camera root body '{attached_root_name}' after attachment."
