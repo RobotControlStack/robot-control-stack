@@ -137,6 +137,7 @@ class ModelComposer:
         if root_body is None:
             msg = f"Camera MJCF '{xml_path}' must contain a root body."
             raise ValueError(msg)
+        root_body_name = root_body.name
 
         camera_names = [camera.name for camera in camera_spec.cameras]
         if len(camera_names) != 1 or camera_names[0] is None:
@@ -148,7 +149,7 @@ class ModelComposer:
         if robot_prefix is None:
             attach_frame = self.spec.worldbody.add_frame()
             self.spec.attach(camera_spec, prefix=prefix, suffix="", frame=attach_frame)
-            attached_root_name = f"{prefix}{root_body.name}"
+            attached_root_name = f"{prefix}{root_body_name}"
             attached_root = self._find_body(attached_root_name)
             if attached_root is None:
                 msg = f"Could not find camera root body '{attached_root_name}' after attachment."
@@ -285,6 +286,7 @@ class ModelComposer:
 
         # Load the child spec
         child_spec = mujoco.MjSpec.from_file(xml_path)
+        child_root_name = child_spec.worldbody.first_body().name
         self._resolve_asset_paths(child_spec, xml_path)
         if register_root_relative_replay_free_joints:
             self.register_root_relative_replay_free_joints(self._prefixed_free_joint_names(child_spec, object_prefix))
@@ -294,7 +296,6 @@ class ModelComposer:
         self.spec.attach(child_spec, prefix=object_prefix, suffix="", frame=frame)
 
         # Identify the root of the added object
-        child_root_name = child_spec.worldbody.first_body().name
         prefixed_root_name = f"{object_prefix}{child_root_name}"
         obj_root = self._find_body(prefixed_root_name)
         if not obj_root:
