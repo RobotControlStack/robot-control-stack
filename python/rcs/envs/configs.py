@@ -153,7 +153,9 @@ class EmptyWorldFR3(SimEnvCreator):
             ),
         }
         gripper_offsets: dict[str, rcs.common.Pose] | None = {
-            self.robot_prefix_template: rcs.common.Pose(rotation=FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0]))
+            self.robot_prefix_template: rcs.common.Pose(
+                rotation=FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
+            )
         }
         return SimEnvCreatorConfig(
             robot_cfgs=robot_cfgs,

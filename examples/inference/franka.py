@@ -434,7 +434,7 @@ def main():
     with env_rel:
         if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
             # sim doesnt allow threads
-            controller.submit_command("e") # use "r" to record the sim rollout
+            controller.submit_command("e")  # use "r" to record the sim rollout
             controller.loop()
         else:
             worker = threading.Thread(target=controller.loop, name="model-inference", daemon=True)

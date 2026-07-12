@@ -103,7 +103,51 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
         )
 
 
-class DefaultFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
+class DROIDEnv(RCSFR3MultiConfigEnvCreator):
+    robot_ip = "192.168.101.1"
+    gripper_serial_number = "DAAQMPDC"
+
+    def config(self) -> FR3MultiHardwareEnvCreatorConfig:
+        try:
+            from rcs_robotiq2f85.hw import RobotiQ2F85GripperConfig
+        except ImportError as e:
+            msg = "Robotiq gripper support requires the `rcs_robotiq2f85` extension to be installed."
+            raise ImportError(msg) from e
+
+        base = DefaultFR3HardwareEnv()
+
+        cfg = base.config()
+        cfg.robot_cfg.async_control = True
+        cfg.robot_cfg.ip = self.robot_ip
+        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DROID"]
+
+        return FR3MultiHardwareEnvCreatorConfig(
+            control_mode=ControlMode.CARTESIAN_TRPY,
+            robot_cfgs={
+                "right": cfg.robot_cfg,
+            },
+            camera_cfgs=None,
+            max_relative_movement=(0.5, np.deg2rad(90)),
+            relative_to=RelativeTo.LAST_STEP,
+            gripper_cfgs={
+                "right": RobotiQ2F85GripperConfig(
+                    serial_number=self.gripper_serial_number,
+                    speed=100,
+                    force=50,
+                    async_control=True,
+                ),
+            },
+            robot_to_shared_base_frame={
+                "right": common.Pose(
+                    translation=np.array([0, 0, 0]),
+                    rpy_vector=np.array([0, 0, 0]),
+                ),
+            },
+        )
+
+
+class DefaultFR3DualMultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
     left_ip = "192.168.101.1"
     right_ip = "192.168.102.1"
 
@@ -151,7 +195,7 @@ class DefaultFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
         )
 
 
-class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
+class FrankaDuoEnv(DefaultFR3DualMultiHardwareEnv):
     # use `udevadm info -a -n /dev/ttyUSB0 | grep serial` to find out the serial numbers
     left_gripper_serial_number = "DAAQMJHX"
     right_gripper_serial_number = "DAAQMPDC"
