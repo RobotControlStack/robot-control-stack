@@ -91,7 +91,6 @@ def get_env():
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
         env_creator = SingleArmFR3MultiHardwareEnv()
-        # env_creator.left_ip = ROBOT2IP["left"]
         env_creator.ip = ROBOT2IP["right"]
         hw_cfg = env_creator.config(grippertype=GripperType("Robotiq2F85"), robot_ip=ROBOT2IP["right"])
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
