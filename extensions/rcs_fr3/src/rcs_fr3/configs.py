@@ -189,12 +189,13 @@ class FrankaDuoEnv(DefaultFR3MultiHardwareEnv):
         return cfg
 
 class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
-    right_ip = "192.168.100.1"
+    
     gripper_serial_number = "DAAQMJHX" # "DAAQMPDC"
 
-    def config(self, grippertype=common.GripperType.FrankaHand) -> FR3MultiHardwareEnvCreatorConfig:
+    def config(self, grippertype=common.GripperType.FrankaHand, robot_ip="192.168.101.1") -> FR3MultiHardwareEnvCreatorConfig:
+        self.robot_ip = robot_ip
         base = DefaultFR3HardwareEnv()
-        base.ip = self.right_ip
+        base.ip = self.robot_ip
         right_cfg = base.config()
         right_cfg.robot_cfg.async_control = True
         right_cfg.robot_cfg.ignore_realtime = True
@@ -208,12 +209,13 @@ class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
             except ImportError as e:
                 msg = "Robotiq gripper support requires the `rcs_robotiq2f85` extension to be installed."
                 raise ImportError(msg) from e
+            right_cfg.robot_cfg.q_home = np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0])
             right_cfg.gripper_cfg = RobotiQ2F85GripperConfig(
                 serial_number=self.gripper_serial_number,
                 speed=100,
                 force=50,
                 async_control=True,
-            ),
+            )
         return FR3MultiHardwareEnvCreatorConfig(
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfgs={

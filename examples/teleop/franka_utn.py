@@ -37,7 +37,7 @@ RECORD_FPS = 30
 
 CAMERA_DICT = {
     "wrist": "230422271040",
-    # "side": "327122079439",
+    "side": "243122074917",
 }
 # CAMERA_DICT = None
 ZED_CAMERA_DICT = None
@@ -47,13 +47,13 @@ MQ3_ADDR = "10.42.0.1" # Jin: IPv4 address of the wifi you are connected, join t
 INCLUDE_DEPTH = False
 
 DIGIT_DICT = {
-    "digit_right_left": "D21296",
-    "digit_right_right": "D21154"
+    "digit_right_left": "D21154",
+    "digit_right_right": "D21296"
 }
 # DIGIT_DICT = None
 
 
-DATASET_PATH = "test_digit"
+DATASET_PATH = "box_pnp"
 INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
@@ -93,8 +93,7 @@ def get_env():
         env_creator = SingleArmFR3MultiHardwareEnv()
         # env_creator.left_ip = ROBOT2IP["left"]
         env_creator.ip = ROBOT2IP["right"]
-        print(env_creator.ip)
-        hw_cfg = env_creator.config(grippertype=GripperType("Robotiq2F85"))
+        hw_cfg = env_creator.config(grippertype=GripperType("Robotiq2F85"), robot_ip=ROBOT2IP["right"])
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
             camera_cfgs["realsense"] = HardwareCameraCreatorConfig(

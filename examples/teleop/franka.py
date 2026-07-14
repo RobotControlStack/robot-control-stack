@@ -90,7 +90,7 @@ def get_env():
         env_creator = SingleArmFR3MultiHardwareEnv()
         # env_creator.left_ip = ROBOT2IP["left"]
         env_creator.ip = ROBOT2IP["right"]
-        hw_cfg = env_creator.config()
+        hw_cfg = env_creator.config(robot_ip=ROBOT2IP["right"])
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
             camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
