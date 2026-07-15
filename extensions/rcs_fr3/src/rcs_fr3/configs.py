@@ -121,7 +121,6 @@ class DROIDEnv(RCSFR3MultiConfigEnvCreator):
         cfg.robot_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
         cfg.robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DROID"]
 
-
         return FR3MultiHardwareEnvCreatorConfig(
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfgs={
