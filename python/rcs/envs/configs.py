@@ -31,7 +31,7 @@ from rcs import (
 
 
 class EmptyWorldFR3(SimEnvCreator):
-    robot_prefix_template = "right"
+    robot_prefix_template = "robot"
     gripper_prefix_template = "gripper"
 
     def config(self) -> SimEnvCreatorConfig:
