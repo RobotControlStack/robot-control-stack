@@ -3,7 +3,7 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
-from TaximSensor import TaximSensor
+import TaximSensor
 from pathlib import Path
 
 def _robotiq2f85_digit_model_path() -> str:
@@ -81,7 +81,7 @@ class TaximSimWrapper(gym.Wrapper):
         
 
         for site, pad_geom in zip(self.taxim_sites, self.taxim_pad_geoms, strict=True):
-            sensor = TaximSensor(resize=(240, 320), sensor_type=self.taxim_sensor_type, preprocess_bg=False)
+            sensor = TaximSensor.TaximSensor(resize=(240, 320), sensor_type=self.taxim_sensor_type, preprocess_bg=False)
             sensor.add_camera_mujoco(site, self.model, self.data)
             sensor.change_bg(self.taxim_bg_idx)
             for geom, mesh in self.target_geom_mesh_dict.items():
