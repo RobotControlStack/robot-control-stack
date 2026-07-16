@@ -10,16 +10,11 @@ from rcs._core.common import GripperType, Pose
 from rcs._core.sim import SimCameraConfig, SimGripperConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
-from rcs_taxim.taxim_wrapper import TaximSimWrapper
+from rcs_taxim.taxim_wrapper import TaximSimWrapper, _robotiq2f85_digit_model_path
 
 import rcs
 
 _TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
-
-
-def _digit_model_path() -> Path:
-    return Path("/home/sbien/Documents/Development/V2T/mujoco-taxim/assets/robotiq_2f85/robotiq_2f85.xml")
-
 
 def _prefixed(name: str) -> str:
     return f"gripper{name}"
@@ -85,7 +80,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
             msg = f"Unexpected keyword arguments: {unexpected}"
             raise TypeError(msg)
 
-        rcs.GRIPPER_PATHS[_TAXIM_GRIPPER_TYPE] = str(_digit_model_path())
+        rcs.GRIPPER_PATHS[_TAXIM_GRIPPER_TYPE] = str(_robotiq2f85_digit_model_path())
 
         scene = EmptyWorldFR3()
         cfg = scene.config()
