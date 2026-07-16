@@ -8,24 +8,21 @@ from queue import Empty, Queue
 from time import sleep
 from typing import Any
 
-from PIL import Image
-
-from rcs.utils import SimpleFrameRate
-
 import gymnasium as gym
 import numpy as np
+from PIL import Image
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
-from rcs.camera.utils import capture_blank_camera_images
-from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
+from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
-from rcs.envs.tasks import PickTaskConfig
+from rcs.utils import SimpleFrameRate
 
-import rcs
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
+
+import rcs
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +111,6 @@ def load_inference_config() -> InferenceConfig:
         logger.warning("Forcing single-arm inference mode: using robot key ['right']")
         cfg.robot_keys = ["right"]
     return cfg
-
 
 
 class ModelInference:
