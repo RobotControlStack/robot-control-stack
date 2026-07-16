@@ -80,8 +80,7 @@ SimGripperState* SimGripper::get_state() {
 }
 void SimGripper::set_normalized_width(double width, double force) {
   if (width < 0 || width > 1 || force < 0 || force > 1) {
-    throw std::invalid_argument(
-        "width and force must be between 0 and 1");
+    throw std::invalid_argument("width and force must be between 0 and 1");
   }
   this->state.last_commanded_width = width;
   this->sim->d->ctrl[this->actuator_id] =
