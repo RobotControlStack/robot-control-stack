@@ -33,6 +33,13 @@ user_guide/index
 
 ```{toctree}
 :maxdepth: 2
+:caption: Apps
+
+apps/index
+```
+
+```{toctree}
+:maxdepth: 2
 :caption: API
 
 api/index

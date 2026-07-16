@@ -15,6 +15,7 @@ from rcs._core import __version__, common
 from rcs import camera, envs, hand, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
+REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
 
 
 def download_assets(
@@ -56,6 +57,9 @@ def get_prefix(
     assets_dirname: str = "assets",
     download_fn: Callable[[str, Path, str, str], None] = download_assets,
 ) -> str:
+    def has_required_assets(prefix: Path) -> bool:
+        return (prefix / REQUIRED_ASSET).is_file()
+
     if env_prefix:
         prefix = Path(env_prefix).expanduser().resolve()
     else:
@@ -65,7 +69,7 @@ def get_prefix(
         prefix = default_prefix.resolve()
 
     assets_dir = prefix / assets_dirname
-    if not assets_dir.is_dir():
+    if not assets_dir.is_dir() or not has_required_assets(prefix):
         prefix.mkdir(parents=True, exist_ok=True)
         print(f"Assets not found at {assets_dir}, downloading them now.")
         download_fn(version, prefix, github_asset_archive_url, assets_dirname)
@@ -239,6 +243,7 @@ HOME_POSITIONS = {
     # "right": {"xyzrpy": [0.61, -0.21, 0.40, -np.pi, np.deg2rad(-20), 0], "gripper": [0]},
     "FR3_DUO_LEFT": np.array([0.48797692, -0.57224476, -0.58536988, -2.57958827, 0.86400183, 2.0530809, -0.85965005]),
     "FR3_DUO_RIGHT": np.array([-0.48797676, -0.57224472, 0.58536959, -2.57958788, -0.86400148, 2.05308196, 0.85965057]),
+    "FR3_DROID": np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
 }
 
 # Append RCS package prefix to all asset paths

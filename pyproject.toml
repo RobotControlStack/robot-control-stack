@@ -7,15 +7,15 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
-  "mujoco==3.2.6",
+  "mujoco==3.10.0",
   "pin==3.7.0",
 ]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "rcs"
-version = "0.7.1"
-description = "A Lean Ecosystem for Robot Learning at Scale"
+name = "rcs_core"
+version = "0.7.2"
+description = "A lean, ROS-free sim-to-real framework for training and deploying Vision-Language-Action (VLA) models and RL agents. Native MuJoCo Gymnasium wrappers with synchronous execution for Franka, UR5e, xArm, and SO101."
 dependencies = [
   "websockets>=11.0",
   "requests~=2.31",
@@ -26,7 +26,6 @@ dependencies = [
   "etils[epath]>=1.7.0",
   "glfw~=2.7",
   "pyopengl~=3.1.9",
-  "pynput>=1.7.7",
   "pillow>=10.3",
   "python-dotenv>=1.0.1",
   "opencv-python~=4.10.0.84",
@@ -37,16 +36,19 @@ dependencies = [
   "rpyc~=6.0.2",
   "pyarrow",
   "simplejpeg",
-  "mujoco==3.2.6",
+  "mujoco==3.10.0",
   "pin==3.7.0",
+  # pin 3.7.0 currently resolves against older urdfdom/tinyxml SONAMEs at runtime
+  "cmeel-urdfdom<5",
+  "cmeel-tinyxml2<11",
   "greenlet",
   "duckdb",
   "pandas",
 ]
 readme = "README.md"
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 authors = [
-  { name = "Tobias Jülg", email = "tobias.juelg@utn.de" },
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
   { name = "Pierre Krack", email = "pierre.krack@utn.de" },
   { name = "Seongjin Bien", email = "seongjin.bien@utn.de" },
 ]
@@ -72,8 +74,11 @@ dev = [
   "cmake",
 ]
 build_deps = [
-  "mujoco==3.2.6",
+  "mujoco==3.10.0",
   "pin==3.7.0",
+  "cmeel-urdfdom<5",
+  "cmeel-tinyxml2<11",
+  "scikit-build-core>=0.3.3",
 ]
 
 [tool.cibuildwheel]
@@ -81,7 +86,7 @@ skip = ["cp314*", "*-musllinux*"]
 # Install X11 headers needed to compile GLFW
 before-all = "yum install -y libXi-devel libXcursor-devel libXinerama-devel libXrandr-devel glfw-devel"
 # Exclude MuJoCo AND Pinocchio from being bundled.
-repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.3.2.6 --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.* --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.scikit-build]
 build.verbose = true
@@ -183,44 +188,57 @@ version_files = [
   "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
   "extensions/rcs_fr3/pyproject.toml:version",
   # The line below updates the dependency string "rcs>=x.y.z"
-  "extensions/rcs_fr3/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_fr3/pyproject.toml:\"rcs-core>=(.*)\"",
 
   # --- Panda Extension ---
   "extensions/rcs_panda/CMakeLists.txt:VERSION",
   "extensions/rcs_panda/src/rcs_panda/_core/__init__.pyi:__version__",
   "extensions/rcs_panda/pyproject.toml:version",
-  "extensions/rcs_panda/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_panda/pyproject.toml:\"rcs-core>=(.*)\"",
 
   # --- Robotics Library ---
   "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
   "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",
   "extensions/rcs_robotics_library/pyproject.toml:version",
-  "extensions/rcs_robotics_library/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_robotics_library/pyproject.toml:\"rcs-core>=(.*)\"",
 
   # --- SO101 ---
   "extensions/rcs_so101/CMakeLists.txt:VERSION",
   "extensions/rcs_so101/src/rcs_so101/_core/__init__.pyi:__version__",
   "extensions/rcs_so101/pyproject.toml:version",
-  "extensions/rcs_so101/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_so101/pyproject.toml:\"rcs-core>=(.*)\"",
 
   # --- Other Extensions ---
   "extensions/rcs_realsense/pyproject.toml:version",
   "extensions/rcs_realsense/src/rcs_realsense/__init__.py:__version__",
-  "extensions/rcs_realsense/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_realsense/pyproject.toml:\"rcs-core>=(.*)\"",
 
   "extensions/rcs_xarm7/pyproject.toml:version",
   "extensions/rcs_xarm7/src/rcs_xarm7/__init__.py:__version__",
-  "extensions/rcs_xarm7/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_xarm7/pyproject.toml:\"rcs-core>=(.*)\"",
 
   "extensions/rcs_ur5e/pyproject.toml:version",
   "extensions/rcs_ur5e/src/rcs_ur5e/__init__.py:__version__",
-  "extensions/rcs_ur5e/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_ur5e/pyproject.toml:\"rcs-core>=(.*)\"",
 
   "extensions/rcs_tacto/pyproject.toml:version",
   "extensions/rcs_tacto/src/rcs_tacto/__init__.py:__version__",
-  "extensions/rcs_tacto/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_tacto/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_taxim/pyproject.toml:version",
+  "extensions/rcs_taxim/src/rcs_taxim/__init__.py:__version__",
+  "extensions/rcs_taxim/pyproject.toml:\"rcs-core>=(.*)\"",
+
 
   "extensions/rcs_robotiq2f85/pyproject.toml:version",
   "extensions/rcs_robotiq2f85/src/rcs_robotiq2f85/__init__.py:__version__",
-  "extensions/rcs_robotiq2f85/pyproject.toml:\"rcs>=(.*)\"",
+  "extensions/rcs_robotiq2f85/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_usb_cam/pyproject.toml:version",
+  "extensions/rcs_usb_cam/src/rcs_usb_cam/__init__.py:__version__",
+  "extensions/rcs_usb_cam/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_zed/pyproject.toml:version",
+  "extensions/rcs_zed/src/rcs_zed/__init__.py:__version__",
+  "extensions/rcs_zed/pyproject.toml:\"rcs-core>=(.*)\"",
 ]

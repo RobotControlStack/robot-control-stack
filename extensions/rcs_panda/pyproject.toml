@@ -7,17 +7,19 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
+  "rcs-core>=0.7.2",
 ]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_panda"
-version = "0.7.1"
+version = "0.7.2"
 description = "RCS libfranka integration"
-dependencies = ["rcs>=0.7.1"]
+dependencies = ["rcs-core>=0.7.2"]
 readme = "README.md"
-maintainers = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
-authors = [{ name = "Tobias Jülg", email = "tobias.juelg@utn.de" }]
+license = "AGPL-3.0-or-later"
+maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 
@@ -28,6 +30,10 @@ logging.level = "INFO"
 build-dir = "build"
 wheel.packages = ["src/rcs_panda"]
 install.components = ["python_package"]
+
+[tool.cibuildwheel]
+skip = ["cp314*", "*-musllinux*"]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude librcs.so --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.black]
 line-length = 120

@@ -11,10 +11,17 @@ An extension is a separate Python package that integrates with RCS. Extensions c
 
 ## Installing Extensions
 
-Extensions are typically installed via `pip`.
+Extensions are typically installed from PyPI.
 
 ```shell
-pip install -ve extensions/rcs_fr3
+pip install rcs-fr3
+```
+
+For local development from a checkout of this repository, first install RCS itself from the repository root and then install the extension via its path:
+
+```shell
+pip install -ve . --no-build-isolation
+pip install -ve extensions/rcs_fr3 --no-build-isolation
 ```
 
 ## Available Extensions

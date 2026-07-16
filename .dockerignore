@@ -1,1 +1,10 @@
 **/build/
+real*
+test*
+sim*
+transfer_cube
+single_pick*
+ball_maze
+candy
+*.parquet
+*venv*

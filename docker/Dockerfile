@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglfw3-dev \
     libpoco-dev \
     ninja-build \
+    liburdfdom-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -53,7 +54,11 @@ RUN chmod +x /usr/local/bin/link-editable-source \
     && uv pip install --no-build-isolation /opt/rcs-src/extensions/rcs_fr3 \
     && uv pip install /opt/rcs-src/extensions/rcs_realsense \
     && uv pip install /opt/rcs-src/extensions/rcs_robotiq2f85 \
-    && uv pip install /opt/rcs-src/extensions/rcs_zed
+    && uv pip install /opt/rcs-src/extensions/rcs_zed \
+    && uv pip install /opt/rcs-src/examples/teleop/SimPublisher \
+    && uv pip install /opt/rcs-src/2f85-python-driver \
+    && uv pip install /opt/rcs-src/vlagents \
+    && uv pip install /opt/rcs-src/rcs_duobench
 
 WORKDIR /workspace/robot-control-stack
 

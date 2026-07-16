@@ -5,9 +5,15 @@ This extension provides support for the Franka Research 3 (FR3) robot in RCS.
 ## Installation
 
 ```shell
-# from root directory
 sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
-pip install -ve extensions/rcs_fr3
+pip install rcs-fr3
+```
+
+For local development from this repository:
+
+```shell
+pip install -ve . --no-build-isolation
+pip install -ve extensions/rcs_fr3 --no-build-isolation
 ```
 
 ### Configuration
@@ -22,40 +28,24 @@ DESK_PASSWORD=...
 ## Usage
 
 ```python
-import rcs_fr3
-from rcs_fr3._core import hw
-from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
-import rcs
-import numpy as np
+from rcs.envs.base import ControlMode, RelativeTo
+from rcs_fr3.configs import DefaultFR3HardwareEnv
 
-ROBOT_IP = "172.16.0.2" # Replace with your robot IP
+env_creator = DefaultFR3HardwareEnv()
+env_creator.ip = "192.168.101.1"
 
-user, pw = load_creds_franka_desk()
-with FCI(Desk(ROBOT_IP, user, pw), unlock=False, lock_when_done=False):
-    robot_meta = rcs.ROBOTS[rcs.common.RobotType.FR3]
-    ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site)
-    
-    # Configure Robot
-    robot = hw.Franka(ROBOT_IP, ik)
-    robot_cfg = hw.FR3Config()
-    robot_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-    robot.set_config(robot_cfg)
+cfg = env_creator.config()
+cfg.control_mode = ControlMode.CARTESIAN_TQuat
+cfg.camera_cfgs = None
+cfg.max_relative_movement = 0.5
+cfg.relative_to = RelativeTo.LAST_STEP
 
-    # Configure Gripper
-    gripper_cfg_hw = hw.FHConfig()
-    gripper_cfg_hw.epsilon_inner = gripper_cfg_hw.epsilon_outer = 0.1
-    gripper_cfg_hw.speed = 0.1
-    gripper_cfg_hw.force = 30
-    gripper = hw.FrankaHand(ROBOT_IP, gripper_cfg_hw)
-    
-    # Move Robot
-    robot.set_cartesian_position(
-        robot.get_cartesian_position() * rcs.common.Pose(translation=np.array([0.05, 0, 0]))
-    )
-    
-    # Grasp
-    gripper.grasp()
+env = env_creator.create_env(cfg)
+obs, info = env.reset()
+print(env.get_wrapper_attr("robot").get_cartesian_position())
 ```
+
+For a maintained example, see `examples/fr3/fr3_env_cartesian_control.py`.
 
 ## CLI
 

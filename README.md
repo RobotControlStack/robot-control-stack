@@ -26,7 +26,7 @@ Traditional robotics middleware (like ROS/ROS2) and complex motion planning pipe
 * **Zero ROS Overhead:** No complex message-passing, middleware, or network configuration required. Run natively in Python with a lightweight C++ backend.
 * **Frictionless Sim-to-Real:** Train your Reinforcement Learning or VLA policies in our MuJoCo Gymnasium wrapper, and deploy the *exact same code* directly to physical hardware.
 * **Synchronous Execution:** Optimized specifically for the highly parallelized, synchronous data collection required by modern ML workflows.
-* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents).
+* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents). See [examples/teleop/README.md](examples/teleop/README.md) and [examples/inference/README.md](examples/inference/README.md).
 
 ## 🧩 Wrapper-Based Architecture
 
@@ -122,18 +122,21 @@ if __name__ == "__main__":
 > **Note:** This and other examples can be found in the [`examples/`]() folder.
 
 ## 🛠️ Installation
+* *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
+* *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
+### Via PyPI/pip
+
+```shell
+pip install rcs-core
+```
 
 ### From Source
 
-Make sure that common build tools (i.e., `build-essential`) and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
+Make sure that common build tools (i.e., `build-essential`), python headers and a C++ compiler like `gcc` or `clang` are installed on your system/conda/docker.
 
 *RCS works best in Python 3.11, and all extensions have been tested to work in 3.11.*
 
-* *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
-* *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
-
 ```shell
-
 # clone repository
 git clone https://github.com/RobotControlStack/robot-control-stack.git
 cd robot-control-stack
@@ -148,13 +151,20 @@ pip install 'pip>=25.1'
 pip install --group build_deps
 
 # install rcs
-pip install -ve .
-
+pip install -ve . --no-build-isolation
 ```
 
-### Via PyPI/pip
 
-*Coming soon...*
+### RCS Asset Cache
+
+RCS resolves its asset directory from the `RCS_PREFIX` environment variable. When it is unset, RCS defaults to `~/.rcs`.
+
+On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+
+```shell
+export RCS_PREFIX=/path/to/rcs-assets
+```
+
 
 ## 🦾 Hardware Extensions
 
@@ -164,6 +174,9 @@ To install a specific robot extension (example for Franka FR3):
 
 ```shell
 sudo apt install $(cat extensions/rcs_fr3/debian_deps.txt)
+pip install rcs-fr3
+
+# or install it locally
 pip install -ve extensions/rcs_fr3
 ```
 
@@ -183,6 +196,8 @@ For full documentation, including advanced installation, modular usage, and API 
 Useful quick-reference pages:
 - **[RCS Conventions](https://robotcontrolstack.org/user_guide/conventions)** for quaternion order, frames, Euler angles, and gripper semantics
 - **[Sim Scene Configuration](https://robotcontrolstack.org/user_guide/scene_configuration)** for `SimEnvCreatorConfig`, scene frames, and example setup patterns
+- **[Apps](https://robotcontrolstack.org/apps/index)** for the teleoperation and inference example entry points
+- **[libfranka Version Info](https://robotcontrolstack.org/extensions/libfranka_versions)** for the currently pinned `rcs_fr3` and `rcs_panda` `libfranka` versions and local-install guidance
 
 ## 🤝 Contribution
 
