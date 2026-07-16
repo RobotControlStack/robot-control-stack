@@ -1,13 +1,15 @@
 import copy
+from pathlib import Path
 from typing import Any
 
 import gymnasium as gym
 import numpy as np
 import TaximSensor
-from pathlib import Path
+
 
 def _robotiq2f85_digit_model_path() -> str:
     return str(Path(TaximSensor.__file__).parent.parent.parent / "assets/robotiq_2f85/robotiq_2f85.xml")
+
 
 class TaximSimWrapper(gym.Wrapper):
     """Wrapper to render TAXIM tactile observations alongside regular RCS observations."""
@@ -78,7 +80,6 @@ class TaximSimWrapper(gym.Wrapper):
     def _ensure_initialized(self) -> None:
         if self.initialized:
             return
-        
 
         for site, pad_geom in zip(self.taxim_sites, self.taxim_pad_geoms, strict=True):
             sensor = TaximSensor.TaximSensor(resize=(240, 320), sensor_type=self.taxim_sensor_type, preprocess_bg=False)

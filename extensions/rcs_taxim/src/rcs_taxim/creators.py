@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from pathlib import Path
 from typing import Any
 
 import gymnasium as gym
@@ -15,6 +14,7 @@ from rcs_taxim.taxim_wrapper import TaximSimWrapper, _robotiq2f85_digit_model_pa
 import rcs
 
 _TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
+
 
 def _prefixed(name: str) -> str:
     return f"gripper{name}"
