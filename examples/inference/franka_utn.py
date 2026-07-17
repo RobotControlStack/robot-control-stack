@@ -47,7 +47,7 @@ CAMERA_DICT = {
     "wrist": "230422271040",
     "side": "243122074917",
 }
-# CAMERA_DICT = None
+
 ZED_CAMERA_DICT = None
 
 INCLUDE_DEPTH = False
@@ -56,7 +56,6 @@ DIGIT_DICT = {
     "digit_right_left": "D21154",
     "digit_right_right": "D21296"
 }
-
 
 INSTRUCTION = "pick up cube"
 FPS = 30

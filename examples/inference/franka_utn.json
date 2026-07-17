@@ -1,6 +1,6 @@
 {
-  "vlagents_host": "10.42.0.226",
-  "vlagents_port": 20000,
+  "vlagents_host": "172.29.5.11",
+  "vlagents_port": 3000,
   "vlagents_model": "tb_agent",
   "instruction": "pick up cube",
   "robot_keys": [
