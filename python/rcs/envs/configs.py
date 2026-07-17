@@ -31,10 +31,11 @@ from rcs import (
 
 
 class EmptyWorldFR3(SimEnvCreator):
-    robot_prefix_template = "robot"
+    robot_prefix_template = "right"
     gripper_prefix_template = "gripper"
 
-    def config(self) -> SimEnvCreatorConfig:
+    def config(self, robot_prefix_template="right") -> SimEnvCreatorConfig:
+        self.robot_prefix_template = robot_prefix_template
         q_home = rcs.ROBOTS[RobotType.FR3].q_home
         q_home[-1] = np.pi / 4
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
