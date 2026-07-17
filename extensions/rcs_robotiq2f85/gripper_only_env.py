@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 ROBOTIQ_SERIAL_ENV_VAR = "ROBOTIQ_2F85_SERIAL_NUMBER"
 ROBOTIQ_SERIAL_NUMBER = "DAAQMJHX"
 DEFAULT_SPEED_MM_S = 100.0
-DEFAULT_FORCE_N = 0
+DEFAULT_FORCE_N = 20
 DEFAULT_ASYNC_CONTROL = True
 DEFAULT_BINARY_ACTIONS = False
 
@@ -81,7 +81,7 @@ def get_env(
     logger.info("Initializing Robotiq 2F85 gripper with serial number %s", cfg.serial_number)
     gripper = make_gripper(cfg)
     env: gym.Env = GripperOnlyHardwareEnv()
-    env = GripperWrapper(env, gripper, binary=cfg.binary_actions, expose_force_action=True)
+    env = GripperWrapper(env, gripper, binary=cfg.binary_actions)
     return CoverWrapper(env)
 
 
