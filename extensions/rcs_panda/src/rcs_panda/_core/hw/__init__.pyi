@@ -107,6 +107,10 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
+    kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    kp_r: float
     load_parameters: FrankaLoad | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
@@ -298,6 +302,10 @@ class FR3Config(FrankaConfig):
         ip: str,
         ik_solver: IKSolver = ...,
         speed_factor: float = 0.2,
+        kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
         nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
@@ -315,6 +323,10 @@ class PandaConfig(FrankaConfig):
         ip: str,
         ik_solver: IKSolver = ...,
         speed_factor: float = 0.2,
+        kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
+        kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
         nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
