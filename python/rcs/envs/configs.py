@@ -34,7 +34,7 @@ class EmptyWorldFR3(SimEnvCreator):
     robot_prefix_template = "right"
     gripper_prefix_template = "gripper"
 
-    def config(self, robot_prefix_template="right") -> SimEnvCreatorConfig:
+    def config(self, robot_prefix_template: str = "right") -> SimEnvCreatorConfig:
         self.robot_prefix_template = robot_prefix_template
         q_home = rcs.ROBOTS[RobotType.FR3].q_home
         q_home[-1] = np.pi / 4
