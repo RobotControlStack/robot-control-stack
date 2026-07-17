@@ -38,6 +38,14 @@ struct FrankaConfig : common::RobotConfig {
   common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
+  // deoxys/config/joint-impedance-controller.yml
+  common::Vector7d kp =
+      (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
+  common::Vector7d kd =
+      (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
+  // values from deoxys/config/osc-position-controller.yml
+  Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
+  double kp_r = 250.0;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
