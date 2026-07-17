@@ -112,8 +112,10 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
-    joint_controller_Kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    joint_controller_Kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    kp_r: float
     load_parameters: FrankaLoad | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
     osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
