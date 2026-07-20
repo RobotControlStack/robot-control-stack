@@ -82,7 +82,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
 
         scene = EmptyWorldFR3()
         cfg = scene.config()
-        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
         cfg.control_mode = control_mode
         cfg.headless = render_mode != "human"
         cfg.sim_cfg.realtime = render_mode == "human"
