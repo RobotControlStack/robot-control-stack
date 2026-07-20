@@ -13,8 +13,8 @@ from rcs_taxim.taxim_wrapper import TaximSimWrapper, _robotiq2f85_digit_model_pa
 
 import rcs
 
-_TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
-
+TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
+rcs.GRIPPER_PATHS[TAXIM_GRIPPER_TYPE] = str(_robotiq2f85_digit_model_path())
 
 def _prefixed(name: str) -> str:
     return f"gripper{name}"
@@ -42,7 +42,7 @@ def _make_camera_cfgs(
     return camera_cfgs
 
 
-def _taxim_gripper_cfg() -> SimGripperConfig:
+def taxim_gripper_cfg() -> SimGripperConfig:
     return SimGripperConfig(
         epsilon_inner=0.005,
         epsilon_outer=0.005,
@@ -56,7 +56,7 @@ def _taxim_gripper_cfg() -> SimGripperConfig:
         actuator="fingers_actuator",
         max_actuator_width=0,
         min_actuator_width=255,
-        gripper_type=_TAXIM_GRIPPER_TYPE,
+        gripper_type=TAXIM_GRIPPER_TYPE,
     )
 
 
@@ -80,8 +80,6 @@ class FR3TaximSimplePickUpSimEnvCreator:
             msg = f"Unexpected keyword arguments: {unexpected}"
             raise TypeError(msg)
 
-        rcs.GRIPPER_PATHS[_TAXIM_GRIPPER_TYPE] = str(_robotiq2f85_digit_model_path())
-
         scene = EmptyWorldFR3()
         cfg = scene.config()
         cfg.control_mode = control_mode
@@ -97,7 +95,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
         cfg.relative_to = RelativeTo.LAST_STEP if delta_actions else RelativeTo.NONE
         if not delta_actions:
             cfg.max_relative_movement = None
-        cfg.gripper_cfgs = {"robot": _taxim_gripper_cfg()}
+        cfg.gripper_cfgs = {"robot": taxim_gripper_cfg()}
         cfg.gripper_offsets = None
         cfg.root_frame_objects = {
             "": (
