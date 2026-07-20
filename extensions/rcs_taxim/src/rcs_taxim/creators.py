@@ -84,6 +84,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
 
         scene = EmptyWorldFR3()
         cfg = scene.config()
+        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
         cfg.control_mode = control_mode
         cfg.headless = render_mode != "human"
         cfg.sim_cfg.realtime = render_mode == "human"
@@ -97,8 +98,8 @@ class FR3TaximSimplePickUpSimEnvCreator:
         cfg.relative_to = RelativeTo.LAST_STEP if delta_actions else RelativeTo.NONE
         if not delta_actions:
             cfg.max_relative_movement = None
-        cfg.gripper_cfgs = {"robot": _taxim_gripper_cfg()}
-        cfg.gripper_offsets = None
+        cfg.gripper_cfgs = {"right": _taxim_gripper_cfg()}
+        cfg.gripper_offsets = {"right": rcs.DEFAULT_TRANSFORMS["FR3_ROBOTIQ_GRIPPER"]}
         cfg.root_frame_objects = {
             "": (
                 rcs.OBJECT_PATHS["green_cube"],
