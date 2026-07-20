@@ -120,7 +120,7 @@ class JointDatasetConverter:
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
 
-        self.tcp_offset = rcs.GRIPPER_OFFSETS[self.gripper_type]
+        self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
         self.ik = rcs.common.Pin(
             rcs.ROBOTS[robot_type].mjcf_model_path,
             rcs.ROBOTS[robot_type].attachment_site,
