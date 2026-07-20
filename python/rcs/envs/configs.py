@@ -4,7 +4,7 @@ from typing import ClassVar, Literal
 
 import gymnasium as gym
 import numpy as np
-from rcs._core.common import FrankaHandTCPOffset, GripperType, RobotType
+from rcs._core.common import GripperType, RobotType
 from rcs._core.sim import (
     CameraType,
     SimCameraConfig,
@@ -24,8 +24,8 @@ import rcs
 from rcs import (
     CAMERA_PATHS,
     DEFAULT_TRANSFORMS,
-    GRIPPER_TCP_OFFSETS,
     GRIPPER_MOUNT_OFFSETS,
+    GRIPPER_TCP_OFFSETS,
     OBJECT_PATHS,
     SCENE_PATHS,
 )
