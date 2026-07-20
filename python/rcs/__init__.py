@@ -196,8 +196,12 @@ GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
 }
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
-    common.GripperType.FrankaHand: common.Pose(rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])),
-    common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])),
+    common.GripperType.FrankaHand: common.Pose(
+        rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
+    ),
+    common.GripperType("Robotiq2F85"): common.Pose(
+        translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
+    ),
 }
 
 SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.xml"}
