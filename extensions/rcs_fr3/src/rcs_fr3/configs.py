@@ -119,7 +119,7 @@ class DROIDEnv(RCSFR3MultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType("Robotiq2F85")]
         cfg.robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DROID"]
 
         return FR3MultiHardwareEnvCreatorConfig(
@@ -209,8 +209,8 @@ class FrankaDuoEnv(DefaultFR3DualMultiHardwareEnv):
 
         cfg = super().config()
         cfg.camera_cfgs = None
-        cfg.robot_cfgs["left"].tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
-        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["left"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType("Robotiq2F85")]
         cfg.robot_cfgs["left"].q_home = rcs.HOME_POSITIONS["FR3_DUO_LEFT"]
         cfg.robot_cfgs["right"].q_home = rcs.HOME_POSITIONS["FR3_DUO_RIGHT"]
         cfg.gripper_cfgs = {
