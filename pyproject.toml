@@ -225,6 +225,11 @@ version_files = [
   "extensions/rcs_tacto/src/rcs_tacto/__init__.py:__version__",
   "extensions/rcs_tacto/pyproject.toml:\"rcs-core>=(.*)\"",
 
+  "extensions/rcs_taxim/pyproject.toml:version",
+  "extensions/rcs_taxim/src/rcs_taxim/__init__.py:__version__",
+  "extensions/rcs_taxim/pyproject.toml:\"rcs-core>=(.*)\"",
+
+
   "extensions/rcs_robotiq2f85/pyproject.toml:version",
   "extensions/rcs_robotiq2f85/src/rcs_robotiq2f85/__init__.py:__version__",
   "extensions/rcs_robotiq2f85/pyproject.toml:\"rcs-core>=(.*)\"",
