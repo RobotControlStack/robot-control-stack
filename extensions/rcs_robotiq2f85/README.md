@@ -50,3 +50,15 @@ gripper.reset()
 gripper.shut()
 print(gripper.get_normalized_width())
 ```
+
+## Finger pose cache
+
+The first call to `robotiq_2f85_finger_poses` builds the gripper's kinematics
+lookup table and stores it under `$XDG_CACHE_HOME/rcs/robotiq2f85`, or under
+`~/.cache/rcs/robotiq2f85` when `XDG_CACHE_HOME` is not set. Later processes
+load that file instead of running the initialization simulation again.
+
+The cache filename includes a fingerprint of the XML model, the MuJoCo version,
+and the cache format. Changing any of them creates a new cache automatically.
+If a closing state does not settle, its entry reuses the preceding, slightly
+more-open pose and logs a warning.
