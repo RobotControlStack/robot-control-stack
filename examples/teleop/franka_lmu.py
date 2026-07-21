@@ -164,6 +164,7 @@ def get_env():
         )
         sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        hw_cfg.wrapper_cfg.binary_gripper = False
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
         # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))

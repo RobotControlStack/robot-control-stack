@@ -140,6 +140,7 @@ def get_env():
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = config.operator_class.control_mode[0]
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        hw_cfg.wrapper_cfg.binary_gripper = False
         hw_cfg.max_relative_movement = (
             0.5 if config.operator_class.control_mode[0] == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         )
