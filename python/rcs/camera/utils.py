@@ -1,7 +1,38 @@
 from collections.abc import Collection
+from typing import Any
 
 import numpy as np
 from rcs.camera.interface import BaseCameraSet
+
+
+def add_blank_camera_streams(
+    observation: dict[str, Any],
+    blank_camera_dict: dict[str, np.ndarray],
+) -> None:
+    """Add static ``<camera_name>_blank`` RGB streams to an observation in place."""
+    if not blank_camera_dict:
+        return
+
+    frames = observation.setdefault("frames", {})
+    blank_names = {f"{camera_name}_blank" for camera_name in blank_camera_dict}
+    collisions = blank_names.intersection(frames)
+    if collisions:
+        names = ", ".join(sorted(collisions))
+        msg = f"Blank camera stream name(s) already exist in the observation: {names}"
+        raise ValueError(msg)
+
+    frames.update(
+        {
+            f"{camera_name}_blank": {
+                "rgb": {
+                    "data": blank_image.copy(),
+                    "intrinsics": None,
+                    "extrinsics": None,
+                }
+            }
+            for camera_name, blank_image in blank_camera_dict.items()
+        }
+    )
 
 
 def capture_blank_camera_images(

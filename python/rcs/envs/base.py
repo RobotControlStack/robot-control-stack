@@ -12,6 +12,7 @@ from greenlet import getcurrent, greenlet
 from gymnasium.utils import seeding
 from rcs._core.common import Hand, RobotPlatform
 from rcs.camera.interface import BaseCameraSet
+from rcs.camera.utils import add_blank_camera_streams
 from rcs.envs.space_utils import (
     ActObsInfoWrapper,
     RCSpaceType,
@@ -924,6 +925,45 @@ class RelativeActionSpace(ActObsInfoWrapper):
                 if isinstance(self._absolute_action, common.Pose)
                 else self._absolute_action
             )
+        return observation, info
+
+
+class BlankCameraObservationWrapper(ActObsInfoWrapper):
+    """Add static initialization-time camera images to the observation chain."""
+
+    def __init__(self, env, blank_camera_dict: dict[str, np.ndarray]):
+        super().__init__(env)
+        self.blank_camera_dict: dict[str, np.ndarray] = {}
+        for camera_name, blank_image in blank_camera_dict.items():
+            if not isinstance(blank_image, np.ndarray):
+                msg = f"Blank image for camera {camera_name!r} must be a numpy array."
+                raise TypeError(msg)
+            self.blank_camera_dict[camera_name] = blank_image.copy()
+
+        self.observation_space = copy.deepcopy(env.observation_space)
+        self.camera_key = get_space_keys(CameraDictType)[0]
+        frames_space = self.observation_space.spaces.get(self.camera_key)
+        if not isinstance(frames_space, gym.spaces.Dict):
+            msg = "Blank camera streams require a dictionary camera observation space."
+            raise TypeError(msg)
+
+        for camera_name in self.blank_camera_dict:
+            blank_name = f"{camera_name}_blank"
+            if camera_name not in frames_space.spaces:
+                msg = f"Camera {camera_name!r} is not present in the observation space."
+                raise ValueError(msg)
+            if blank_name in frames_space.spaces:
+                msg = f"Blank camera stream name already exists in the observation space: {blank_name}"
+                raise ValueError(msg)
+            source_camera_space = frames_space.spaces[camera_name]
+            if not isinstance(source_camera_space, gym.spaces.Dict) or "rgb" not in source_camera_space.spaces:
+                msg = f"Camera {camera_name!r} does not provide an RGB observation space."
+                raise TypeError(msg)
+            frames_space.spaces[blank_name] = gym.spaces.Dict({"rgb": copy.deepcopy(source_camera_space.spaces["rgb"])})
+
+    def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        observation = copy.deepcopy(observation)
+        add_blank_camera_streams(observation, self.blank_camera_dict)
         return observation, info
 
 

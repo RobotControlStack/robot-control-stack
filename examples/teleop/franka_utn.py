@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform, GripperType
 from rcs._core.sim import SimConfig
 from rcs.camera.utils import capture_blank_camera_images
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
@@ -174,11 +174,13 @@ def get_env():
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
         operator = GelloOperator(config, sim) if isinstance(config, GelloConfig) else QuestOperator(config, sim)
 
+    if blank_camera_dict:
+        env_rel = BlankCameraObservationWrapper(env_rel, blank_camera_dict)
+
     env_rel = StorageWrapper(
         env_rel,
         DATASET_PATH,
         INSTRUCTION,
-        blank_camera_dict=blank_camera_dict,
         batch_size=32,
         max_rows_per_group=100,
         max_rows_per_file=1000,

@@ -16,7 +16,8 @@ import gymnasium as gym
 import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform, GripperType
 from rcs._core.sim import SimConfig
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.camera.utils import capture_blank_camera_images
+from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
@@ -326,6 +327,7 @@ def command_loop(controller: ModelInference) -> None:
 
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
+    blank_camera_dict: dict[str, np.ndarray] = {}
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
@@ -386,6 +388,9 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
         env_rel = env_creator.create_env(hw_cfg)
+        if DIGIT_DICT is not None:
+            camera_set = env_rel.get_wrapper_attr("camera_set")
+            blank_camera_dict = capture_blank_camera_images(camera_set, DIGIT_DICT)
     else:
         # FR3
 
@@ -406,6 +411,9 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         # sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
         env_rel = scene.create_env(sim_cfg_data)
+
+    if blank_camera_dict:
+        env_rel = BlankCameraObservationWrapper(env_rel, blank_camera_dict)
 
     return StorageWrapper(
         env_rel,
