@@ -13,7 +13,8 @@ import numpy as np
 from PIL import Image
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
-from rcs.envs.base import ControlMode, RelativeTo
+from rcs.camera.utils import capture_blank_camera_images
+from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.utils import SimpleFrameRate
