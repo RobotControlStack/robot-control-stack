@@ -36,7 +36,7 @@ class PickUpDemo:
         geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
         obj_pose_world_coordinates = Pose(
             translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
-        ) * Pose(rpy_vector=np.array([0, 0, -np.pi / 4]), translation=np.array([0.0, 0.0, 0.0]))
+        ) * Pose(rpy_vector=np.array([0, 0, 0]), translation=np.array([0.0, 0.0, 0.0]))
         return self._robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:
@@ -64,7 +64,7 @@ class PickUpDemo:
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
     def grasp(self, geom_name: str):
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.09, num_waypoints=60)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.04, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
         for _ in range(4):

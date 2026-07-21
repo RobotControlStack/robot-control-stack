@@ -97,7 +97,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
         if not delta_actions:
             cfg.max_relative_movement = None
         cfg.gripper_cfgs = {"right": taxim_gripper_cfg()}
-        cfg.gripper_offsets = None
+        cfg.gripper_offsets = {"right": rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
         cfg.root_frame_objects = {
             "": (
                 rcs.OBJECT_PATHS["green_cube"],
