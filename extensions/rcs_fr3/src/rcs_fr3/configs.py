@@ -247,6 +247,7 @@ class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
         if isinstance(right_cfg.gripper_cfg, hw.FHConfig):
             right_cfg.gripper_cfg.async_control = True
         right_cfg.robot_cfg.q_home = np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, np.pi/4])
+        right_cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[grippertype]
 
         if grippertype == common.GripperType("Robotiq2F85"):
             try:
