@@ -96,7 +96,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
         cfg.relative_to = RelativeTo.LAST_STEP if delta_actions else RelativeTo.NONE
         if not delta_actions:
             cfg.max_relative_movement = None
-        cfg.gripper_cfgs = {"robot": taxim_gripper_cfg()}
+        cfg.gripper_cfgs = {"right": taxim_gripper_cfg()}
         cfg.gripper_offsets = None
         cfg.root_frame_objects = {
             "": (
