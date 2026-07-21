@@ -5,17 +5,12 @@ import mujoco
 import numpy as np
 import pytest
 
-import rcs
 from rcs import common
 from rcs_robotiq2f85 import kinematics
 from rcs_robotiq2f85.kinematics import robotiq_2f85_finger_pose_offsets_from_sites, robotiq_2f85_finger_poses
 
 ROBOTIQ_2F85_MODEL_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "assets"
-    / "grippers"
-    / "robotiq_2f85"
-    / "robotiq_2f85.xml"
+    Path(__file__).resolve().parents[3] / "assets" / "grippers" / "robotiq_2f85" / "robotiq_2f85.xml"
 )
 
 
@@ -57,15 +52,68 @@ def test_robotiq_2f85_pose_cache_builds_from_open_to_closed(monkeypatch, caplog)
 
     monkeypatch.setattr(kinematics, "mujoco", fake_mujoco)
     monkeypatch.setattr(kinematics, "_pose_from_body", pose_from_control)
-    poses = kinematics._build_robotiq_2f85_pose_cache("unused.xml")
+    poses = kinematics._build_robotiq_2f85_pose_cache("unused.xml", body_name="left_follower")
 
     assert commands[0] == 0.0
     assert commands[-1] == 255.0
-    assert poses[-1, 0, 0, 3] == 0.0
-    assert poses[0, 0, 0, 3] == 255.0
+    assert poses[-1, 0, 3] == 0.0
+    assert poses[0, 0, 3] == 255.0
     assert np.array_equal(poses[500], poses[501])
     assert "failed to converge at state 0.500" in caplog.text
     assert "reusing pose from state 0.501" in caplog.text
+
+
+def test_robotiq_2f85_pose_cache_builds_from_site(monkeypatch):
+    class FakeModel:
+        actuator_ctrlrange = np.array([[0.0, 255.0]])
+
+        @staticmethod
+        def actuator(name: str) -> SimpleNamespace:
+            assert name == "fingers_actuator"
+            return SimpleNamespace(id=0)
+
+    class FakeData:
+        def __init__(self, model: FakeModel):
+            del model
+            self.ctrl = np.zeros(1)
+            self.qvel = np.zeros(1)
+
+    def from_xml_path(path: str) -> FakeModel:
+        del path
+        return FakeModel()
+
+    def step(model: FakeModel, data: FakeData) -> None:
+        del model, data
+
+    fake_mujoco = SimpleNamespace(
+        MjModel=SimpleNamespace(from_xml_path=from_xml_path),
+        MjData=FakeData,
+        mj_step=step,
+    )
+    site_names: list[str] = []
+
+    def pose_from_site(data: FakeData, name: str) -> common.Pose:
+        del data
+        site_names.append(name)
+        return common.Pose(translation=np.array([1.0, 2.0, 3.0]))
+
+    monkeypatch.setattr(kinematics, "mujoco", fake_mujoco)
+    monkeypatch.setattr(kinematics, "_ROBOTIQ_2F85_CACHE_SIZE", 1)
+    monkeypatch.setattr(kinematics, "_ROBOTIQ_2F85_CACHE_SHAPE", (1, 4, 4))
+    monkeypatch.setattr(kinematics, "_pose_from_site", pose_from_site)
+    poses = kinematics._build_robotiq_2f85_pose_cache("unused.xml", site_name="fingertip")
+
+    assert site_names == ["fingertip"]
+    assert np.array_equal(poses[0, :3, 3], [1.0, 2.0, 3.0])
+
+
+@pytest.mark.parametrize(
+    ("body_name", "site_name"),
+    [(None, None), ("left_follower", "fingertip")],
+)
+def test_robotiq_2f85_pose_cache_requires_exactly_one_target(body_name, site_name):
+    with pytest.raises(ValueError, match="exactly one of body_name or site_name must be provided"):
+        kinematics._build_robotiq_2f85_pose_cache("unused.xml", body_name=body_name, site_name=site_name)
 
 
 def test_robotiq_2f85_pose_cache_persists_across_memory_caches(tmp_path, monkeypatch):
@@ -73,26 +121,30 @@ def test_robotiq_2f85_pose_cache_persists_across_memory_caches(tmp_path, monkeyp
     model_path.write_text("<mujoco/>")
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     expected = np.zeros(kinematics._ROBOTIQ_2F85_CACHE_SHAPE, dtype=np.float64)
-    expected[:, :, 3, 3] = 1.0
+    expected[:, 3, 3] = 1.0
     build_calls = 0
 
-    def build_cache(path: str) -> np.ndarray:
+    def build_cache(path: str, *, body_name: str | None, site_name: str | None) -> np.ndarray:
         nonlocal build_calls
         assert path == str(model_path.resolve())
+        assert body_name == "left_follower"
+        assert site_name is None
         build_calls += 1
         return expected
 
     monkeypatch.setattr(kinematics, "_build_robotiq_2f85_pose_cache", build_cache)
     kinematics._robotiq_2f85_pose_cache.cache_clear()
-    first = kinematics._robotiq_2f85_pose_cache(str(model_path))
+    first = kinematics._robotiq_2f85_pose_cache(str(model_path), body_name="left_follower")
 
     kinematics._robotiq_2f85_pose_cache.cache_clear()
-    second = kinematics._robotiq_2f85_pose_cache(str(model_path))
+    second = kinematics._robotiq_2f85_pose_cache(str(model_path), body_name="left_follower")
 
     assert build_calls == 1
     assert np.array_equal(first, expected)
     assert np.array_equal(second, expected)
     assert not second.flags.writeable
+    assert second.flags.owndata
+    assert second.base is None
     assert len(list((tmp_path / "cache" / "rcs" / "robotiq2f85").glob("*.npy"))) == 1
 
 
@@ -100,18 +152,20 @@ def test_robotiq_2f85_pose_cache_rebuilds_invalid_disk_cache(tmp_path, monkeypat
     model_path = tmp_path / "robotiq.xml"
     model_path.write_text("<mujoco/>")
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
-    cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve())
+    cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve(), site_name="fingertip")
     cache_path.parent.mkdir(parents=True)
     np.save(cache_path, np.zeros((1,), dtype=np.float64))
     expected = np.ones(kinematics._ROBOTIQ_2F85_CACHE_SHAPE, dtype=np.float64)
 
-    def rebuild_cache(path: str) -> np.ndarray:
+    def rebuild_cache(path: str, *, body_name: str | None, site_name: str | None) -> np.ndarray:
         del path
+        assert body_name is None
+        assert site_name == "fingertip"
         return expected
 
     monkeypatch.setattr(kinematics, "_build_robotiq_2f85_pose_cache", rebuild_cache)
     kinematics._robotiq_2f85_pose_cache.cache_clear()
-    poses = kinematics._robotiq_2f85_pose_cache(str(model_path))
+    poses = kinematics._robotiq_2f85_pose_cache(str(model_path), site_name="fingertip")
 
     assert np.array_equal(poses, expected)
     assert np.load(cache_path, allow_pickle=False).shape == kinematics._ROBOTIQ_2F85_CACHE_SHAPE
@@ -121,10 +175,10 @@ def test_robotiq_2f85_pose_cache_is_invalidated_when_model_changes(tmp_path, mon
     model_path = tmp_path / "robotiq.xml"
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     model_path.write_text("<mujoco model='first'/>")
-    first_cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve())
+    first_cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve(), body_name="left_follower")
 
     model_path.write_text("<mujoco model='second'/>")
-    second_cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve())
+    second_cache_path = kinematics._robotiq_2f85_cache_path(model_path.resolve(), body_name="left_follower")
 
     assert first_cache_path != second_cache_path
 
@@ -139,7 +193,11 @@ def test_robotiq_2f85_pose_cache_is_invalidated_when_model_changes(tmp_path, mon
 )
 def test_robotiq_2f85_fingertip_fk(normalized_command, left_position, right_position):
     """Look up follower FK from a normalized command: 0 closed, 1 open."""
-    poses = robotiq_2f85_finger_poses(normalized_command, model_path=ROBOTIQ_2F85_MODEL_PATH)
+    poses = robotiq_2f85_finger_poses(
+        normalized_command,
+        body_name=("left_follower", "right_follower"),
+        model_path=ROBOTIQ_2F85_MODEL_PATH,
+    )
 
     expected_left_pose = common.Pose(
         rotation=np.array([[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]]),
@@ -183,7 +241,12 @@ def test_robotiq_2f85_fingertip_fk_with_custom_mount_offsets():
         right_site="right_digit_pad",
     )
 
-    poses = robotiq_2f85_finger_poses(0.5, offsets=offsets, model_path=ROBOTIQ_2F85_MODEL_PATH)
+    poses = robotiq_2f85_finger_poses(
+        0.5,
+        body_name=("left_follower", "right_follower"),
+        offsets=offsets,
+        model_path=ROBOTIQ_2F85_MODEL_PATH,
+    )
 
     expected_left_pose = common.Pose(
         rotation=np.array(

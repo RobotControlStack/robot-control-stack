@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 ROBOTIQ_2F85_CACHE_STEP = 0.001
 _ROBOTIQ_2F85_CACHE_SIZE = 1001
-_ROBOTIQ_2F85_CACHE_SHAPE = (_ROBOTIQ_2F85_CACHE_SIZE, 2, 4, 4)
-_ROBOTIQ_2F85_CACHE_FORMAT_VERSION = 3
-_FOLLOWER_BODIES = ("left_follower", "right_follower")
+_ROBOTIQ_2F85_CACHE_SHAPE = (_ROBOTIQ_2F85_CACHE_SIZE, 4, 4)
+_ROBOTIQ_2F85_CACHE_FORMAT_VERSION = 4
 
 
 def _progress(iterable):
@@ -57,31 +56,46 @@ def _pose_from_site(data: mujoco.MjData, name: str) -> common.Pose:
     )
 
 
-def _robotiq_2f85_cache_path(model_path: Path) -> Path:
+def _robotiq_2f85_cache_path(
+    model_path: Path,
+    *,
+    body_name: str | None = None,
+    site_name: str | None = None,
+) -> Path:
     """Return a persistent cache path that is invalidated with the model or implementation."""
+    target_kind, target_name = _pose_cache_target(body_name=body_name, site_name=site_name)
     fingerprint = hashlib.sha256()
     fingerprint.update(f"rcs-robotiq2f85-cache-v{_ROBOTIQ_2F85_CACHE_FORMAT_VERSION}\0".encode())
     fingerprint.update(str(model_path).encode())
     fingerprint.update(model_path.read_bytes())
     fingerprint.update(mujoco.__version__.encode())
-    fingerprint.update(repr((ROBOTIQ_2F85_CACHE_STEP, _ROBOTIQ_2F85_CACHE_SHAPE, _FOLLOWER_BODIES)).encode())
+    fingerprint.update(repr((ROBOTIQ_2F85_CACHE_STEP, _ROBOTIQ_2F85_CACHE_SHAPE, target_kind, target_name)).encode())
 
-    cache_root = (
-        Path(os.environ["XDG_CACHE_HOME"])
-        if "XDG_CACHE_HOME" in os.environ
-        else Path.home() / ".cache"
-    )
+    cache_root = Path(os.environ["XDG_CACHE_HOME"]) if "XDG_CACHE_HOME" in os.environ else Path.home() / ".cache"
     return cache_root / "rcs" / "robotiq2f85" / f"{model_path.stem}-{fingerprint.hexdigest()[:16]}.npy"
+
+
+def _pose_cache_target(*, body_name: str | None, site_name: str | None) -> tuple[str, str]:
+    if (body_name is None) == (site_name is None):
+        msg = "exactly one of body_name or site_name must be provided"
+        raise ValueError(msg)
+    if body_name is not None:
+        return "body", body_name
+    assert site_name is not None
+    return "site", site_name
 
 
 def _load_robotiq_2f85_pose_cache(cache_path: Path) -> np.ndarray | None:
     try:
-        poses = np.load(cache_path, allow_pickle=False)
+        loaded_poses = np.load(cache_path, allow_pickle=False)
+        if loaded_poses.dtype != np.float64:
+            msg = f"expected dtype float64, got {loaded_poses.dtype}"
+            raise ValueError(msg)
+        # Keep every pose resident in memory. In particular, do not retain a
+        # memory-mapped or otherwise lazy array returned by the loader.
+        poses = np.array(loaded_poses, order="C", copy=True)
         if poses.shape != _ROBOTIQ_2F85_CACHE_SHAPE:
             msg = f"expected shape {_ROBOTIQ_2F85_CACHE_SHAPE}, got {poses.shape}"
-            raise ValueError(msg)
-        if poses.dtype != np.float64:
-            msg = f"expected dtype float64, got {poses.dtype}"
             raise ValueError(msg)
         if not np.all(np.isfinite(poses)):
             msg = "cache contains non-finite values"
@@ -121,8 +135,15 @@ def _save_robotiq_2f85_pose_cache(cache_path: Path, poses: np.ndarray) -> None:
                 logger.debug("Could not remove temporary pose-cache file %s", temporary_path, exc_info=True)
 
 
-def _build_robotiq_2f85_pose_cache(model_path: str) -> np.ndarray:
-    """Build the 0.001-resolution follower-pose cache for one model."""
+def _build_robotiq_2f85_pose_cache(
+    model_path: str,
+    *,
+    body_name: str | None = None,
+    site_name: str | None = None,
+) -> np.ndarray:
+    """Build a 0.001-resolution body- or site-pose cache for one model."""
+    target_kind, target_name = _pose_cache_target(body_name=body_name, site_name=site_name)
+    pose_from_target = _pose_from_body if target_kind == "body" else _pose_from_site
     model = mujoco.MjModel.from_xml_path(model_path)
     data = mujoco.MjData(model)
     actuator_id = model.actuator("fingers_actuator").id
@@ -159,23 +180,28 @@ def _build_robotiq_2f85_pose_cache(model_path: str) -> np.ndarray:
             poses[index] = poses[index + 1]
             continue
 
-        for finger_index, body_name in enumerate(_FOLLOWER_BODIES):
-            poses[index, finger_index] = _pose_from_body(data, body_name).pose_matrix()
+        poses[index] = pose_from_target(data, target_name).pose_matrix()
 
     poses.setflags(write=False)
     return poses
 
 
 @lru_cache(maxsize=None)
-def _robotiq_2f85_pose_cache(model_path: str) -> np.ndarray:
-    """Load or build the persistent follower-pose cache once per model path."""
+def _robotiq_2f85_pose_cache(
+    model_path: str,
+    *,
+    body_name: str | None = None,
+    site_name: str | None = None,
+) -> np.ndarray:
+    """Load or build one persistent body- or site-pose cache."""
+    _pose_cache_target(body_name=body_name, site_name=site_name)
     resolved_model_path = Path(model_path).resolve()
-    cache_path = _robotiq_2f85_cache_path(resolved_model_path)
+    cache_path = _robotiq_2f85_cache_path(resolved_model_path, body_name=body_name, site_name=site_name)
     poses = _load_robotiq_2f85_pose_cache(cache_path)
     if poses is not None:
         return poses
 
-    poses = _build_robotiq_2f85_pose_cache(str(resolved_model_path))
+    poses = _build_robotiq_2f85_pose_cache(str(resolved_model_path), body_name=body_name, site_name=site_name)
     _save_robotiq_2f85_pose_cache(cache_path, poses)
     return poses
 
@@ -202,25 +228,49 @@ def robotiq_2f85_finger_pose_offsets_from_sites(
 def robotiq_2f85_finger_poses(
     normalized_state: float,
     *,
+    body_name: tuple[str, str] | None = None,
+    site_name: tuple[str, str] | None = None,
     offsets: FingerPosePair | None = None,
     model_path: str | Path | None = None,
 ) -> FingerPosePair:
-    """Look up Robotiq follower poses and optionally apply fixed offsets.
+    """Look up a pair of Robotiq body or site poses and optionally apply offsets.
 
     ``normalized_state`` is 0 for closed and 1 for open and is rounded to the
-    nearest 0.001 cache entry. The first call for a model builds the cache using
-    one MuJoCo simulation and persists it below ``$XDG_CACHE_HOME/rcs`` (or
-    ``~/.cache/rcs``). Subsequent processes load it from disk.
+    nearest 0.001 cache entry. Exactly one pair of ``body_name`` or
+    ``site_name`` values must be provided, ordered left then right. The first
+    call for each target builds its cache and persists it below
+    ``$XDG_CACHE_HOME/rcs`` (or ``~/.cache/rcs``). Subsequent processes load it
+    from disk.
     """
     if not np.isfinite(normalized_state) or not 0.0 <= normalized_state <= 1.0:
         msg = f"normalized_state must be between 0 and 1, got {normalized_state}"
+        raise ValueError(msg)
+    if (body_name is None) == (site_name is None):
+        msg = "exactly one of body_name or site_name must be provided"
+        raise ValueError(msg)
+
+    target_kind = "body" if body_name is not None else "site"
+    target_names = body_name if body_name is not None else site_name
+    if (
+        not isinstance(target_names, tuple)
+        or len(target_names) != 2
+        or not all(isinstance(name, str) for name in target_names)
+    ):
+        msg = f"{target_kind}_name must be a pair of names ordered left then right"
         raise ValueError(msg)
 
     if model_path is None:
         model_path = Path(rcs.RCS_PREFIX) / "assets" / "grippers" / "robotiq_2f85" / "robotiq_2f85.xml"
     resolved_model_path = str(Path(model_path).resolve())
     cache_index = int(np.rint(normalized_state / ROBOTIQ_2F85_CACHE_STEP))
-    cached_poses = _robotiq_2f85_pose_cache(resolved_model_path)[cache_index]
+    if body_name is not None:
+        cached_poses = tuple(
+            _robotiq_2f85_pose_cache(resolved_model_path, body_name=name)[cache_index] for name in target_names
+        )
+    else:
+        cached_poses = tuple(
+            _robotiq_2f85_pose_cache(resolved_model_path, site_name=name)[cache_index] for name in target_names
+        )
     poses = FingerPosePair(
         left=common.Pose(pose_matrix=np.array(cached_poses[0], copy=True)),
         right=common.Pose(pose_matrix=np.array(cached_poses[1], copy=True)),
