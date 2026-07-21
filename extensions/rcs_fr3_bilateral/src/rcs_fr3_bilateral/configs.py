@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from rcs_fr3._core import hw as fr3_hw
 from rcs_fr3.configs import DefaultFR3HardwareEnv
 from rcs_fr3_bilateral._core import hw
-
+import numpy as np
 
 @dataclass
 class DefaultFR3BilateralTeleop:
@@ -23,6 +23,11 @@ class DefaultFR3BilateralTeleop:
         robot_cfg = base.config().robot_cfg
         robot_cfg.async_control = True
         robot_cfg.ignore_realtime = self.ignore_realtime
+        # original KP: np.array([100., 100., 100., 100., 75., 150., 50.]) 
+        robot_cfg.joint_controller_Kp = np.array([100., 100., 100., 100., 75., 150., 50.])
+        robot_cfg.joint_controller_Kp = 1.5 * robot_cfg.joint_controller_Kp
+        robot_cfg.joint_controller_Kd = 2*np.sqrt(robot_cfg.joint_controller_Kp)
+        
         return robot_cfg
 
     def config(self) -> hw.BilateralFrankaConfig:
