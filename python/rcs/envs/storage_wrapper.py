@@ -33,6 +33,7 @@ class StorageWrapper(gym.Wrapper):
         max_rows_per_group: Optional[int] = None,
         max_rows_per_file: Optional[int] = None,
         success_from_env: bool = False,
+        blank_camera_dict: Optional[dict[str, np.ndarray]] = None,
     ):
         """
         Asynchronously log environment transitions to a Parquet dataset on disk.
@@ -77,6 +78,9 @@ class StorageWrapper(gym.Wrapper):
             Passed to ``pyarrow.dataset.write_dataset``.
         max_rows_per_file : Optional[int], default=None
             Passed to ``pyarrow.dataset.write_dataset``.
+        blank_camera_dict : Optional[dict[str, np.ndarray]], default=None
+            Mapping from camera names to initialization-time blank RGB images. Each
+            image is recorded as an additional ``"<camera_name>_blank"`` stream.
         """
         super().__init__(env)
         self.base_dir = base_dir
@@ -95,6 +99,12 @@ class StorageWrapper(gym.Wrapper):
         self._prev_absolute_action = None
         self.success_from_env = success_from_env
         self.allow_wrapper_instruction = allow_wrapper_instruction
+        self.blank_camera_dict: dict[str, np.ndarray] = {}
+        for camera_name, blank_image in (blank_camera_dict or {}).items():
+            if not isinstance(blank_image, np.ndarray):
+                msg = f"Blank image for camera {camera_name!r} must be a numpy array."
+                raise TypeError(msg)
+            self.blank_camera_dict[camera_name] = blank_image.copy()
 
         self.thread_pool = ThreadPoolExecutor()
         self.queue: Queue[pa.Table | pa.RecordBatch] = Queue(maxsize=2)
@@ -259,6 +269,31 @@ class StorageWrapper(gym.Wrapper):
             )
         ]
 
+    def _add_blank_camera_frames(self, obs: dict[str, Any]):
+        if not self.blank_camera_dict:
+            return
+
+        frames = obs.setdefault("frames", {})
+        blank_names = {f"{camera_name}_blank" for camera_name in self.blank_camera_dict}
+        collisions = blank_names.intersection(frames)
+        if collisions:
+            names = ", ".join(sorted(collisions))
+            msg = f"Blank camera stream name(s) already exist in the observation: {names}"
+            raise ValueError(msg)
+
+        frames.update(
+            {
+                f"{camera_name}_blank": {
+                    "rgb": {
+                        "data": blank_image.copy(),
+                        "intrinsics": None,
+                        "extrinsics": None,
+                    }
+                }
+                for camera_name, blank_image in self.blank_camera_dict.items()
+            }
+        )
+
     def step(self, action):
         # Check if the writer thread has died
         if self._writer_future.done():
@@ -272,6 +307,7 @@ class StorageWrapper(gym.Wrapper):
 
         if not self._pause:
             assert isinstance(obs, dict)
+            self._add_blank_camera_frames(obs)
             if "frames" in obs and not obs["frames"]:
                 del obs["frames"]
             if "frames" in obs:

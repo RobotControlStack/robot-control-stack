@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
+from rcs.camera.utils import capture_blank_camera_images
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
@@ -83,6 +84,7 @@ config = QuestConfig(
 
 
 def get_env():
+    blank_camera_dict: dict[str, np.ndarray] = {}
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
@@ -153,6 +155,9 @@ def get_env():
         hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
         env_rel = env_creator.create_env(hw_cfg)
+        if DIGIT_DICT is not None:
+            camera_set = env_rel.get_wrapper_attr("camera_set")
+            blank_camera_dict = capture_blank_camera_images(camera_set, DIGIT_DICT)
         operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
     else:
         # FR3
@@ -177,7 +182,13 @@ def get_env():
         operator = GelloOperator(config, sim) if isinstance(config, GelloConfig) else QuestOperator(config, sim)
 
     env_rel = StorageWrapper(
-        env_rel, DATASET_PATH, INSTRUCTION, batch_size=32, max_rows_per_group=100, max_rows_per_file=1000
+        env_rel,
+        DATASET_PATH,
+        INSTRUCTION,
+        blank_camera_dict=blank_camera_dict,
+        batch_size=32,
+        max_rows_per_group=100,
+        max_rows_per_file=1000,
     )
     return env_rel, operator
 
