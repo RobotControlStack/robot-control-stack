@@ -81,7 +81,11 @@ def create_env(gripper_type: GripperType = ROBOTIQ_GRIPPER_TYPE) -> gym.Env:
         raise ValueError(msg) from exc
 
     env = scene.create_env(cfg)
-    return Robotiq2F85FingerPoseWrapper(env, model_path=gripper_model_path)
+    return Robotiq2F85FingerPoseWrapper(
+        env,
+        site_name=("left_pad_site", "right_pad_site"),
+        model_path=gripper_model_path,
+    )
 
 
 class PickUpDemo:
@@ -108,8 +112,9 @@ class PickUpDemo:
 
     def step(self, action: dict[str, Any]) -> dict[str, Any]:
         obs = self.env.step(action)[0]
-        left_finger = obs[ROBOT_NAME][Robotiq2F85FingerPoseWrapper.FINGER_POSE_KEY][0]
-        right_finger = obs[ROBOT_NAME][Robotiq2F85FingerPoseWrapper.FINGER_POSE_KEY][1]
+        finger_poses = obs[ROBOT_NAME][Robotiq2F85FingerPoseWrapper.FINGER_POSE_KEY]
+        left_finger = finger_poses[Robotiq2F85FingerPoseWrapper.LEFT_FINGER_KEY]
+        right_finger = finger_poses[Robotiq2F85FingerPoseWrapper.RIGHT_FINGER_KEY]
         left_finger_pos = left_finger[:3, 3]
         right_finger_pos = right_finger[:3, 3]
         print(f"{left_finger_pos}, {right_finger_pos}")
@@ -155,7 +160,6 @@ class PickUpDemo:
 
 
 def main():
-
     # env = create_env(gripper_type=rcs_taxim.creators.TAXIM_GRIPPER_TYPE)\
     env = create_env()
     env.get_wrapper_attr("sim").open_gui()
@@ -163,7 +167,7 @@ def main():
 
     for _ in _progress(range(100)):
         observation, _ = env.reset()
-        
+
         controller = PickUpDemo(env)
         controller.pickup("_box_geom")
     env.close()
