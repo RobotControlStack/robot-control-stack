@@ -59,12 +59,12 @@ def create_env(gripper_type: GripperType = ROBOTIQ_GRIPPER_TYPE) -> gym.Env:
     cfg.sim_cfg.realtime = True
     cfg.sim_cfg.async_control = True
     cfg.sim_cfg.frequency = 30
-    cfg.robot_cfgs[ROBOT_NAME].tcp_offset = rcs.GRIPPER_OFFSETS[ROBOTIQ_GRIPPER_TYPE]
+    cfg.robot_cfgs[ROBOT_NAME].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[ROBOTIQ_GRIPPER_TYPE]
     _q_home = cfg.robot_cfgs[ROBOT_NAME].q_home.copy()
     _q_home[-1] = 0
     cfg.robot_cfgs[ROBOT_NAME].q_home = _q_home
     cfg.gripper_cfgs = {ROBOT_NAME: gripper_cfg}
-    cfg.gripper_offsets = None
+    cfg.gripper_offsets = {ROBOT_NAME: rcs.GRIPPER_MOUNT_OFFSETS[ROBOTIQ_GRIPPER_TYPE]}
     cfg.camera_cfgs = None
     cfg.camera_adds = None
     cfg.root_frame_objects = {
@@ -93,7 +93,8 @@ class PickUpDemo:
         self.env = env
         self._robot = cast(SimRobot, self.env.get_wrapper_attr("robot")[ROBOT_NAME])
         self.home_pose = self._robot.get_cartesian_position()
-
+        self.prev_left = np.zeros(3)
+        self.prev_right = np.zeros(3)
     def _action(self, pose: Pose, gripper: list[float]) -> dict[str, Any]:
         return {ROBOT_NAME: {"xyzrpy": pose.xyzrpy(), "gripper": gripper}}
 
@@ -104,7 +105,7 @@ class PickUpDemo:
         geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
         obj_pose_world_coordinates = Pose(
             translation=data.geom_xpos[geom_id], rotation=data.geom_xmat[geom_id].reshape(3, 3)
-        ) * Pose(rpy_vector=np.array([0, 0, -np.pi / 4]), translation=np.array([0.0, 0.0, 0.0]))
+        ) * Pose(rpy_vector=np.array([0, 0, 0]), translation=np.array([0.0, 0.0, 0.0]))
         return self._robot.to_pose_in_robot_coordinates(obj_pose_world_coordinates)
 
     def generate_waypoints(self, start_pose: Pose, end_pose: Pose, num_waypoints: int) -> list[Pose]:
@@ -117,7 +118,11 @@ class PickUpDemo:
         right_finger = finger_poses[Robotiq2F85FingerPoseWrapper.RIGHT_FINGER_KEY]
         left_finger_pos = left_finger[:3, 3]
         right_finger_pos = right_finger[:3, 3]
-        print(f"{left_finger_pos}, {right_finger_pos}")
+        if not(np.allclose(left_finger_pos, self.prev_left) and np.allclose(right_finger_pos, self.prev_right)):
+            with np.printoptions(precision=3, suppress=True):
+                print(f"{left_finger_pos}, {right_finger_pos}")
+        self.prev_left = left_finger_pos
+        self.prev_right = right_finger_pos
         return obs
 
     def plan_linear_motion(self, geom_name: str, delta_up: float, num_waypoints: int = 20) -> list[Pose]:
@@ -139,7 +144,7 @@ class PickUpDemo:
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
     def grasp(self, geom_name: str):
-        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.09, num_waypoints=60)
+        waypoints = self.plan_linear_motion(geom_name=geom_name, delta_up=0.03, num_waypoints=60)
         self.execute_motion(waypoints=waypoints, gripper=GripperWrapper.BINARY_GRIPPER_OPEN)
 
         for _ in range(4):
