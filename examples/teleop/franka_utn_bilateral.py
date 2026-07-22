@@ -84,7 +84,7 @@ def make_env(args: argparse.Namespace) -> tuple[StorageWrapper | BilateralFR3Wra
         update_rate_hz=args.control_frequency_hz,
         leader_haptic_feedback=not args.disable_leader_haptics,
     ).config()
-    config.follower_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[GripperType(args.gripper_type)]
+    config.follower_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[GripperType(args.gripper_type)]
     teleop = hw.BilateralFranka(config)
 
     # BilateralFR3Wrapper replaces RobotWrapper here.  In particular, do not
