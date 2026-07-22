@@ -128,10 +128,6 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::FrankaConfig>(hw, "FrankaConfig", robot_config)
       .def_readwrite("ik_solver", &rcs::hw::FrankaConfig::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
-      .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
-      .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
-      .def_readwrite("kp_p", &rcs::hw::FrankaConfig::kp_p)
-      .def_readwrite("kp_r", &rcs::hw::FrankaConfig::kp_r)
       .def_readwrite("load_parameters", &rcs::hw::FrankaConfig::load_parameters)
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FrankaConfig::nominal_end_effector_frame)
@@ -154,9 +150,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")
       .def(py::init(
                [](const std::string& ip, rcs::hw::IKSolver ik_solver,
-                  double speed_factor, const rcs::common::Vector7d& kp,
-                  const rcs::common::Vector7d& kd, const Eigen::Vector3d& kp_p,
-                  double kp_r,
+                  double speed_factor,
                   std::optional<rcs::hw::FrankaLoad> load_parameters,
                   std::optional<rcs::common::Pose> nominal_end_effector_frame,
                   std::optional<rcs::common::Pose> world_to_robot,
@@ -171,10 +165,6 @@ PYBIND11_MODULE(_core, m) {
                  rcs::hw::FR3Config cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
-                 cfg.kp = kp;
-                 cfg.kd = kd;
-                 cfg.kp_p = kp_p;
-                 cfg.kp_r = kp_r;
                  cfg.load_parameters = load_parameters;
                  cfg.nominal_end_effector_frame = nominal_end_effector_frame;
                  cfg.world_to_robot = world_to_robot;
@@ -196,10 +186,6 @@ PYBIND11_MODULE(_core, m) {
                }),
            py::arg("ip"), py::arg("ik_solver") = default_fr3_config.ik_solver,
            py::arg("speed_factor") = default_fr3_config.speed_factor,
-           py::arg("kp") = default_fr3_config.kp,
-           py::arg("kd") = default_fr3_config.kd,
-           py::arg("kp_p") = default_fr3_config.kp_p,
-           py::arg("kp_r") = default_fr3_config.kp_r,
            py::arg("load_parameters") = default_fr3_config.load_parameters,
            py::arg("nominal_end_effector_frame") =
                default_fr3_config.nominal_end_effector_frame,
@@ -224,9 +210,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
       .def(py::init(
                [](const std::string& ip, rcs::hw::IKSolver ik_solver,
-                  double speed_factor, const rcs::common::Vector7d& kp,
-                  const rcs::common::Vector7d& kd, const Eigen::Vector3d& kp_p,
-                  double kp_r,
+                  double speed_factor,
                   std::optional<rcs::hw::FrankaLoad> load_parameters,
                   std::optional<rcs::common::Pose> nominal_end_effector_frame,
                   std::optional<rcs::common::Pose> world_to_robot,
@@ -241,10 +225,6 @@ PYBIND11_MODULE(_core, m) {
                  rcs::hw::PandaConfig cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
-                 cfg.kp = kp;
-                 cfg.kd = kd;
-                 cfg.kp_p = kp_p;
-                 cfg.kp_r = kp_r;
                  cfg.load_parameters = load_parameters;
                  cfg.nominal_end_effector_frame = nominal_end_effector_frame;
                  cfg.world_to_robot = world_to_robot;
@@ -266,10 +246,6 @@ PYBIND11_MODULE(_core, m) {
                }),
            py::arg("ip"), py::arg("ik_solver") = default_panda_config.ik_solver,
            py::arg("speed_factor") = default_panda_config.speed_factor,
-           py::arg("kp") = default_panda_config.kp,
-           py::arg("kd") = default_panda_config.kd,
-           py::arg("kp_p") = default_panda_config.kp_p,
-           py::arg("kp_r") = default_panda_config.kp_r,
            py::arg("load_parameters") = default_panda_config.load_parameters,
            py::arg("nominal_end_effector_frame") =
                default_panda_config.nominal_end_effector_frame,

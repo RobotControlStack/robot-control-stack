@@ -163,13 +163,13 @@ void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
-void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
-                         const std::array<double, 7>& torque_limit) {
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
+                         double max_torque) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
-    if (tau_d_array[i] < -torque_limit[i]) {
-      tau_d_array[i] = -torque_limit[i];
-    } else if (tau_d_array[i] > torque_limit[i]) {
-      tau_d_array[i] = torque_limit[i];
+    if (tau_d_array[i] < min_torque) {
+      tau_d_array[i] = min_torque;
+    } else if (tau_d_array[i] > max_torque) {
+      tau_d_array[i] = max_torque;
     }
   }
 }
@@ -305,8 +305,6 @@ void Franka::stop_control_thread() {
 
 void Franka::osc() {
   franka::Model model = this->robot.loadModel();
-  const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
-  const double kp_r_cfg = this->m_cfg.kp_r;
 
   this->controller_time = 0.0;
 
@@ -330,11 +328,14 @@ void Franka::osc() {
   Eigen::Array<double, 7, 1> joint_min_;
   Eigen::Array<double, 7, 1> avoidance_weights_;
 
-  Kp_p.diagonal() << kp_p_cfg;
-  Kp_r.diagonal() << kp_r_cfg, kp_r_cfg, kp_r_cfg;
-
-  Kd_p << Kp_p.cwiseSqrt() * 2.0;
-  Kd_r << Kp_r.cwiseSqrt() * 2.0;
+  const Eigen::Vector3d osc_Kd_p =
+      this->m_cfg.osc_Kd_p.value_or(this->m_cfg.osc_Kp_p.cwiseSqrt() * 2.0);
+  const Eigen::Vector3d osc_Kd_r =
+      this->m_cfg.osc_Kd_r.value_or(this->m_cfg.osc_Kp_r.cwiseSqrt() * 2.0);
+  Kp_p.diagonal() = this->m_cfg.osc_Kp_p;
+  Kp_r.diagonal() = this->m_cfg.osc_Kp_r;
+  Kd_p.diagonal() = osc_Kd_p;
+  Kd_r.diagonal() = osc_Kd_r;
 
   static_q_task_ << 0.09017809387254755, -0.9824203501652151,
       0.030509718397568178, -2.694229634937343, 0.057700675144720104,
@@ -510,8 +511,9 @@ void Franka::osc() {
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
       // deoxys/config/control_config.yml
-      std::array<double, 7> torque_limit = {5, 5, 5, 5, 5, 5, 5};
-      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
+      double min_torque = -5;
+      double max_torque = 5;
+      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
       return tau_d_rate_limited;
     });
@@ -526,8 +528,6 @@ void Franka::osc() {
 
 void Franka::joint_controller() {
   franka::Model model = this->robot.loadModel();
-  const common::Vector7d Kp = this->m_cfg.kp;
-  const common::Vector7d Kd = this->m_cfg.kd;
   this->controller_time = 0.0;
 
   // conservative collision and impedance behavior
@@ -539,6 +539,9 @@ void Franka::joint_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+
+  common::Vector7d Kp = this->m_cfg.joint_controller_Kp;
+  common::Vector7d Kd = this->m_cfg.joint_controller_Kd;
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
@@ -604,8 +607,9 @@ void Franka::joint_controller() {
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
       // deoxys/config/control_config.yml
-      std::array<double, 7> torque_limit = {5, 5, 5, 5, 5, 5, 5};
-      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
+      double min_torque = -5;
+      double max_torque = 5;
+      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
       return tau_d_rate_limited;
     });
