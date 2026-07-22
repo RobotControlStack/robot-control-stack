@@ -3,6 +3,8 @@ import typing
 from rcs.camera.hw import CalibrationStrategy
 from rcs_realsense.calibration import FR3BaseArucoCalibration
 from rcs_realsense.camera import RealSenseCameraSet
+import time
+import pyrealsense2 as rs
 
 from rcs import common
 
@@ -26,3 +28,14 @@ def default_realsense_dummy_calibration(name2id: dict[str, str] | None) -> RealS
         for name, id in name2id.items()
     }
     return RealSenseCameraSet(cameras=cameras)
+
+
+def reset_cameras():
+    ctx = rs.context()
+    for dev in ctx.query_devices():
+        name = dev.get_info(rs.camera_info.name)
+        serial = dev.get_info(rs.camera_info.serial_number)
+        print(f"Resetting {name} serial={serial}")
+        dev.hardware_reset()
+    time.sleep(3)
+    print("Reset complete")
