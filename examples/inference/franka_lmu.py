@@ -335,6 +335,12 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg = env_creator.config()
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
+            try:
+                from rcs_realsense.utils import reset_cameras
+                reset_cameras()
+            except Exception as e:
+                print("Error occurred while resetting cameras: %s", e)
+                print("Assuming realsense is not being used, continuing.")
             camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
                 camera_type_id="realsense",
                 camera_cfgs={
