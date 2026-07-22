@@ -14,15 +14,18 @@ from __future__ import annotations
 
 import argparse
 import logging
+from typing import Any
 
 import numpy as np
-from rcs._core.common import Gripper, GripperType
-from rcs.envs.base import GripperWrapper, HardwareEnv, MultiRobotWrapper
+from rcs._core.common import BaseCameraConfig, Gripper, GripperType
+from rcs.camera.interface import BaseCameraSet
+from rcs.camera.utils import capture_blank_camera_images
+from rcs.envs.base import BlankCameraObservationWrapper, CameraSetWrapper, GripperWrapper, HardwareEnv, MultiRobotWrapper
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.operator.pedals import FootPedal
 from rcs.utils import SimpleFrameRate
 from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
-from rcs_fr3.creators import HARDWARE_GRIPPER_CREATORS
+from rcs_fr3.creators import HARDWARE_GRIPPER_CREATORS, HardwareCameraCreatorConfig, _create_hardware_camera_set
 from rcs_fr3_bilateral import BilateralFR3Wrapper
 from rcs_fr3_bilateral._core import hw
 from rcs_fr3_bilateral.configs import DefaultFR3BilateralTeleop
@@ -37,6 +40,17 @@ FOLLOWER_GRIPPER_TYPE = GripperType("Robotiq2F85")
 # The follower is the FR3 at 192.168.101.1 (the left-side hardware in the
 # standard FR3 duo mapping). Override this if its USB gripper differs.
 DEFAULT_FOLLOWER_GRIPPER_SERIAL = "DAAQMJHX"
+
+# Keep camera and tactile-stream configuration in sync with franka_utn.py.
+CAMERA_DICT = {
+    "wrist": "230422271040",
+    "side": "243122074917",
+}
+DIGIT_DICT = {
+    "digit_right_left": "D21154",
+    "digit_right_right": "D21296",
+}
+INCLUDE_DEPTH = False
 
 # The pedal advertises its three switches as keyboard-style key events.  A
 # and C are reserved for future teleop controls; B is the follower gripper.
@@ -80,7 +94,7 @@ def parse_args() -> argparse.Namespace:
 
 def make_env(
     args: argparse.Namespace, gripper: Gripper, follower_robot_cfg: object
-) -> tuple[StorageWrapper | MultiRobotWrapper, hw.BilateralFranka, BilateralFR3Wrapper]:
+) -> tuple[Any, hw.BilateralFranka, BilateralFR3Wrapper, BaseCameraSet | None]:
     config = DefaultFR3BilateralTeleop(
         leader_ip=args.leader_ip,
         follower_ip=args.follower_ip,
@@ -101,7 +115,45 @@ def make_env(
     # top-level ``right`` nesting used by the teleop dataset.
     bilateral_env = BilateralFR3Wrapper(HardwareEnv(), teleop)
     robot_env = GripperWrapper(bilateral_env, gripper, binary=args.binary_gripper)
-    env: StorageWrapper | MultiRobotWrapper = MultiRobotWrapper({"right": robot_env})
+    env: Any = MultiRobotWrapper({"right": robot_env})
+
+    camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
+    if CAMERA_DICT is not None:
+        camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
+            camera_type_id="realsense",
+            camera_cfgs={
+                name: BaseCameraConfig(
+                    identifier=identifier,
+                    resolution_width=640,
+                    resolution_height=480,
+                    frame_rate=30,
+                )
+                for name, identifier in CAMERA_DICT.items()
+            },
+        )
+    if DIGIT_DICT is not None:
+        camera_cfgs["digit"] = HardwareCameraCreatorConfig(
+            camera_type_id="digit",
+            camera_cfgs={
+                name: BaseCameraConfig(
+                    identifier=identifier,
+                    resolution_width=320,
+                    resolution_height=240,
+                    frame_rate=30,
+                )
+                for name, identifier in DIGIT_DICT.items()
+            },
+        )
+
+    camera_set = _create_hardware_camera_set(camera_cfgs or None)
+    if camera_set is not None:
+        camera_set.start()
+        camera_set.wait_for_frames()
+        env = CameraSetWrapper(env, camera_set, include_depth=INCLUDE_DEPTH)
+        if DIGIT_DICT is not None:
+            blank_camera_dict = capture_blank_camera_images(camera_set, DIGIT_DICT)
+            env = BlankCameraObservationWrapper(env, blank_camera_dict)
+
     if args.record_dir:
         env = StorageWrapper(
             env,
@@ -112,7 +164,7 @@ def make_env(
             max_rows_per_group=100,
             max_rows_per_file=1000,
         )
-    return env, teleop, bilateral_env
+    return env, teleop, bilateral_env, camera_set
 
 
 def leader_action(bilateral_env: BilateralFR3Wrapper, gripper_closed: bool) -> dict[str, dict[str, np.ndarray]]:
@@ -170,10 +222,11 @@ def main() -> None:
     pedal: FootPedal | None = None
     gripper: Gripper | None = None
     teleop: hw.BilateralFranka | None = None
+    camera_set: BaseCameraSet | None = None
     try:
         pedal = FootPedal("FootSwitch Keyboard")
         follower_robot_cfg, gripper = make_follower_hardware(args)
-        env, teleop, bilateral_env = make_env(args, gripper, follower_robot_cfg)
+        env, teleop, bilateral_env, camera_set = make_env(args, gripper, follower_robot_cfg)
         logger.warning("Moving both robots to q_home.")
         teleop.move_home()
         with env:
@@ -207,6 +260,8 @@ def main() -> None:
             gripper.close()
         if pedal is not None:
             pedal.close()
+        if camera_set is not None:
+            camera_set.close()
 
 
 if __name__ == "__main__":
