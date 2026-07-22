@@ -49,8 +49,14 @@ class RobotiQ2F85Gripper(Gripper):
         self.gripper.reset()
 
     def get_normalized_width(self) -> float:
-        # Return the last commanded width to avoid a synchronous Modbus read on every env step.
-        return self._last_normalized_width
+        """Return the measured, normalized finger opening.
+
+        ``read_status`` is cached by ``Robotiq2F85Driver`` (30 Hz by default),
+        so this exposes the physical state to ``GripperWrapper(binary=False)``
+        without issuing a Modbus transaction on every environment step.
+        """
+        opening = self.gripper.read_status().opening
+        return float(min(max(opening / 85.0, 0.0), 1.0))
 
     def grasp(self) -> None:
         """
