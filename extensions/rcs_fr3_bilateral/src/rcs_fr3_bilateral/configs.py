@@ -14,7 +14,7 @@ class DefaultFR3BilateralTeleop:
     update_rate_hz: float = 1000.0
     relative_joint_mapping: bool = True
     max_follower_joint_step: float = 0.05
-    haptic_feedback_gain: float = 1.0
+    haptic_feedback_gain: float = 1.5
     leader_haptic_feedback: bool = True
 
     def _robot_config(self, ip: str) -> fr3_hw.FR3Config:
@@ -24,7 +24,8 @@ class DefaultFR3BilateralTeleop:
         robot_cfg.async_control = True
         robot_cfg.ignore_realtime = self.ignore_realtime
         # original KP: np.array([100., 100., 100., 100., 75., 150., 50.]) 
-        robot_cfg.joint_controller_Kp = np.array([100., 100., 100., 100., 75., 150., 50.])
+        # Tuned values optimized for haptics
+        robot_cfg.joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
         robot_cfg.joint_controller_Kp = 1.5 * robot_cfg.joint_controller_Kp
         robot_cfg.joint_controller_Kd = 2*np.sqrt(robot_cfg.joint_controller_Kp)
         
