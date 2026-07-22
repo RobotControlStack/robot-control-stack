@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -59,6 +60,25 @@ PEDAL_KEY_B = "KEY_B"
 PEDAL_KEY_C = "KEY_C"
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PedalRecordingState:
+    """Edge-triggered recording controls for the three-switch pedal."""
+
+    active: bool = False
+    a_was_pressed: bool = False
+    c_was_pressed: bool = False
+
+    def consume_edges(self, pedal: FootPedal) -> tuple[bool, bool]:
+        """Return ``(a_pressed, c_pressed)`` once per physical press."""
+        a_is_pressed = pedal.get_key_state(PEDAL_KEY_A)
+        c_is_pressed = pedal.get_key_state(PEDAL_KEY_C)
+        a_pressed = a_is_pressed and not self.a_was_pressed
+        c_pressed = c_is_pressed and not self.c_was_pressed
+        self.a_was_pressed = a_is_pressed
+        self.c_was_pressed = c_is_pressed
+        return a_pressed, c_pressed
 
 
 def parse_args() -> argparse.Namespace:
@@ -159,7 +179,7 @@ def make_env(
             env,
             args.record_dir,
             instruction=args.instruction,
-            always_record=True,
+            always_record=False,
             batch_size=32,
             max_rows_per_group=100,
             max_rows_per_file=1000,
@@ -213,6 +233,14 @@ def gripper_command_from_pedal(pedal: FootPedal) -> bool:
     return pedal.get_key_state(PEDAL_KEY_B)
 
 
+def finish_episode(env: Any, teleop: hw.BilateralFranka, *, success: bool) -> None:
+    """Finalize storage, return both bilateral robots home, and begin a new episode."""
+    if success:
+        env.get_wrapper_attr("success")()
+    teleop.move_home()
+    env.reset()
+
+
 def main() -> None:
     args = parse_args()
     if args.stack_frequency_hz <= 0 or args.control_frequency_hz <= 0:
@@ -238,8 +266,23 @@ def main() -> None:
                 args.stack_frequency_hz,
                 args.control_frequency_hz,
             )
+            recording_state = PedalRecordingState()
             while True:
                 assert pedal is not None and gripper is not None
+                a_pressed, c_pressed = recording_state.consume_edges(pedal)
+                if args.record_dir and c_pressed and recording_state.active:
+                    logger.info("Pedal C: recording marked successful.")
+                    finish_episode(env, teleop, success=True)
+                    recording_state.active = False
+                elif args.record_dir and a_pressed:
+                    if recording_state.active:
+                        logger.info("Pedal A: recording marked failed.")
+                        finish_episode(env, teleop, success=False)
+                        recording_state.active = False
+                    else:
+                        logger.info("Pedal A: recording started.")
+                        env.get_wrapper_attr("start_record")()
+                        recording_state.active = True
                 pedal_gripper_closed = gripper_command_from_pedal(pedal)
                 _, _, terminated, truncated, info = env.step(leader_action(bilateral_env, pedal_gripper_closed))
                 if terminated or truncated:
