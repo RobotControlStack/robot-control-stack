@@ -26,8 +26,11 @@ def add_blank_camera_streams(
             f"{camera_name}_blank": {
                 "rgb": {
                     "data": blank_image.copy(),
-                    "intrinsics": None,
-                    "extrinsics": None,
+                    # StorageWrapper cannot infer a stable Arrow schema from fields
+                    # that are None in every row.  These blank images are only a
+                    # reference stream, so use calibration-shaped placeholders.
+                    "intrinsics": np.eye(3, 4, dtype=np.float64),
+                    "extrinsics": np.eye(4, dtype=np.float64),
                 }
             }
             for camera_name, blank_image in blank_camera_dict.items()

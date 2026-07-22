@@ -57,7 +57,14 @@ class DigitCam(HardwareCamera):
         #         f"shape={frame.shape} dtype={frame.dtype}"
         #     )
         # rgb to bgr as expected by opencv
-        color = DataFrame(data=frame[:, :, ::-1].copy())
+        # DIGIT cameras are not calibrated, but their observations still need
+        # concrete calibration-shaped values so Arrow can infer a schema when
+        # recording.  These placeholders are not used for tactile images.
+        color = DataFrame(
+            data=frame[:, :, ::-1].copy(),
+            intrinsics=np.eye(3, 4, dtype=np.float64),
+            extrinsics=np.eye(4, dtype=np.float64),
+        )
         cf = CameraFrame(color=color)
 
         return Frame(camera=cf)
