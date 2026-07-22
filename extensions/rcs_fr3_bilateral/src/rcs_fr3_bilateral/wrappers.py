@@ -20,15 +20,11 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
-from rcs.envs.base import ArmObsType, ControlMode, GripperDictType, JointsDictType
+from rcs.envs.base import ArmObsType, ControlMode, JointsDictType
 from rcs.envs.space_utils import ActObsInfoWrapper, get_space, get_space_keys
 from rcs_fr3._core import hw as fr3_hw
 
 from rcs_fr3_bilateral._core import hw
-
-
-class BilateralActionType(ArmObsType, GripperDictType):
-    """Leader arm state plus the follower gripper command."""
 
 
 class BilateralFR3Wrapper(ActObsInfoWrapper):
@@ -39,8 +35,8 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
         teleop = hw.BilateralFranka(bilateral_config)
         env = HardwareEnv()
         env = BilateralFR3Wrapper(env, teleop)
-        env = CameraSetWrapper(env, ...)
-        env = RelativeActionSpace(env, ...)  # optional outer RCS wrappers
+        env = GripperWrapper(env, follower_gripper, binary=False)
+        env = MultiRobotWrapper({"right": env})
 
     ``step`` accepts the regular RCS action only to preserve the Gym wrapper
     interface.  The ``"tquat"``, ``"joints"``, and ``"xyzrpy"`` entries
@@ -57,8 +53,6 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
         manage_teleop: Start on reset and stop on close.  Set false when the
             caller owns that lifecycle (for example, an existing process has
             already called ``teleop.start()``).
-        robot_name: Name used as the top-level observation and action key.
-            Defaults to ``"right"`` to match the teleoperation datasets.
     """
 
     LEADER_ACTION_KEY = "bilateral_leader_action"
@@ -70,25 +64,22 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
         teleop: hw.BilateralFranka,
         *,
         manage_teleop: bool = True,
-        robot_name: str = "right",
     ):
         super().__init__(env)
         self.teleop = teleop
         self.manage_teleop = manage_teleop
-        self.robot_name = robot_name
         self.robot = teleop.get_follower()
         if not isinstance(self.robot, fr3_hw.Franka):
             raise TypeError("BilateralFranka follower must be an rcs_fr3.hw.Franka.")
 
         low, high = self.robot.get_config().joint_limits
-        # The leader action mirrors the regular RCS arm observation schema.
-        # ``robot_state`` is intentionally observation-only.
-        action_space = get_space(BilateralActionType, params={"joint_limits": {"low": low, "high": high}})
+        # ``robot_state`` is intentionally observation-only.  GripperWrapper
+        # adds the gripper field to both spaces in the next stack layer.
         arm_space = get_space(ArmObsType, params={"joint_limits": {"low": low, "high": high}})
-        self.action_space = gym.spaces.Dict({self.robot_name: action_space})
+        self.action_space = arm_space
         # The standard arm observation keys are retained so camera, storage,
         # and policy wrappers can be composed without bilateral special cases.
-        self.observation_space = gym.spaces.Dict({self.robot_name: arm_space})
+        self.observation_space = arm_space
         self.joints_key = get_space_keys(JointsDictType)[0]
         self._control_mode_overrides = [ControlMode.JOINTS]
         self._previous_leader_action: dict[str, np.ndarray] | None = None
@@ -127,14 +118,9 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
             "xyzrpy": leader_pose.xyzrpy(),
         }
 
-    def get_leader_action(self) -> dict[str, dict[str, np.ndarray]]:
-        """Return the named, stack-facing leader action.
-
-        The configured robot-name nesting is intentional: it gives StorageWrapper the
-        same robot-keyed action layout as the standard dual-Franka teleop
-        setup.
-        """
-        return {self.robot_name: self._get_leader_arm_action()}
+    def get_leader_action(self) -> dict[str, np.ndarray]:
+        """Return the flat leader action consumed by the outer RCS wrappers."""
+        return self._get_leader_arm_action()
 
     @staticmethod
     def _copy_action(action: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -164,9 +150,9 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
             xyzrpy=follower_pose.xyzrpy(),
         )
 
-    def get_robot_obs(self) -> dict[str, ArmObsType]:
-        """Return the follower observation under the configured robot name."""
-        return {self.robot_name: self._get_follower_arm_obs()}
+    def get_robot_obs(self) -> ArmObsType:
+        """Return the follower observation consumed by the outer RCS wrappers."""
+        return self._get_follower_arm_obs()
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:
         """Substitute the previous stack-tick leader sample for ``joints``.
@@ -180,18 +166,10 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
             # sample as its well-defined initial action.
             self._previous_leader_action = self._get_leader_arm_action()
 
-        # The bilateral layer replaces all arm fields with its delayed leader
-        # state.  Preserve only the explicit gripper command so it can be
-        # acted on and recorded alongside the leader action; ``robot_state``
-        # can never appear in an action.
-        stack_robot_action = self._copy_action(self._previous_leader_action)
-        incoming_robot_action = action.get(self.robot_name, {})
-        if "gripper" in incoming_robot_action:
-            stack_robot_action["gripper"] = np.atleast_1d(
-                np.asarray(incoming_robot_action["gripper"], dtype=np.float32)
-            ).copy()
-        stack_action = {self.robot_name: stack_robot_action}
-        self._last_dispatched_leader_action = self._copy_action(self._previous_leader_action)
+        # GripperWrapper has already consumed the gripper command at this
+        # point. Replace only the arm fields with the delayed leader state.
+        stack_action = self._copy_action(self._previous_leader_action)
+        self._last_dispatched_leader_action = self._copy_action(stack_action)
         self._previous_leader_action = self._get_leader_arm_action()
         return stack_action
 
@@ -217,7 +195,7 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
             "running": state.running,
             "has_reference": state.has_reference,
         }
-        return {self.robot_name: follower_observation}, {self.robot_name: robot_info}
+        return follower_observation, robot_info
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
@@ -242,4 +220,4 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
 # available for existing code.
 BilateralTeleoperationWrapper = BilateralFR3Wrapper
 
-__all__ = ["BilateralActionType", "BilateralFR3Wrapper", "BilateralTeleoperationWrapper"]
+__all__ = ["BilateralFR3Wrapper", "BilateralTeleoperationWrapper"]
