@@ -9,5 +9,5 @@ for dev in ctx.query_devices():
     print(f"Resetting {name} serial={serial}")
     dev.hardware_reset()
 
-time.sleep(5)
+time.sleep(1)
 print("Reset complete")
