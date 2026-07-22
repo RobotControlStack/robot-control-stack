@@ -88,11 +88,16 @@ class FootPedal:
 
 # ==========================================
 # Example Usage
+# Before running, make sure your user is in the 'input' group, otherwise
+# evdev will not be able to access the device.
+# The foot switch used here have two different input 'devices':
+# FootSwitch Keyboard and FootSwitch Mouse.
+# Here we use FootSwitch Keyboard.
 # ==========================================
 if __name__ == "__main__":
     try:
         # Initialize the pedal
-        pedal = FootPedal("Foot Switch")
+        pedal = FootPedal("FootSwitch Keyboard")
 
         # Simulate a typical robotics control loop running at 10Hz
         print("Starting control loop... Press Ctrl+C to exit.")
