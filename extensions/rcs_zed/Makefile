@@ -1,7 +1,7 @@
 PYSRC = src/rcs_zed
 TESTSRC = tests
 TESTFILE = tests/test_zed_extension.py
-PYTHONPATH_LOCAL = ../../python:src:../rcs_realsense/src
+PYTHONPATH_LOCAL = ../../python:src
 
 pycheckformat:
 	isort --check-only ${PYSRC} ${TESTSRC}
