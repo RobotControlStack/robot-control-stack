@@ -41,6 +41,8 @@ FOLLOWER_GRIPPER_TYPE = GripperType("Robotiq2F85")
 # The follower is the FR3 at 192.168.101.1 (the left-side hardware in the
 # standard FR3 duo mapping). Override this if its USB gripper differs.
 DEFAULT_FOLLOWER_GRIPPER_SERIAL = "DAAQMJHX"
+DATASET_PATH = "utn_usbc_insertion"
+INSTRUCTION = "pick up cube"
 
 # Keep camera and tactile-stream configuration in sync with franka_utn.py.
 CAMERA_DICT = {
@@ -100,8 +102,8 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_BINARY_GRIPPER,
         help="Use binary gripper observations/actions instead of the default normalized-width observation.",
     )
-    parser.add_argument("--record-dir", type=str, default="test_bilateral", help="Optional Parquet dataset directory.")
-    parser.add_argument("--instruction", default="bilateral FR3 teleoperation")
+    parser.add_argument("--record-dir", type=str, default=DATASET_PATH, help="Optional Parquet dataset directory.")
+    parser.add_argument("--instruction", default=INSTRUCTION, help="Task instruction stored with every recorded transition.")
     parser.add_argument(
         "--mode",
         choices=("gravity_only", "bilateral"),
