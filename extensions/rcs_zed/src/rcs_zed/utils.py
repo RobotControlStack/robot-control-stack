@@ -8,6 +8,14 @@ def default_zed(
     name2id: dict[str, str] | None,
     calibration_strategy: dict[str, CalibrationStrategy] | None = None,
 ) -> ZEDCameraSet | None:
+    """Create the default ZED camera set.
+
+    Args:
+        name2id: Mapping from logical camera names to ZED serial numbers.
+        calibration_strategy: Optional calibration strategy for each logical
+            camera. When omitted, ``ZEDCameraSet`` uses
+            ``DummyCalibrationStrategy``.
+    """
     if name2id is None:
         return None
     cameras = {
@@ -18,4 +26,5 @@ def default_zed(
 
 
 def default_zed_dummy_calibration(name2id: dict[str, str] | None) -> ZEDCameraSet | None:
+    """Create the default ZED camera set with dummy calibration."""
     return default_zed(name2id)
