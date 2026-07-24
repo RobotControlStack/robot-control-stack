@@ -10,7 +10,10 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from rcs._core.common import GripperType, RobotType
-
+import torch  # noqa: F401
+from lerobot.datasets.lerobot_dataset import LeRobotDataset  # noqa: F401
+from torchvision.io import decode_jpeg  # noqa: F401
+from torchvision.transforms import v2  # noqa: F401
 import rcs
 
 DEFAULT_DATASET_PATHS = [
