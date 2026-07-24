@@ -26,7 +26,7 @@ class DefaultFR3BilateralTeleop:
         # original KP: np.array([100., 100., 100., 100., 75., 150., 50.]) 
         # Tuned values optimized for haptics
         robot_cfg.joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
-        robot_cfg.joint_controller_Kp = 1.5 * robot_cfg.joint_controller_Kp
+        robot_cfg.joint_controller_Kp = 2 * robot_cfg.joint_controller_Kp
         robot_cfg.joint_controller_Kd = 2*np.sqrt(robot_cfg.joint_controller_Kp)
         
         return robot_cfg
