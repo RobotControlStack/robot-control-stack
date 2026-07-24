@@ -24,4 +24,4 @@ docs/_build
 CLAUDE.md
 uv.lock
 *.parquet
-
+*.mp4
