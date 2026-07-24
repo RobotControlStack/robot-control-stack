@@ -182,11 +182,15 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
         # Keep the bilateral-specific data available without changing the
         # standard policy observation schema.
         robot_info = dict(info)
-        robot_info[self.LEADER_ACTION_KEY] = self._copy_action(
+        dispatched_leader_action = self._copy_action(
             self._last_dispatched_leader_action
             if self._last_dispatched_leader_action is not None
             else self._get_leader_arm_action()
         )
+        robot_info[self.LEADER_ACTION_KEY] = dispatched_leader_action
+        # Match the standard RCS recording schema so joint-space dataset
+        # converters can consume bilateral recordings without special cases.
+        robot_info["absolute_action"] = dispatched_leader_action[self.joints_key].copy()
         robot_info[self.FOLLOWER_STATE_KEY] = {
             "joints": self._copy_vector(state.follower_q),
             "joint_velocities": self._copy_vector(state.follower_dq),
