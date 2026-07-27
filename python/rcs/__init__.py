@@ -190,9 +190,18 @@ GRIPPER_PATHS: dict[common.GripperType, str] = {
     common.GripperType("Robotiq2F85"): "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
 }
 
-GRIPPER_OFFSETS: dict[common.GripperType, common.Pose] = {
+GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
     common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0, 0.0, 0.1493])),
+}
+
+GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
+    common.GripperType.FrankaHand: common.Pose(
+        rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
+    ),
+    common.GripperType("Robotiq2F85"): common.Pose(
+        translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
+    ),
 }
 
 SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.xml"}
@@ -212,9 +221,6 @@ CAMERA_PATHS: dict[str, str] = {
 TASKS: dict[str, Any] = {}
 
 DEFAULT_TRANSFORMS = {
-    "FR3_ROBOTIQ_GRIPPER": common.Pose(
-        translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
-    ),
     "FR3_ROBOTIQ_WRIST_D405_MOUNT": common.Pose(
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
