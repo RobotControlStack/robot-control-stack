@@ -121,6 +121,8 @@ class JointDatasetConverter:
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.source_sql = self._build_source_sql(self.dataset_paths)
+        self._source_column_types: dict[str, str] | None = None
+        self._arm_action_is_joint_source: dict[str, bool] = {}
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
@@ -183,6 +185,89 @@ class JointDatasetConverter:
             queries.append(f"SELECT * FROM read_parquet('{escaped}')")
         return " UNION ALL ".join(queries)
 
+    def _get_source_column_types(self) -> dict[str, str]:
+        if self._source_column_types is None:
+            rows = self.conn.execute(f"DESCRIBE SELECT * FROM ({self.source_sql}) AS src").fetchall()
+            self._source_column_types = {str(row[0]): str(row[1]) for row in rows}
+        return self._source_column_types
+
+    @staticmethod
+    def _split_top_level_struct_fields(inner: str) -> list[str]:
+        fields = []
+        start = 0
+        depth = 0
+        in_quotes = False
+        idx = 0
+        while idx < len(inner):
+            char = inner[idx]
+            if char == '"':
+                in_quotes = not in_quotes
+            elif not in_quotes:
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    depth -= 1
+                elif char == "," and depth == 0:
+                    fields.append(inner[start:idx].strip())
+                    start = idx + 1
+            idx += 1
+        fields.append(inner[start:].strip())
+        return [field for field in fields if field]
+
+    @staticmethod
+    def _parse_struct_field(field: str) -> tuple[str, str] | None:
+        field = field.strip()
+        if not field:
+            return None
+        if field.startswith('"'):
+            end_quote = field.find('"', 1)
+            if end_quote == -1:
+                return None
+            return field[1:end_quote], field[end_quote + 1 :].strip()
+        name, sep, field_type = field.partition(" ")
+        if not sep:
+            return None
+        return name, field_type.strip()
+
+    @classmethod
+    def _extract_struct_field_type(cls, struct_type: str, field_name: str) -> str | None:
+        struct_type = struct_type.strip()
+        if not struct_type.upper().startswith("STRUCT(") or not struct_type.endswith(")"):
+            return None
+        inner = struct_type[len("STRUCT(") : -1]
+        for field in cls._split_top_level_struct_fields(inner):
+            parsed = cls._parse_struct_field(field)
+            if parsed is None:
+                continue
+            name, field_type = parsed
+            if name == field_name:
+                return field_type
+        return None
+
+    def _source_has_path(self, root: str, *fields: str) -> bool:
+        field_type = self._get_source_column_types().get(root)
+        for field in fields:
+            if field_type is None:
+                return False
+            field_type = self._extract_struct_field_type(field_type, field)
+        return field_type is not None
+
+    def _arm_action_select(self, robot_key: str) -> str:
+        if self._source_has_path("info", robot_key, "absolute_action"):
+            self._arm_action_is_joint_source[robot_key] = self.joints
+            return f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}"
+
+        if self._source_has_path("env_action", robot_key, "joints"):
+            self._arm_action_is_joint_source[robot_key] = True
+            return f"env_action.{robot_key}.joints AS absolute_action_{robot_key}"
+
+        msg = (
+            f"Could not find an action source for robot '{robot_key}'. Expected either "
+            f"info.{robot_key}.absolute_action from RelativeActionSpace or "
+            f"env_action.{robot_key}.joints from absolute joint-control recordings."
+        )
+        raise ValueError(msg)
+
     def generate_examples(self, success: bool = True, n: int = -1):
         uuids = self.conn.execute(f"SELECT DISTINCT uuid FROM ({self.source_sql}) AS src ORDER BY uuid").fetchall()
 
@@ -203,7 +288,7 @@ class JointDatasetConverter:
             + [f"obs.{robot_key}.gripper AS observation_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
         action_selects = ",\n                    ".join(
-            [f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}" for robot_key in self.robot_keys]
+            [self._arm_action_select(robot_key) for robot_key in self.robot_keys]
             + [f"env_action.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
 
@@ -316,7 +401,7 @@ class JointDatasetConverter:
                 raise ValueError(msg)
             action_gripper_vec = self._maybe_binarize_gripper(action_gripper_vec)
 
-            if self.joints:
+            if self._arm_action_is_joint_source.get(robot_key, self.joints):
                 arm_action_vec = absolute_action_vec.astype(np.float32)
             else:
                 target_pose = rcs.common.Pose(
