@@ -34,7 +34,7 @@ ROBOT_INSTANCE = RobotPlatform.HARDWARE
 RECORD_FPS = 30
 # set camera dict to none disable cameras
 CAMERA_DICT = {
-    "wrist": "243222074728",
+    # "wrist": "260322272822",
     "side": "327122079439",
 }
 # CAMERA_DICT = None
@@ -90,7 +90,6 @@ def get_env():
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
         env_creator = SingleArmFR3MultiHardwareEnv()
-        # env_creator.left_ip = ROBOT2IP["left"]
         env_creator.ip = ROBOT2IP["right"]
         hw_cfg = env_creator.config(robot_ip=ROBOT2IP["right"])
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
@@ -147,19 +146,16 @@ def get_env():
         hw_cfg.camera_cfgs = camera_cfgs or None
         hw_cfg.control_mode = config.operator_class.control_mode[0]
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        hw_cfg.wrapper_cfg.binary_gripper = False
-        # hw_cfg.wrapper_cfg.binary_gripper = True
+        # binary_gripper=False is unstable with FrankaHand
+        hw_cfg.wrapper_cfg.binary_gripper = True
+        # hw_cfg.wrapper_cfg.binary_gripper = False
         hw_cfg.max_relative_movement = (
             0.5 if config.operator_class.control_mode[0] == ControlMode.JOINTS else (0.5, np.deg2rad(90))
         )
         hw_cfg.relative_to = config.operator_class.control_mode[1]
         hw_cfg.robot_to_shared_base_frame = robot2world
-        hw_cfg.robot_cfgs["left"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.3
         hw_cfg.robot_cfgs["right"].speed_factor = 0.3
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]  # type: ignore
-        hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]  # type: ignore
         env_rel = env_creator.create_env(hw_cfg)
         if DIGIT_DICT is not None:
             camera_set = env_rel.get_wrapper_attr("camera_set")
@@ -175,7 +171,8 @@ def get_env():
         )
         sim_cfg_data.relative_to = RelativeTo.CONFIGURED_ORIGIN
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        hw_cfg.wrapper_cfg.binary_gripper = False
+        # hw_cfg.wrapper_cfg.binary_gripper = False
+        hw_cfg.wrapper_cfg.binary_gripper = True
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
         # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
