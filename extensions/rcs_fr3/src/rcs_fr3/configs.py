@@ -262,6 +262,17 @@ class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
                 force=50,
                 async_control=True,
             )
+        elif grippertype == common.GripperType.FrankaHand:
+            right_cfg.gripper_cfg = hw.FHConfig(
+                ip=self.robot_ip,
+                grasping_width=0.05,
+                speed=0.1,
+                force=40.0,
+                epsilon_inner=0.1,
+                epsilon_outer=0.1,
+                async_control=True,
+                enable_force_action=False,
+            )
         return FR3MultiHardwareEnvCreatorConfig(
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfgs={
