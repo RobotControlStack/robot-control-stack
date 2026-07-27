@@ -1148,7 +1148,7 @@ class GripperWrapper(ActObsInfoWrapper):
                 else:
                     self.gripper.open()
             else:
-                force = float(gripper_action[1]) if self.enable_force_action else 0
+                force = float(gripper_action[1]) if self.enable_force_action else 1.0
                 self.gripper.set_normalized_width(float(gripper_action[0]), force)
             self._last_gripper_cmd = gripper_action.tolist()
         del action[self.gripper_key]
