@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Add wrist-frame Robotiq 2F-85 finger poses to a parquet dataset.
+"""Add wrist- and robot-frame Robotiq 2F-85 finger poses to a parquet dataset.
 
 The input observations are expected to have ``obs.<arm>.gripper``, where the
 gripper state is normalized from 0 (closed) to 1 (open).  The output adds
 ``obs.<arm>.fingers`` with this schema::
 
     fingers: {
-        left:  [[...], [...], [...], [...]],
-        right: [[...], [...], [...], [...]],
+        left_wrist_frame:  [[...], [...], [...], [...]],
+        left_robot_frame:  [[...], [...], [...], [...]],
+        right_wrist_frame: [[...], [...], [...], [...]],
+        right_robot_frame: [[...], [...], [...], [...]],
     }
 
-Each value is a 4x4 homogeneous transform in the gripper-base (wrist) frame.
-The script reads and writes in batches, so it can be used with large datasets.
+Each value is a 4x4 homogeneous transform. The input must additionally have
+``obs.<arm>.joints`` for robot-frame forward kinematics. The script reads and
+writes in batches, so it can be used with large datasets.
 
 Example:
     python examples/teleop/add_robotiq_finger_poses_to_parquet.py \
@@ -29,6 +32,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+import rcs
 from rcs_robotiq2f85.kinematics import ROBOTIQ_2F85_CACHE_STEP, robotiq_2f85_finger_poses
 
 
@@ -60,8 +64,8 @@ def _finger_pose_lookup(
         for state in states
     ]
     return (
-        np.stack([pair.left.pose_matrix() for pair in pairs]),
-        np.stack([pair.right.pose_matrix() for pair in pairs]),
+        np.stack([pair.left_finger_wrist_frame.pose_matrix() for pair in pairs]),
+        np.stack([pair.right_finger_wrist_frame.pose_matrix() for pair in pairs]),
     )
 
 
@@ -86,12 +90,43 @@ def _normalized_gripper_values(gripper: pa.Array) -> np.ndarray:
     return result
 
 
+def _joint_values(joints: pa.Array) -> list[np.ndarray]:
+    """Convert one parquet batch of joint vectors into finite float64 arrays."""
+    result = []
+    for index in range(len(joints)):
+        value = joints[index].as_py()
+        if value is None:
+            msg = f"joint value at batch offset {index} is null"
+            raise ValueError(msg)
+        joint_values = np.asarray(value, dtype=np.float64).reshape(-1)
+        if joint_values.size == 0 or not np.all(np.isfinite(joint_values)):
+            msg = f"joint value at batch offset {index} must be a finite, non-empty vector"
+            raise ValueError(msg)
+        result.append(joint_values)
+    return result
+
+
+def _robot_to_gripper_matrices(
+    pinocchio: rcs.common.Kinematics,
+    joints: list[np.ndarray],
+) -> np.ndarray:
+    """Calculate the robot-base-to-gripper transform for each batch row."""
+    gripper_mount_offset = rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+    return np.stack(
+        [
+            (pinocchio.forward(joint_values) * gripper_mount_offset).pose_matrix()
+            for joint_values in joints
+        ]
+    )
+
+
 def _replace_arm_with_fingers(
     table: pa.Table,
     *,
     arm: str,
     left_lookup: np.ndarray,
     right_lookup: np.ndarray,
+    pinocchio: rcs.common.Kinematics,
 ) -> pa.Table:
     """Return a batch with ``obs.<arm>.fingers`` appended to its struct."""
     obs_index = table.schema.get_field_index("obs")
@@ -102,16 +137,27 @@ def _replace_arm_with_fingers(
     if not isinstance(obs, pa.StructArray) or obs.type.get_field_index(arm) == -1:
         raise KeyError(f"Input parquet must contain an 'obs.{arm}' struct")
     arm_obs = obs.field(arm)
-    if not isinstance(arm_obs, pa.StructArray) or arm_obs.type.get_field_index("gripper") == -1:
-        raise KeyError(f"Input parquet must contain an 'obs.{arm}.gripper' field")
+    if not isinstance(arm_obs, pa.StructArray):
+        raise KeyError(f"Input parquet must contain an 'obs.{arm}' struct")
+    if arm_obs.type.get_field_index("gripper") == -1 or arm_obs.type.get_field_index("joints") == -1:
+        raise KeyError(f"Input parquet must contain 'obs.{arm}.gripper' and 'obs.{arm}.joints' fields")
     if arm_obs.type.get_field_index("fingers") != -1:
         raise ValueError(f"Input parquet already contains 'obs.{arm}.fingers'")
 
     gripper = _normalized_gripper_values(arm_obs.field("gripper"))
     indices = np.rint(gripper / ROBOTIQ_2F85_CACHE_STEP).astype(np.intp)
+    left_wrist_frame = left_lookup[indices]
+    right_wrist_frame = right_lookup[indices]
+    joints = _joint_values(arm_obs.field("joints"))
+    robot_to_gripper = _robot_to_gripper_matrices(pinocchio, joints)
     fingers = pa.StructArray.from_arrays(
-        [_matrix_array(left_lookup[indices]), _matrix_array(right_lookup[indices])],
-        names=["left", "right"],
+        [
+            _matrix_array(left_wrist_frame),
+            _matrix_array(robot_to_gripper @ left_wrist_frame),
+            _matrix_array(right_wrist_frame),
+            _matrix_array(robot_to_gripper @ right_wrist_frame),
+        ],
+        names=["left_wrist_frame", "left_robot_frame", "right_wrist_frame", "right_robot_frame"],
     )
     new_arm = pa.StructArray.from_arrays(
         [arm_obs.field(name) for name in arm_obs.type.names] + [fingers],
@@ -153,6 +199,7 @@ def _write_file(
     compression: str,
     left_lookup: np.ndarray,
     right_lookup: np.ndarray,
+    pinocchio: rcs.common.Kinematics,
 ) -> int:
     parquet_file = pq.ParquetFile(source)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -161,7 +208,11 @@ def _write_file(
     try:
         for batch in parquet_file.iter_batches(batch_size=batch_size):
             table = _replace_arm_with_fingers(
-                pa.Table.from_batches([batch]), arm=arm, left_lookup=left_lookup, right_lookup=right_lookup
+                pa.Table.from_batches([batch]),
+                arm=arm,
+                left_lookup=left_lookup,
+                right_lookup=right_lookup,
+                pinocchio=pinocchio,
             )
             if writer is None:
                 writer = pq.ParquetWriter(destination, table.schema, compression=compression)
@@ -187,6 +238,8 @@ def add_finger_poses(
     left_site: str,
     right_site: str,
     model_path: Path | None,
+    robot_model_path: Path | None,
+    attachment_site: str | None,
     batch_size: int,
     compression: str,
 ) -> None:
@@ -202,6 +255,11 @@ def add_finger_poses(
         left_site=left_site,
         right_site=right_site,
         model_path=model_path,
+    )
+    robot_config = rcs.ROBOTS[rcs.common.RobotType.FR3]
+    pinocchio = rcs.common.Pin(
+        str(robot_model_path or robot_config.mjcf_model_path),
+        attachment_site or robot_config.attachment_site,
     )
     sources = _input_files(input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -219,6 +277,7 @@ def add_finger_poses(
                 compression=compression,
                 left_lookup=left_lookup,
                 right_lookup=right_lookup,
+                pinocchio=pinocchio,
             )
             total_rows += rows
             print(f"Wrote {rows:,} rows to {destination}")
@@ -237,6 +296,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--left-site", default=DEFAULT_LEFT_SITE, help=f"Left finger site (default: {DEFAULT_LEFT_SITE}).")
     parser.add_argument("--right-site", default=DEFAULT_RIGHT_SITE, help=f"Right finger site (default: {DEFAULT_RIGHT_SITE}).")
     parser.add_argument("--model-path", type=Path, help="Optional Robotiq MJCF model; defaults to RCS's 2F-85 model.")
+    parser.add_argument(
+        "--robot-model-path",
+        type=Path,
+        help="FR3 MJCF model for robot-frame FK; defaults to RCS's FR3 model.",
+    )
+    parser.add_argument(
+        "--attachment-site",
+        help="Robot attachment site used for FK; defaults to RCS's FR3 gripper site.",
+    )
     parser.add_argument("--batch-size", type=int, default=16_384, help="Rows per read/write batch (default: 16384).")
     parser.add_argument("--compression", default="zstd", help="Parquet compression codec (default: zstd).")
     args = parser.parse_args()
@@ -254,6 +322,8 @@ def main() -> None:
         left_site=args.left_site,
         right_site=args.right_site,
         model_path=args.model_path,
+        robot_model_path=args.robot_model_path,
+        attachment_site=args.attachment_site,
         batch_size=args.batch_size,
         compression=args.compression,
     )

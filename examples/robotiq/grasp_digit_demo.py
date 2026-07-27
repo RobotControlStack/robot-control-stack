@@ -114,8 +114,8 @@ class PickUpDemo:
     def step(self, action: dict[str, Any]) -> dict[str, Any]:
         obs = self.env.step(action)[0]
         finger_poses = obs[ROBOT_NAME][Robotiq2F85FingerPoseWrapper.FINGER_POSE_KEY]
-        left_finger = finger_poses[Robotiq2F85FingerPoseWrapper.LEFT_FINGER_KEY]
-        right_finger = finger_poses[Robotiq2F85FingerPoseWrapper.RIGHT_FINGER_KEY]
+        left_finger = finger_poses[Robotiq2F85FingerPoseWrapper.LEFT_FINGER_WRIST_FRAME_KEY]
+        right_finger = finger_poses[Robotiq2F85FingerPoseWrapper.RIGHT_FINGER_WRIST_FRAME_KEY]
         left_finger_pos = left_finger[:3, 3]
         right_finger_pos = right_finger[:3, 3]
         if not(np.allclose(left_finger_pos, self.prev_left) and np.allclose(right_finger_pos, self.prev_right)):

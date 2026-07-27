@@ -40,6 +40,16 @@ class FingerPosePair:
     right: common.Pose
 
 
+@dataclass(frozen=True)
+class FingerPoseFrames:
+    """Finger poses in wrist and, when FK inputs are supplied, robot frames."""
+
+    left_finger_wrist_frame: common.Pose
+    right_finger_wrist_frame: common.Pose
+    left_finger_robot_frame: common.Pose | None
+    right_finger_robot_frame: common.Pose | None
+
+
 def _pose_from_body(data: mujoco.MjData, name: str) -> common.Pose:
     body = data.body(name)
     return common.Pose(
@@ -232,7 +242,9 @@ def robotiq_2f85_finger_poses(
     site_name: tuple[str, str] | None = None,
     offsets: FingerPosePair | None = None,
     model_path: str | Path | None = None,
-) -> FingerPosePair:
+    pinocchio: common.Kinematics | None = None,
+    robot_joints: np.ndarray | None = None,
+) -> FingerPoseFrames:
     """Look up a pair of Robotiq body or site poses and optionally apply offsets.
 
     ``normalized_state`` is 0 for closed and 1 for open and is rounded to the
@@ -240,10 +252,16 @@ def robotiq_2f85_finger_poses(
     ``site_name`` values must be provided, ordered left then right. The first
     call for each target builds its cache and persists it below
     ``$XDG_CACHE_HOME/rcs`` (or ``~/.cache/rcs``). Subsequent processes load it
-    from disk.
+    from disk. The return value always contains poses in the gripper-base
+    (wrist) frame. When both ``pinocchio`` and ``robot_joints`` are supplied,
+    it also contains the same poses in the robot-base frame; the Robotiq mount
+    offset registered in :mod:`rcs` is included in that transform.
     """
     if not np.isfinite(normalized_state) or not 0.0 <= normalized_state <= 1.0:
         msg = f"normalized_state must be between 0 and 1, got {normalized_state}"
+        raise ValueError(msg)
+    if (pinocchio is None) != (robot_joints is None):
+        msg = "pinocchio and robot_joints must be provided together"
         raise ValueError(msg)
     if (body_name is None) == (site_name is None):
         msg = "exactly one of body_name or site_name must be provided"
@@ -276,8 +294,29 @@ def robotiq_2f85_finger_poses(
         right=common.Pose(pose_matrix=np.array(cached_poses[1], copy=True)),
     )
     if offsets is None:
-        return poses
-    return FingerPosePair(
-        left=poses.left * offsets.left,
-        right=poses.right * offsets.right,
+        offset_poses = poses
+    else:
+        offset_poses = FingerPosePair(
+            left=poses.left * offsets.left,
+            right=poses.right * offsets.right,
+        )
+
+    if pinocchio is None:
+        return FingerPoseFrames(
+            left_finger_wrist_frame=offset_poses.left,
+            right_finger_wrist_frame=offset_poses.right,
+            left_finger_robot_frame=None,
+            right_finger_robot_frame=None,
+        )
+
+    assert robot_joints is not None
+    gripper_type = common.GripperType("Robotiq2F85")
+    robot_to_gripper = pinocchio.forward(np.asarray(robot_joints, dtype=np.float64)) * rcs.GRIPPER_MOUNT_OFFSETS[
+        gripper_type
+    ]
+    return FingerPoseFrames(
+        left_finger_wrist_frame=offset_poses.left,
+        right_finger_wrist_frame=offset_poses.right,
+        left_finger_robot_frame=robot_to_gripper * offset_poses.left,
+        right_finger_robot_frame=robot_to_gripper * offset_poses.right,
     )

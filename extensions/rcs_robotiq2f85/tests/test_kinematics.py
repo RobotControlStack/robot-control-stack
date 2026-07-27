@@ -5,6 +5,7 @@ import mujoco
 import numpy as np
 import pytest
 
+import rcs
 from rcs import common
 from rcs_robotiq2f85 import kinematics
 from rcs_robotiq2f85.kinematics import robotiq_2f85_finger_pose_offsets_from_sites, robotiq_2f85_finger_poses
@@ -208,8 +209,53 @@ def test_robotiq_2f85_fingertip_fk(normalized_command, left_position, right_posi
         translation=np.array(right_position),
     )
 
-    assert poses.left.is_close(expected_left_pose, eps_r=1e-3, eps_t=1e-4)
-    assert poses.right.is_close(expected_right_pose, eps_r=1e-3, eps_t=1e-4)
+    assert poses.left_finger_wrist_frame.is_close(expected_left_pose, eps_r=1e-3, eps_t=1e-4)
+    assert poses.right_finger_wrist_frame.is_close(expected_right_pose, eps_r=1e-3, eps_t=1e-4)
+
+
+def test_robotiq_2f85_fingertip_fk_in_robot_frame():
+    class FakePinocchio:
+        def __init__(self) -> None:
+            self.joints: np.ndarray | None = None
+
+        def forward(self, joints: np.ndarray) -> common.Pose:
+            self.joints = joints
+            return common.Pose(translation=np.array([1.0, 2.0, 3.0]))
+
+    pinocchio = FakePinocchio()
+    joints = np.arange(7, dtype=np.float64)
+    local_poses = robotiq_2f85_finger_poses(
+        0.5,
+        body_name=("left_follower", "right_follower"),
+        model_path=ROBOTIQ_2F85_MODEL_PATH,
+    )
+    robot_poses = robotiq_2f85_finger_poses(
+        0.5,
+        body_name=("left_follower", "right_follower"),
+        model_path=ROBOTIQ_2F85_MODEL_PATH,
+        pinocchio=pinocchio,  # type: ignore[arg-type]
+        robot_joints=joints,
+    )
+
+    robot_to_gripper = common.Pose(translation=np.array([1.0, 2.0, 3.0])) * rcs.GRIPPER_MOUNT_OFFSETS[
+        common.GripperType("Robotiq2F85")
+    ]
+    assert np.array_equal(pinocchio.joints, joints)
+    assert robot_poses.left_finger_wrist_frame.is_close(local_poses.left_finger_wrist_frame)
+    assert robot_poses.right_finger_wrist_frame.is_close(local_poses.right_finger_wrist_frame)
+    assert robot_poses.left_finger_robot_frame is not None
+    assert robot_poses.right_finger_robot_frame is not None
+    assert robot_poses.left_finger_robot_frame.is_close(robot_to_gripper * local_poses.left_finger_wrist_frame)
+    assert robot_poses.right_finger_robot_frame.is_close(robot_to_gripper * local_poses.right_finger_wrist_frame)
+
+
+def test_robotiq_2f85_robot_frame_requires_complete_fk_inputs():
+    with pytest.raises(ValueError, match="pinocchio and robot_joints must be provided together"):
+        robotiq_2f85_finger_poses(
+            0.5,
+            body_name=("left_follower", "right_follower"),
+            pinocchio=object(),  # type: ignore[arg-type]
+        )
 
 
 def test_robotiq_2f85_fingertip_fk_with_custom_mount_offsets():
@@ -269,5 +315,5 @@ def test_robotiq_2f85_fingertip_fk_with_custom_mount_offsets():
         translation=np.array([0.021752, -0.0000033, 0.174510]),
     )
 
-    assert poses.left.is_close(expected_left_pose, eps_r=1e-3, eps_t=1e-4)
-    assert poses.right.is_close(expected_right_pose, eps_r=1e-3, eps_t=1e-4)
+    assert poses.left_finger_wrist_frame.is_close(expected_left_pose, eps_r=1e-3, eps_t=1e-4)
+    assert poses.right_finger_wrist_frame.is_close(expected_right_pose, eps_r=1e-3, eps_t=1e-4)
