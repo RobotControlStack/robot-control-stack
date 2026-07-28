@@ -15,7 +15,7 @@ import rcs
 from rcs import common
 
 
-class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
+class DefaultSinglePandaHardwareEnv(RCSPandaConfigEnvCreator):
     ip = "192.168.4.100"
 
     def config(self) -> PandaHardwareEnvCreatorConfig:
@@ -44,6 +44,36 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
         )
 
 
+class DefaultPandaHardwareEnv(RCSPandaMultiConfigEnvCreator):
+    ip = "192.168.4.100"
+    robot_name = "right"
+
+    def config(self) -> PandaMultiHardwareEnvCreatorConfig:
+        base = DefaultSinglePandaHardwareEnv()
+        base.ip = self.ip
+        cfg = base.config()
+
+        return PandaMultiHardwareEnvCreatorConfig(
+            control_mode=cfg.control_mode,
+            robot_cfgs={
+                self.robot_name: cfg.robot_cfg,
+            },
+            gripper_cfgs={
+                self.robot_name: cfg.gripper_cfg,
+            },
+            camera_cfgs=None,
+            max_relative_movement=cfg.max_relative_movement,
+            relative_to=cfg.relative_to,
+            robot_to_shared_base_frame={
+                self.robot_name: common.Pose(
+                    translation=np.array([0, 0, 0]),
+                    rpy_vector=np.array([0, 0, 0]),
+                ),
+            },
+            wrapper_cfg=cfg.wrapper_cfg,
+        )
+
+
 class DROIDEnv(RCSPandaMultiConfigEnvCreator):
     robot_ip = "192.168.4.100"
     gripper_serial_number = "DAAQMPDC"
@@ -55,7 +85,7 @@ class DROIDEnv(RCSPandaMultiConfigEnvCreator):
             msg = "Robotiq gripper support requires the `rcs_robotiq2f85` extension to be installed."
             raise ImportError(msg) from e
 
-        base = DefaultPandaHardwareEnv()
+        base = DefaultSinglePandaHardwareEnv()
 
         cfg = base.config()
         cfg.robot_cfg.async_control = True
@@ -93,7 +123,7 @@ class DefaultPandaMultiHardwareEnv(RCSPandaMultiConfigEnvCreator):
     right_ip = "192.168.4.101"
 
     def config(self) -> PandaMultiHardwareEnvCreatorConfig:
-        base = DefaultPandaHardwareEnv()
+        base = DefaultSinglePandaHardwareEnv()
 
         base.ip = self.left_ip
         left_env_cfg = base.config()

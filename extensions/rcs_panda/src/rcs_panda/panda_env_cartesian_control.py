@@ -20,19 +20,19 @@ def main():
     input("moving")
 
     env_rel.reset()
-    print(env_rel.get_wrapper_attr("robot").get_cartesian_position())  # type: ignore
+    print(env_rel.get_wrapper_attr("robot")["right"].get_cartesian_position())  # type: ignore[index]
 
     for _ in range(100):
         for _ in range(10):
             # move 1cm in x direction (forward) and close gripper
-            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}
+            act = {"right": {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")
                 return
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
-            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": [1]}
+            act = {"right": {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": [1]}}
             obs, reward, terminated, truncated, info = env_rel.step(act)
             if truncated or terminated:
                 logger.info("Truncated or terminated!")

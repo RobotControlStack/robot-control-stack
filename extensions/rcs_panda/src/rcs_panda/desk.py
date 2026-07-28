@@ -13,7 +13,7 @@ from urllib import parse
 import rcs_panda
 import requests
 from dotenv import load_dotenv
-from rcs_panda.configs import DefaultPandaHardwareEnv
+from rcs_panda.configs import DefaultSinglePandaHardwareEnv
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
@@ -46,7 +46,7 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
 
 
 def home(ip: str):
-    default_env = DefaultPandaHardwareEnv()
+    default_env = DefaultSinglePandaHardwareEnv()
     default_env.ip = ip
     env_cfg = default_env.config()
     robot_cfg = env_cfg.robot_cfg
@@ -56,7 +56,7 @@ def home(ip: str):
 
 
 def gripper(ip: str, close_gripper: bool):
-    default_env = DefaultPandaHardwareEnv()
+    default_env = DefaultSinglePandaHardwareEnv()
     default_env.ip = ip
     env_cfg = default_env.config()
     config_hand = env_cfg.gripper_cfg
@@ -78,7 +78,7 @@ def info(ip: str, include_hand: bool = False):
     print("Current joint position:")
     print(f.get_joint_position())
     if include_hand:
-        default_env = DefaultPandaHardwareEnv()
+        default_env = DefaultSinglePandaHardwareEnv()
         default_env.ip = ip
         env_cfg = default_env.config()
         config_hand = env_cfg.gripper_cfg
