@@ -32,6 +32,9 @@ cfg.relative_to = RelativeTo.LAST_STEP
 env = creator.create_env(cfg)
 ```
 
+For FR3, `DefaultFR3HardwareEnv` now returns a single-robot multi-env config with the robot name `"right"`.
+If you need direct access to single-robot fields like `robot_cfg` or `gripper_cfg`, use `DefaultSingleFR3HardwareEnv` instead.
+
 
 
 ## Control Modes

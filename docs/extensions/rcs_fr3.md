@@ -42,8 +42,11 @@ cfg.relative_to = RelativeTo.LAST_STEP
 
 env = env_creator.create_env(cfg)
 obs, info = env.reset()
-print(env.get_wrapper_attr("robot").get_cartesian_position())
+print(env.get_wrapper_attr("robot")["right"].get_cartesian_position())
 ```
+
+If you need direct access to single-robot config fields like `robot_cfg` or `gripper_cfg`,
+use `DefaultSingleFR3HardwareEnv` instead.
 
 For a maintained example, see `examples/fr3/fr3_env_cartesian_control.py`.
 

@@ -6,7 +6,7 @@ from rcs._core.sim import CameraType, SimConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.configs import EmptyWorldFR3
 from rcs_fr3._core import hw
-from rcs_fr3.configs import DefaultFR3HardwareEnv
+from rcs_fr3.configs import DefaultSingleFR3HardwareEnv
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
 
 import rcs
@@ -106,7 +106,7 @@ def main():
             simulation.open_gui()
 
         else:
-            default_env = DefaultFR3HardwareEnv()
+            default_env = DefaultSingleFR3HardwareEnv()
             default_env.ip = ROBOT_IP
             env_cfg = default_env.config()
             fr3_cfg = env_cfg.robot_cfg

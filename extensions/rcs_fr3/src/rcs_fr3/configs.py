@@ -15,7 +15,7 @@ import rcs
 from rcs import common
 
 
-class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
+class DefaultSingleFR3HardwareEnv(RCSFR3ConfigEnvCreator):
     ip = "192.168.101.1"
 
     def config(self) -> FR3HardwareEnvCreatorConfig:
@@ -50,56 +50,39 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
             control_mode=ControlMode.CARTESIAN_TRPY,
             robot_cfg=robot_cfg,
             gripper_cfg=gripper_cfg,
-            camera_cfgs={
-                "realsense": HardwareCameraCreatorConfig(
-                    camera_type_id="realsense",
-                    camera_cfgs={
-                        "left_wrist": common.BaseCameraConfig(
-                            identifier="230422272017",
-                            resolution_width=1280,
-                            resolution_height=720,
-                            frame_rate=30,
-                        ),
-                        "right_wrist": common.BaseCameraConfig(
-                            identifier="230422271040",
-                            resolution_width=1280,
-                            resolution_height=720,
-                            frame_rate=30,
-                        ),
-                        "side": common.BaseCameraConfig(
-                            identifier="243522070385",
-                            resolution_width=1280,
-                            resolution_height=720,
-                            frame_rate=30,
-                        ),
-                        "bird_eye": common.BaseCameraConfig(
-                            identifier="243522070364",
-                            resolution_width=1280,
-                            resolution_height=720,
-                            frame_rate=30,
-                        ),
-                    },
-                ),
-                "digit": HardwareCameraCreatorConfig(
-                    camera_type_id="digit",
-                    camera_cfgs={
-                        "digit_right_left": common.BaseCameraConfig(
-                            identifier="D21182",
-                            resolution_width=320,
-                            resolution_height=240,
-                            frame_rate=30,
-                        ),
-                        "digit_right_right": common.BaseCameraConfig(
-                            identifier="D21193",
-                            resolution_width=320,
-                            resolution_height=240,
-                            frame_rate=30,
-                        ),
-                    },
-                ),
-            },
+            camera_cfgs=None,
             max_relative_movement=(0.2, np.deg2rad(45)),
             relative_to=RelativeTo.LAST_STEP,
+        )
+
+
+class DefaultFR3HardwareEnv(RCSFR3MultiConfigEnvCreator):
+    ip = "192.168.101.1"
+    robot_name = "right"
+
+    def config(self) -> FR3MultiHardwareEnvCreatorConfig:
+        base = DefaultSingleFR3HardwareEnv()
+        base.ip = self.ip
+        cfg = base.config()
+
+        return FR3MultiHardwareEnvCreatorConfig(
+            control_mode=cfg.control_mode,
+            robot_cfgs={
+                self.robot_name: cfg.robot_cfg,
+            },
+            gripper_cfgs={
+                self.robot_name: cfg.gripper_cfg,
+            },
+            camera_cfgs=None,
+            max_relative_movement=cfg.max_relative_movement,
+            relative_to=cfg.relative_to,
+            robot_to_shared_base_frame={
+                self.robot_name: common.Pose(
+                    translation=np.array([0, 0, 0]),
+                    rpy_vector=np.array([0, 0, 0]),
+                ),
+            },
+            wrapper_cfg=cfg.wrapper_cfg,
         )
 
 
@@ -114,7 +97,7 @@ class DROIDEnv(RCSFR3MultiConfigEnvCreator):
             msg = "Robotiq gripper support requires the `rcs_robotiq2f85` extension to be installed."
             raise ImportError(msg) from e
 
-        base = DefaultFR3HardwareEnv()
+        base = DefaultSingleFR3HardwareEnv()
 
         cfg = base.config()
         cfg.robot_cfg.async_control = True
@@ -152,7 +135,7 @@ class DefaultFR3DualMultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
     right_ip = "192.168.102.1"
 
     def config(self) -> FR3MultiHardwareEnvCreatorConfig:
-        base = DefaultFR3HardwareEnv()
+        base = DefaultSingleFR3HardwareEnv()
 
         base.ip = self.left_ip
         left_cfg = base.config()

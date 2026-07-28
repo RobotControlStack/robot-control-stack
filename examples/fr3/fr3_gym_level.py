@@ -81,10 +81,10 @@ def main():
         env_rel.get_wrapper_attr("sim").open_gui()
     else:
         from rcs_fr3._core import hw
-        from rcs_fr3.configs import DefaultFR3HardwareEnv
+        from rcs_fr3.configs import DefaultSingleFR3HardwareEnv
         from rcs_fr3.envs import FR3HW
 
-        default_env = DefaultFR3HardwareEnv()
+        default_env = DefaultSingleFR3HardwareEnv()
         default_env.ip = FR3_IP
         hw_cfg = default_env.config()
 
