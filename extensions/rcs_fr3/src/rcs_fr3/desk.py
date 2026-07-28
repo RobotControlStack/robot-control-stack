@@ -45,45 +45,49 @@ def load_creds_franka_desk(postfix: str = "") -> tuple[str, str]:
     return os.environ[username_key], os.environ[password_key]
 
 
-def home(ip: str, username: str, password: str, shut: bool, unlock: bool = False, fh: bool = False):
-    with Desk.fci(ip, username, password, unlock=unlock):
+def home(ip: str):
+    default_env = DefaultFR3HardwareEnv()
+    default_env.ip = ip
+    env_cfg = default_env.config()
+    robot_cfg = env_cfg.robot_cfg
+    robot_cfg.speed_factor = 0.2
+    f = rcs_fr3.hw.Franka(robot_cfg)
+    f.move_home()
+
+
+def gripper(ip: str, close_gripper: bool):
+
+    default_env = DefaultFR3HardwareEnv()
+    default_env.ip = ip
+    env_cfg = default_env.config()
+    config_hand = env_cfg.gripper_cfg
+    assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
+    g = rcs_fr3.hw.FrankaHand(config_hand)
+    if close_gripper:
+        g.shut()
+    else:
+        g.open()
+
+
+def info(ip: str, include_hand: bool = False):
+    robot_cfg = rcs_fr3.hw.FR3Config(ip=ip)
+    robot_cfg.speed_factor = 0.2
+    f = rcs_fr3.hw.Franka(robot_cfg)
+    print("Robot info:")
+    print("Current cartesian position:")
+    print(f.get_cartesian_position())
+    print("Current joint position:")
+    print(f.get_joint_position())
+    if include_hand:
         default_env = DefaultFR3HardwareEnv()
         default_env.ip = ip
         env_cfg = default_env.config()
-        robot_cfg = env_cfg.robot_cfg
-        robot_cfg.speed_factor = 0.2
-        f = rcs_fr3.hw.Franka(robot_cfg)
-        if fh:
-            config_hand = env_cfg.gripper_cfg
-            assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
-            g = rcs_fr3.hw.FrankaHand(config_hand)
-            if shut:
-                g.shut()
-            else:
-                g.open()
-        f.move_home()
-
-
-def info(ip: str, username: str, password: str, include_hand: bool = False):
-    with Desk.fci(ip, username, password):
-        robot_cfg = rcs_fr3.hw.FR3Config(ip=ip)
-        robot_cfg.speed_factor = 0.2
-        f = rcs_fr3.hw.Franka(robot_cfg)
-        print("Robot info:")
-        print("Current cartesian position:")
-        print(f.get_cartesian_position())
-        print("Current joint position:")
-        print(f.get_joint_position())
-        if include_hand:
-            default_env = DefaultFR3HardwareEnv()
-            default_env.ip = ip
-            env_cfg = default_env.config()
-            config_hand = env_cfg.gripper_cfg
-            assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
-            g = rcs_fr3.hw.FrankaHand(config_hand)
-            print("Gripper info:")
-            print("Current normalized width:")
-            print(g.get_normalized_width())
+        config_hand = env_cfg.gripper_cfg
+        assert isinstance(config_hand, rcs_fr3.hw.FHConfig)
+        g = rcs_fr3.hw.FrankaHand(config_hand)
+        print("Gripper info:")
+        print("Current normalized width:")
+        print(g.get_normalized_width())
 
 
 def lock(ip: str, username: str, password: str):

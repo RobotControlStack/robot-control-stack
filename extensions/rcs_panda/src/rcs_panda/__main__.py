@@ -21,12 +21,18 @@ panda_app = typer.Typer(
 @panda_app.command()
 def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
-    unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
 ):
     """Moves the panda to home position"""
-    user, pw = load_creds_franka_desk()
-    rcs_panda.desk.home(ip, user, pw, shut, unlock)
+    rcs_panda.desk.home(ip)
+
+
+@panda_app.command()
+def gripper(
+    ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    close_gripper: Annotated[bool, typer.Option("-c", help="close gripper")] = False,
+):
+    """Opens or closes the gripper"""
+    rcs_panda.desk.gripper(ip, close_gripper)
 
 
 @panda_app.command()
@@ -35,8 +41,7 @@ def info(
     include_gripper: Annotated[bool, typer.Option("-g", help="includes gripper")] = False,
 ):
     """Prints info about the robots current joint position and end effector pose, optionally also the gripper."""
-    user, pw = load_creds_franka_desk()
-    rcs_panda.desk.info(ip, user, pw, include_gripper)
+    rcs_panda.desk.info(ip, include_gripper)
 
 
 @panda_app.command()
