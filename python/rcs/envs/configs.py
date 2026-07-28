@@ -180,6 +180,67 @@ class EmptyWorldFR3(SimEnvCreator):
         )
 
 
+class EmptyWorldDROID(EmptyWorldFR3):
+    def config(self) -> SimEnvCreatorConfig:
+        rt = RobotType("UR5e")
+        cfg = super().config()
+        lead_robot_name = self.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DROID"]
+        robot_cfg.base = "base"
+
+        assert cfg.gripper_cfgs is not None
+        gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+
+        gripper_cfg.actuator = "fingers_actuator"
+        gripper_cfg.joints = ["right_driver_joint", "left_driver_joint"]
+        gripper_cfg.collision_geoms = []
+        gripper_cfg.collision_geoms_fingers = []
+        gripper_cfg.max_actuator_width = 0
+        gripper_cfg.min_actuator_width = 255
+        gripper_cfg.max_joint_width = 0.005
+        gripper_cfg.min_joint_width = 1.0
+        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+
+        cfg.camera_cfgs = {
+            "side": SimCameraConfig(
+                identifier="side",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "wrist": SimCameraConfig(
+                identifier="wrist",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+        }
+        cfg.camera_adds = {
+            "side": CameraAdderConfig(
+                fovy=60.0,
+                offset=rcs.common.Pose(
+                    translation=np.array([0.271, -0.000, 2.080]),
+                    quaternion=np.array([0.0060, -0.0060, -0.7067, 0.7074]),
+                ),
+            ),
+            "wrist": CameraAdderConfig(
+                fovy=60.0,
+                offset=rcs.common.Pose(
+                    # translation=np.array([0.062, -0.009, 0.05245]), rpy_vector=np.array([0.0, np.pi, -np.pi / 2])
+                ),
+                robot_name=self.robot_prefix_template,
+            ),
+        }
+        cfg.gripper_offsets = GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+
+        return cfg
+
+
 class EmptyWorldFR3Duo(SimEnvCreator):
     gripper_mesh_quaternion_offset: ClassVar[list[float]] = [0, 0, 0.7071068, 0.7071068]
 
