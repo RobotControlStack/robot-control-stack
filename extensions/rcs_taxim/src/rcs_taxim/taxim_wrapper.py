@@ -12,7 +12,7 @@ def _robotiq2f85_digit_model_path() -> str:
 
 
 class TaximSimWrapper(gym.Wrapper):
-    """Wrapper to render TAXIM tactile observations alongside regular RCS observations."""
+    """Render TAXIM observations, including static initial RGB reference images by default."""
 
     def __init__(
         self,
@@ -22,23 +22,27 @@ class TaximSimWrapper(gym.Wrapper):
         target_geom_mesh_dict: dict[str, str],
         target_geom_normal_map_dict: dict[str, str] | None = None,
         taxim_sensor_type: str = "digit",
+        bg_file: str | Path | None = None,
         taxim_bg_idx: int = 0,
         taxim_bg_randomize: bool = False,
         enable_depth: bool = False,
         taxim_fps: int = 60,
         visualize: bool = False,
+        include_blank_images: bool = True,
     ):
         super().__init__(env)
         self.taxim_sensors: list[Any] = []
         self.model = self.env.get_wrapper_attr("sim").model
         self.data = self.env.get_wrapper_attr("sim").data
         self.last_tactile_frames: dict[str, dict[str, dict[str, Any]]] = {}
+        self.blank_tactile_frames: dict[str, dict[str, dict[str, Any]]] = {}
 
         self.taxim_sites = taxim_sites
         self.taxim_pad_geoms = taxim_pad_geoms
         self.target_geom_mesh_dict = target_geom_mesh_dict
         self.target_geom_normal_map_dict = target_geom_normal_map_dict
         self.taxim_sensor_type = taxim_sensor_type
+        self.bg_file = bg_file
         self.taxim_bg_idx = taxim_bg_idx
         self.taxim_bg_randomize = taxim_bg_randomize
         self.taxim_fps = taxim_fps
@@ -46,6 +50,7 @@ class TaximSimWrapper(gym.Wrapper):
         self.enable_depth = enable_depth
         self.initialized = False
         self.visualize = visualize
+        self.include_blank_images = include_blank_images
 
         self.observation_space = copy.deepcopy(env.observation_space)
         if not isinstance(self.observation_space, gym.spaces.Dict):
@@ -76,13 +81,23 @@ class TaximSimWrapper(gym.Wrapper):
         frame_spaces.spaces.update(
             {f"tactile_{site}": gym.spaces.Dict(copy.deepcopy(tactile_space)) for site in self.taxim_sites}
         )
+        if self.include_blank_images:
+            blank_rgb_space = {"rgb": copy.deepcopy(tactile_space["rgb"])}
+            frame_spaces.spaces.update(
+                {f"tactile_{site}_blank": gym.spaces.Dict(copy.deepcopy(blank_rgb_space)) for site in self.taxim_sites}
+            )
 
     def _ensure_initialized(self) -> None:
         if self.initialized:
             return
 
         for site, pad_geom in zip(self.taxim_sites, self.taxim_pad_geoms, strict=True):
-            sensor = TaximSensor.TaximSensor(resize=(240, 320), sensor_type=self.taxim_sensor_type, preprocess_bg=False)
+            sensor = TaximSensor.TaximSensor(
+                resize=(240, 320),
+                sensor_type=self.taxim_sensor_type,
+                bg_file=self.bg_file,
+                preprocess_bg=False,
+            )
             sensor.add_camera_mujoco(site, self.model, self.data)
             sensor.change_bg(self.taxim_bg_idx)
             for geom, mesh in self.target_geom_mesh_dict.items():
@@ -106,10 +121,24 @@ class TaximSimWrapper(gym.Wrapper):
             frames[f"tactile_{site}"] = tactile_obs
         return frames
 
+    def _render_blank_tactile_frames(self) -> dict[str, dict[str, dict[str, Any]]]:
+        return {
+            f"tactile_{site}_blank": {"rgb": {"data": sensor.render_blank_taxim()}}
+            for site, sensor in zip(self.taxim_sites, self.taxim_sensors, strict=True)
+        }
+
+    def _render_current_tactile_frames(self, visualize: bool) -> None:
+        if self.include_blank_images and (self.taxim_bg_randomize or not self.blank_tactile_frames):
+            print("bllank render")
+            self.blank_tactile_frames = self._render_blank_tactile_frames()
+        self.last_tactile_frames = self._render_tactile_frames(visualize=visualize)
+
     def _update_obs(self, obs: dict[str, Any]) -> None:
         frames = obs.setdefault("frames", {})
         for site, tactile_obs in self.last_tactile_frames.items():
             frames[site] = copy.deepcopy(tactile_obs)
+        for site, blank_tactile_obs in self.blank_tactile_frames.items():
+            frames[site] = copy.deepcopy(blank_tactile_obs)
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -117,7 +146,7 @@ class TaximSimWrapper(gym.Wrapper):
         obs, info = super().reset(seed=seed, options=options)
         self._ensure_initialized()
         self.taxim_last_render = -1.0
-        self.last_tactile_frames = self._render_tactile_frames(visualize=False)
+        self._render_current_tactile_frames(visualize=False)
         self._update_obs(obs)
         return obs, info
 
@@ -125,7 +154,7 @@ class TaximSimWrapper(gym.Wrapper):
         obs, reward, done, truncated, info = super().step(action)
         self._ensure_initialized()
         if self.taxim_last_render + (1 / self.taxim_fps) <= self.data.time:
-            self.last_tactile_frames = self._render_tactile_frames(visualize=self.visualize)
+            self._render_current_tactile_frames(visualize=self.visualize)
             self.taxim_last_render = self.data.time
 
         self._update_obs(obs)
