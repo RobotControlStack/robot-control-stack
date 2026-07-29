@@ -394,6 +394,12 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
+
+        # Gains used for USBC
+        hw_cfg.robot_cfgs["right"].joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
+        hw_cfg.robot_cfgs["right"].joint_controller_Kp = 2 * hw_cfg.robot_cfgs["right"].joint_controller_Kp
+        hw_cfg.robot_cfgs["right"].joint_controller_Kd = 2*np.sqrt(hw_cfg.robot_cfgs["right"].joint_controller_Kp)
+        hw_cfg.wrapper_cfg.binary_gripper = True
         env_rel = env_creator.create_env(hw_cfg)
         if DIGIT_DICT is not None:
             camera_set = env_rel.get_wrapper_attr("camera_set")
