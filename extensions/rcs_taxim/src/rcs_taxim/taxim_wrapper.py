@@ -91,7 +91,7 @@ class TaximSimWrapper(gym.Wrapper):
         if self.initialized:
             return
 
-        for site, pad_geom in zip(self.taxim_sites, self.taxim_pad_geoms, strict=True):
+        for sensor_index, (site, pad_geom) in enumerate(zip(self.taxim_sites, self.taxim_pad_geoms, strict=True)):
             sensor = TaximSensor.TaximSensor(
                 resize=(240, 320),
                 sensor_type=self.taxim_sensor_type,
@@ -99,7 +99,13 @@ class TaximSimWrapper(gym.Wrapper):
                 preprocess_bg=False,
             )
             sensor.add_camera_mujoco(site, self.model, self.data)
-            sensor.change_bg(self.taxim_bg_idx)
+            if len(self.taxim_sites) > sensor.bg_len:
+                msg = (
+                    f"{len(self.taxim_sites)} TAXIM sites require distinct backgrounds, "
+                    f"but only {sensor.bg_len} are available."
+                )
+                raise ValueError(msg)
+            sensor.change_bg((self.taxim_bg_idx + sensor_index) % sensor.bg_len)
             for geom, mesh in self.target_geom_mesh_dict.items():
                 normal_map_path = None
                 if self.target_geom_normal_map_dict is not None and geom in self.target_geom_normal_map_dict:
