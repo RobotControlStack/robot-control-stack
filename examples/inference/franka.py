@@ -20,7 +20,7 @@ from rcs.utils import SimpleFrameRate
 
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
-from vlagents.policies import Act, Obs
+from vlagents.policies import Act, Obs, SingleObs
 
 import rcs
 
@@ -169,36 +169,43 @@ class ModelInference:
             cameras[frame] = obs["frames"][frame]["rgb"]["data"]
             cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
 
-        state = []
+        obs_by_robot = {}
         for robot in self._cfg.robot_keys:
-            # TODO: currently hardcoded for joints
-            state.append(obs[robot]["joints"])
-            state.append(obs[robot]["gripper"])
+            obs_by_robot[robot] = SingleObs(
+                cameras=copy.deepcopy(cameras),
+                joints=np.asarray(obs[robot]["joints"], dtype=np.float32),
+                gripper=float(obs[robot]["gripper"]),
+                xyzrpy=np.asarray(obs[robot]["xyzrpy"], dtype=np.float32) if "xyzrpy" in obs[robot] else None,
+                tquat=np.asarray(obs[robot]["tquat"], dtype=np.float32) if "tquat" in obs[robot] else None,
+                info=copy.deepcopy(info) if info is not None else {},
+            )
 
-        return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
+        return Obs(obs=obs_by_robot, language_instruction=self._cfg.instruction)
 
-    def act(self, obs_dict) -> None:
-        done = False
+    def act(self, obs_dict: Obs) -> Act:
         if self._cfg.n_action_steps is None:
             return self.remote_agent.act(obs_dict)
         if len(self._action_buffer) == 0:
             action = self.remote_agent.act(obs_dict)
-            selected_action = action.action[: self._cfg.n_action_steps]
-            self._action_buffer = selected_action.tolist()
-            done = action.done
+            selected_action = action.acts[: self._cfg.n_action_steps]
+            self._action_buffer = list(selected_action)
             if RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
                 for robot in self.env.get_wrapper_attr("envs"):
                     self.env.get_wrapper_attr("envs")[robot].get_wrapper_attr("set_origin_to_current")()
-        act = self._action_buffer.pop(0)
-        return Act(action=act, done=done)
+        return Act(acts=[self._action_buffer.pop(0)])
 
     def action_agents2rcs(self, action: Act) -> dict[str, Any]:
+        if not action.acts:
+            raise ValueError("Received empty action chunk from policy")
+
+        step = action.acts[0]
         act = {}
-        for idx, robot in enumerate(self._cfg.robot_keys):
-            # TODO: this is currently hard coded for franka joints
-            act[robot] = {}
-            act[robot]["joints"] = action.action[idx * 8 : idx * 8 + 7]
-            act[robot]["gripper"] = action.action[idx * 8 + 7 : idx * 8 + 8]
+        for robot in self._cfg.robot_keys:
+            robot_action = step[robot]
+            act[robot] = {
+                "joints": np.asarray(robot_action.action, dtype=np.float32),
+                "gripper": np.asarray([robot_action.gripper], dtype=np.float32),
+            }
         return act
 
     def loop(self):
@@ -269,14 +276,13 @@ class ModelInference:
                         if record_requested:
                             self.env.start_record()
                     logger.info("starting episode%s", " with recording" if record_requested else "")
-                    self.remote_agent.reset(copy.deepcopy(obs_dict), instruction=self._cfg.instruction)
                     self._episode_running = True
                 else:
                     sleep(0.05)
                     continue
 
             action = self.act(copy.deepcopy(obs_dict))
-            if action.done:
+            if any(robot_action.done for step in action.acts for robot_action in step.values()):
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
