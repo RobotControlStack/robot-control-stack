@@ -9,11 +9,11 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 sys.path.insert(0, str(REPO_ROOT / "extensions/rcs_zed/src"))
 
-from rcs import common  # noqa: E402
 from rcs.camera.hw import DummyCalibrationStrategy  # noqa: E402
-
 from rcs_zed.camera import ZEDCameraSet, ZEDDeviceInfo, ZEDFrameBundle  # noqa: E402
 from rcs_zed.utils import default_zed, default_zed_dummy_calibration  # noqa: E402
+
+from rcs import common  # noqa: E402
 
 
 class FakeOpenedZEDCamera:

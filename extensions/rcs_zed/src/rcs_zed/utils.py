@@ -1,7 +1,7 @@
-from rcs import common
 from rcs.camera.hw import CalibrationStrategy
-
 from rcs_zed.camera import ZEDCameraSet
+
+from rcs import common
 
 
 def default_zed(
