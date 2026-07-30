@@ -21,13 +21,19 @@ fr3_app = typer.Typer(
 @fr3_app.command()
 def home(
     ip: Annotated[str, typer.Argument(help="IP of the robot")],
-    shut: Annotated[bool, typer.Option("-s", help="Should the robot be shut down")] = False,
-    unlock: Annotated[bool, typer.Option("-u", help="unlocks the robot")] = False,
-    fh: Annotated[bool, typer.Option("-h", help="franka hand open")] = False,
 ):
     """Moves the FR3 to home position"""
-    user, pw = load_creds_franka_desk()
-    rcs_fr3.desk.home(ip, user, pw, shut, unlock, fh)
+    rcs_fr3.desk.home(ip)
+
+
+# griper command
+@fr3_app.command()
+def gripper(
+    ip: Annotated[str, typer.Argument(help="IP of the robot")],
+    close_gripper: Annotated[bool, typer.Option("-c", help="close gripper")] = False,
+):
+    """Opens or closes the gripper"""
+    rcs_fr3.desk.gripper(ip, close_gripper)
 
 
 @fr3_app.command()
@@ -36,8 +42,7 @@ def info(
     include_gripper: Annotated[bool, typer.Option("-g", help="includes gripper")] = False,
 ):
     """Prints info about the robots current joint position and end effector pose, optionally also the gripper."""
-    user, pw = load_creds_franka_desk()
-    rcs_fr3.desk.info(ip, user, pw, include_gripper)
+    rcs_fr3.desk.info(ip, include_gripper)
 
 
 @fr3_app.command()

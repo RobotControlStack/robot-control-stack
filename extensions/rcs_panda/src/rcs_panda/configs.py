@@ -60,7 +60,7 @@ class DROIDEnv(RCSPandaMultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType("Robotiq2F85")]
         cfg.robot_cfg.q_home = rcs.ROBOTS[RobotType.Panda].q_home
 
         return PandaMultiHardwareEnvCreatorConfig(

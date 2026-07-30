@@ -23,11 +23,11 @@ def _progress(iterable):
 class PickUpDemo:
     def __init__(self, env: gym.Env):
         self.env = env
-        self._robot = cast(SimRobot, self.env.get_wrapper_attr("robot")["robot"])
+        self._robot = cast(SimRobot, self.env.get_wrapper_attr("robot")["right"])
         self.home_pose = self._robot.get_cartesian_position()
 
     def _action(self, pose: Pose, gripper: list[float]) -> dict[str, Any]:
-        return {"robot": {"xyzrpy": pose.xyzrpy(), "gripper": gripper}}
+        return {"right": {"xyzrpy": pose.xyzrpy(), "gripper": gripper}}
 
     def get_object_pose(self, geom_name: str) -> Pose:
         model = self.env.get_wrapper_attr("sim").model
