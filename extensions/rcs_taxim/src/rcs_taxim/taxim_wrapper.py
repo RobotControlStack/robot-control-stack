@@ -25,6 +25,7 @@ class TaximSimWrapper(gym.Wrapper):
         bg_file: str | Path | None = None,
         taxim_bg_idx: int = 0,
         taxim_bg_randomize: bool = False,
+        norm2tex_bump_scale_mm: float = 0.5,
         enable_depth: bool = False,
         taxim_fps: int = 60,
         visualize: bool = False,
@@ -51,6 +52,7 @@ class TaximSimWrapper(gym.Wrapper):
         self.initialized = False
         self.visualize = visualize
         self.include_blank_images = include_blank_images
+        self.norm2tex_bump_scale_mm = norm2tex_bump_scale_mm
 
         self.observation_space = copy.deepcopy(env.observation_space)
         if not isinstance(self.observation_space, gym.spaces.Dict):
@@ -97,6 +99,7 @@ class TaximSimWrapper(gym.Wrapper):
                 sensor_type=self.taxim_sensor_type,
                 bg_file=self.bg_file,
                 preprocess_bg=False,
+                texture_bump_scale_mm=self.norm2tex_bump_scale_mm
             )
             sensor.add_camera_mujoco(site, self.model, self.data)
             if len(self.taxim_sites) > sensor.bg_len:
@@ -135,7 +138,6 @@ class TaximSimWrapper(gym.Wrapper):
 
     def _render_current_tactile_frames(self, visualize: bool) -> None:
         if self.include_blank_images and (self.taxim_bg_randomize or not self.blank_tactile_frames):
-            print("bllank render")
             self.blank_tactile_frames = self._render_blank_tactile_frames()
         self.last_tactile_frames = self._render_tactile_frames(visualize=visualize)
 
