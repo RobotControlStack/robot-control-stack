@@ -19,6 +19,14 @@ pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_zed
 ```
 
+## Calibration
+
+The `default_zed(...)` helper uses the identity
+`DummyCalibrationStrategy` unless a `calibration_strategy` mapping is supplied.
+Mapping keys must match the logical camera names, and values must implement
+`rcs.camera.hw.CalibrationStrategy`. Calibration is injected explicitly so the
+ZED extension remains independent of other hardware-camera extensions.
+
 ## CLI
 
 ```shell

@@ -9,7 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 sys.path.insert(0, str(REPO_ROOT / "extensions/rcs_zed/src"))
 
+from rcs.camera.hw import DummyCalibrationStrategy  # noqa: E402
 from rcs_zed.camera import ZEDCameraSet, ZEDDeviceInfo, ZEDFrameBundle  # noqa: E402
+from rcs_zed.utils import default_zed, default_zed_dummy_calibration  # noqa: E402
 
 from rcs import common  # noqa: E402
 
@@ -34,6 +36,14 @@ class PatchZedState(TypedDict):
     devices: dict[str, ZEDDeviceInfo]
     opened: dict[str, FakeOpenedZEDCamera]
     open_calls: list[tuple[str, bool, bool, bool]]
+
+
+class FakeCalibrationStrategy:
+    def calibrate(self, samples, intrinsics, lock):
+        return True
+
+    def get_extrinsics(self):
+        return np.eye(4)
 
 
 @pytest.fixture()
@@ -163,3 +173,28 @@ def test_zed_include_right_adds_logical_right_camera_without_double_grab(patch_z
     assert left_frame.avg_timestamp == right_frame.avg_timestamp == 12.5
     assert left_frame.camera.depth is None
     assert right_frame.camera.depth is None
+
+
+def test_default_zed_uses_builtin_dummy_calibration():
+    camera_set = default_zed({"wrist": "123"})
+
+    assert camera_set is not None
+    assert isinstance(camera_set.calibration_strategy["wrist"], DummyCalibrationStrategy)
+
+
+def test_default_zed_accepts_explicit_calibration_strategy():
+    calibration = FakeCalibrationStrategy()
+    camera_set = default_zed(
+        {"wrist": "123"},
+        calibration_strategy={"wrist": calibration},
+    )
+
+    assert camera_set is not None
+    assert camera_set.calibration_strategy == {"wrist": calibration}
+
+
+def test_default_zed_dummy_calibration_remains_compatible():
+    camera_set = default_zed_dummy_calibration({"wrist": "123"})
+
+    assert camera_set is not None
+    assert isinstance(camera_set.calibration_strategy["wrist"], DummyCalibrationStrategy)

@@ -32,6 +32,29 @@ pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_zed
 ```
 
+## Calibration
+
+`default_zed(...)` is standalone and uses RCS's identity
+`DummyCalibrationStrategy` by default. To use measured extrinsics, pass one
+calibration strategy per logical camera:
+
+```python
+from rcs_zed.utils import default_zed
+
+calibration = {
+    "wrist": my_wrist_calibration,
+    "scene": my_scene_calibration,
+}
+cameras = default_zed(
+    {"wrist": "12345678", "scene": "87654321"},
+    calibration_strategy=calibration,
+)
+```
+
+Each value must implement the `rcs.camera.hw.CalibrationStrategy` protocol.
+This keeps ZED installation independent of other camera extensions and lets
+applications choose the calibration method that matches their robot setup.
+
 ## CLI
 
 ```shell
