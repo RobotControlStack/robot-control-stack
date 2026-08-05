@@ -4,7 +4,10 @@
 #include <franka/gripper.h>
 
 #include <Eigen/Core>
+#include <atomic>
 #include <cmath>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -43,13 +46,25 @@ struct FHState : common::GripperState {
 
 class FrankaHand : public common::Gripper {
  private:
+  struct WidthCommand {
+    double width;
+    double force;
+  };
+
   franka::Gripper gripper;
   FHConfig m_cfg;
   double max_width;
+  double normalization_width;
   double last_commanded_width;
-  // TODO: might be better if is_moving is a lock
-  bool is_moving = false;
+  std::atomic<bool> is_moving{false};
+  std::atomic<double> cached_normalized_width{1.0};
   std::optional<std::thread> control_thread = std::nullopt;
+  std::mutex width_command_mutex;
+  std::optional<WidthCommand> pending_width_command = std::nullopt;
+  bool width_worker_active = false;
+  void execute_width_command(const WidthCommand& command);
+  void run_width_commands(WidthCommand command);
+  void update_cached_width();
   void m_reset();
   void m_stop();
   void m_wait();
