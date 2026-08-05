@@ -44,6 +44,8 @@ dependencies = [
   "greenlet",
   "duckdb",
   "pandas",
+  "lmdb>=1.4",
+  "msgpack>=1.0",
 ]
 readme = "README.md"
 maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
