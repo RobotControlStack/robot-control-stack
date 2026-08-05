@@ -44,10 +44,15 @@ struct FrankaConfig : common::RobotConfig {
   bool async_control = false;
   bool tcp_offset_configured_in_desk = true;
   bool ignore_realtime = false;
+  bool joint_controller_interpolation = true;
   common::Vector7d joint_controller_Kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
   common::Vector7d joint_controller_Kd =
       (common::Vector7d() << 20., 20., 20., 20., 7.5, 15., 5.).finished();
+  common::Vector7d joint_controller_torque_limits =
+      common::Vector7d::Constant(5.0);
+  common::Vector7d torque_controller_torque_limits =
+      common::Vector7d::Constant(5.0);
   Eigen::Vector3d osc_Kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
   Eigen::Vector3d osc_Kp_r = (Eigen::Vector3d() << 250., 250., 250.).finished();
   std::optional<Eigen::Vector3d> osc_Kd_p = std::nullopt;
@@ -92,6 +97,7 @@ class Franka : public common::Robot {
   common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
   common::LinearJointPositionTrajInterpolator joint_interpolator;
+  common::Vector7d desired_joint_position = common::Vector7d::Zero();
   common::Vector7d desired_joint_torque = common::Vector7d::Zero();
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;

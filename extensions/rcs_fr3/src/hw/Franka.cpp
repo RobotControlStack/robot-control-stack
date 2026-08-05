@@ -174,6 +174,14 @@ void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
   }
 }
 
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
+                         const common::Vector7d& torque_limits) {
+  for (size_t i = 0; i < tau_d_array.size(); i++) {
+    const double torque_limit = std::abs(torque_limits[i]);
+    tau_d_array[i] = std::clamp(tau_d_array[i], -torque_limit, torque_limit);
+  }
+}
+
 void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   this->check_for_background_errors();
   // from deoxys/config/osc-position-controller.yml
@@ -185,7 +193,9 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
     this->get_joint_position();
-    this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
+    if (this->m_cfg.joint_controller_interpolation) {
+      this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
+    }
   } else if (this->running_controller.load() != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
@@ -196,10 +206,14 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
     this->interpolator_mutex.lock();
   }
 
-  this->joint_interpolator.reset(
-      this->controller_time,
-      Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
-      policy_rate, traj_rate, traj_interpolation_time_fraction);
+  if (this->m_cfg.joint_controller_interpolation) {
+    this->joint_interpolator.reset(
+        this->controller_time,
+        Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
+        policy_rate, traj_rate, traj_interpolation_time_fraction);
+  } else {
+    this->desired_joint_position = desired_q;
+  }
 
   // if not thread is running, then start
   if (this->running_controller.load() == Controller::none) {
@@ -542,6 +556,8 @@ void Franka::joint_controller() {
 
   common::Vector7d Kp = this->m_cfg.joint_controller_Kp;
   common::Vector7d Kd = this->m_cfg.joint_controller_Kd;
+  const common::Vector7d torque_limits =
+      this->m_cfg.joint_controller_torque_limits;
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
@@ -565,7 +581,11 @@ void Franka::joint_controller() {
       this->interpolator_mutex.lock();
       this->curr_state = robot_state;
       this->controller_time += period.toSec();
-      this->joint_interpolator.next_step(this->controller_time, desired_q);
+      if (this->m_cfg.joint_controller_interpolation) {
+        this->joint_interpolator.next_step(this->controller_time, desired_q);
+      } else {
+        desired_q = this->desired_joint_position;
+      }
       this->interpolator_mutex.unlock();
       // end torques handler
 
@@ -606,10 +626,7 @@ void Franka::joint_controller() {
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-      // deoxys/config/control_config.yml
-      double min_torque = -5;
-      double max_torque = 5;
-      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limits);
 
       return tau_d_rate_limited;
     });
@@ -629,6 +646,8 @@ void Franka::torque_controller() {
       {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   this->controller_time = 0.0;
+  const common::Vector7d torque_limits =
+      this->m_cfg.torque_controller_torque_limits;
   try {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
@@ -650,9 +669,7 @@ void Franka::torque_controller() {
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-      double min_torque = -5;
-      double max_torque = 5;
-      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limits);
 
       return tau_d_rate_limited;
     });

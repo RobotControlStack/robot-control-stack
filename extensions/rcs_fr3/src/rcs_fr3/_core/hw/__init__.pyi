@@ -112,6 +112,8 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
+    joint_controller_interpolation: bool
+    joint_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
@@ -124,6 +126,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     speed_factor: float
     tcp_offset_configured_in_desk: bool
+    torque_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
 
 class FrankaHand(rcs._core.common.Gripper):
@@ -330,6 +333,9 @@ class FR3Config(FrankaConfig):
         osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
         osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
+        joint_controller_interpolation: bool = True,
+        joint_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        torque_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
 
 class PandaConfig(FrankaConfig):
@@ -357,6 +363,9 @@ class PandaConfig(FrankaConfig):
         osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
         osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None = None,
+        joint_controller_interpolation: bool = True,
+        joint_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        torque_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
 
 class FrankaState(rcs._core.common.RobotState):
