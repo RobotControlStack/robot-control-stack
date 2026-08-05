@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+import numpy as np
 from rcs_fr3._core import hw as fr3_hw
 from rcs_fr3.configs import DefaultFR3HardwareEnv
 from rcs_fr3_bilateral._core import hw
-import numpy as np
+
 
 @dataclass
 class DefaultFR3BilateralTeleop:
@@ -14,8 +15,14 @@ class DefaultFR3BilateralTeleop:
     update_rate_hz: float = 1000.0
     relative_joint_mapping: bool = True
     max_follower_joint_step: float = 0.05
-    haptic_feedback_gain: float = 1.5
+    haptic_feedback_gain: float = 1
     leader_haptic_feedback: bool = True
+    leader_torque_limits: np.ndarray = field(
+        default_factory=lambda: np.array([12.0, 12.0, 12.0, 10.0, 5.0, 4.0, 3.0])
+    )
+    follower_torque_limits: np.ndarray = field(
+        default_factory=lambda: np.array([12.0, 12.0, 12.0, 10.0, 5.0, 4.0, 3.0])
+    )
 
     def _robot_config(self, ip: str) -> fr3_hw.FR3Config:
         base = DefaultFR3HardwareEnv()
@@ -23,20 +30,25 @@ class DefaultFR3BilateralTeleop:
         robot_cfg = base.config().robot_cfg
         robot_cfg.async_control = True
         robot_cfg.ignore_realtime = self.ignore_realtime
-        # original KP: np.array([100., 100., 100., 100., 75., 150., 50.]) 
-        # Tuned values optimized for haptics
-        robot_cfg.joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
-        robot_cfg.joint_controller_Kp = 2 * robot_cfg.joint_controller_Kp
-        robot_cfg.joint_controller_Kd = 2*np.sqrt(robot_cfg.joint_controller_Kp)
-        
+        robot_cfg.joint_controller_interpolation = False
+        robot_cfg.joint_controller_Kp = 10*np.array([24,24,24,24,10,6,3])
+        robot_cfg.joint_controller_Kd = 2 * np.sqrt(robot_cfg.joint_controller_Kp)
+
         return robot_cfg
 
     def config(self) -> hw.BilateralFrankaConfig:
+        leader_cfg = self._robot_config(self.leader_ip)
+        leader_cfg.torque_controller_torque_limits = self.leader_torque_limits
+        follower_cfg = self._robot_config(self.follower_ip)
+        follower_cfg.joint_controller_torque_limits = self.follower_torque_limits
+
         return hw.BilateralFrankaConfig(
-            leader_cfg=self._robot_config(self.leader_ip),
-            follower_cfg=self._robot_config(self.follower_ip),
+            leader_cfg=leader_cfg,
+            follower_cfg=follower_cfg,
             control_mode=(
-                hw.BilateralControlMode.gravity_only if self.gravity_only else hw.BilateralControlMode.bilateral
+                hw.BilateralControlMode.gravity_only
+                if self.gravity_only
+                else hw.BilateralControlMode.bilateral
             ),
             update_rate_hz=self.update_rate_hz,
             relative_joint_mapping=self.relative_joint_mapping,
