@@ -10,7 +10,6 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
-from PIL import Image
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
@@ -20,7 +19,7 @@ from rcs.utils import SimpleFrameRate
 
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
-from vlagents.policies import Act, Obs, SingleObs
+from vlagents.policies.interface import Obs, SingleAct, SingleObs
 
 import rcs
 
@@ -103,6 +102,7 @@ class InferenceConfig:
     robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
     jpeg_encoding: bool = True
     on_same_machine: bool = False
+    image_size: tuple[int, int] | None = (224, 224)
     fps: int = FPS
     record_path: str = RECORD_PATH
     n_action_steps: int | None = None
@@ -126,7 +126,12 @@ class ModelInference:
         self._command_queue: Queue[str] = Queue()
         self._shutdown_requested = threading.Event()
         self.remote_agent = RemoteAgent(
-            cfg.vlagents_host, cfg.vlagents_port, cfg.vlagents_model, cfg.on_same_machine, cfg.jpeg_encoding
+            cfg.vlagents_host,
+            cfg.vlagents_port,
+            cfg.vlagents_model,
+            cfg.on_same_machine,
+            cfg.jpeg_encoding,
+            cfg.image_size,
         )
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
@@ -164,10 +169,7 @@ class ModelInference:
         return start_requested, record_requested, success_requested, stop_requested, reload_requested
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
-        cameras = {}
-        for frame in obs["frames"]:
-            cameras[frame] = obs["frames"][frame]["rgb"]["data"]
-            cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
+        cameras = {frame: obs["frames"][frame]["rgb"]["data"] for frame in obs["frames"]}
 
         obs_by_robot = {}
         for robot in self._cfg.robot_keys:
@@ -177,14 +179,18 @@ class ModelInference:
                 gripper=float(obs[robot]["gripper"]),
                 xyzrpy=np.asarray(obs[robot]["xyzrpy"], dtype=np.float32) if "xyzrpy" in obs[robot] else None,
                 tquat=np.asarray(obs[robot]["tquat"], dtype=np.float32) if "tquat" in obs[robot] else None,
-                info=copy.deepcopy(info) if info is not None else {},
+                # info=copy.deepcopy(info) if info is not None else {},
             )
 
         return Obs(obs=obs_by_robot, language_instruction=self._cfg.instruction)
 
-    def act(self, obs_dict: Obs) -> Act:
+    def act(self, obs_dict: Obs) -> dict[str, SingleAct]:
         if self._cfg.n_action_steps is None:
-            return self.remote_agent.act(obs_dict)
+            action_chunk = self.remote_agent.act(obs_dict).acts
+            if not action_chunk:
+                message = "Received empty action chunk from policy"
+                raise ValueError(message)
+            return action_chunk[0]
         if len(self._action_buffer) == 0:
             action = self.remote_agent.act(obs_dict)
             selected_action = action.acts[: self._cfg.n_action_steps]
@@ -192,16 +198,12 @@ class ModelInference:
             if RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
                 for robot in self.env.get_wrapper_attr("envs"):
                     self.env.get_wrapper_attr("envs")[robot].get_wrapper_attr("set_origin_to_current")()
-        return Act(acts=[self._action_buffer.pop(0)])
+        return self._action_buffer.pop(0)
 
-    def action_agents2rcs(self, action: Act) -> dict[str, Any]:
-        if not action.acts:
-            raise ValueError("Received empty action chunk from policy")
-
-        step = action.acts[0]
+    def action_agents2rcs(self, action: dict[str, SingleAct]) -> dict[str, Any]:
         act = {}
         for robot in self._cfg.robot_keys:
-            robot_action = step[robot]
+            robot_action = action[robot]
             act[robot] = {
                 "joints": np.asarray(robot_action.action, dtype=np.float32),
                 "gripper": np.asarray([robot_action.gripper], dtype=np.float32),
@@ -229,6 +231,7 @@ class ModelInference:
                         model=self._cfg.vlagents_model,
                         on_same_machine=self._cfg.on_same_machine,
                         jpeg_encoding=self._cfg.jpeg_encoding,
+                        image_size=self._cfg.image_size,
                     )
                     logger.info(
                         "reloaded config from %s with host=%s port=%s model=%s",
@@ -282,7 +285,7 @@ class ModelInference:
                     continue
 
             action = self.act(copy.deepcopy(obs_dict))
-            if any(robot_action.done for step in action.acts for robot_action in step.values()):
+            if any(robot_action.done for robot_action in action.values()):
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)

@@ -1,1 +1,1 @@
-vlagents @ git+https://github.com/RobotControlStack/vlagents.git@lerobot
+vlagents==0.3.0

@@ -9,6 +9,7 @@
   ],
   "jpeg_encoding": true,
   "on_same_machine": false,
+  "image_size": [224, 224],
   "fps": 30,
   "record_path": "inference_recordings_bin_sort_duobench_xvla_bin_sort_real_2026-05-20_23-25-47_040000",
   "n_action_steps": 30,
