@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from rcs._core.common import GripperType, RobotType
-import torch  # noqa: F401
-from lerobot.datasets.lerobot_dataset import LeRobotDataset  # noqa: F401
-from torchvision.io import decode_jpeg  # noqa: F401
-from torchvision.transforms import v2  # noqa: F401
+import torch
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
+from torchvision.io import decode_jpeg
+from torchvision.transforms import v2
 import rcs
 
 DEFAULT_DATASET_PATHS = [
@@ -103,6 +103,7 @@ class JointDatasetConverter:
         gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
         video_encoding: bool = False,
         video_backend: str | None = None,
+        disable_stationary_frame_filtering: bool = False,
     ):
         self.root = Path(root)
         self.conn = duckdb.connect()
@@ -120,6 +121,7 @@ class JointDatasetConverter:
         self.state_dim = len(self.robot_keys) * self.per_robot_state_dim
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
+        self.disable_stationary_frame_filtering = disable_stationary_frame_filtering
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self._source_column_types: dict[str, str] | None = None
         self._arm_action_is_joint_source: dict[str, bool] = {}
@@ -131,11 +133,21 @@ class JointDatasetConverter:
             rcs.ROBOTS[robot_type].attachment_site,
         )
         self.camera_resizers = {
-            camera.name: v2.Resize(camera.resolution)  # type: ignore[name-defined]  # noqa: F821
+            camera.name: v2.Resize(camera.resolution)
             for camera in self.cameras
         }
 
-        self.lrds = LeRobotDataset.create(  # type: ignore[name-defined]  # noqa: F821
+        self.lrds = self._create_output_dataset(video_backend=video_backend)
+
+    def _create_output_dataset(self, video_backend: str | None = None):
+        """Create the frame sink used by :meth:`parse_episode`.
+
+        The conversion logic only relies on ``add_frame``, ``save_episode`` and
+        ``finalize``.  Keeping construction behind this small hook lets other
+        storage backends reuse the exact same filtering, IK and image handling
+        without maintaining a copy of the converter.
+        """
+        return LeRobotDataset.create(
             repo_id=self.repo_id,
             robot_type=self.robot_type.id,
             root=self.root,
@@ -434,6 +446,8 @@ class JointDatasetConverter:
         df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
         df = df[df["action_vector"].notna()]  # noqa: PD901
+        if self.disable_stationary_frame_filtering:
+            return df.reset_index(drop=True)
 
         prev_action: np.ndarray | None = None
         keep_mask = []
@@ -485,11 +499,11 @@ class JointDatasetConverter:
 
     def _decode_and_resize_batch(self, image_bytes_list: list[bytes], camera: CamConversionConfig) -> np.ndarray:
         image_tensors = [
-            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)  # type: ignore[name-defined]  # noqa: F821
+            torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)
             for image_bytes in image_bytes_list
         ]
-        decoded = decode_jpeg(image_tensors)  # type: ignore[name-defined]  # noqa: F821
-        batch = torch.stack(decoded)  # type: ignore[name-defined]  # noqa: F821
+        decoded = decode_jpeg(image_tensors)
+        batch = torch.stack(decoded)
         resized = self.camera_resizers[camera.name](batch)
         return resized.permute(0, 2, 3, 1).cpu().numpy()
 
@@ -522,6 +536,7 @@ def run_conversion(
     n: int = -1,
     video_encoding: bool = False,
     video_backend: str | None = None,
+    disable_stationary_frame_filtering: bool = False,
 ) -> None:
     import torch  # noqa: F401
     from lerobot.datasets.lerobot_dataset import LeRobotDataset  # noqa: F401
@@ -544,6 +559,7 @@ def run_conversion(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        disable_stationary_frame_filtering=disable_stationary_frame_filtering,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )

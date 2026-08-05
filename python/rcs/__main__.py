@@ -20,6 +20,14 @@ from rcs.lerobot_joint_converter import (
     camera_specs_to_configs,
     run_conversion,
 )
+from rcs.lmdb_joint_converter import (
+    DEFAULT_AUTO_GROW,
+    DEFAULT_LMDB_DATA_DIR,
+    DEFAULT_MAP_SIZE_GB,
+    DEFAULT_SHRINK_TO_FIT,
+    DEFAULT_WRITE_BATCH_SIZE,
+    run_conversion as run_lmdb_conversion,
+)
 from rcs.sim.replayer import replay as replay_dataset
 from rcs.utils import export_episode_videos
 
@@ -173,6 +181,13 @@ def lerobot_convert(
     video_backend: Annotated[
         str | None, typer.Option(help="Video backend to use if image data is video encoded e.g. torchcodec")
     ] = None,
+    disable_stationary_frame_filtering: Annotated[
+        bool,
+        typer.Option(
+            "--disable-stationary-frame-filtering",
+            help="Keep frames whose action is unchanged from the previous frame.",
+        ),
+    ] = False,
 ):
     cameras = camera_specs_to_configs(camera_specs) if camera_specs is not None else list(DEFAULT_CAMERAS)
     run_conversion(
@@ -189,10 +204,101 @@ def lerobot_convert(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        disable_stationary_frame_filtering=disable_stationary_frame_filtering,
         success=success,
         n=n,
         video_encoding=video_encoding,
         video_backend=video_backend,
+    )
+
+
+@app.command("lmdb-convert")
+def lmdb_convert(
+    output: Annotated[
+        Path,
+        typer.Argument(help="Output single-file LMDB. Example: ./data_lmdb/dataset.lmdb"),
+    ] = Path(DEFAULT_LMDB_DATA_DIR),
+    dataset_paths: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--dataset-path",
+            help="Input parquet path or glob. Repeat for multiple datasets.",
+        ),
+    ] = None,
+    repo_id: Annotated[str, typer.Option(help="Dataset identifier stored in metadata.")] = DEFAULT_REPO_ID,
+    robot_type: Annotated[str, typer.Option(help="Robot type for metadata and IK lookup.")] = DEFAULT_ROBOT_TYPE,
+    fps: Annotated[int, typer.Option(help="Dataset frames per second.")] = DEFAULT_FPS,
+    robot_keys: Annotated[
+        list[str] | None,
+        typer.Option("--robot-key", help="Robot keys to concatenate. Repeat for multiple robots."),
+    ] = None,
+    joints: Annotated[
+        bool, typer.Option(help="Whether info.absolute_action is already in joint space.")
+    ] = DEFAULT_JOINTS,
+    gripper_type: Annotated[str, typer.Option(help="Gripper type used for the TCP offset.")] = DEFAULT_GRIPPER_TYPE,
+    camera_specs: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--camera",
+            help=(
+                "Camera as name[:source_name][@HEIGHTxWIDTH]. Repeat for multiple cameras. "
+                "Images are decoded/resized during conversion and stored as raw uint8 arrays."
+            ),
+        ),
+    ] = None,
+    image_batch_size: Annotated[int, typer.Option(help="JPEG decode/resize batch size.")] = DEFAULT_IMAGE_BATCH_SIZE,
+    per_robot_arm_dim: Annotated[int, typer.Option(help="Arm dimension per robot, excluding gripper.")] = DEFAULT_PER_ROBOT_ARM_DIM,
+    binarize_gripper: Annotated[bool, typer.Option(help="Binarize gripper state and actions.")] = DEFAULT_BINARIZE_GRIPPER,
+    gripper_binarize_threshold: Annotated[
+        float, typer.Option(help="Values above this threshold become 1 when binarizing.")
+    ] = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+    success: Annotated[bool, typer.Option(help="Only include successful episodes.")] = True,
+    n: Annotated[int, typer.Option(help="Maximum episode count; -1 means all.")] = -1,
+    map_size_gb: Annotated[
+        int, typer.Option(help="Initial sparse LMDB map size in GiB; auto-grow expands it as needed.")
+    ] = DEFAULT_MAP_SIZE_GB,
+    write_batch_size: Annotated[
+        int, typer.Option(help="Number of frames per LMDB write transaction.")
+    ] = DEFAULT_WRITE_BATCH_SIZE,
+    auto_grow: Annotated[
+        bool, typer.Option(help="Double the LMDB map automatically when it fills.")
+    ] = DEFAULT_AUTO_GROW,
+    shrink_to_fit: Annotated[
+        bool,
+        typer.Option(help="Shrink the finalized sparse file close to its used size."),
+    ] = DEFAULT_SHRINK_TO_FIT,
+    overwrite: Annotated[bool, typer.Option(help="Replace an existing LMDB output file.")] = False,
+    disable_stationary_frame_filtering: Annotated[
+        bool,
+        typer.Option(
+            "--disable-stationary-frame-filtering",
+            help="Keep frames whose action is unchanged from the previous frame.",
+        ),
+    ] = False,
+):
+    cameras = camera_specs_to_configs(camera_specs) if camera_specs is not None else list(DEFAULT_CAMERAS)
+    run_lmdb_conversion(
+        root=output,
+        dataset_paths=dataset_paths or list(DEFAULT_DATASET_PATHS),
+        repo_id=repo_id,
+        robot_type=robot_type,
+        fps=fps,
+        robot_keys=robot_keys or list(DEFAULT_ROBOT_KEYS),
+        joints=joints,
+        gripper_type=gripper_type,
+        cameras=cameras,
+        image_batch_size=image_batch_size,
+        per_robot_arm_dim=per_robot_arm_dim,
+        binarize_gripper=binarize_gripper,
+        gripper_binarize_threshold=gripper_binarize_threshold,
+        disable_stationary_frame_filtering=disable_stationary_frame_filtering,
+        success=success,
+        n=n,
+        map_size_gb=map_size_gb,
+        write_batch_size=write_batch_size,
+        auto_grow=auto_grow,
+        shrink_to_fit=shrink_to_fit,
+        overwrite=overwrite,
     )
 
 
