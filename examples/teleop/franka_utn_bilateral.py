@@ -32,27 +32,42 @@ from rcs_fr3_bilateral._core import hw
 from rcs_fr3_bilateral.configs import DefaultFR3BilateralTeleop
 
 
+# Change me to configure settings for different grippers
+GRIPPER_VERSION = "FrankaHand" # FrankaHand or Robotiq2F85
+
+
 LEADER_IP = "192.168.102.1"
 FOLLOWER_IP = "192.168.101.1"
 DEFAULT_STACK_FREQUENCY_HZ = 30.0
 DEFAULT_CONTROL_FREQUENCY_HZ = 1000.0
 DEFAULT_BINARY_GRIPPER = False
-FOLLOWER_GRIPPER_TYPE = GripperType("Robotiq2F85")
 # The follower is the FR3 at 192.168.101.1 (the left-side hardware in the
 # standard FR3 duo mapping). Override this if its USB gripper differs.
 DEFAULT_FOLLOWER_GRIPPER_SERIAL = "DAAQMJHX"
-DATASET_PATH = "utn_usbc_insertion"
-INSTRUCTION = "pick up cube"
+DATASET_PATH = "utn_fh_usbc_insertion"
+INSTRUCTION = "pick up the box and place it in the red plate if it has a diamond pattern, and in the blue plate if it has a circle pattern"
+#"pick up the usb and insert it into the port in the middle of the table"
 
 # Keep camera and tactile-stream configuration in sync with franka_utn.py.
 CAMERA_DICT = {
     "wrist": "230422271040",
     "side": "243122074917",
 }
-DIGIT_DICT = {
-    "digit_right_left": "D21154",
-    "digit_right_right": "D21296",
-}
+# CAMERA_DICT = None
+
+if GRIPPER_VERSION == "Robotiq2F85":
+    FOLLOWER_GRIPPER_TYPE = GripperType("Robotiq2F85")
+    DIGIT_DICT = { # Robotiq digits
+        "digit_right_left": "D21154",
+        "digit_right_right": "D21296",
+    }
+else:
+    FOLLOWER_GRIPPER_TYPE = GripperType.FrankaHand
+    DIGIT_DICT = { # Franka Hand digits
+        "digit_right_left": "D21182",
+        "digit_right_right": "D21193",
+    }
+
 INCLUDE_DEPTH = False
 
 # The pedal advertises its three switches as keyboard-style key events.  A

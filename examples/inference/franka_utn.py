@@ -30,6 +30,7 @@ from vlagents.policies import Act, Obs
 logger = logging.getLogger(__name__)
 
 
+GRIPPER_VERSION = "FrankaHand" # FrankaHand or Robotiq2F85
 ROBOT2IP = {
     # "right": "192.168.102.1",
     "right": "192.168.101.1",
@@ -53,10 +54,18 @@ ZED_CAMERA_DICT = None
 
 INCLUDE_DEPTH = False
 
-DIGIT_DICT = {
-    "digit_right_left": "D21154",
-    "digit_right_right": "D21296"
-}
+if GRIPPER_VERSION == "Robotiq2F85":
+    FOLLOWER_GRIPPER_TYPE = GripperType("Robotiq2F85")
+    DIGIT_DICT = { # Robotiq digits
+        "digit_right_left": "D21154",
+        "digit_right_right": "D21296",
+    }
+else:
+    FOLLOWER_GRIPPER_TYPE = GripperType.FrankaHand
+    DIGIT_DICT = { # Franka Hand digits
+        "digit_right_left": "D21182",
+        "digit_right_right": "D21193",
+    }
 
 INSTRUCTION = "pick up cube"
 FPS = 30
@@ -70,6 +79,9 @@ PORT = 20000
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
+# Set to True to close the binary gripper after every environment reset.
+# The robot arm still returns to its configured home position.
+START_GRIPPER_CLOSED = False
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -113,6 +125,25 @@ def load_inference_config() -> InferenceConfig:
         logger.warning("Forcing single-arm inference mode: using robot key ['right']")
         cfg.robot_keys = ["right"]
     return cfg
+
+
+def reset_env(env: gym.Env, cfg: InferenceConfig) -> tuple[dict, dict]:
+    """Reset the environment and optionally command the gripper closed."""
+    obs, info = env.reset()
+    if not START_GRIPPER_CLOSED:
+        return obs, info
+
+    # For a binary gripper, 0 is closed. Reuse the reset joint positions so
+    # this extra action does not move the arm away from its home position.
+    action = {
+        robot: {
+            "joints": np.asarray(obs[robot]["joints"], dtype=np.float32),
+            "gripper": np.array([0.0], dtype=np.float32),
+        }
+        for robot in cfg.robot_keys
+    }
+    obs, _, _, _, _ = env.step(action)
+    return obs, info
 
 
 
@@ -213,7 +244,7 @@ class ModelInference:
         return act
 
     def loop(self):
-        obs, _ = self.env.reset()
+        obs, _ = reset_env(self.env, self._cfg)
         obs_dict = self.obs_rcs2agents(obs)
         logger.info(
             "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
@@ -246,7 +277,7 @@ class ModelInference:
                 if isinstance(self.env, StorageWrapper):
                     self.env.base_dir = self._cfg.record_path
                     self.env.set_instruction(self._cfg.instruction)
-                obs, _ = self.env.reset()
+                obs, _ = reset_env(self.env, self._cfg)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -255,7 +286,7 @@ class ModelInference:
                 if self._episode_running:
                     logger.info("marking episode successful and resetting environment")
                 self.env.get_wrapper_attr("success")()
-                obs, _ = self.env.reset()
+                obs, _ = reset_env(self.env, self._cfg)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -263,7 +294,7 @@ class ModelInference:
             if stop_requested:
                 if self._episode_running:
                     logger.info("stopping episode and resetting environment")
-                obs, _ = self.env.reset()
+                obs, _ = reset_env(self.env, self._cfg)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -289,7 +320,7 @@ class ModelInference:
             action = self.act(copy.deepcopy(obs_dict))
             if action.done:
                 logger.info("done issued by agent, resetting environment")
-                obs, _ = self.env.reset()
+                obs, _ = reset_env(self.env, self._cfg)
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -334,7 +365,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
 
         env_creator = SingleArmFR3MultiHardwareEnv()
         env_creator.ip = ROBOT2IP["right"]
-        hw_cfg = env_creator.config(grippertype=GripperType("Robotiq2F85"), robot_ip=ROBOT2IP["right"])
+        hw_cfg = env_creator.config(grippertype=FOLLOWER_GRIPPER_TYPE, robot_ip=ROBOT2IP["right"])
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
             try:
@@ -399,6 +430,11 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.robot_cfgs["right"].joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
         hw_cfg.robot_cfgs["right"].joint_controller_Kp = 2 * hw_cfg.robot_cfgs["right"].joint_controller_Kp
         hw_cfg.robot_cfgs["right"].joint_controller_Kd = 2*np.sqrt(hw_cfg.robot_cfgs["right"].joint_controller_Kp)
+
+        # q_home for the insertion_only case
+        if START_GRIPPER_CLOSED:
+            hw_cfg.robot_cfgs["right"].q_home = np.array([ 0.03649692, 0.29955739, -0.03282878, -2.14812803, -0.04740378,  2.49525499, 0.163381  ])
+
         hw_cfg.wrapper_cfg.binary_gripper = True
         env_rel = env_creator.create_env(hw_cfg)
         if DIGIT_DICT is not None:
@@ -442,7 +478,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
 def main():
     cfg = load_inference_config()
     env_rel = get_env(cfg)
-    env_rel.reset()
+    reset_env(env_rel, cfg)
 
     # Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
     # timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
