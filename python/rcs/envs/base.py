@@ -937,7 +937,7 @@ class RelativeActionSpace(ActObsInfoWrapper):
 
 
 class BlankCameraObservationWrapper(ActObsInfoWrapper):
-    """Add static initialization-time camera images to the observation chain."""
+    """Add static averaged initialization-time camera images to the observation chain."""
 
     def __init__(self, env, blank_camera_dict: dict[str, np.ndarray]):
         super().__init__(env)
