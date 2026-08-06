@@ -11,6 +11,7 @@ PIN_SUPPORTED_ROBOTS = [
     common.RobotType("XArm7"),
     common.RobotType("UR5e"),
     common.RobotType("SO101"),
+    common.RobotType("Yam"),
 ]
 
 
