@@ -77,6 +77,7 @@ config = QuestConfig(
     simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
     switched_left_right=False,
     display_cameras=False,
+    read_frequency=90,
 )
 # config = GelloConfig(
 #     arms={

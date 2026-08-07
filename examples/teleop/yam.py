@@ -49,6 +49,7 @@ config = QuestConfig(
     simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
     switched_left_right=True,
     display_cameras=False,
+    read_frequency=90,
 )
 
 

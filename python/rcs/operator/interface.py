@@ -61,7 +61,7 @@ class BaseOperator(ABC, threading.Thread):
 @dataclass(kw_only=True)
 class BaseOperatorConfig:
     operator_class: type[BaseOperator]
-    read_frequency: int = 30
+    read_frequency: int = 90
     simulation: bool = True
 
 
