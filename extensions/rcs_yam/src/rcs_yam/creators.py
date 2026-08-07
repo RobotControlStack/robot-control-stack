@@ -8,6 +8,7 @@ from rcs.envs.base import (
     CoverWrapper,
     GripperWrapper,
     HardwareEnv,
+    MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotWrapper,
@@ -52,5 +53,37 @@ class RCSYamConfigEnvCreator(RCSEnvCreator[YamHardwareEnvCreatorConfig]):
         return CoverWrapper(env)
 
     def config(self) -> YamHardwareEnvCreatorConfig:
+        msg = "Implement config() in a subclass or pass `cfg=` explicitly."
+        raise NotImplementedError(msg)
+
+
+@dataclass(kw_only=True)
+class YamMultiHardwareEnvCreatorConfig:
+    robot_cfgs: dict[str, YamConfig]
+    control_mode: ControlMode
+    gripper_cfgs: dict[str, GripperConfig | None] | None = None
+    max_relative_movement: float | tuple[float, float] | None = None
+    relative_to: RelativeTo = RelativeTo.LAST_STEP
+    robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
+    wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
+
+
+class RCSYamMultiConfigEnvCreator(RCSEnvCreator[YamMultiHardwareEnvCreatorConfig]):
+    def create_env(self, cfg: YamMultiHardwareEnvCreatorConfig) -> gym.Env:
+        envs: dict[str, gym.Env] = {}
+        for robot_name, robot_cfg in cfg.robot_cfgs.items():
+            envs[robot_name] = RCSYamConfigEnvCreator().create_env(
+                YamHardwareEnvCreatorConfig(
+                    robot_cfg=robot_cfg,
+                    control_mode=cfg.control_mode,
+                    gripper_cfg=cfg.gripper_cfgs[robot_name] if cfg.gripper_cfgs is not None else None,
+                    max_relative_movement=cfg.max_relative_movement,
+                    relative_to=cfg.relative_to,
+                    wrapper_cfg=cfg.wrapper_cfg,
+                )
+            )
+        return CoverWrapper(MultiRobotWrapper(envs, cfg.robot_to_shared_base_frame))
+
+    def config(self) -> YamMultiHardwareEnvCreatorConfig:
         msg = "Implement config() in a subclass or pass `cfg=` explicitly."
         raise NotImplementedError(msg)

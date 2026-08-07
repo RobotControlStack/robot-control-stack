@@ -18,6 +18,7 @@ from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs
 from rcs import sim
+from time import sleep
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -110,10 +111,13 @@ def main():
             # move 1cm in x direction (forward) and close gripper
             act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
+            sleep(0.1)
         for _ in range(10):
             # move 1cm in negative x direction (backward) and open gripper
             act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": [1]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
+            
+            sleep(0.1)
 
 
 if __name__ == "__main__":

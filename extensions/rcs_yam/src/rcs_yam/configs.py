@@ -1,6 +1,11 @@
 from rcs._core.common import GripperConfig, GripperType, RobotType
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_yam.creators import RCSYamConfigEnvCreator, YamHardwareEnvCreatorConfig
+from rcs_yam.creators import (
+    RCSYamConfigEnvCreator,
+    RCSYamMultiConfigEnvCreator,
+    YamHardwareEnvCreatorConfig,
+    YamMultiHardwareEnvCreatorConfig,
+)
 from rcs_yam.hw import YamConfig
 
 import rcs
@@ -32,6 +37,36 @@ class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
             control_mode=ControlMode.JOINTS,
             robot_cfg=robot_cfg,
             gripper_cfg=gripper_cfg,
+            max_relative_movement=0.2,
+            relative_to=RelativeTo.LAST_STEP,
+        )
+
+
+class DefaultYamDualMultiHardwareEnv(RCSYamMultiConfigEnvCreator):
+    left_channel = "can0"
+    right_channel = "can1"
+
+    def config(self) -> YamMultiHardwareEnvCreatorConfig:
+        base = DefaultYamHardwareEnv()
+
+        base.channel = self.left_channel
+        left_cfg = base.config()
+        left_cfg.robot_cfg.async_control = True
+
+        base.channel = self.right_channel
+        right_cfg = base.config()
+        right_cfg.robot_cfg.async_control = True
+
+        return YamMultiHardwareEnvCreatorConfig(
+            control_mode=ControlMode.JOINTS,
+            robot_cfgs={
+                "left": left_cfg.robot_cfg,
+                "right": right_cfg.robot_cfg,
+            },
+            gripper_cfgs={
+                "left": left_cfg.gripper_cfg,
+                "right": right_cfg.gripper_cfg,
+            },
             max_relative_movement=0.2,
             relative_to=RelativeTo.LAST_STEP,
         )
