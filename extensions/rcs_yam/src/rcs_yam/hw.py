@@ -77,7 +77,7 @@ class Yam(common.Robot):
             arm_type=ArmType.from_string_name(cfg.arm_type_id),
             gripper_type=GripperType.from_string_name(cfg.gripper_type_id),
             gripper_limits_override=cfg.gripper_limits_override,
-            version=cfg.arm_version,
+            # version=cfg.arm_version,
         )
         self._closed = False
         self._has_gripper = self._robot.num_dofs() > self._dof
@@ -171,16 +171,21 @@ class Yam(common.Robot):
                 self._target[self._dof] = gripper
             target = self._target.copy()
 
+        if self._config.async_control:
+            # Streaming mode: always forward the latest goal and return immediately. A blocking ramp
+            # here would stall the caller while new targets keep arriving, which reads as queued lag.
+            self._robot.command_joint_pos(target)
+            return
+
         current = np.asarray(self._robot.get_joint_pos(), dtype=np.float64)
         arm_error = float(np.max(np.abs(target[: self._dof] - current[: self._dof])))
         if arm_error > self._config.max_joint_step:
-            # Ramping is blocking in either mode, a step of this size would jerk the arm.
+            # Ramping blocks, a step of this size would jerk the arm.
             self._robot.move_joints(target, time_interval_s=arm_error / self._config.max_joint_velocity)
             return
 
         self._robot.command_joint_pos(target)
-        if not self._config.async_control:
-            self._wait_until_reached(target, wait_arm=arm is not None, wait_gripper=gripper is not None)
+        self._wait_until_reached(target, wait_arm=arm is not None, wait_gripper=gripper is not None)
 
     def _wait_until_reached(self, target: np.ndarray, wait_arm: bool, wait_gripper: bool) -> None:
         timeout = self._config.command_timeout if wait_arm else self._config.gripper_timeout
