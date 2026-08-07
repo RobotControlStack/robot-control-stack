@@ -55,4 +55,6 @@ The i2rt driver runs its PD control loop in a background thread. With
   limits and gripper stroke of the hardware.
 
 See `extensions/rcs_yam/README.md` for the full extension documentation and
-`extensions/rcs_yam/src/rcs_yam/scripts/test_robot.py` for a bring-up script.
+`extensions/rcs_yam/src/rcs_yam/scripts/test_robot.py` for a bring-up script. For a maintained
+example, see `examples/yam/yam_env_cartesian_control.py`, which moves the TCP forward and backward in
+synchronous Cartesian mode in simulation or on hardware.

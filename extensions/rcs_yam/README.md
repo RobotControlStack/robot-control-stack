@@ -113,7 +113,9 @@ gripper.grasp()
 robot.close()
 ```
 
-See `src/rcs_yam/scripts/test_robot.py` for a complete bring-up script covering both modes.
+See `src/rcs_yam/scripts/test_robot.py` for a complete bring-up script covering both modes, and
+[examples/yam/yam_env_cartesian_control.py](../../examples/yam/yam_env_cartesian_control.py) for a
+maintained Cartesian control example that runs in simulation and on hardware.
 
 ## Bimanual setups
 
