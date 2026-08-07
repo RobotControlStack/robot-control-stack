@@ -443,7 +443,8 @@ class EmptyWorldXArm7(EmptyWorldFR3):
 
 
 class EmptyWorldSO101(EmptyWorldFR3):
-    gripper_prefix_template = "gripper"
+    # The gripper is part of the so101 mjcf, so its joint and actuator are prefixed with the robot.
+    gripper_prefix_template = EmptyWorldFR3.robot_prefix_template
 
     def config(self) -> SimEnvCreatorConfig:
         rt = RobotType("SO101")
@@ -482,15 +483,58 @@ class EmptyWorldSO101(EmptyWorldFR3):
         return cfg
 
 
+class EmptyWorldYam(EmptyWorldFR3):
+    # The gripper is part of the yam mjcf, so its joint and actuator are prefixed with the robot.
+    gripper_prefix_template = EmptyWorldFR3.robot_prefix_template
+
+    def config(self) -> SimEnvCreatorConfig:
+        rt = RobotType("Yam")
+        cfg = super().config()
+        lead_robot_name = self.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.robot_type = rt
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType("Yam")]
+        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
+        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
+        robot_cfg.arm_collision_geoms = []
+        robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+        robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+        robot_cfg.dof = rcs.ROBOTS[rt].dof
+        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
+        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
+        robot_cfg.base = "arm"
+
+        assert cfg.gripper_cfgs is not None
+        gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+        gripper_cfg.gripper_type = GripperType("Yam")
+        gripper_cfg.actuator = "gripper"
+        # right_finger is driven by an equality constraint, so only the actuated finger is listed
+        gripper_cfg.joints = ["left_finger"]
+        gripper_cfg.collision_geoms = []
+        gripper_cfg.collision_geoms_fingers = []
+        gripper_cfg.min_joint_width = 0.0
+        gripper_cfg.max_joint_width = 0.0475
+        gripper_cfg.min_actuator_width = 0.0
+        gripper_cfg.max_actuator_width = 0.0475
+
+        cfg.camera_cfgs = None
+        cfg.camera_adds = None
+        cfg.gripper_offsets = None
+
+        return cfg
+
+
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
 gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
 gym.register(id="rcs/ur5e", entry_point=EmptyWorldUR5e())
 gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
+gym.register(id="rcs/yam", entry_point=EmptyWorldYam())
 
 
 if __name__ == "__main__":
-    env = gym.make("rcs/duo")
+    env = gym.make("rcs/yam")
     obs, info = env.reset()
     print(obs)
     # Duo

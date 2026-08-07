@@ -182,6 +182,18 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
         attachment_site="gripper",
     ),
+    common.RobotType("Yam"): RobotMetaConfig(
+        mjcf_model_path="assets/robots/yam/yam.xml",
+        dof=6,
+        q_home=np.array([0.0, 1.047, 1.047, 0.0, 0.0, 0.0]),
+        joint_limits=np.array(
+            [
+                [-2.61799, 0.0, 0.0, -1.69297, -1.5708, -2.0944],
+                [3.14159, 3.66519, 3.14159, 1.5708, 1.5708, 2.0944],
+            ]
+        ),
+        attachment_site="tcp_site",
+    ),
 }
 
 
@@ -193,6 +205,9 @@ GRIPPER_PATHS: dict[common.GripperType, str] = {
 GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
     common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0, 0.0, 0.1493])),
+    # The yam gripper is part of the robot mjcf, hence it needs no entry in GRIPPER_PATHS
+    # and no mount offset, only the offset from the flange to the point between the fingers.
+    common.GripperType("Yam"): common.Pose(translation=np.array([0.0, 0.0, 0.1347])),
 }
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
