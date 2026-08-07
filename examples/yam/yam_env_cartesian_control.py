@@ -39,7 +39,7 @@ CAN_CHANNEL = "can0"
 
 STEP_SIZE = 0.01  # meters per step
 STEPS_PER_LEG = 5  # steps forward before reversing
-CYCLES = 3
+CYCLES = 100
 
 
 def main():
@@ -105,19 +105,15 @@ def main():
     robot_api = env_rel.get_wrapper_attr("robot")
     print(f"home TCP: {np.round(robot_api.get_cartesian_position().translation(), 4)}")
 
-    for _ in range(CYCLES):
-        for direction in (1.0, -1.0):
-            for _ in range(STEPS_PER_LEG):
-                before = robot_api.get_cartesian_position().translation()
-                # Relative to the current pose: move along the base x axis, keep the orientation.
-                act = {"tquat": [direction * STEP_SIZE, 0, 0, 0, 0, 0, 1.0], "gripper": [1]}
-                env_rel.step(act)
-                after = robot_api.get_cartesian_position().translation()
-                print(
-                    f"commanded {direction * STEP_SIZE:+.3f} m in x: "
-                    f"TCP {np.round(before, 4)} -> {np.round(after, 4)}, "
-                    f"tracking error {np.linalg.norm(after - (before + np.array([direction * STEP_SIZE, 0, 0]))):.4f} m"
-                )
+    for _ in range(100):
+        for _ in range(10):
+            # move 1cm in x direction (forward) and close gripper
+            act = {"tquat": [0.01, 0, 0, 0, 0, 0, 1], "gripper": [0]}
+            obs, reward, terminated, truncated, info = env_rel.step(act)
+        for _ in range(10):
+            # move 1cm in negative x direction (backward) and open gripper
+            act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": [1]}
+            obs, reward, terminated, truncated, info = env_rel.step(act)
 
 
 if __name__ == "__main__":
