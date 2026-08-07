@@ -50,11 +50,12 @@ Note that dual arm is only supported for a aloha like setup where the robot face
 
 
 ## Teleoperation of a YAM with Meta Quest 3
-[`yam.py`](yam.py) is the same setup for a single [YAM](https://robotcontrolstack.org/extensions/rcs_yam) arm, currently without cameras.
+[`yam.py`](yam.py) is the same setup for a single [YAM](https://robotcontrolstack.org/extensions/rcs_yam) arm.
 Follow the quest steps above, they are identical, and align the coordinate axis to the arm base (x front, y left, z up).
 The arm follows the right controller, so keep `ROBOT_NAME = "right"` unless you also change the controller mapping.
 1. install the [YAM extension](https://robotcontrolstack.org/extensions/rcs_yam) and bring up its CAN interface (`sudo ip link set can0 up type can bitrate 1000000`)
 2. go to [`yam.py`](yam.py), set `ROBOT_INSTANCE = RobotPlatform.HARDWARE` and set `CAN_CHANNEL` to your interface, or keep `RobotPlatform.SIMULATION` to try it in sim first
+3. to record RealSense cameras, install the [RealSense extension](https://robotcontrolstack.org/extensions/rcs_realsense) and put your camera serial numbers (`rs-enumerate-devices -s`) into `CAMERA_DICT`, or set it to `None` to run without cameras
 
 ## Teleoperation with Franka GELLO Duo
 Teleoperate your Franka Duo using the [Franka GELLO Duo](https://franka.de/de-de/product-prototypes).
