@@ -514,9 +514,9 @@ class EmptyWorldYam(EmptyWorldFR3):
         gripper_cfg.collision_geoms = []
         gripper_cfg.collision_geoms_fingers = []
         gripper_cfg.min_joint_width = 0.0
-        gripper_cfg.max_joint_width = 0.037524
+        gripper_cfg.max_joint_width = 0.0475
         gripper_cfg.min_actuator_width = 0.0
-        gripper_cfg.max_actuator_width = 0.037524
+        gripper_cfg.max_actuator_width = 0.0475
 
         cfg.camera_cfgs = None
         cfg.camera_adds = None
@@ -534,7 +534,7 @@ gym.register(id="rcs/yam", entry_point=EmptyWorldYam())
 
 
 if __name__ == "__main__":
-    env = gym.make("rcs/duo")
+    env = gym.make("rcs/yam")
     obs, info = env.reset()
     print(obs)
     # Duo

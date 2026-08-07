@@ -221,6 +221,10 @@ version_files = [
   "extensions/rcs_ur5e/src/rcs_ur5e/__init__.py:__version__",
   "extensions/rcs_ur5e/pyproject.toml:\"rcs-core>=(.*)\"",
 
+  "extensions/rcs_yam/pyproject.toml:version",
+  "extensions/rcs_yam/src/rcs_yam/__init__.py:__version__",
+  "extensions/rcs_yam/pyproject.toml:\"rcs-core>=(.*)\"",
+
   "extensions/rcs_tacto/pyproject.toml:version",
   "extensions/rcs_tacto/src/rcs_tacto/__init__.py:__version__",
   "extensions/rcs_tacto/pyproject.toml:\"rcs-core>=(.*)\"",
