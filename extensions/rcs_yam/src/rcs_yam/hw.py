@@ -77,7 +77,6 @@ class Yam(common.Robot):
             arm_type=ArmType.from_string_name(cfg.arm_type_id),
             gripper_type=GripperType.from_string_name(cfg.gripper_type_id),
             gripper_limits_override=cfg.gripper_limits_override,
-            # version=cfg.arm_version,
         )
         self._closed = False
         self._has_gripper = self._robot.num_dofs() > self._dof

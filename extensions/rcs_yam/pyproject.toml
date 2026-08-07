@@ -10,8 +10,7 @@ dependencies = [
   "rcs-core>=0.7.2",
   # i2rt is not published on PyPI, so it is pinned to a commit of the upstream repository.
   # A direct reference makes this project unpublishable to PyPI, see README.md.
-  "i2rt @ git+https://github.com/i2rt-robotics/i2rt@b9d8704c593aee4ef129d644f881564b8f2c4f6b",
-  # uv pip install --override <(echo ruckig==0.19.4) -e extensions/rcs_yam
+  "i2rt @ git+https://github.com/i2rt-robotics/i2rt@main", # tested commit: b9d8704c593aee4ef129d644f881564b8f2c4f6b
 ]
 readme = "README.md"
 license = "AGPL-3.0-or-later"

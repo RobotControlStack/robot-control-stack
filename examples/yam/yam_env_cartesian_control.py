@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 
 import gymnasium as gym
 import numpy as np
@@ -18,7 +19,6 @@ from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs
 from rcs import sim
-from time import sleep
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -116,7 +116,7 @@ def main():
             # move 1cm in negative x direction (backward) and open gripper
             act = {"tquat": [-0.01, 0, 0, 0, 0, 0, 1], "gripper": [1]}
             obs, reward, terminated, truncated, info = env_rel.step(act)
-            
+
             sleep(0.1)
 
 

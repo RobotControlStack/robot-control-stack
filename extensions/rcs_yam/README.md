@@ -12,21 +12,8 @@ consequence this extension is installable from a checkout but cannot be publishe
 not part of the wheel build workflow.
 
 ```shell
-pip install -ve extensions/rcs_yam
-```
-
-To use your local RCS checkout instead of the published `rcs-core` package, install the main package
-from the repository root first:
-
-```shell
-pip install -ve . --no-build-isolation
-pip install -ve extensions/rcs_yam
-```
-
-To develop against a local i2rt checkout, install it in editable mode afterwards:
-
-```shell
-pip install -ve ../i2rt
+# i2rt requires ruckig==0.15.3 which has no prebuild wheel, tested to work with ruckig==0.19.4
+pip install --override <(echo ruckig==0.19.4) -e extensions/rcs_yam
 ```
 
 The i2rt driver talks to the motors over SocketCAN and needs kernel headers for its build
