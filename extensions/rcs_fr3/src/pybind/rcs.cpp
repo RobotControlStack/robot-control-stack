@@ -301,6 +301,8 @@ PYBIND11_MODULE(_core, m) {
       .def("set_config", &rcs::hw::Franka::set_config, py::arg("cfg"))
       .def("get_config", &rcs::hw::Franka::get_config)
       .def("get_state", &rcs::hw::Franka::get_state)
+      .def("get_cartesian_flange_position",
+           &rcs::hw::Franka::get_cartesian_flange_position)
       .def("set_default_robot_behavior",
            &rcs::hw::Franka::set_default_robot_behavior)
       .def("set_guiding_mode", &rcs::hw::Franka::set_guiding_mode,

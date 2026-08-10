@@ -119,6 +119,8 @@ class Franka : public common::Robot {
 
   common::Pose get_cartesian_position() override;
 
+  common::Pose get_cartesian_flange_position();
+
   void set_joint_position(const common::VectorXd& q) override;
 
   common::VectorXd get_joint_position() override;

@@ -19,13 +19,17 @@
 
 namespace rcs {
 namespace hw {
+common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
+  return common::Pose(robot_state.O_T_EE) *
+         common::Pose(robot_state.F_T_EE).inverse();
+}
+
 common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
                                const std::optional<common::Pose>& tcp_offset) {
   if (!tcp_offset.has_value()) {
     return common::Pose(robot_state.O_T_EE);
   }
-  return common::Pose(robot_state.O_T_EE) *
-         common::Pose(robot_state.F_T_EE).inverse() * tcp_offset.value();
+  return GetFlangeInBaseFrame(robot_state) * tcp_offset.value();
 }
 
 Franka::Franka(const FrankaConfig& cfg,
@@ -118,6 +122,19 @@ common::Pose Franka::get_cartesian_position() {
     this->interpolator_mutex.unlock();
   }
   return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
+}
+
+common::Pose Franka::get_cartesian_flange_position() {
+  this->check_for_background_errors();
+  franka::RobotState robot_state;
+  if (this->running_controller.load() == Controller::none) {
+    this->curr_state = this->robot.readOnce();
+    robot_state = this->curr_state;
+  } else {
+    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+    robot_state = this->curr_state;
+  }
+  return GetFlangeInBaseFrame(robot_state);
 }
 
 void Franka::set_joint_position(const common::VectorXd& q) {
