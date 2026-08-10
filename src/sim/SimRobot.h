@@ -66,6 +66,7 @@ class SimRobot : public common::Robot {
   SimRobotConfig* get_config() override;
   SimRobotState* get_state() override;
   common::Pose get_cartesian_position() override;
+  common::Pose get_cartesian_flange_position() override;
   void set_joint_position(const common::VectorXd& q) override;
   common::VectorXd get_joint_position() override;
   void move_home() override;

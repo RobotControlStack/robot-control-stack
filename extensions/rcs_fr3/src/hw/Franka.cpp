@@ -25,11 +25,8 @@ common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
 }
 
 common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
-                               const std::optional<common::Pose>& tcp_offset) {
-  if (!tcp_offset.has_value()) {
-    return common::Pose(robot_state.O_T_EE);
-  }
-  return GetFlangeInBaseFrame(robot_state) * tcp_offset.value();
+                               const common::Pose& tcp_offset) {
+  return GetFlangeInBaseFrame(robot_state) * tcp_offset;
 }
 
 Franka::Franka(const FrankaConfig& cfg,
@@ -406,15 +403,9 @@ void Franka::osc() {
       Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
           gravity_array.data());
 
-      std::array<double, 42> jacobian_array;
-      if (this->m_cfg.tcp_offset.has_value()) {
-        jacobian_array = model.zeroJacobian(
-            franka::Frame::kEndEffector, robot_state.q,
-            this->m_cfg.tcp_offset->affine_array(), robot_state.EE_T_K);
-      } else {
-        jacobian_array =
-            model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
-      }
+      std::array<double, 42> jacobian_array = model.zeroJacobian(
+          franka::Frame::kEndEffector, robot_state.q,
+          this->m_cfg.tcp_offset.affine_array(), robot_state.EE_T_K);
       Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
           jacobian_array.data());
 
@@ -769,16 +760,13 @@ void Franka::set_cartesian_position(const common::Pose& x) {
   }
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
     const franka::RobotState robot_state = this->robot.readOnce();
-    common::Pose target_pose = x;
-    if (this->m_cfg.tcp_offset.has_value()) {
-      target_pose = x * this->m_cfg.tcp_offset->inverse() *
-                    common::Pose(robot_state.F_T_EE);
-    }
+    const common::Pose target_pose =
+        x * this->m_cfg.tcp_offset.inverse() * common::Pose(robot_state.F_T_EE);
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
 
   } else if (this->m_cfg.ik_solver == IKSolver::rcs_ik) {
-    this->set_cartesian_position_ik(target_pose);
+    this->set_cartesian_position_ik(x);
   }
 }
 
@@ -788,11 +776,8 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
         "position.");
   }
-  const franka::RobotState robot_state = this->robot.readOnce();
-  const common::Pose tcp_offset =
-      this->m_cfg.tcp_offset.value_or(common::Pose(robot_state.F_T_EE));
-  auto joints =
-      this->m_ik.value()->inverse(pose, this->get_joint_position(), tcp_offset);
+  auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
+                                            this->m_cfg.tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());

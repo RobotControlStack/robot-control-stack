@@ -50,7 +50,9 @@ struct FrankaConfig : common::RobotConfig {
   double kp_r = 250.0;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
-  std::optional<common::Pose> tcp_offset = std::nullopt;
+  common::Pose tcp_offset = common::Pose::Identity();
+  // Indicates that Cartesian control uses tcp_offset.
+  bool tcp_offset_explicit = false;
   bool async_control = false;
   bool ignore_realtime = false;
   size_t dof = 7;
@@ -119,7 +121,7 @@ class Franka : public common::Robot {
 
   common::Pose get_cartesian_position() override;
 
-  common::Pose get_cartesian_flange_position();
+  common::Pose get_cartesian_flange_position() override;
 
   void set_joint_position(const common::VectorXd& q) override;
 

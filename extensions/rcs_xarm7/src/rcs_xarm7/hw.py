@@ -60,6 +60,9 @@ class XArm7(common.Robot):
 
         return common.Pose(rpy_vector=rpy, translation=translation_meter)  # type: ignore
 
+    def get_cartesian_flange_position(self) -> common.Pose:
+        return self.get_cartesian_position()
+
     def get_ik(self) -> common.Kinematics | None:
         return self.ik
 

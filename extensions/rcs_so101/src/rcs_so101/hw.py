@@ -50,6 +50,9 @@ class SO101(common.Robot):
     def get_cartesian_position(self) -> common.Pose:
         return self.ik.forward(self.get_joint_position())
 
+    def get_cartesian_flange_position(self) -> common.Pose:
+        return self.get_cartesian_position()
+
     def get_ik(self) -> common.Kinematics | None:
         return self.ik
 

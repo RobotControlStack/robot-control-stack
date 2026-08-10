@@ -269,6 +269,9 @@ class UR5e(common.Robot):
             common.Pose(rpy_vector=np.array([0, 0, np.deg2rad(180)]), translation=np.array([0, 0, 0])).inverse() * pose  # type: ignore
         )
 
+    def get_cartesian_flange_position(self) -> common.Pose:
+        return self.get_cartesian_position()
+
     def get_ik(self) -> common.Kinematics | None:
         return self.ik
 

@@ -125,6 +125,10 @@ common::Pose SimRobot::get_cartesian_position() {
   return this->to_pose_in_robot_coordinates(attachment_site) * cfg.tcp_offset;
 }
 
+common::Pose SimRobot::get_cartesian_flange_position() {
+  return this->get_cartesian_position();
+}
+
 void SimRobot::set_joint_position(const common::VectorXd& q) {
   this->state.target_angles = q;
   this->state.previous_angles = this->get_joint_position();
