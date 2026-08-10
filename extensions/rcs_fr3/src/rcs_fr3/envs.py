@@ -44,7 +44,8 @@ class FR3HW(gym.Wrapper):
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        return super().reset(seed=seed, options=options)
+        obs, info = super().reset(seed=seed, options=options)
+        return self.get_obs(obs), info
 
     def close(self):
         self.hw_robot.stop_control_thread()
