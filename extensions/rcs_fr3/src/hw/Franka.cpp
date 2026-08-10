@@ -285,18 +285,21 @@ void Franka::osc() {
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
 
-  // high collision threshold values for high impedance
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  if (allow_high_collision) {
+    // High collision threshold values for high impedance.
+    this->robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   // from bench mark
   // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
@@ -514,17 +517,20 @@ void Franka::joint_controller() {
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
 
-  // high collision threshold values for high impedance
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  if (allow_high_collision) {
+    // High collision threshold values for high impedance.
+    this->robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
@@ -613,12 +619,15 @@ void Franka::zero_torque_guiding() {
 }
 
 void Franka::zero_torque_controller() {
-  // high collision threshold values for high impedance
-  robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  this->set_default_robot_behavior();
+  if (this->m_cfg.allow_high_collision) {
+    // High collision threshold values for high impedance.
+    robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   this->controller_time = 0.0;
   try {
