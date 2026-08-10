@@ -130,6 +130,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
       .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
       .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
+      .def_readwrite("torque_limit", &rcs::hw::FrankaConfig::torque_limit)
       .def_readwrite("kp_p", &rcs::hw::FrankaConfig::kp_p)
       .def_readwrite("kp_r", &rcs::hw::FrankaConfig::kp_r)
       .def_readwrite("load_parameters", &rcs::hw::FrankaConfig::load_parameters)
@@ -154,13 +155,14 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::common::Pose> world_to_robot,
                   bool async_control, bool tcp_offset_configured_in_desk,
                   bool ignore_realtime, rcs::common::Pose tcp_offset,
-                  std::string attachment_site,
-                  std::string kinematic_model_path) {
+                  std::string attachment_site, std::string kinematic_model_path,
+                  const rcs::common::Vector7d& torque_limit) {
                  rcs::hw::FR3Config cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
                  cfg.kp = kp;
                  cfg.kd = kd;
+                 cfg.torque_limit = torque_limit;
                  cfg.kp_p = kp_p;
                  cfg.kp_r = kp_r;
                  cfg.load_parameters = load_parameters;
@@ -193,7 +195,8 @@ PYBIND11_MODULE(_core, m) {
            py::arg("tcp_offset") = default_fr3_config.tcp_offset,
            py::arg("attachment_site") = default_fr3_config.attachment_site,
            py::arg("kinematic_model_path") =
-               default_fr3_config.kinematic_model_path);
+               default_fr3_config.kinematic_model_path,
+           py::arg("torque_limit") = default_fr3_config.torque_limit);
   rcs::hw::PandaConfig default_panda_config;
   py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
       .def(py::init(
@@ -206,13 +209,14 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::common::Pose> world_to_robot,
                   bool async_control, bool tcp_offset_configured_in_desk,
                   bool ignore_realtime, rcs::common::Pose tcp_offset,
-                  std::string attachment_site,
-                  std::string kinematic_model_path) {
+                  std::string attachment_site, std::string kinematic_model_path,
+                  const rcs::common::Vector7d& torque_limit) {
                  rcs::hw::PandaConfig cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
                  cfg.kp = kp;
                  cfg.kd = kd;
+                 cfg.torque_limit = torque_limit;
                  cfg.kp_p = kp_p;
                  cfg.kp_r = kp_r;
                  cfg.load_parameters = load_parameters;
@@ -245,7 +249,8 @@ PYBIND11_MODULE(_core, m) {
            py::arg("tcp_offset") = default_panda_config.tcp_offset,
            py::arg("attachment_site") = default_panda_config.attachment_site,
            py::arg("kinematic_model_path") =
-               default_panda_config.kinematic_model_path);
+               default_panda_config.kinematic_model_path,
+           py::arg("torque_limit") = default_panda_config.torque_limit);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
