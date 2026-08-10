@@ -21,7 +21,7 @@ from rcs.lerobot_joint_converter import (
     run_conversion,
 )
 from rcs.sim.replayer import replay as replay_dataset
-from rcs.utils import export_episode_videos
+from rcs.utils import export_camera_episode_videos, export_episode_videos
 
 app = typer.Typer()
 
@@ -216,6 +216,45 @@ def episode_videos(
     n: Annotated[int, typer.Option(help="Maximum number of episodes to export. -1 means all.")] = -1,
 ):
     export_episode_videos(dataset=dataset, output=output, fps=fps, n=n)
+
+
+@app.command("camera-episode-videos")
+def camera_episode_videos(
+    dataset: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            help="Parquet dataset file or directory with parquet parts.",
+        ),
+    ],
+    output: Annotated[
+        Path,
+        typer.Argument(
+            exists=False,
+            help="Output directory for camera episode mp4 files.",
+        ),
+    ],
+    fps: Annotated[int, typer.Option(help="Video frames per second.")] = DEFAULT_FPS,
+    camera: Annotated[
+        str | None,
+        typer.Option(help="Only export this camera. By default, exports every camera."),
+    ] = None,
+    episode: Annotated[
+        int | None,
+        typer.Option(help="Only export this zero-based, recording-order episode."),
+    ] = None,
+):
+    """Export a simple raw-frame MP4 for every camera in every episode."""
+    try:
+        export_camera_episode_videos(
+            dataset=dataset,
+            output=output,
+            fps=fps,
+            camera=camera,
+            episode=episode,
+        )
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
 
 
 if __name__ == "__main__":

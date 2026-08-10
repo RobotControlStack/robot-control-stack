@@ -133,6 +133,24 @@ def _render_action_panel(
     return image
 
 
+def _episode_starts(conn: duckdb.DuckDBPyConnection, source_escaped: str) -> list[tuple[str, float]]:
+    """Return episodes in recording order, with a stable tie-breaker."""
+    return conn.execute(
+        f"""
+        SELECT uuid, MIN(timestamp) AS start_timestamp
+        FROM read_parquet('{source_escaped}')
+        GROUP BY uuid
+        ORDER BY start_timestamp, uuid
+        """
+    ).fetchall()
+
+
+def _episode_filename(timestamp: float, episode_number: int, camera_name: str | None = None) -> str:
+    timestamp_text = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d-%H-%M-%S")
+    filename = f"{timestamp_text}_episode-{episode_number:06d}"
+    return f"{filename}_{camera_name}.mp4" if camera_name is not None else f"{filename}.mp4"
+
+
 def export_episode_videos(
     dataset: str | Path,
     output: str | Path,
@@ -162,8 +180,8 @@ def export_episode_videos(
         for robot, robot_struct in action_struct.children
     }
 
-    uuids = conn.execute(f"SELECT DISTINCT uuid FROM read_parquet('{source_escaped}') ORDER BY uuid").fetchall()
-    for index, (episode_id,) in enumerate(uuids):
+    episodes = _episode_starts(conn, source_escaped)
+    for index, (episode_id, _) in enumerate(episodes):
         if n != -1 and index >= n:
             break
 
@@ -204,7 +222,6 @@ def export_episode_videos(
         if not rows:
             continue
 
-        timestamp = datetime.datetime.fromtimestamp(float(rows[0][0])).strftime("%Y-%m-%d-%H-%M-%S")
         frames = []
         joint_history = {
             robot: np.asarray([row[1 + len(camera_names) + robot_idx] for row in rows], dtype=np.float32)
@@ -233,4 +250,70 @@ def export_episode_videos(
                 tiled[top : top + height, left : left + width] = image
             frames.append(tiled)
 
-        _write_mp4(frames, output / f"{timestamp}.mp4", fps=fps)
+        _write_mp4(frames, output / _episode_filename(float(rows[0][0]), index), fps=fps)
+
+
+def export_camera_episode_videos(
+    dataset: str | Path,
+    output: str | Path,
+    fps: int = 30,
+    camera: str | None = None,
+    episode: int | None = None,
+) -> None:
+    """Export raw camera frames as one MP4 for every selected camera and episode.
+
+    ``episode`` is the zero-based recording-order index used in the filenames.
+    """
+    import torch
+    from torchvision.io import decode_jpeg
+
+    dataset = Path(dataset)
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+
+    source = str(dataset / "*.parquet") if dataset.is_dir() else str(dataset)
+    source_escaped = source.replace("'", "''")
+    conn = duckdb.connect()
+    relation = conn.sql(f"SELECT * FROM read_parquet('{source_escaped}')")
+    frame_struct = relation.select("obs.frames").types[0]
+    camera_names = [name for name, _ in frame_struct.children]
+    if camera is not None:
+        if camera not in camera_names:
+            available = ", ".join(camera_names)
+            message = f"Unknown camera {camera!r}. Available cameras: {available}"
+            raise ValueError(message)
+        camera_names = [camera]
+
+    episodes = _episode_starts(conn, source_escaped)
+    if episode is not None:
+        if episode < 0 or episode >= len(episodes):
+            message = f"Episode {episode} is out of range (dataset has {len(episodes)} episodes)."
+            raise ValueError(message)
+        selected_episodes = [(episode, episodes[episode])]
+    else:
+        selected_episodes = list(enumerate(episodes))
+
+    for episode_number, (episode_id, _) in selected_episodes:
+        for camera_name in camera_names:
+            rows = conn.execute(
+                f"""
+                SELECT timestamp, obs.frames.{camera_name}.rgb.data
+                FROM read_parquet('{source_escaped}')
+                WHERE uuid = ?
+                  AND obs.frames.{camera_name}.rgb.data IS NOT NULL
+                ORDER BY step
+                """,
+                [episode_id],
+            ).fetchall()
+            if not rows:
+                continue
+
+            frames = [
+                decode_jpeg(torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)).permute(1, 2, 0).cpu().numpy()
+                for _, image_bytes in rows
+            ]
+            _write_mp4(
+                frames,
+                output / _episode_filename(float(rows[0][0]), episode_number, camera_name),
+                fps=fps,
+            )
