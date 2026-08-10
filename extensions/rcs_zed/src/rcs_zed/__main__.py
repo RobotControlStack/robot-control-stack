@@ -62,6 +62,52 @@ def serials():
         typer.echo(f"  {device.model}: {device.serial} (imu={device.has_imu})")
 
 
+def _format_intrinsics(name: str, matrix) -> str:
+    fx, fy, cx, cy = float(matrix[0, 0]), float(matrix[1, 1]), float(matrix[0, 2]), float(matrix[1, 2])
+    lines = [
+        f"{name}:",
+        f"  fx={fx:.6f} fy={fy:.6f} cx={cx:.6f} cy={cy:.6f}",
+        f"  K=\n{matrix}",
+    ]
+    return "\n".join(lines)
+
+
+@zed_app.command()
+def intrinsics(
+    serial: str | None = typer.Argument(None, help="Optional ZED serial number. Uses the first device if omitted."),
+    width: int = typer.Option(1280, help="Requested capture width."),
+    height: int = typer.Option(720, help="Requested capture height."),
+    fps: int = typer.Option(30, help="Requested capture frame rate."),
+    right: bool = typer.Option(False, "--right", help="Also print right-camera intrinsics."),
+):
+    """Open a ZED camera and print its RGB intrinsics for the requested resolution."""
+    serial = _resolve_serial(serial)
+    config = common.BaseCameraConfig(
+        identifier=serial,
+        resolution_width=width,
+        resolution_height=height,
+        frame_rate=fps,
+    )
+    try:
+        handle = ZEDCameraSet.open_camera(
+            config,
+            enable_depth=False,
+            enable_imu=False,
+            include_right=right,
+        )
+    except Exception as exc:
+        msg = f"Could not start ZED camera {serial}: {exc}"
+        raise typer.BadParameter(msg) from exc
+
+    try:
+        typer.echo(f"serial={handle.device_info.serial} model={handle.device_info.model} resolution={width}x{height}")
+        typer.echo(_format_intrinsics("left", handle.color_intrinsics))
+        if right and handle.right_color_intrinsics is not None:
+            typer.echo(_format_intrinsics("right", handle.right_color_intrinsics))
+    finally:
+        handle.close()
+
+
 @zed_app.command("rgb-view")
 def rgb_view(
     serial: str | None = typer.Argument(None, help="Optional ZED serial number. Uses the first device if omitted."),
