@@ -139,8 +139,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("nominal_end_effector_frame",
                      &rcs::hw::FrankaConfig::nominal_end_effector_frame)
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
-      .def_readwrite("tcp_offset_configured_in_desk",
-                     &rcs::hw::FrankaConfig::tcp_offset_configured_in_desk)
+      .def_readwrite("tcp_offset", &rcs::hw::FrankaConfig::tcp_offset)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
@@ -155,8 +154,8 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::hw::FrankaLoad> load_parameters,
                   std::optional<rcs::common::Pose> nominal_end_effector_frame,
                   std::optional<rcs::common::Pose> world_to_robot,
-                  bool async_control, bool tcp_offset_configured_in_desk,
-                  bool ignore_realtime, rcs::common::Pose tcp_offset,
+                  bool async_control, bool ignore_realtime,
+                  std::optional<rcs::common::Pose> tcp_offset,
                   std::string attachment_site, std::string kinematic_model_path,
                   const rcs::common::Vector7d& torque_limit,
                   bool allow_high_collision) {
@@ -173,8 +172,6 @@ PYBIND11_MODULE(_core, m) {
                  cfg.nominal_end_effector_frame = nominal_end_effector_frame;
                  cfg.world_to_robot = world_to_robot;
                  cfg.async_control = async_control;
-                 cfg.tcp_offset_configured_in_desk =
-                     tcp_offset_configured_in_desk;
                  cfg.ignore_realtime = ignore_realtime;
                  cfg.ip = ip;
                  cfg.tcp_offset = tcp_offset;
@@ -193,8 +190,6 @@ PYBIND11_MODULE(_core, m) {
                default_fr3_config.nominal_end_effector_frame,
            py::arg("world_to_robot") = default_fr3_config.world_to_robot,
            py::arg("async_control") = default_fr3_config.async_control,
-           py::arg("tcp_offset_configured_in_desk") =
-               default_fr3_config.tcp_offset_configured_in_desk,
            py::arg("ignore_realtime") = default_fr3_config.ignore_realtime,
            py::arg("tcp_offset") = default_fr3_config.tcp_offset,
            py::arg("attachment_site") = default_fr3_config.attachment_site,
@@ -213,8 +208,8 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<rcs::hw::FrankaLoad> load_parameters,
                   std::optional<rcs::common::Pose> nominal_end_effector_frame,
                   std::optional<rcs::common::Pose> world_to_robot,
-                  bool async_control, bool tcp_offset_configured_in_desk,
-                  bool ignore_realtime, rcs::common::Pose tcp_offset,
+                  bool async_control, bool ignore_realtime,
+                  std::optional<rcs::common::Pose> tcp_offset,
                   std::string attachment_site, std::string kinematic_model_path,
                   const rcs::common::Vector7d& torque_limit,
                   bool allow_high_collision) {
@@ -231,8 +226,6 @@ PYBIND11_MODULE(_core, m) {
                  cfg.nominal_end_effector_frame = nominal_end_effector_frame;
                  cfg.world_to_robot = world_to_robot;
                  cfg.async_control = async_control;
-                 cfg.tcp_offset_configured_in_desk =
-                     tcp_offset_configured_in_desk;
                  cfg.ignore_realtime = ignore_realtime;
                  cfg.ip = ip;
                  cfg.tcp_offset = tcp_offset;
@@ -251,8 +244,6 @@ PYBIND11_MODULE(_core, m) {
                default_panda_config.nominal_end_effector_frame,
            py::arg("world_to_robot") = default_panda_config.world_to_robot,
            py::arg("async_control") = default_panda_config.async_control,
-           py::arg("tcp_offset_configured_in_desk") =
-               default_panda_config.tcp_offset_configured_in_desk,
            py::arg("ignore_realtime") = default_panda_config.ignore_realtime,
            py::arg("tcp_offset") = default_panda_config.tcp_offset,
            py::arg("attachment_site") = default_panda_config.attachment_site,

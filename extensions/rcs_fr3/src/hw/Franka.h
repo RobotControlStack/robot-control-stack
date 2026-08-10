@@ -38,7 +38,7 @@ struct FrankaConfig : common::RobotConfig {
   common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
-  // deoxys/config/joint-impedance-controller.yml
+  // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
   common::Vector7d kd =
@@ -51,8 +51,8 @@ struct FrankaConfig : common::RobotConfig {
   std::optional<FrankaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
+  std::optional<common::Pose> tcp_offset = std::nullopt;
   bool async_control = false;
-  bool tcp_offset_configured_in_desk = true;
   bool ignore_realtime = false;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =

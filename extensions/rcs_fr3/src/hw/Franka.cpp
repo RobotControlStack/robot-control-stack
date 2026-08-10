@@ -19,6 +19,15 @@
 
 namespace rcs {
 namespace hw {
+common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
+                               const std::optional<common::Pose>& tcp_offset) {
+  if (!tcp_offset.has_value()) {
+    return common::Pose(robot_state.O_T_EE);
+  }
+  return common::Pose(robot_state.O_T_EE) *
+         common::Pose(robot_state.F_T_EE).inverse() * tcp_offset.value();
+}
+
 Franka::Franka(const FrankaConfig& cfg,
                std::optional<std::shared_ptr<common::Kinematics>> ik)
     : m_cfg(cfg),
@@ -99,19 +108,16 @@ void Franka::set_default_robot_behavior() {
 
 common::Pose Franka::get_cartesian_position() {
   this->check_for_background_errors();
-  common::Pose x;
+  franka::RobotState robot_state;
   if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
-    x = common::Pose(this->curr_state.O_T_EE);
+    robot_state = this->curr_state;
   } else {
     this->interpolator_mutex.lock();
-    x = common::Pose(this->curr_state.O_T_EE);
+    robot_state = this->curr_state;
     this->interpolator_mutex.unlock();
   }
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    return x * this->m_cfg.tcp_offset;
-  }
-  return x;
+  return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
 }
 
 void Franka::set_joint_position(const common::VectorXd& q) {
@@ -250,10 +256,8 @@ void Franka::osc_set_cartesian_position(
     this->interpolator_mutex.lock();
   }
 
-  common::Pose curr_pose(this->curr_state.O_T_EE);
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    curr_pose = curr_pose * this->m_cfg.tcp_offset;
-  }
+  common::Pose curr_pose =
+      GetTCPInBaseFrame(this->curr_state, this->m_cfg.tcp_offset);
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
@@ -385,8 +389,15 @@ void Franka::osc() {
       Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
           gravity_array.data());
 
-      std::array<double, 42> jacobian_array =
-          model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+      std::array<double, 42> jacobian_array;
+      if (this->m_cfg.tcp_offset.has_value()) {
+        jacobian_array = model.zeroJacobian(
+            franka::Frame::kEndEffector, robot_state.q,
+            this->m_cfg.tcp_offset->affine_array(), robot_state.EE_T_K);
+      } else {
+        jacobian_array =
+            model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+      }
       Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
           jacobian_array.data());
 
@@ -398,9 +409,7 @@ void Franka::osc() {
       // Express OSC feedback in the same TCP frame exposed by the public
       // Cartesian API.
       common::Pose T_EE_in_base_frame_pose =
-          this->m_cfg.tcp_offset_configured_in_desk
-              ? common::Pose(robot_state.O_T_EE)
-              : common::Pose(robot_state.O_T_EE) * this->m_cfg.tcp_offset;
+          GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
       Eigen::Affine3d T_EE_in_base_frame =
           T_EE_in_base_frame_pose.affine_matrix();
 
@@ -737,12 +746,8 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
-  common::Pose target_pose = x;
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    target_pose = target_pose * this->m_cfg.tcp_offset.inverse();
-  }
   if (this->m_cfg.async_control) {
-    this->osc_set_cartesian_position(target_pose);
+    this->osc_set_cartesian_position(x);
     return;
   }
   // TODO: this should handled with tcp offset config
@@ -757,8 +762,13 @@ void Franka::set_cartesian_position(const common::Pose& x) {
   // takes care of the default franka hand offset lets add a franka hand offset
 
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
-    // if gripper is attached the tcp offset will automatically be applied
-    // by libfranka
+    const franka::RobotState robot_state = this->robot.readOnce();
+    common::Pose target_pose = x;
+    if (this->m_cfg.tcp_offset.has_value()) {
+      target_pose = x * this->m_cfg.tcp_offset->inverse() *
+                    common::Pose(robot_state.F_T_NE) *
+                    nominal_end_effector_frame_value;
+    }
     this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
@@ -774,8 +784,11 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
         "position.");
   }
-  auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
-                                            this->m_cfg.tcp_offset);
+  const franka::RobotState robot_state = this->robot.readOnce();
+  const common::Pose tcp_offset =
+      this->m_cfg.tcp_offset.value_or(common::Pose(robot_state.F_T_EE));
+  auto joints =
+      this->m_ik.value()->inverse(pose, this->get_joint_position(), tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());
@@ -821,10 +834,7 @@ void Franka::set_cartesian_position_internal(const common::Pose& pose,
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          initial_pose =
-              this->m_cfg.tcp_offset_configured_in_desk
-                  ? common::Pose(state.O_T_EE)
-                  : common::Pose(state.O_T_EE) * this->m_cfg.tcp_offset;
+          initial_pose = common::Pose(state.O_T_EE);
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;

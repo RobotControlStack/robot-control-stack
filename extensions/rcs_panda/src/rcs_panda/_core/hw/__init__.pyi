@@ -115,7 +115,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     load_parameters: FrankaLoad | None
     nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
-    tcp_offset_configured_in_desk: bool
+    tcp_offset: rcs._core.common.Pose | None
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
 
@@ -312,9 +312,8 @@ class FR3Config(FrankaConfig):
         nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
-        tcp_offset_configured_in_desk: bool = True,
         ignore_realtime: bool = False,
-        tcp_offset: rcs._core.common.Pose = ...,
+        tcp_offset: rcs._core.common.Pose | None = None,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
         torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
@@ -335,9 +334,8 @@ class PandaConfig(FrankaConfig):
         nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
-        tcp_offset_configured_in_desk: bool = True,
         ignore_realtime: bool = False,
-        tcp_offset: rcs._core.common.Pose = ...,
+        tcp_offset: rcs._core.common.Pose | None = None,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
         torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,

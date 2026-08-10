@@ -25,7 +25,6 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
             ik_solver=hw.IKSolver.rcs_ik,
             speed_factor=0.1,
             async_control=False,
-            tcp_offset_configured_in_desk=True,
             ignore_realtime=False,
             tcp_offset=common.Pose(common.FrankaHandTCPOffset()),
             attachment_site="attachment_site",
