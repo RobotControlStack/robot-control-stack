@@ -49,7 +49,6 @@ struct FrankaConfig : common::RobotConfig {
   Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
   double kp_r = 250.0;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
-  std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
   std::optional<common::Pose> tcp_offset = std::nullopt;
   bool async_control = false;

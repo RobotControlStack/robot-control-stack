@@ -750,26 +750,13 @@ void Franka::set_cartesian_position(const common::Pose& x) {
     this->osc_set_cartesian_position(x);
     return;
   }
-  // TODO: this should handled with tcp offset config
-  common::Pose nominal_end_effector_frame_value;
-  if (this->m_cfg.nominal_end_effector_frame.has_value()) {
-    nominal_end_effector_frame_value =
-        this->m_cfg.nominal_end_effector_frame.value();
-  } else {
-    nominal_end_effector_frame_value = common::Pose::Identity();
-  }
-  // nominal end effector frame should be on top of tcp offset as franka already
-  // takes care of the default franka hand offset lets add a franka hand offset
-
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
     const franka::RobotState robot_state = this->robot.readOnce();
     common::Pose target_pose = x;
     if (this->m_cfg.tcp_offset.has_value()) {
       target_pose = x * this->m_cfg.tcp_offset->inverse() *
-                    common::Pose(robot_state.F_T_NE) *
-                    nominal_end_effector_frame_value;
+                    common::Pose(robot_state.F_T_EE);
     }
-    this->robot.setEE(nominal_end_effector_frame_value.affine_array());
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
 

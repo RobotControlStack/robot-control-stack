@@ -113,7 +113,6 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     kp_r: float
     load_parameters: FrankaLoad | None
-    nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
     tcp_offset: rcs._core.common.Pose | None
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
@@ -309,7 +308,6 @@ class FR3Config(FrankaConfig):
         kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
-        nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
         ignore_realtime: bool = False,
@@ -331,7 +329,6 @@ class PandaConfig(FrankaConfig):
         kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
-        nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
         ignore_realtime: bool = False,
