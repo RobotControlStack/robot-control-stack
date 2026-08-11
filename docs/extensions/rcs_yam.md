@@ -58,3 +58,9 @@ See `extensions/rcs_yam/README.md` for the full extension documentation and
 `extensions/rcs_yam/src/rcs_yam/scripts/test_robot.py` for a bring-up script. For a maintained
 example, see `examples/yam/yam_env_cartesian_control.py`, which moves the TCP forward and backward in
 synchronous Cartesian mode in simulation or on hardware.
+
+## Teleoperation example
+
+Use [examples/teleop/yam.py](../../examples/teleop/yam.py) to teleoperate YAM arms with a Meta Quest
+3. The example runs against simulation or hardware, and can optionally record RealSense cameras. See
+the [teleoperation README](../../examples/teleop/README.md) for setup instructions.
