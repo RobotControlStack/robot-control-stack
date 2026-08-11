@@ -144,6 +144,8 @@ def make_env(
     ).config()
     config.follower_cfg.tcp_offset = follower_robot_cfg.tcp_offset  # type: ignore[attr-defined]
     config.follower_cfg.q_home = follower_robot_cfg.q_home  # type: ignore[attr-defined]
+    config.leader_cfg.tcp_offset = follower_robot_cfg.tcp_offset # type: ignore[attr-defined]
+    config.leader_cfg.q_home = follower_robot_cfg.q_home  # type: ignore[attr-defined]
     teleop = hw.BilateralFranka(config)
 
     # Match the standard single-arm hardware stack. BilateralFR3Wrapper
