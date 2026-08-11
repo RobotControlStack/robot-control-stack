@@ -74,8 +74,8 @@ class PyRobot : public rcs::common::Robot {
   }
 
   rcs::common::Pose get_cartesian_flange_position() override {
-    PYBIND11_OVERRIDE(rcs::common::Pose, rcs::common::Robot,
-                      get_cartesian_flange_position, );
+    PYBIND11_OVERRIDE_PURE(rcs::common::Pose, rcs::common::Robot,
+                           get_cartesian_flange_position, );
   }
 
   void set_joint_position(const rcs::common::VectorXd& q) override {
