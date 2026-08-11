@@ -116,9 +116,7 @@ class Robot {
 
   virtual Pose get_cartesian_position() = 0;
 
-  virtual Pose get_cartesian_flange_position() {
-    return get_cartesian_position();
-  }
+  virtual Pose get_cartesian_flange_position() = 0;
 
   virtual void set_joint_position(const VectorXd& q) = 0;
 
