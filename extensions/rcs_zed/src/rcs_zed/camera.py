@@ -216,7 +216,6 @@ class ZEDCameraSet(HardwareCamera):
         init.camera_fps = config.frame_rate
         init.coordinate_units = sl.UNIT.METER
         init.depth_mode = sl.DEPTH_MODE.NONE if not enable_depth else sl.DEPTH_MODE.QUALITY
-        init.sdk_verbose = False
         init.set_from_serial_number(int(config.identifier))
 
         camera = sl.Camera()

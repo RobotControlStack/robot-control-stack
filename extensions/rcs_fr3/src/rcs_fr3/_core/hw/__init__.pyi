@@ -80,6 +80,7 @@ class Franka(rcs._core.common.Robot):
         self, desired_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     ) -> None: ...
     def double_tap_robot_to_continue(self) -> None: ...
+    def get_cartesian_flange_position(self) -> rcs._core.common.Pose: ...
     def get_config(self) -> FrankaConfig: ...
     def get_state(self) -> FrankaState: ...
     def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcs._core.common.Pose) -> None: ...
@@ -103,6 +104,7 @@ class Franka(rcs._core.common.Robot):
     def zero_torque_guiding(self) -> None: ...
 
 class FrankaConfig(rcs._core.common.RobotConfig):
+    allow_high_collision: bool
     async_control: bool
     ignore_realtime: bool
     ik_solver: IKSolver
@@ -112,9 +114,10 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     kp_r: float
     load_parameters: FrankaLoad | None
-    nominal_end_effector_frame: rcs._core.common.Pose | None
     speed_factor: float
-    tcp_offset_configured_in_desk: bool
+    tcp_offset: rcs._core.common.Pose
+    tcp_offset_explicit: bool
+    torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
 
 class FrankaHand(rcs._core.common.Gripper):
@@ -307,14 +310,14 @@ class FR3Config(FrankaConfig):
         kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
-        nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
-        tcp_offset_configured_in_desk: bool = True,
         ignore_realtime: bool = False,
         tcp_offset: rcs._core.common.Pose = ...,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        allow_high_collision: bool = False,
     ) -> None: ...
 
 class PandaConfig(FrankaConfig):
@@ -328,14 +331,14 @@ class PandaConfig(FrankaConfig):
         kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
         kp_r: float = 250.0,
         load_parameters: FrankaLoad | None = None,
-        nominal_end_effector_frame: rcs._core.common.Pose | None = None,
         world_to_robot: rcs._core.common.Pose | None = None,
         async_control: bool = False,
-        tcp_offset_configured_in_desk: bool = True,
         ignore_realtime: bool = False,
         tcp_offset: rcs._core.common.Pose = ...,
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        allow_high_collision: bool = False,
     ) -> None: ...
 
 class FrankaState(rcs._core.common.RobotState):

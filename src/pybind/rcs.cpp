@@ -73,6 +73,11 @@ class PyRobot : public rcs::common::Robot {
                            get_cartesian_position, );
   }
 
+  rcs::common::Pose get_cartesian_flange_position() override {
+    PYBIND11_OVERRIDE(rcs::common::Pose, rcs::common::Robot,
+                      get_cartesian_flange_position, );
+  }
+
   void set_joint_position(const rcs::common::VectorXd& q) override {
     PYBIND11_OVERRIDE_PURE(void, rcs::common::Robot, set_joint_position, q);
   }
@@ -461,6 +466,8 @@ PYBIND11_MODULE(_core, m) {
       .def("get_state", &rcs::common::Robot::get_state)
       .def("get_cartesian_position",
            &rcs::common::Robot::get_cartesian_position)
+      .def("get_cartesian_flange_position",
+           &rcs::common::Robot::get_cartesian_flange_position)
       .def("set_joint_position", &rcs::common::Robot::set_joint_position,
            py::arg("q"), py::call_guard<py::gil_scoped_release>())
       .def("get_joint_position", &rcs::common::Robot::get_joint_position)

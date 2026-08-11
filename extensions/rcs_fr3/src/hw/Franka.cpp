@@ -19,6 +19,16 @@
 
 namespace rcs {
 namespace hw {
+common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
+  return common::Pose(robot_state.O_T_EE) *
+         common::Pose(robot_state.F_T_EE).inverse();
+}
+
+common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
+                               const common::Pose& tcp_offset) {
+  return GetFlangeInBaseFrame(robot_state) * tcp_offset;
+}
+
 Franka::Franka(const FrankaConfig& cfg,
                std::optional<std::shared_ptr<common::Kinematics>> ik)
     : m_cfg(cfg),
@@ -99,19 +109,29 @@ void Franka::set_default_robot_behavior() {
 
 common::Pose Franka::get_cartesian_position() {
   this->check_for_background_errors();
-  common::Pose x;
+  franka::RobotState robot_state;
   if (this->running_controller.load() == Controller::none) {
     this->curr_state = this->robot.readOnce();
-    x = common::Pose(this->curr_state.O_T_EE);
+    robot_state = this->curr_state;
   } else {
     this->interpolator_mutex.lock();
-    x = common::Pose(this->curr_state.O_T_EE);
+    robot_state = this->curr_state;
     this->interpolator_mutex.unlock();
   }
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    return x * this->m_cfg.tcp_offset;
+  return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
+}
+
+common::Pose Franka::get_cartesian_flange_position() {
+  this->check_for_background_errors();
+  franka::RobotState robot_state;
+  if (this->running_controller.load() == Controller::none) {
+    this->curr_state = this->robot.readOnce();
+    robot_state = this->curr_state;
+  } else {
+    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+    robot_state = this->curr_state;
   }
-  return x;
+  return GetFlangeInBaseFrame(robot_state);
 }
 
 void Franka::set_joint_position(const common::VectorXd& q) {
@@ -164,7 +184,7 @@ void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
 }
 
 void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
-                         const std::array<double, 7>& torque_limit) {
+                         const common::Vector7d& torque_limit) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
     if (tau_d_array[i] < -torque_limit[i]) {
       tau_d_array[i] = -torque_limit[i];
@@ -250,10 +270,8 @@ void Franka::osc_set_cartesian_position(
     this->interpolator_mutex.lock();
   }
 
-  common::Pose curr_pose(this->curr_state.O_T_EE);
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    curr_pose = curr_pose * this->m_cfg.tcp_offset;
-  }
+  common::Pose curr_pose =
+      GetTCPInBaseFrame(this->curr_state, this->m_cfg.tcp_offset);
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
@@ -284,18 +302,22 @@ void Franka::osc() {
   franka::Model model = this->robot.loadModel();
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
+  const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
 
-  // high collision threshold values for high impedance
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  if (allow_high_collision) {
+    // High collision threshold values for high impedance.
+    this->robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   // from bench mark
   // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
@@ -381,8 +403,9 @@ void Franka::osc() {
       Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
           gravity_array.data());
 
-      std::array<double, 42> jacobian_array =
-          model.zeroJacobian(franka::Frame::kEndEffector, robot_state);
+      std::array<double, 42> jacobian_array = model.zeroJacobian(
+          franka::Frame::kEndEffector, robot_state.q,
+          this->m_cfg.tcp_offset.affine_array(), robot_state.EE_T_K);
       Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
           jacobian_array.data());
 
@@ -394,9 +417,7 @@ void Franka::osc() {
       // Express OSC feedback in the same TCP frame exposed by the public
       // Cartesian API.
       common::Pose T_EE_in_base_frame_pose =
-          this->m_cfg.tcp_offset_configured_in_desk
-              ? common::Pose(robot_state.O_T_EE)
-              : common::Pose(robot_state.O_T_EE) * this->m_cfg.tcp_offset;
+          GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
       Eigen::Affine3d T_EE_in_base_frame =
           T_EE_in_base_frame_pose.affine_matrix();
 
@@ -495,8 +516,6 @@ void Franka::osc() {
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-      // deoxys/config/control_config.yml
-      std::array<double, 7> torque_limit = {5, 5, 5, 5, 5, 5, 5};
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
 
       return tau_d_rate_limited;
@@ -514,17 +533,21 @@ void Franka::joint_controller() {
   franka::Model model = this->robot.loadModel();
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
+  const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
 
-  // high collision threshold values for high impedance
-  this->robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  if (allow_high_collision) {
+    // High collision threshold values for high impedance.
+    this->robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
@@ -589,8 +612,6 @@ void Franka::joint_controller() {
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-      // deoxys/config/control_config.yml
-      std::array<double, 7> torque_limit = {5, 5, 5, 5, 5, 5, 5};
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
 
       return tau_d_rate_limited;
@@ -615,12 +636,15 @@ void Franka::zero_torque_guiding() {
 }
 
 void Franka::zero_torque_controller() {
-  // high collision threshold values for high impedance
-  robot.setCollisionBehavior(
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-      {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  this->set_default_robot_behavior();
+  if (this->m_cfg.allow_high_collision) {
+    // High collision threshold values for high impedance.
+    robot.setCollisionBehavior(
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+        {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+  }
 
   this->controller_time = 0.0;
   try {
@@ -730,34 +754,19 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
-  common::Pose target_pose = x;
-  if (!this->m_cfg.tcp_offset_configured_in_desk) {
-    target_pose = target_pose * this->m_cfg.tcp_offset.inverse();
-  }
   if (this->m_cfg.async_control) {
-    this->osc_set_cartesian_position(target_pose);
+    this->osc_set_cartesian_position(x);
     return;
   }
-  // TODO: this should handled with tcp offset config
-  common::Pose nominal_end_effector_frame_value;
-  if (this->m_cfg.nominal_end_effector_frame.has_value()) {
-    nominal_end_effector_frame_value =
-        this->m_cfg.nominal_end_effector_frame.value();
-  } else {
-    nominal_end_effector_frame_value = common::Pose::Identity();
-  }
-  // nominal end effector frame should be on top of tcp offset as franka already
-  // takes care of the default franka hand offset lets add a franka hand offset
-
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
-    // if gripper is attached the tcp offset will automatically be applied
-    // by libfranka
-    this->robot.setEE(nominal_end_effector_frame_value.affine_array());
+    const franka::RobotState robot_state = this->robot.readOnce();
+    const common::Pose target_pose =
+        x * this->m_cfg.tcp_offset.inverse() * common::Pose(robot_state.F_T_EE);
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
 
   } else if (this->m_cfg.ik_solver == IKSolver::rcs_ik) {
-    this->set_cartesian_position_ik(target_pose);
+    this->set_cartesian_position_ik(x);
   }
 }
 
@@ -814,10 +823,7 @@ void Franka::set_cartesian_position_internal(const common::Pose& pose,
         if (time == 0) {
           initial_elbow = state.elbow_c;
 
-          initial_pose =
-              this->m_cfg.tcp_offset_configured_in_desk
-                  ? common::Pose(state.O_T_EE)
-                  : common::Pose(state.O_T_EE) * this->m_cfg.tcp_offset;
+          initial_pose = common::Pose(state.O_T_EE);
         }
         auto new_elbow = initial_elbow;
         const double progress = time / max_time;

@@ -4,12 +4,13 @@ RCS ships with ready-to-use applications for common operator workflows such as r
 
 ## Teleoperation
 
-Use the Franka teleoperation app when you want to collect demonstrations or directly control a robot from an operator interface.
+Use the Meta Quest 3 teleoperation examples when you want to collect demonstrations or directly control a robot from an operator interface. RCS provides examples for Franka and I2RT YAM arms.
 
 - Example guide: [examples/teleop/README.md](../../examples/teleop/README.md)
-- Main script: [examples/teleop/franka.py](../../examples/teleop/franka.py)
+- Franka example: [examples/teleop/franka.py](../../examples/teleop/franka.py)
+- YAM example: [examples/teleop/yam.py](../../examples/teleop/yam.py)
 
-The current example focuses on Franka teleoperation with Meta Quest 3 and GELLO-based setups.
+The Franka example supports Meta Quest 3 and GELLO-based setups. The YAM example supports dual-arm Meta Quest 3 teleoperation in simulation or on hardware; install the [YAM extension](../extensions/rcs_yam.md) before using real YAM hardware.
 
 ## Inference
 

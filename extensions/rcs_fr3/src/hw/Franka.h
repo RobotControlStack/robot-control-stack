@@ -38,19 +38,22 @@ struct FrankaConfig : common::RobotConfig {
   common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
-  // deoxys/config/joint-impedance-controller.yml
+  // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
   common::Vector7d kd =
       (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
+  common::Vector7d torque_limit = common::Vector7d::Constant(5.0);
+  bool allow_high_collision = false;
   // values from deoxys/config/osc-position-controller.yml
   Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
   double kp_r = 250.0;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
-  std::optional<common::Pose> nominal_end_effector_frame = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
+  common::Pose tcp_offset = common::Pose::Identity();
+  // Indicates that Cartesian control uses tcp_offset.
+  bool tcp_offset_explicit = false;
   bool async_control = false;
-  bool tcp_offset_configured_in_desk = true;
   bool ignore_realtime = false;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
@@ -117,6 +120,8 @@ class Franka : public common::Robot {
   void set_default_robot_behavior();
 
   common::Pose get_cartesian_position() override;
+
+  common::Pose get_cartesian_flange_position() override;
 
   void set_joint_position(const common::VectorXd& q) override;
 

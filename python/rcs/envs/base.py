@@ -167,7 +167,15 @@ class CameraDictType(RCSpaceType):
 
 
 # joining works with inheritance but need to inherit from protocol again
-class ArmObsType(TQuatDictType, JointsDictType, TRPYDictType): ...
+class ArmObsType(TQuatDictType, JointsDictType, TRPYDictType):
+    tquat_flange: Annotated[
+        Vec7Type,
+        gym.spaces.Box(
+            low=np.array([-0.855, -0.855, -1] + [-1] + [-np.inf] * 3),
+            high=np.array([0.855, 0.855, 1.188] + [1] + [np.inf] * 3),
+            dtype=np.float64,
+        ),
+    ]
 
 
 CartOrJointContType: TypeAlias = TQuatDictType | JointsDictType | TRPYDictType
@@ -346,6 +354,12 @@ class RobotWrapper(ActObsInfoWrapper):
             ),
             joints=self.robot.get_joint_position(),
             xyzrpy=self.robot.get_cartesian_position().xyzrpy(),
+            tquat_flange=np.concatenate(
+                [
+                    self.robot.get_cartesian_flange_position().translation(),
+                    self.robot.get_cartesian_flange_position().rotation_q(),
+                ]
+            ),
         )
 
     def action(self, action: dict[str, Any]) -> dict[str, Any]:

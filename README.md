@@ -14,7 +14,7 @@
 
 **Robot Control Stack (RCS)** is a flexible, native [Gymnasium](https://gymnasium.farama.org/) wrapper-based robot control interface designed specifically for modern robot learning and Vision-Language-Action (VLA) models. 
 
-It completely unifies **MuJoCo simulation** and real-world physical robot control into a single, seamless API. Currently, RCS natively supports four robots out-of-the-box: **Franka FR3/Panda, xArm7, UR5e, and SO101.**
+It completely unifies **MuJoCo simulation** and real-world physical robot control into a single, seamless API. Currently, RCS natively supports five robots out-of-the-box: **Franka FR3/Panda, xArm7, UR5e, SO101, and I2RT YAM.**
 
 ![RCS Demo](https://raw.githubusercontent.com/RobotControlStack/robotcontrolstack.github.io/refs/heads/master/static/videos/grid.webp)
 
@@ -26,7 +26,7 @@ Traditional robotics middleware (like ROS/ROS2) and complex motion planning pipe
 * **Zero ROS Overhead:** No complex message-passing, middleware, or network configuration required. Run natively in Python with a lightweight C++ backend.
 * **Frictionless Sim-to-Real:** Train your Reinforcement Learning or VLA policies in our MuJoCo Gymnasium wrapper, and deploy the *exact same code* directly to physical hardware.
 * **Synchronous Execution:** Optimized specifically for the highly parallelized, synchronous data collection required by modern ML workflows.
-* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents). See [examples/teleop/README.md](examples/teleop/README.md) and [examples/inference/README.md](examples/inference/README.md).
+* **Ready-to-Use Apps:** Ships with pre-built applications for data collection via teleoperation and remote model inference via [vlagents](https://github.com/RobotControlStack/vlagents). See the [teleoperation guide](examples/teleop/README.md), and [inference guide](examples/inference/README.md).
 
 ## 🧩 Wrapper-Based Architecture
 
@@ -168,7 +168,7 @@ export RCS_PREFIX=/path/to/rcs-assets
 
 ## 🦾 Hardware Extensions
 
-RCS supports various hardware extensions to seamlessly connect your policies to the real world (e.g., FR3, xArm7, RealSense). These are located in the `extensions` directory.
+RCS supports various hardware extensions to seamlessly connect your policies to the real world (e.g., FR3, xArm7, YAM, RealSense). These are located in the `extensions` directory.
 
 To install a specific robot extension (example for Franka FR3):
 

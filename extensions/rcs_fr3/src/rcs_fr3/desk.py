@@ -51,6 +51,7 @@ def home(ip: str):
     env_cfg = default_env.config()
     robot_cfg = env_cfg.robot_cfg
     robot_cfg.speed_factor = 0.2
+    robot_cfg.ignore_realtime = True
     f = rcs_fr3.hw.Franka(robot_cfg)
     f.move_home()
 
@@ -72,6 +73,7 @@ def gripper(ip: str, close_gripper: bool):
 def info(ip: str, include_hand: bool = False):
     robot_cfg = rcs_fr3.hw.FR3Config(ip=ip)
     robot_cfg.speed_factor = 0.2
+    robot_cfg.ignore_realtime = True
     f = rcs_fr3.hw.Franka(robot_cfg)
     print("Robot info:")
     print("Current cartesian position:")
