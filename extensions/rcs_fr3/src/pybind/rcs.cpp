@@ -149,6 +149,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tcp_offset_explicit",
                      &rcs::hw::FrankaConfig::tcp_offset_explicit)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
+      .def_readwrite("blocking_move_on_start",
+                     &rcs::hw::FrankaConfig::blocking_move_on_start)
+      .def_readwrite("approach_joint_speed",
+                     &rcs::hw::FrankaConfig::approach_joint_speed)
+      .def_readwrite("approach_cartesian_speed",
+                     &rcs::hw::FrankaConfig::approach_cartesian_speed)
+      .def_readwrite("approach_rotation_speed",
+                     &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 

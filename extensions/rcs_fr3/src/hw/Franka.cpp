@@ -201,7 +201,10 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   // form deoxys/config/charmander.yml
   int traj_rate = 500;
 
-  if (this->running_controller.load() == Controller::none) {
+  const bool starting_fresh =
+      this->running_controller.load() == Controller::none;
+
+  if (starting_fresh) {
     this->controller_time = 0.0;
     this->m_active_policy_rate = this->m_cfg.policy_rate;
     this->get_joint_position();
@@ -216,17 +219,63 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
     this->interpolator_mutex.lock();
   }
 
+  const bool approach_on_start =
+      starting_fresh && this->m_cfg.blocking_move_on_start;
+  double approach_time = -1.0;
+  if (approach_on_start) {
+    const double kMinApproachTime = 0.3;  // s
+    const double kMaxApproachTime = 5.0;  // s
+    const common::Vector7d q_now =
+        Eigen::Map<common::Vector7d>(this->curr_state.q.data());
+    const double max_gap = (desired_q - q_now).cwiseAbs().maxCoeff();
+    const double speed = std::max(this->m_cfg.approach_joint_speed, 1e-6);
+    approach_time =
+        std::clamp(max_gap / speed, kMinApproachTime, kMaxApproachTime);
+  }
+
   this->joint_interpolator.reset(
       this->controller_time,
       Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
-      this->m_active_policy_rate, traj_rate, traj_interpolation_time_fraction);
+      this->m_active_policy_rate, traj_rate, traj_interpolation_time_fraction,
+      approach_time);
 
   // if not thread is running, then start
-  if (this->running_controller.load() == Controller::none) {
+  if (starting_fresh) {
     this->running_controller.store(Controller::jsc);
     this->control_thread = std::thread(&Franka::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
+  }
+
+  if (approach_on_start) {
+    // Block until the controller has driven the robot to desired_q (or a
+    // safety timeout elapses).
+    const double pos_tol = 0.02;  // rad
+    const double vel_tol = 0.05;  // rad/s
+    const double timeout = approach_time + 2.0;
+    const auto start = std::chrono::steady_clock::now();
+    while (true) {
+      this->check_for_background_errors();
+      common::Vector7d q;
+      common::Vector7d dq;
+      {
+        std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+        q = Eigen::Map<common::Vector7d>(this->curr_state.q.data());
+        dq = Eigen::Map<common::Vector7d>(this->curr_state.dq.data());
+      }
+      const double elapsed =
+          std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+              .count();
+      const double pos_err = (q - desired_q).cwiseAbs().maxCoeff();
+      const double vel = dq.cwiseAbs().maxCoeff();
+      if (elapsed >= approach_time && pos_err < pos_tol && vel < vel_tol) {
+        break;
+      }
+      if (elapsed > timeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
   }
 }
 
@@ -253,7 +302,10 @@ void Franka::osc_set_cartesian_position(
   // form deoxys/config/charmander.yml
   int traj_rate = 500;
 
-  if (this->running_controller.load() == Controller::none) {
+  const bool starting_fresh =
+      this->running_controller.load() == Controller::none;
+
+  if (starting_fresh) {
     this->controller_time = 0.0;
     this->m_active_policy_rate = this->m_cfg.policy_rate;
     {
@@ -272,18 +324,81 @@ void Franka::osc_set_cartesian_position(
 
   common::Pose curr_pose =
       GetTCPInBaseFrame(this->curr_state, this->m_cfg.tcp_offset);
+
+  const bool approach_on_start =
+      starting_fresh && this->m_cfg.blocking_move_on_start;
+  double approach_time = -1.0;
+  if (approach_on_start) {
+    const double kMinApproachTime = 0.3;  // s
+    const double kMaxApproachTime = 5.0;  // s
+    const double trans_gap =
+        (desired_pose_EE_in_base_frame.translation() - curr_pose.translation())
+            .norm();
+    double dot = std::abs(curr_pose.quaternion().normalized().dot(
+        desired_pose_EE_in_base_frame.quaternion().normalized()));
+    dot = std::min(1.0, dot);
+    const double rot_gap = 2.0 * std::acos(dot);
+    const double trans_speed = std::max(this->m_cfg.approach_cartesian_speed, 1e-6);
+    const double rot_speed = std::max(this->m_cfg.approach_rotation_speed, 1e-6);
+    approach_time = std::clamp(
+        std::max(trans_gap / trans_speed, rot_gap / rot_speed), kMinApproachTime,
+        kMaxApproachTime);
+  }
+
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
       desired_pose_EE_in_base_frame.quaternion(), this->m_active_policy_rate,
-      traj_rate, traj_interpolation_time_fraction);
+      traj_rate, traj_interpolation_time_fraction, approach_time);
 
   // if not thread is running, then start
-  if (this->running_controller.load() == Controller::none) {
+  if (starting_fresh) {
     this->running_controller.store(Controller::osc);
     this->control_thread = std::thread(&Franka::osc, this);
   } else {
     this->interpolator_mutex.unlock();
+  }
+
+  if (approach_on_start) {
+    // Block until the controller has driven the robot to the desired pose (or a
+    // safety timeout elapses).
+    const double pos_tol = 0.005;  // m
+    const double ori_tol = 0.02;   // rad
+    const double vel_tol = 0.05;   // rad/s (joint-space proxy for "stopped")
+    const double timeout = approach_time + 2.0;
+    const auto start = std::chrono::steady_clock::now();
+    const Eigen::Vector3d target_p = desired_pose_EE_in_base_frame.translation();
+    const Eigen::Quaterniond target_q =
+        desired_pose_EE_in_base_frame.quaternion().normalized();
+    while (true) {
+      this->check_for_background_errors();
+      franka::RobotState state;
+      common::Vector7d dq;
+      {
+        std::lock_guard<std::mutex> lock(this->interpolator_mutex);
+        state = this->curr_state;
+        dq = Eigen::Map<common::Vector7d>(this->curr_state.dq.data());
+      }
+      const common::Pose meas_pose =
+          GetTCPInBaseFrame(state, this->m_cfg.tcp_offset);
+      const double pos_err = (target_p - meas_pose.translation()).norm();
+      double dot =
+          std::abs(meas_pose.quaternion().normalized().dot(target_q));
+      dot = std::min(1.0, dot);
+      const double ori_err = 2.0 * std::acos(dot);
+      const double vel = dq.cwiseAbs().maxCoeff();
+      const double elapsed =
+          std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+              .count();
+      if (elapsed >= approach_time && pos_err < pos_tol && ori_err < ori_tol &&
+          vel < vel_tol) {
+        break;
+      }
+      if (elapsed > timeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
   }
 }
 

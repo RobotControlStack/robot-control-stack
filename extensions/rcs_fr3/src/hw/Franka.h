@@ -57,6 +57,24 @@ struct FrankaConfig : common::RobotConfig {
   // Indicates that Cartesian control uses tcp_offset.
   bool tcp_offset_explicit = false;
   bool async_control = false;
+  // When true, on every (re)start of the joint controller the controller first
+  // holds the current measured position (~zero error) and ramps its target to
+  // the first commanded target over a gap-scaled window, blocking until it has
+  // converged before streaming resumes. Avoids a torque/velocity jump when
+  // (re)starting far from the target (e.g. after a PD-gain switch).
+  bool blocking_move_on_start = false;
+  // Max joint speed (rad/s) used to size the blocking approach window on
+  // (re)start of the joint controller:
+  // approach_time = max|q_target - q_now| / approach_joint_speed (clamped).
+  // Only used when blocking_move_on_start is true.
+  double approach_joint_speed = 0.4;
+  // Max Cartesian translation (m/s) and rotation (rad/s) speeds used to size the
+  // blocking approach window on (re)start of the OSC controller:
+  // approach_time = max(trans_gap / approach_cartesian_speed,
+  //                     rot_gap / approach_rotation_speed) (clamped).
+  // Only used when blocking_move_on_start is true.
+  double approach_cartesian_speed = 0.1;
+  double approach_rotation_speed = 0.5;
   bool ignore_realtime = false;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
