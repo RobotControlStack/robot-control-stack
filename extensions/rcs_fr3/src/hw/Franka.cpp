@@ -199,11 +199,11 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
-  int policy_rate = 20;
   int traj_rate = 500;
 
   if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
+    this->m_active_policy_rate = this->m_cfg.policy_rate;
     this->get_joint_position();
     this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
   } else if (this->running_controller.load() != Controller::jsc) {
@@ -219,7 +219,7 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   this->joint_interpolator.reset(
       this->controller_time,
       Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
-      policy_rate, traj_rate, traj_interpolation_time_fraction);
+      this->m_active_policy_rate, traj_rate, traj_interpolation_time_fraction);
 
   // if not thread is running, then start
   if (this->running_controller.load() == Controller::none) {
@@ -251,11 +251,11 @@ void Franka::osc_set_cartesian_position(
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;
   // form deoxys/config/charmander.yml
-  int policy_rate = 20;
   int traj_rate = 500;
 
   if (this->running_controller.load() == Controller::none) {
     this->controller_time = 0.0;
+    this->m_active_policy_rate = this->m_cfg.policy_rate;
     {
       std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->curr_state = this->robot.readOnce();
@@ -275,8 +275,8 @@ void Franka::osc_set_cartesian_position(
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
-      desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
-      traj_interpolation_time_fraction);
+      desired_pose_EE_in_base_frame.quaternion(), this->m_active_policy_rate,
+      traj_rate, traj_interpolation_time_fraction);
 
   // if not thread is running, then start
   if (this->running_controller.load() == Controller::none) {

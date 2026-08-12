@@ -38,6 +38,9 @@ struct FrankaConfig : common::RobotConfig {
   common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
+  // Rate (Hz) at which set-point commands are streamed from the Python side.
+  // Used to size the interpolation window between successive targets.
+  int policy_rate = 20;
   // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
@@ -94,6 +97,9 @@ class Franka : public common::Robot {
   std::optional<std::thread> control_thread = std::nullopt;
   common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
+  // Snapshot of m_cfg.policy_rate taken when a controller thread is started, so
+  // the interpolation window stays consistent for the controller's lifetime.
+  int m_active_policy_rate = 20;
   common::LinearJointPositionTrajInterpolator joint_interpolator;
   franka::RobotState curr_state;
   std::mutex interpolator_mutex;
