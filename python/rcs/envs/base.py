@@ -1100,9 +1100,10 @@ class GripperWrapper(ActObsInfoWrapper):
         if self._command_changed(gripper_action):
             if self.binary:
                 self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+                self._last_gripper_cmd = [1.0-0.573] if gripper_action[0] < 0.5 else [1.0]
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
-            self._last_gripper_cmd = gripper_action.tolist()
+                self._last_gripper_cmd = gripper_action.tolist()
         del action[self.gripper_key]
         return action
 

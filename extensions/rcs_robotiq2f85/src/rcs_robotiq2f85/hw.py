@@ -54,7 +54,7 @@ class RobotiQ2F85Gripper(Gripper):
         """
         Close the gripper to grasp an object.
         """
-        self.set_normalized_width(0.0, force=self._cfg.force)
+        self.set_normalized_width(0.3, force=self._cfg.force)
 
     def open(self) -> None:
         """
