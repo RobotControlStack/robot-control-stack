@@ -114,10 +114,23 @@ class TeleopLoop:
         # require actions for all configured robots in every step.
         for robot_name in self.env.get_wrapper_attr("envs"):
             if robot_name not in translated and robot_name in self._last_obs:
-                translated[robot_name] = {
-                    "joints": self._last_obs[robot_name]["joints"].copy(),
-                    "gripper": self._last_obs[robot_name].get("gripper", 1.0),
-                }
+                observation = self._last_obs[robot_name]
+                control_mode = self.operator.control_mode[0]
+                if control_mode == ControlMode.CARTESIAN_TQuat:
+                    translated[robot_name] = {
+                        "tquat": observation["tquat"].copy(),
+                        "gripper": observation.get("gripper", 1.0),
+                    }
+                elif control_mode == ControlMode.CARTESIAN_TRPY:
+                    translated[robot_name] = {
+                        "xyzrpy": observation["xyzrpy"].copy(),
+                        "gripper": observation.get("gripper", 1.0),
+                    }
+                else:
+                    translated[robot_name] = {
+                        "joints": observation["joints"].copy(),
+                        "gripper": observation.get("gripper", 1.0),
+                    }
         return translated
 
     def environment_step_loop(self):

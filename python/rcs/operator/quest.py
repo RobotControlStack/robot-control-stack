@@ -86,10 +86,12 @@ class QuestOperator(BaseOperator):
         self._exit_requested = False
         self._grp_pos = {key: 1.0 for key in self.controller_names}  # start with opened gripper
         self._last_controller_pose = {key: Pose() for key in self.controller_names}
+        self._controller_pose_valid = dict.fromkeys(self.controller_names, False)
         self._offset_pose = {key: Pose() for key in self.controller_names}
 
         self._commands = TeleopCommands()
-        self._reset_origin_to_current()
+        if not self.config.absolute_tracking:
+            self._reset_origin_to_current()
 
         self._step_env = False
         self._set_frame = {key: Pose() for key in self.controller_names}
@@ -126,6 +128,7 @@ class QuestOperator(BaseOperator):
             for controller in self.controller_names:
                 self._offset_pose[controller] = Pose()
                 self._last_controller_pose[controller] = Pose()
+                self._controller_pose_valid[controller] = False
                 self._grp_pos[controller] = 1
 
     def _swap_controller_input(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -152,21 +155,29 @@ class QuestOperator(BaseOperator):
     def reset_operator_state(self):
         """Resets the hardware offsets when the environment resets."""
         self._reset_state()
-        self._reset_origin_to_current()
+        if not self.config.absolute_tracking:
+            self._reset_origin_to_current()
 
     def consume_action(self) -> dict[str, ArmWithGripper]:
         transforms = {}
         with self._resource_lock:
             for controller in self.controller_names:
-                transform = Pose(
-                    translation=(
-                        self._last_controller_pose[controller].translation()  # type: ignore
-                        - self._offset_pose[controller].translation()
-                    ),
-                    quaternion=(
-                        self._last_controller_pose[controller] * self._offset_pose[controller].inverse()
-                    ).rotation_q(),
-                )
+                if self.config.absolute_tracking:
+                    # Do not command the identity pose while waiting for the first
+                    # Quest packet after startup or an environment reset.
+                    if not self._controller_pose_valid[controller]:
+                        continue
+                    transform = self._last_controller_pose[controller]
+                else:
+                    transform = Pose(
+                        translation=(
+                            self._last_controller_pose[controller].translation()  # type: ignore
+                            - self._offset_pose[controller].translation()
+                        ),
+                        quaternion=(
+                            self._last_controller_pose[controller] * self._offset_pose[controller].inverse()
+                        ).rotation_q(),
+                    )
 
                 set_axes = Pose(quaternion=self._set_frame[controller].rotation_q())
 
@@ -260,6 +271,8 @@ class QuestOperator(BaseOperator):
                     translation=np.array(input_data[controller]["pos"]),
                     quaternion=np.array(input_data[controller]["rot"]),
                 )
+                if self.config.umi_mode and controller in self.config.umi_mode_tool_offset:
+                    last_controller_pose = last_controller_pose * self.config.umi_mode_tool_offset[controller]
                 # if controller == "left":
                 #     last_controller_pose = (
                 #         Pose(translation=np.array([0, 0, 0]), rpy=RPY(roll=0, pitch=0, yaw=np.deg2rad(180)))  # type: ignore
@@ -272,7 +285,14 @@ class QuestOperator(BaseOperator):
                 else:
                     prev_trigger_pressed = self._normalize_axis(prev_data[controller][self._trg_btn[controller]]) > 0.5
 
-                if trigger_pressed and not prev_trigger_pressed:
+                if self.config.absolute_tracking:
+                    # UMI-style tracking is unclutched: every controller packet is
+                    # an absolute Cartesian target for the robot end effector.
+                    with self._resource_lock:
+                        self._last_controller_pose[controller] = last_controller_pose
+                        self._controller_pose_valid[controller] = True
+
+                elif trigger_pressed and not prev_trigger_pressed:
                     # trigger just pressed (first data sample with button pressed)
 
                     with self._resource_lock:
@@ -306,3 +326,7 @@ class QuestConfig(BaseOperatorConfig):
     mq3_addr: str = "10.42.0.1"
     switched_left_right: bool = False
     display_cameras: bool = True
+    umi_mode: bool = False
+    umi_mode_tool_offset: dict[str, Pose] = field(default_factory=dict)
+    # Emit transformed controller poses directly and update them without a clutch.
+    absolute_tracking: bool = False
