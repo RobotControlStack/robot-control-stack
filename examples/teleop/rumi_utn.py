@@ -1,0 +1,227 @@
+import logging
+
+import numpy as np
+from rcs._core.common import BaseCameraConfig, RobotPlatform, GripperType
+from rcs._core.sim import SimConfig
+from rcs.camera.utils import capture_blank_camera_images
+from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
+from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
+from rcs.envs.storage_wrapper import StorageWrapper
+from rcs.envs.tasks import PickTaskConfig
+from rcs.operator.gello import GelloConfig, GelloOperator
+from rcs.operator.interface import TeleopLoop
+from rcs.operator.quest import QuestConfig, QuestOperator
+from simpub.sim.mj_publisher import MujocoPublisher
+
+import rcs
+
+logger = logging.getLogger(__name__)
+
+
+ROBOT2IP = {
+    # "right": "192.168.102.1",
+    "right": "192.168.101.1",
+}
+ROBOT2ID = {
+    # "left": "0",
+    "right": "0",
+}
+
+
+ROBOT_INSTANCE = RobotPlatform.SIMULATION
+# ROBOT_INSTANCE = RobotPlatform.HARDWARE
+
+RECORD_FPS = 30
+# set camera dict to none disable cameras
+# "left_wrist": "230422272017",
+# "right_wrist": "230422271040",
+
+CAMERA_DICT = {
+    "wrist": "230422271040",
+    "side": "243122074917",
+}
+# CAMERA_DICT = None
+ZED_CAMERA_DICT = None
+MQ3_ADDR = "10.42.0.1"  # Jin: IPv4 address of the wifi you are connected, join the same network with Quest
+# Jin: After configuring this, run quest_align_frame.py, THEN start the IRIS app. If you see the controller pose in print, youre good
+# Jin: After that, exit quest_align_frame.py (ctrl c a few times), then run franka.py; then you are ready to teleop
+INCLUDE_DEPTH = False
+
+DIGIT_DICT = {"digit_right_left": "D21154", "digit_right_right": "D21296"}
+# DIGIT_DICT = None
+
+
+DATASET_PATH = "box_pnp"
+INSTRUCTION = "pick up cube"
+RECORD_FPS = 30
+
+robot2world = {
+    # "right": rcs.common.Pose(
+    #     translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
+    # ),
+    # "left": rcs.common.Pose(
+    # translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
+    # ),
+    "right": rcs.common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])),
+}
+
+config: QuestConfig | GelloConfig
+config = QuestConfig(
+    mq3_addr=MQ3_ADDR,
+    simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
+    switched_left_right=False,
+    display_cameras=False,
+    umi_mode=True,
+    umi_mode_tool_offset={
+        "right": rcs.common.Pose(translation=np.array([0.2, 0.01, -0.06]), quaternion=np.array([0.7071068, 0, 0.7071068, 0]))
+    },
+    absolute_tracking=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
+)
+# config = GelloConfig(
+#     arms={
+#         "right": GelloArmConfig(com_port="/dev/serial/by-id/usb-ROBOTIS_OpenRB-150_E505008B503059384C2E3120FF07332D-if00"),
+#         "left": GelloArmConfig(com_port="/dev/serial/by-id/usb-ROBOTIS_OpenRB-150_ABA78B05503059384C2E3120FF062F26-if00"),
+#     },
+#     simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
+# )
+
+
+def get_env():
+    blank_camera_dict: dict[str, np.ndarray] = {}
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+        from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
+        from rcs_fr3.creators import HardwareCameraCreatorConfig
+
+        env_creator = SingleArmFR3MultiHardwareEnv()
+        env_creator.ip = ROBOT2IP["right"]
+        hw_cfg = env_creator.config(grippertype=GripperType("Robotiq2F85"), robot_ip=ROBOT2IP["right"])
+        camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
+        if CAMERA_DICT is not None:
+            try:
+                from rcs_realsense.utils import reset_cameras
+
+                reset_cameras()
+            except Exception as e:
+                print("Error occurred while resetting cameras: %s", e)
+                print("Assuming realsense is not being used, continuing.")
+            camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
+                camera_type_id="realsense",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=640,
+                        resolution_height=480,
+                        frame_rate=30,
+                    )
+                    for name, identifier in CAMERA_DICT.items()
+                },
+            )
+        if ZED_CAMERA_DICT is not None:
+            camera_cfgs["zed"] = HardwareCameraCreatorConfig(
+                camera_type_id="zed",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=640,
+                        resolution_height=480,
+                        frame_rate=30,
+                    )
+                    for name, identifier in ZED_CAMERA_DICT.items()
+                },
+                kwargs={
+                    "enable_depth": False,
+                    "enable_imu": False,
+                },
+            )
+        if DIGIT_DICT is not None:
+            camera_cfgs["digit"] = HardwareCameraCreatorConfig(
+                camera_type_id="digit",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=320,
+                        resolution_height=240,
+                        frame_rate=30,
+                    )
+                    for name, identifier in DIGIT_DICT.items()
+                },
+            )
+        hw_cfg.camera_cfgs = camera_cfgs or None
+        hw_cfg.control_mode = config.operator_class.control_mode[0]
+        hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        hw_cfg.wrapper_cfg.binary_gripper = False
+        hw_cfg.max_relative_movement = (
+            0.5 if config.operator_class.control_mode[0] == ControlMode.JOINTS else (0.5, np.deg2rad(90))
+        )
+        hw_cfg.relative_to = config.operator_class.control_mode[1]
+        hw_cfg.robot_to_shared_base_frame = robot2world
+        env_rel = env_creator.create_env(hw_cfg)
+        if DIGIT_DICT is not None:
+            camera_set = env_rel.get_wrapper_attr("camera_set")
+            blank_camera_dict = capture_blank_camera_images(camera_set, DIGIT_DICT)
+        operator = GelloOperator(config) if isinstance(config, GelloConfig) else QuestOperator(config)
+    else:
+        # FR3
+
+        scene = EmptyWorldFR3()
+        sim_cfg_data = scene.config()
+        sim_cfg_data.gripper_cfgs['right'] = rcs._core.sim.SimGripperConfig(
+            epsilon_inner=0.005,
+            epsilon_outer=0.005,
+            seconds_between_callbacks=0.1,
+            ignored_collision_geoms=[],
+            collision_geoms=[],
+            collision_geoms_fingers=[],
+            joints=["right_driver_joint", "left_driver_joint"],
+            max_joint_width=0.005,
+            min_joint_width=1.0,
+            actuator="fingers_actuator",
+            max_actuator_width=0,
+            min_actuator_width=255,
+            gripper_type=GripperType("Robotiq2F85"),
+        )
+        sim_cfg_data.robot_cfgs['right'].tcp_offset=rcs.GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        sim_cfg_data.robot_cfgs['right'].q_home=rcs.HOME_POSITIONS["FR3_DROID"]
+        sim_cfg_data.gripper_offsets['right'] = rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        sim_cfg_data.sim_cfg = SimConfig(
+            async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500
+        )
+        # Quest UMI mode emits poses directly in the simulation/shared frame.
+        sim_cfg_data.relative_to = RelativeTo.NONE
+        sim_cfg_data.max_relative_movement = None
+        sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
+        if sim_cfg_data.root_frame_objects is None:
+            sim_cfg_data.root_frame_objects = {}
+        # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
+        sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
+
+        env_rel = scene.create_env(sim_cfg_data)
+
+        sim = env_rel.get_wrapper_attr("sim")
+        MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
+        operator = GelloOperator(config, sim) if isinstance(config, GelloConfig) else QuestOperator(config, sim)
+
+    if blank_camera_dict:
+        env_rel = BlankCameraObservationWrapper(env_rel, blank_camera_dict)
+
+    env_rel = StorageWrapper(
+        env_rel,
+        DATASET_PATH,
+        INSTRUCTION,
+        batch_size=32,
+        max_rows_per_group=100,
+        max_rows_per_file=1000,
+    )
+    return env_rel, operator
+
+
+def main():
+    env_rel, operator = get_env()
+    env_rel.reset()
+    tele = TeleopLoop(env_rel, operator, env_frequency=RECORD_FPS, robot_platform=ROBOT_INSTANCE)
+    with env_rel, tele:  # type: ignore
+        tele.environment_step_loop()
+
+
+if __name__ == "__main__":
+    main()
