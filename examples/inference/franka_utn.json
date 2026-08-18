@@ -1,8 +1,8 @@
 {
   "vlagents_host": "172.29.5.11",
-  "vlagents_port": 3000,
-  "vlagents_model": "tb_agent",
-  "instruction": "pick up cube",
+  "vlagents_port": 27033,
+  "vlagents_model": "lerobot",
+  "instruction": "sort the cube into the correct plate by its texture",
   "robot_keys": [
     "right"
   ],

@@ -1,4 +1,5 @@
 import copy
+import datetime
 import json
 import logging
 import threading
@@ -27,6 +28,8 @@ import rcs
 from vlagents.client import RemoteAgent
 from vlagents.policies import Act, Obs
 
+visiononly = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +53,12 @@ CAMERA_DICT = {
     "side": "243122074917",
 }
 
+# Frames matching these suffixes are NOT forwarded to the policy. The
+# BlankCameraObservationWrapper adds a "<camera>_blank" reference frame for
+# every DIGIT camera; the policy was not trained on those background images,
+# so drop them while still forwarding the live tactile frames.
+AGENT_CAMERA_EXCLUDE_SUFFIXES = ("_blank",)
+
 ZED_CAMERA_DICT = None
 
 INCLUDE_DEPTH = False
@@ -67,12 +76,17 @@ else:
         "digit_right_right": "D21193",
     }
 
+
+#if visiononly:
+ #   DIGIT_DICT = None
+
 INSTRUCTION = "pick up cube"
 FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
 # RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
-RECORD_PATH = "inference_recordings"
+RECORD_PATH = "recorded_inference_recordings"
+VIDEO_PATH = "recorded_inference_videos"
 MODEL = "lerobot"
 IP = "localhost"
 PORT = 20000
@@ -82,6 +96,15 @@ MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
 # Set to True to close the binary gripper after every environment reset.
 # The robot arm still returns to its configured home position.
 START_GRIPPER_CLOSED = False
+
+# Constant mechanical offset on a single joint (mounting mistake). The offset
+# is ADDED to the action sent to the robot and SUBTRACTED from the observed
+# joint before it is passed to the policy, so the closed loop stays consistent.
+# JOINT_OFFSET_INDEX is a 0-based index into the 7-DOF joint vector; Franka
+# "joint 6" (1-based) corresponds to index 5. Set JOINT_OFFSET_RAD to 0 to
+# disable.
+JOINT_OFFSET_INDEX = 6
+JOINT_OFFSET_RAD = np.deg2rad(45.0) * 0
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -196,6 +219,10 @@ class ModelInference:
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
         for frame in obs["frames"]:
+            if frame.endswith(AGENT_CAMERA_EXCLUDE_SUFFIXES):
+                # Skip the blank "background" reference frames the policy was
+                # not trained on, while keeping the live tactile frames.
+                continue
             cameras[frame] = obs["frames"][frame]["rgb"]["data"]
             cameras[frame] = np.array(Image.fromarray(cameras[frame]).resize((224, 224), Image.Resampling.BILINEAR))
 
@@ -205,7 +232,12 @@ class ModelInference:
                 logger.warning("Observation missing robot %s; skipping", robot)
                 continue
             # TODO: currently hardcoded for joints
-            state.append(obs[robot]["joints"])
+            joints = np.asarray(obs[robot]["joints"], dtype=np.float32).copy()
+            if JOINT_OFFSET_RAD and JOINT_OFFSET_INDEX < len(joints):
+                # Undo the mechanical joint offset so the policy sees the
+                # joint values it was trained on.
+                joints[JOINT_OFFSET_INDEX] -= JOINT_OFFSET_RAD
+            state.append(joints)
             state.append(obs[robot]["gripper"])
         return Obs(cameras=cameras, gripper=None, info=info, state=np.concatenate(state))
 
@@ -241,6 +273,11 @@ class ModelInference:
             act[robot] = {}
             act[robot]["joints"] = action_values[start:end - 1]
             act[robot]["gripper"] = action_values[end - 1 : end]
+            if JOINT_OFFSET_RAD and JOINT_OFFSET_INDEX < len(act[robot]["joints"]):
+                # Compensate the mechanical joint offset when commanding the robot.
+                act[robot]["joints"] = act[robot]["joints"].copy()
+                act[robot]["joints"][JOINT_OFFSET_INDEX] += JOINT_OFFSET_RAD
+            #print("-------------", act[robot]["joints"], act[robot]["gripper"])
         return act
 
     def loop(self):
@@ -410,8 +447,11 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=320,
-                        resolution_height=240,
+                        # DIGIT QVGA frames come back portrait: shape (320, 240, 3).
+                        # The width/height must match (frame = (height, width)) or
+                        # the video writer silently drops every frame.
+                        resolution_width=240,
+                        resolution_height=320,
                         frame_rate=30,
                     )
                     for name, identifier in DIGIT_DICT.items()
@@ -428,8 +468,8 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
 
         # Gains used for USBC
         hw_cfg.robot_cfgs["right"].joint_controller_Kp = np.array([100., 100., 100., 100., 75., 75., 30.])
-        hw_cfg.robot_cfgs["right"].joint_controller_Kp = 2 * hw_cfg.robot_cfgs["right"].joint_controller_Kp
-        hw_cfg.robot_cfgs["right"].joint_controller_Kd = 2*np.sqrt(hw_cfg.robot_cfgs["right"].joint_controller_Kp)
+        hw_cfg.robot_cfgs["right"].joint_controller_Kp = 1 * hw_cfg.robot_cfgs["right"].joint_controller_Kp
+        hw_cfg.robot_cfgs["right"].joint_controller_Kd = 1 * np.sqrt(hw_cfg.robot_cfgs["right"].joint_controller_Kp)
 
         # q_home for the insertion_only case
         if START_GRIPPER_CLOSED:
@@ -479,12 +519,11 @@ def main():
     cfg = load_inference_config()
     env_rel = get_env(cfg)
     reset_env(env_rel, cfg)
+    Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
+    timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
-    # Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
-    # timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-
-    # camera_set = env_rel.get_wrapper_attr("camera_set")
-    # camera_set.record_video(Path(VIDEO_PATH), timestamp)
+    camera_set = env_rel.get_wrapper_attr("camera_set")
+    camera_set.record_video(Path(VIDEO_PATH), timestamp)
 
     # env = RHCWrapper(env, exec_horizon=1)
 
@@ -494,6 +533,13 @@ def main():
         worker.start()
         command_loop(controller)
         worker.join()
+        # Finalize (write the moov atom) before the env/camera teardown, which
+        # can segfault and skip the normal close() -> stop_video() cleanup,
+        # leaving the mp4 files unplayable.
+        try:
+            camera_set.stop_video()
+        except Exception:
+            logger.exception("failed to finalize video recording")
 
 
 if __name__ == "__main__":
