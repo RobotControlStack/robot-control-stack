@@ -21,7 +21,16 @@
 namespace rcs {
 namespace hw {
 
+struct TAMHistorySample {
+  double t;
+  std::array<double, 7> q;
+  std::array<double, 7> dq;
+  std::array<double, 7> tau_cmd;
+  std::array<double, 7> gravity;
+};
+
 const double DEFAULT_SPEED_FACTOR = 0.2;
+const size_t TAM_HISTORY_SIZE = 200;
 
 struct FrankaLoad {
   double load_mass;
@@ -75,6 +84,7 @@ struct FrankaConfig : common::RobotConfig {
   // Only used when blocking_move_on_start is true.
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
+  bool tam_enabled = false;
   bool ignore_realtime = false;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
@@ -123,6 +133,9 @@ class Franka : public common::Robot {
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
   common::ThreadSafeValue<std::exception_ptr> background_exception;
+  common::ThreadSafeValue<Eigen::VectorXd> tam_latent;
+  common::ThreadSafeValue<Eigen::VectorXd> tam_mlp_weight;
+  common::ThreadSafeFixedBuffer<TAMHistorySample> tam_history{TAM_HISTORY_SIZE};
   void osc();
   void joint_controller();
   void zero_torque_controller();
@@ -180,6 +193,19 @@ class Franka : public common::Robot {
   void set_cartesian_position_ik(const common::Pose& x);
 
   common::Pose get_base_pose_in_world_coordinates() override;
+
+  void set_tam_mlp_weight(const Eigen::VectorXd& weight) {
+    this->tam_mlp_weight.store(weight);
+  }
+  void set_tam_latent(const Eigen::VectorXd& latent) {
+    this->tam_latent.store(latent);
+  }
+
+  std::vector<TAMHistorySample> get_tam_history() {
+    return this->tam_history.to_vector();
+  }
+
+  std::array<double, 7> tam_forward(const std::array<double, 7>& tau);
 
   void reset() override;
   void close() override {};

@@ -93,6 +93,20 @@ FrankaState* Franka::get_state() {
   return state;
 }
 
+std::array<double, 7> Franka::tam_forward(const std::array<double, 7>& tau) {
+  // access weight matrix thread safe
+  const Eigen::VectorXd weight = this->tam_mlp_weight.load();
+
+  // access latent thread safe
+  const Eigen::VectorXd latent = this->tam_latent.load();
+
+  // TODO reshape weight and latent to match nn
+  // TODO forward nn
+  // TODO convert output to std::array (data type used by libfranka)
+  std::array<double, 7> tam_tau = tau;
+  return tam_tau;
+}
+
 void Franka::set_default_robot_behavior() {
   this->robot.setCollisionBehavior({{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
                                    {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
@@ -610,10 +624,24 @@ void Franka::osc() {
       auto time =
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+      if (this->m_cfg.tam_enabled) {
+        tau_d_array = tam_forward(tau_d_array);
+      }
+
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
+
+      if (this->m_cfg.tam_enabled) {
+        // safe q, q_dot and tau
+        this->tam_history.push_back(
+            TAMHistorySample{.t = period.toSec(),
+                             .q = robot_state.q,
+                             .dq = robot_state.dq,
+                             .tau_cmd = tau_d_rate_limited,
+                             .gravity = gravity_array});
+      }
 
       return tau_d_rate_limited;
     });
@@ -706,10 +734,24 @@ void Franka::joint_controller() {
       auto time =
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+      if (this->m_cfg.tam_enabled) {
+        tau_d_array = tam_forward(tau_d_array);
+      }
+
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
+
+      if (this->m_cfg.tam_enabled) {
+        // safe q, q_dot and tau
+        this->tam_history.push_back(
+            TAMHistorySample{.t = period.toSec(),
+                             .q = robot_state.q,
+                             .dq = robot_state.dq,
+                             .tau_cmd = tau_d_rate_limited,
+                             .gravity = model.gravity(robot_state)});
+      }
 
       return tau_d_rate_limited;
     });
