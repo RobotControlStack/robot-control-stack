@@ -27,6 +27,11 @@ stubgen:
 	find ./${PYSRC} -not -path "./${PYSRC}/_core/*" -name '*.pyi' -delete
 	find ./${PYSRC}/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[typing\.Literal\[\([0-9]\+\)\], typing\.Literal\[1\]\]/tuple\[typing\.Literal[\1]\]/g'
 	find ./${PYSRC}/_core -name '*.pyi' -print | xargs sed -i 's/tuple\[\([M|N]\), typing\.Literal\[1\]\]/tuple\[\1\]/g'
+	# pybind11-stubgen leaks the numpy dim TypeVars into whichever (sub)module it
+	# finishes first, so drop them everywhere and re-add them where they are used
+	find ./${PYSRC}/_core -name '*.pyi' -print | xargs sed -i '/^[MN] = typing\.TypeVar(/d'
+	find ./${PYSRC}/_core -name '*.pyi' -print | xargs grep -l 'tuple\[M' | xargs -r sed -i '/^__all__/a M = typing.TypeVar("M", bound=int)\nN = typing.TypeVar("N", bound=int)'
+	find ./${PYSRC}/_core -name '*.pyi' -print | xargs grep -L 'typing\.' | xargs -r sed -i '/^import typing/d'
 	ruff check --fix ${PYSRC}/_core
 	isort ${PYSRC}/_core
 	black ${PYSRC}/_core

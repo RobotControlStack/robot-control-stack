@@ -25,6 +25,7 @@ __all__: list[str] = [
     "PandaConfig",
     "RobotMode",
     "RobotState",
+    "TAMHistorySample",
     "exceptions",
     "franka_ik",
     "kAutomaticErrorRecovery",
@@ -36,6 +37,7 @@ __all__: list[str] = [
     "kUserStopped",
     "rcs_ik",
 ]
+M = typing.TypeVar("M", bound=int)
 
 class FHConfig(rcs._core.common.GripperConfig):
     async_control: bool
@@ -83,6 +85,7 @@ class Franka(rcs._core.common.Robot):
     def get_cartesian_flange_position(self) -> rcs._core.common.Pose: ...
     def get_config(self) -> FrankaConfig: ...
     def get_state(self) -> FrankaState: ...
+    def get_tam_history(self) -> list[TAMHistorySample]: ...
     def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcs._core.common.Pose) -> None: ...
     def set_cartesian_position_ik(
         self, pose: rcs._core.common.Pose, max_time: float, elbow: float | None, max_force: float | None = 5
@@ -100,6 +103,8 @@ class Franka(rcs._core.common.Robot):
         yaw: bool = True,
         elbow: bool = True,
     ) -> None: ...
+    def set_tam_latent(self, latent: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
+    def set_tam_mlp_weight(self, weight: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
     def stop_control_thread(self) -> None: ...
     def zero_torque_guiding(self) -> None: ...
 
@@ -120,6 +125,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     load_parameters: FrankaLoad | None
     policy_rate: int
     speed_factor: float
+    tam_enabled: bool
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
@@ -303,6 +309,19 @@ class RobotState:
     def tau_ext_hat_filtered(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
     @property
     def theta(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
+
+class TAMHistorySample:
+    def __init__(self) -> None: ...
+    @property
+    def dq(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
+    @property
+    def gravity(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
+    @property
+    def q(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
+    @property
+    def t(self) -> float: ...
+    @property
+    def tau_cmd(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
 
 class FR3Config(FrankaConfig):
     def __init__(

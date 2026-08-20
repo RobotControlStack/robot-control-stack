@@ -112,6 +112,14 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::FrankaState>(hw, "FrankaState", robot_state)
       .def(py::init<>())
       .def_readonly("robot_state", &rcs::hw::FrankaState::robot_state);
+  py::class_<rcs::hw::TAMHistorySample>(hw, "TAMHistorySample")
+      .def(py::init<>())
+      .def_readonly("t", &rcs::hw::TAMHistorySample::t)
+      .def_readonly("q", &rcs::hw::TAMHistorySample::q)
+      .def_readonly("dq", &rcs::hw::TAMHistorySample::dq)
+      .def_readonly("tau_cmd", &rcs::hw::TAMHistorySample::tau_cmd)
+      .def_readonly("gravity", &rcs::hw::TAMHistorySample::gravity);
+
   py::class_<rcs::hw::FrankaLoad>(hw, "FrankaLoad")
       .def(py::init<>())
       .def_readwrite("load_mass", &rcs::hw::FrankaLoad::load_mass)
@@ -157,6 +165,7 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::hw::FrankaConfig::approach_cartesian_speed)
       .def_readwrite("approach_rotation_speed",
                      &rcs::hw::FrankaConfig::approach_rotation_speed)
+      .def_readwrite("tam_enabled", &rcs::hw::FrankaConfig::tam_enabled)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
@@ -345,7 +354,12 @@ PYBIND11_MODULE(_core, m) {
            &rcs::hw::Franka::set_cartesian_position_ik, py::arg("pose"))
       .def("set_cartesian_position_ik",
            &rcs::hw::Franka::set_cartesian_position_internal, py::arg("pose"),
-           py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5);
+           py::arg("max_time"), py::arg("elbow"), py::arg("max_force") = 5)
+      .def("set_tam_mlp_weight", &rcs::hw::Franka::set_tam_mlp_weight,
+           py::arg("weight"))
+      .def("set_tam_latent", &rcs::hw::Franka::set_tam_latent,
+           py::arg("latent"))
+      .def("get_tam_history", &rcs::hw::Franka::get_tam_history);
 
   py::object gripper =
       (py::object)py::module_::import("rcs").attr("common").attr("Gripper");
