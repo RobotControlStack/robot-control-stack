@@ -1,26 +1,20 @@
 import copy
-import json
 import logging
-import threading
-from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from queue import Empty, Queue
-from time import sleep
+from dataclasses import dataclass, field
 from typing import Any
 
 import cv2
 import gymnasium as gym
 import numpy as np
-import rcs
-from rcs._core.common import BaseCameraConfig, RobotPlatform, Pose
+from rcs._core.common import BaseCameraConfig, Pose, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
-from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.utils import SimpleFrameRate
-
 from vlagents.client import RemoteAgent
 from vlagents.policies.interface import Act, Obs, SingleAct, SingleObs
+
+import rcs
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +40,6 @@ RELATIVETO = RelativeTo.NONE
 IP = "localhost"
 PORT = 8080
 
-CONFIG_PATH = Path(__file__).with_suffix(".json")
-
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
 
@@ -67,27 +59,10 @@ class InferenceConfig:
     jpeg_encoding: bool = True
     on_same_machine: bool = False
     fps: int = 30
-    record_path: str = "inference_recordings"
     show_camera_windows: bool = False
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
-
-
-def load_inference_config() -> InferenceConfig:
-    if not CONFIG_PATH.exists():
-        CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
-        return InferenceConfig()
-    return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
-
-
-def normalize_robot_keys(
-    cfg: InferenceConfig, available_robots: set[str]
-) -> InferenceConfig:
-    cfg.robot_keys = [robot for robot in cfg.robot_keys if robot in available_robots]
-    if not cfg.robot_keys and "right" in available_robots:
-        cfg.robot_keys = ["right"]
-    return cfg
 
 
 def build_vlagent_obs(
@@ -130,13 +105,9 @@ def pop_action_step(
 def unpack_single_act(single_act: SingleAct) -> tuple[np.ndarray, float, float]:
     """Split one agent ``SingleAct`` into ``(joint targets, gripper, pd_mode)``."""
     action = np.asarray(single_act.action, dtype=np.float32)
-    gripper = float(
-        single_act.gripper
-    )  # 1.0 if single_act.gripper is None else float(single_act.gripper)
+    gripper = float(single_act.gripper)  # 1.0 if single_act.gripper is None else float(single_act.gripper)
     if action.shape[0] > 8:
         pd_mode = float(action[8])
-    elif action.shape[0] > 7:
-        pd_mode = float(action[7])
     else:
         pd_mode = 1.0  # pholder for now
     return action, gripper, pd_mode
@@ -145,11 +116,7 @@ def unpack_single_act(single_act: SingleAct) -> tuple[np.ndarray, float, float]:
 class ModelInference:
     def __init__(self, env: gym.Env, cfg: InferenceConfig):
         self.env = env
-        self.gripper_state = 1
         self._cfg = cfg
-        self._episode_running = False
-        self._command_queue: Queue[str] = Queue()
-        self._shutdown_requested = threading.Event()
         self.remote_agent = RemoteAgent(
             cfg.vlagents_host,
             cfg.vlagents_port,
@@ -159,46 +126,9 @@ class ModelInference:
         )
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
-        self._camera_windows_enabled = False
         self._prev_pd_mode = 1.0
-
-    def submit_command(self, command: str) -> None:
-        self._command_queue.put(command)
-
-    def request_shutdown(self) -> None:
-        self._shutdown_requested.set()
-
-    def _drain_commands(self) -> tuple[bool, bool, bool, bool, bool]:
-        start_requested = False
-        record_requested = False
-        success_requested = False
-        stop_requested = False
-        reload_requested = False
-
-        while True:
-            try:
-                command = self._command_queue.get_nowait()
-            except Empty:
-                break
-
-            if command == "e":
-                start_requested = True
-            elif command == "r":
-                record_requested = True
-            elif command == "s":
-                success_requested = True
-            elif command == "q":
-                stop_requested = True
-            elif command == "o":
-                reload_requested = True
-
-        return (
-            start_requested,
-            record_requested,
-            success_requested,
-            stop_requested,
-            reload_requested,
-        )
+        # TODO: load history encoder
+        self.history_encoder = None
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -226,14 +156,10 @@ class ModelInference:
     def act(self, obs_dict: Obs) -> dict[str, SingleAct]:
         """Returns one action step, optionally draining a remote action chunk locally."""
         refill = self._cfg.n_action_steps is not None and len(self._action_buffer) == 0
-        action = pop_action_step(
-            self._action_buffer, self.remote_agent, obs_dict, self._cfg.n_action_steps
-        )
+        action = pop_action_step(self._action_buffer, self.remote_agent, obs_dict, self._cfg.n_action_steps)
         if refill and RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
             for robot in self.env.get_wrapper_attr("envs"):
-                self.env.get_wrapper_attr("envs")[robot].get_wrapper_attr(
-                    "set_origin_to_current"
-                )()
+                self.env.get_wrapper_attr("envs")[robot].get_wrapper_attr("set_origin_to_current")()
         return action
 
     def action_agents2rcs(self, action: dict[str, SingleAct]) -> dict[str, Any]:
@@ -241,132 +167,36 @@ class ModelInference:
         for robot in self._cfg.robot_keys:
             joints, gripper, pd_mode = unpack_single_act(action[robot])
             act[robot] = {
-                # "gripper": np.array([1.0]), #np.asarray([robot_action.gripper], dtype=np.float32),
                 "joints": np.asarray(joints, dtype=np.float32),
                 "gripper": np.asarray([gripper], dtype=np.float32),
             }
         return act, pd_mode
 
-    def _set_camera_windows_enabled(self, enabled: bool) -> None:
-        if enabled == self._camera_windows_enabled:
-            return
-        if not enabled:
-            cv2.destroyAllWindows()
-        self._camera_windows_enabled = enabled
-
     def _show_camera_windows(self, obs: dict[str, Any]) -> None:
-        if not self._camera_windows_enabled:
+        if not self._cfg.show_camera_windows:
             return
         frames = obs.get("frames", {})
         for frame_name, frame_data in frames.items():
             rgb_frame = frame_data.get("rgb", {}).get("data")
             if rgb_frame is None:
                 continue
-            cv2.imshow(
-                f"camera:{frame_name}", cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
-            )
+            cv2.imshow(f"camera:{frame_name}", cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR))
         cv2.waitKey(1)
 
-    def loop(self):
+    def run_episode(self) -> None:
+        """Run a single episode until the agent issues ``done``."""
+        self.remote_agent.ensure_connected()
+        self._action_buffer = []
         obs, _ = self.env.reset()
-        self._set_camera_windows_enabled(self._cfg.show_camera_windows)
+        logger.info("starting episode")
         self._show_camera_windows(obs)
         obs_dict = self.obs_rcs2agents(obs)
-        logger.info(
-            "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
-        )
 
-        while not self._shutdown_requested.is_set():
-            (
-                start_requested,
-                record_requested,
-                success_requested,
-                stop_requested,
-                reload_requested,
-            ) = self._drain_commands()
-
-            if reload_requested:
-                self._cfg = load_inference_config()
-                self._set_camera_windows_enabled(self._cfg.show_camera_windows)
-                # self._cfg = normalize_robot_keys(self._cfg, set(self.env.get_wrapper_attr("envs")))
-                try:
-                    self.remote_agent.reconnect(
-                        host=self._cfg.vlagents_host,
-                        port=self._cfg.vlagents_port,
-                        model=self._cfg.vlagents_model,
-                        on_same_machine=self._cfg.on_same_machine,
-                        jpeg_encoding=self._cfg.jpeg_encoding,
-                    )
-                    logger.info(
-                        "reloaded config from %s with host=%s port=%s model=%s",
-                        CONFIG_PATH,
-                        self._cfg.vlagents_host,
-                        self._cfg.vlagents_port,
-                        self._cfg.vlagents_model,
-                    )
-                except Exception:
-                    logger.exception(
-                        "failed to reconnect after reloading %s", CONFIG_PATH
-                    )
-                if isinstance(self.env, StorageWrapper):
-                    self.env.base_dir = self._cfg.record_path
-                    self.env.set_instruction(self._cfg.instruction)
-                obs, _ = self.env.reset()
-                self._show_camera_windows(obs)
-                obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
-                self._episode_running = False
-
-            if success_requested:
-                if self._episode_running:
-                    logger.info("marking episode successful and resetting environment")
-                self.env.get_wrapper_attr("success")()
-                obs, _ = self.env.reset()
-                self._show_camera_windows(obs)
-                obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
-                self._episode_running = False
-
-            if stop_requested:
-                if self._episode_running:
-                    logger.info("stopping episode and resetting environment")
-                obs, _ = self.env.reset()
-                self._show_camera_windows(obs)
-                obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
-                self._episode_running = False
-
-            if not self._episode_running:
-                try:
-                    self.remote_agent.ensure_connected()
-                except Exception:
-                    sleep(0.5)
-                    continue
-                if start_requested or record_requested:
-                    if isinstance(self.env, StorageWrapper):
-                        self.env.set_instruction(self._cfg.instruction)
-                        if record_requested:
-                            self.env.start_record()
-                    logger.info(
-                        "starting episode%s",
-                        " with recording" if record_requested else "",
-                    )
-                    self._episode_running = True
-                else:
-                    sleep(0.05)
-                    continue
-
-            # print(obs_dict.cameras.keys())
-            # breakpoint()
+        while True:
             action = self.act(copy.deepcopy(obs_dict))
             if any(robot_action.done for robot_action in action.values()):
-                logger.info("done issued by agent, resetting environment")
-                obs, _ = self.env.reset()
-                self._show_camera_windows(obs)
-                obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
-                self._episode_running = False
-                continue
+                logger.info("done issued by agent, ending episode")
+                return
             a, pd_mode = self.action_agents2rcs(action)
             self.pd_mode(pd_mode)
             obs, _, _, _, info = self.env.step(a)
@@ -377,7 +207,17 @@ class ModelInference:
             if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
                 self.frame_rate()
 
-        self._set_camera_windows_enabled(False)
+    def loop(self) -> None:
+        """Run episodes back to back until interrupted."""
+        try:
+            while True:
+                self.run_episode()
+        except KeyboardInterrupt:
+            logger.info("interrupted, stopping")
+        finally:
+            self.env.reset()
+            if self._cfg.show_camera_windows:
+                cv2.destroyAllWindows()
 
     def pd_mode(self, mode):
         robot = self.env.get_wrapper_attr("robot")["right"]
@@ -398,33 +238,9 @@ class ModelInference:
             robot.set_config(rcfg)
 
 
-def command_loop(controller: ModelInference) -> None:
-    prompt = (
-        "Command [e=start, r=record, s=success/reset, q=stop/reset, o=reload, x=exit]: "
-    )
-    while True:
-        try:
-            command = input(prompt).strip().lower()
-        except EOFError:
-            command = "x"
-        except KeyboardInterrupt:
-            print()
-            command = "x"
-
-        if not command:
-            continue
-        if command == "x":
-            controller.request_shutdown()
-            return
-        if command in {"e", "r", "s", "q", "o"}:
-            controller.submit_command(command)
-            continue
-        logger.info("unknown command %r", command)
-
-
 def get_env(cfg: InferenceConfig) -> gym.Env:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv, DROIDEnv
+        from rcs_fr3.configs import DROIDEnv, FrankaDuoEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
         env_creator = DROIDEnv()
@@ -473,18 +289,15 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
         hw_cfg.wrapper_cfg.binary_gripper = True
         hw_cfg.max_relative_movement = (
-            cfg.max_rel_mov_joints
-            if CONTROL_MODE == ControlMode.JOINTS
-            else cfg.max_rel_mov_cart
+            cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
         )
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = {
-            "right": rcs.common.Pose(
-                translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])
-            ),
+            "right": rcs.common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])),
         }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
+        hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         env_rel = env_creator.create_env(hw_cfg)
         robot = env_rel.get_wrapper_attr("robot")["right"]
         rcfg = robot.get_config()
@@ -510,48 +323,24 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         sim_cfg_data.relative_to = RELATIVETO
         sim_cfg_data.wrapper_cfg.binary_gripper = True
         sim_cfg_data.max_relative_movement = (
-            cfg.max_rel_mov_joints
-            if CONTROL_MODE == ControlMode.JOINTS
-            else cfg.max_rel_mov_cart
+            cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
         )
 
         env_rel = scene.create_env(sim_cfg_data)
 
-    return StorageWrapper(
-        env_rel,
-        cfg.record_path,
-        cfg.instruction,
-        batch_size=32,
-        max_rows_per_group=2,
-        max_rows_per_file=10,
-        allow_wrapper_instruction=False,
-    )
+    return env_rel
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.info("Building env")
 
-    cfg = load_inference_config()
+    cfg = InferenceConfig()
     env_rel = get_env(cfg)
-    env_rel.reset()
     controller = ModelInference(env_rel, cfg)
 
     with env_rel:
-        if ROBOT_INSTANCE == RobotPlatform.SIMULATION:
-            controller.submit_command(
-                "e"
-            )  # TODO: change this to "r" to record the episode
-            controller.loop()
-        else:
-            worker = threading.Thread(
-                target=controller.loop, name="model-inference", daemon=True
-            )
-            worker.start()
-            command_loop(controller)
-            worker.join()
+        controller.loop()
 
 
 if __name__ == "__main__":
