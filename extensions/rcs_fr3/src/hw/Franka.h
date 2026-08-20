@@ -119,11 +119,10 @@ class Franka : public common::Robot {
   // the interpolation window stays consistent for the controller's lifetime.
   int m_active_policy_rate = 20;
   common::LinearJointPositionTrajInterpolator joint_interpolator;
-  franka::RobotState curr_state;
+  common::ThreadSafeValue<franka::RobotState> curr_state;
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
-  std::exception_ptr background_exception = nullptr;
-  std::mutex exception_mutex;
+  common::ThreadSafeValue<std::exception_ptr> background_exception;
   void osc();
   void joint_controller();
   void zero_torque_controller();
