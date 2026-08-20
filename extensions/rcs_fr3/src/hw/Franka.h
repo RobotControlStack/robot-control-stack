@@ -68,8 +68,8 @@ struct FrankaConfig : common::RobotConfig {
   // approach_time = max|q_target - q_now| / approach_joint_speed (clamped).
   // Only used when blocking_move_on_start is true.
   double approach_joint_speed = 0.4;
-  // Max Cartesian translation (m/s) and rotation (rad/s) speeds used to size the
-  // blocking approach window on (re)start of the OSC controller:
+  // Max Cartesian translation (m/s) and rotation (rad/s) speeds used to size
+  // the blocking approach window on (re)start of the OSC controller:
   // approach_time = max(trans_gap / approach_cartesian_speed,
   //                     rot_gap / approach_rotation_speed) (clamped).
   // Only used when blocking_move_on_start is true.

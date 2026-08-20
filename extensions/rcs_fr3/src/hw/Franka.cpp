@@ -263,8 +263,8 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
         q = Eigen::Map<common::Vector7d>(this->curr_state.q.data());
         dq = Eigen::Map<common::Vector7d>(this->curr_state.dq.data());
       }
-      const double elapsed =
-          std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+      const double elapsed = std::chrono::duration<double>(
+                                 std::chrono::steady_clock::now() - start)
               .count();
       const double pos_err = (q - desired_q).cwiseAbs().maxCoeff();
       const double vel = dq.cwiseAbs().maxCoeff();
@@ -338,11 +338,13 @@ void Franka::osc_set_cartesian_position(
         desired_pose_EE_in_base_frame.quaternion().normalized()));
     dot = std::min(1.0, dot);
     const double rot_gap = 2.0 * std::acos(dot);
-    const double trans_speed = std::max(this->m_cfg.approach_cartesian_speed, 1e-6);
-    const double rot_speed = std::max(this->m_cfg.approach_rotation_speed, 1e-6);
-    approach_time = std::clamp(
-        std::max(trans_gap / trans_speed, rot_gap / rot_speed), kMinApproachTime,
-        kMaxApproachTime);
+    const double trans_speed =
+        std::max(this->m_cfg.approach_cartesian_speed, 1e-6);
+    const double rot_speed =
+        std::max(this->m_cfg.approach_rotation_speed, 1e-6);
+    approach_time =
+        std::clamp(std::max(trans_gap / trans_speed, rot_gap / rot_speed),
+                   kMinApproachTime, kMaxApproachTime);
   }
 
   this->traj_interpolator.reset(
@@ -367,7 +369,8 @@ void Franka::osc_set_cartesian_position(
     const double vel_tol = 0.05;   // rad/s (joint-space proxy for "stopped")
     const double timeout = approach_time + 2.0;
     const auto start = std::chrono::steady_clock::now();
-    const Eigen::Vector3d target_p = desired_pose_EE_in_base_frame.translation();
+    const Eigen::Vector3d target_p =
+        desired_pose_EE_in_base_frame.translation();
     const Eigen::Quaterniond target_q =
         desired_pose_EE_in_base_frame.quaternion().normalized();
     while (true) {
@@ -382,13 +385,12 @@ void Franka::osc_set_cartesian_position(
       const common::Pose meas_pose =
           GetTCPInBaseFrame(state, this->m_cfg.tcp_offset);
       const double pos_err = (target_p - meas_pose.translation()).norm();
-      double dot =
-          std::abs(meas_pose.quaternion().normalized().dot(target_q));
+      double dot = std::abs(meas_pose.quaternion().normalized().dot(target_q));
       dot = std::min(1.0, dot);
       const double ori_err = 2.0 * std::acos(dot);
       const double vel = dq.cwiseAbs().maxCoeff();
-      const double elapsed =
-          std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+      const double elapsed = std::chrono::duration<double>(
+                                 std::chrono::steady_clock::now() - start)
               .count();
       if (elapsed >= approach_time && pos_err < pos_tol && ori_err < ori_tol &&
           vel < vel_tol) {
