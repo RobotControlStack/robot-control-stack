@@ -390,6 +390,9 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["left"].speed_factor = 0.1
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
+        # interpolation window of the controllers must match the rate at which we stream actions
+        hw_cfg.robot_cfgs["left"].policy_rate = cfg.fps
+        hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
