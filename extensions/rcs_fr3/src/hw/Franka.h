@@ -134,7 +134,8 @@ class Franka : public common::Robot {
   std::atomic<Controller> running_controller{Controller::none};
   common::ThreadSafeValue<std::exception_ptr> background_exception;
   common::ThreadSafeValue<Eigen::VectorXd> tam_latent;
-  common::ThreadSafeValue<Eigen::VectorXd> tam_mlp_weight;
+  common::ThreadSafeValue<std::optional<Eigen::VectorXd>> tam_mlp_weight{
+      std::nullopt};
   common::ThreadSafeFixedBuffer<TAMHistorySample> tam_history{TAM_HISTORY_SIZE};
   void osc();
   void joint_controller();
@@ -205,7 +206,7 @@ class Franka : public common::Robot {
     return this->tam_history.to_vector();
   }
 
-  std::array<double, 7> tam_forward(const std::array<double, 7>& tau);
+  common::Vector7d tam_forward(const std::array<double, 7>& tau);
 
   void reset() override;
   void close() override {};
