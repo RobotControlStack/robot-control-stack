@@ -5,6 +5,7 @@
 #include <franka/robot_state.h>
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <mutex>
@@ -154,6 +155,15 @@ class Franka : public common::Robot {
   common::ThreadSafeFixedBuffer<TAMHistorySample> tam_history{TAM_HISTORY_SIZE};
   // Parsed TAM MLP (set_tam_mlp_weight parses off the control thread).
   common::ThreadSafeValue<std::shared_ptr<const adaptor::SimAdaptor>> tam_model;
+  // Robot-lifetime monotonic epoch for TAM history timestamps: controller
+  // restarts (e.g. gain changes) must not restart the encoder's timeline —
+  // they only leave a short, maskable gap in an otherwise continuous stream.
+  const std::chrono::steady_clock::time_point tam_epoch =
+      std::chrono::steady_clock::now();
+  double tam_now() const {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                         tam_epoch).count();
+  }
   // Control-thread-only: ticks since the residual became active (1 s ramp).
   int tam_active_ticks = 0;
   void osc();

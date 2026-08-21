@@ -216,6 +216,13 @@ common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
     this->tam_active_ticks = 0;
     return common::Vector7d::Zero();
   }
+  // The MLP window assumes contiguous 1 kHz samples. Right after a
+  // controller restart the newest recorded rows predate the restart gap;
+  // hold the residual for the few ms it takes to refill with fresh rows.
+  if (this->tam_now() - past.back().t > 0.05) {
+    this->tam_active_ticks = 0;
+    return common::Vector7d::Zero();
+  }
 
   adaptor::M emb_row(1, latent.size());
   for (Eigen::Index i = 0; i < latent.size(); ++i) {
@@ -578,10 +585,10 @@ void Franka::osc() {
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
-  // Fresh TAM state per controller run: the history buffer must not mix
-  // samples across restarts (timestamps restart at zero) and the residual
-  // ramp starts over.
-  this->tam_history.clear();
+  // The TAM history buffer intentionally survives controller restarts:
+  // timestamps come from a robot-lifetime monotonic clock, so a restart is
+  // just a short gap in a continuous stream. Only the residual ramp starts
+  // over (the gains may have changed).
   this->tam_active_ticks = 0;
 
   // conservative collision and impedance behavior
@@ -804,7 +811,7 @@ void Franka::osc() {
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
         this->tam_history.push_back(
-            TAMHistorySample{.t = this->controller_time,
+            TAMHistorySample{.t = this->tam_now(),
                              .q = robot_state.q,
                              .dq = robot_state.dq,
                              .tau_cmd = tau_d_rate_limited,
@@ -829,10 +836,10 @@ void Franka::joint_controller() {
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
-  // Fresh TAM state per controller run: the history buffer must not mix
-  // samples across restarts (timestamps restart at zero) and the residual
-  // ramp starts over.
-  this->tam_history.clear();
+  // The TAM history buffer intentionally survives controller restarts:
+  // timestamps come from a robot-lifetime monotonic clock, so a restart is
+  // just a short gap in a continuous stream. Only the residual ramp starts
+  // over (the gains may have changed).
   this->tam_active_ticks = 0;
 
   // conservative collision and impedance behavior
@@ -922,7 +929,7 @@ void Franka::joint_controller() {
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
         this->tam_history.push_back(
-            TAMHistorySample{.t = this->controller_time,
+            TAMHistorySample{.t = this->tam_now(),
                              .q = robot_state.q,
                              .dq = robot_state.dq,
                              .tau_cmd = tau_d_rate_limited,

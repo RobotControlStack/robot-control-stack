@@ -47,10 +47,13 @@ per-joint residual; the residual also ramps in over 1 s whenever it
   400 ms encoder patch plus a poll); the estimate then keeps refining as
   context grows toward the 4 s attention window. Startup also pays a
   one-time JAX JIT warm-up of ~10-15 s before the encoder loop begins.
-- Switching controller gains (`pd_mode`) restarts the control thread. The
-  last latent is kept (it encodes plant properties, which a gain change
-  does not alter), so the residual resumes right away and re-ramps over
-  1 s; fresh latents resume ~0.5 s after the restart.
+- Switching controller gains (`pd_mode`) restarts the control thread, but
+  TAM adaptation continues across it: history timestamps come from a
+  robot-lifetime monotonic clock, the encoder bridges the short restart
+  gap with masked padding rows (so its context window is not cut), and the
+  latent is kept throughout (it encodes plant properties, which a gain
+  change does not alter). Only the residual re-ramps over 1 s after the
+  switch, since the gains it interacts with changed.
 - Only applied-torque checkpoints are supported; `base_tam_fusion`
   checkpoints are rejected at startup.
 - The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
