@@ -14,75 +14,12 @@
 #include <string>
 #include <thread>
 
-#include <pthread.h>
-#include <sched.h>
-#include <sys/resource.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-
-#include <cstdlib>
-
 #include "FrankaMotionGenerator.h"
 #include "rcs/Pose.h"
 
 namespace rcs {
 namespace hw {
 
-// Best-effort real-time scheduling for the calling control thread; see
-// FrankaConfig::rt_priority.
-//
-// Two mechanisms, tried in order:
-//  1. SCHED_FIFO at the configured priority — needs an rtprio rlimit
-//     (one line in /etc/security/limits.conf + a fresh login).
-//  2. RealtimeKit (the D-Bus service the desktop audio stack uses), which
-//     can grant SCHED_RR without any host configuration. rtkit caps the
-//     priority (typically 20) and requires a finite RLIMIT_RTTIME on the
-//     process; both are fine here — SCHED_RR at any priority preempts all
-//     normal threads, and the control thread blocks every millisecond so
-//     it can never approach the runtime limit.
-// If both fail the thread stays on the normal scheduler and a warning is
-// printed; expect communication_constraints_violation aborts on a loaded
-// machine in that state.
-static void TryElevateControlThreadPriority(int priority) {
-  if (priority <= 0) {
-    return;
-  }
-  sched_param param{};
-  param.sched_priority = priority;
-  if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) == 0) {
-    std::cerr << "[rcs] control thread on SCHED_FIFO priority " << priority
-              << std::endl;
-    return;
-  }
-
-  rlimit rttime{};
-  rttime.rlim_cur = 200000;  // 200 ms of uninterrupted RT CPU (rtkit requires a finite cap)
-  rttime.rlim_max = 200000;
-  setrlimit(RLIMIT_RTTIME, &rttime);
-  const int rtkit_priority = std::min(priority, 20);
-  const long pid = static_cast<long>(getpid());
-  const long tid = static_cast<long>(syscall(SYS_gettid));
-  const std::string cmd =
-      "busctl --system --timeout=2 call org.freedesktop.RealtimeKit1 "
-      "/org/freedesktop/RealtimeKit1 org.freedesktop.RealtimeKit1 "
-      "MakeThreadRealtimeWithPID ttu " +
-      std::to_string(pid) + " " + std::to_string(tid) + " " +
-      std::to_string(rtkit_priority) + " >/dev/null 2>&1";
-  const int sys_rc = std::system(cmd.c_str());
-  (void)sys_rc;
-  const int policy = sched_getscheduler(0);
-  if (policy == SCHED_RR || policy == SCHED_FIFO) {
-    std::cerr << "[rcs] control thread on SCHED_RR priority " << rtkit_priority
-              << " via RealtimeKit" << std::endl;
-    return;
-  }
-
-  std::cerr << "[rcs] real-time scheduling unavailable (SCHED_FIFO denied, "
-               "RealtimeKit not reachable); control thread stays on the "
-               "normal scheduler. For the strong SCHED_FIFO path add "
-               "\"<user> - rtprio 99\" to /etc/security/limits.conf and open "
-               "a fresh login session." << std::endl;
-}
 common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
   return common::Pose(robot_state.O_T_EE) *
          common::Pose(robot_state.F_T_EE).inverse();
@@ -200,12 +137,13 @@ common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
     // must be contiguous with now — right after a controller restart the
     // buffer still ends before the restart gap (see tam_now()).
     const int T = model->history_steps;
-    const std::vector<TAMHistorySample> past =
-        this->tam_history.last_n(static_cast<size_t>(T - 1));
-    if (past.size() + 1 == static_cast<size_t>(T) &&
+    const std::deque<TAMHistorySample>& past = this->tam_recent;
+    if (past.size() + 1 >= static_cast<size_t>(T) &&
         this->tam_now() - past.back().t <= 0.05) {
       rows.reserve(static_cast<size_t>(T));
-      for (const TAMHistorySample& s : past) {
+      for (auto it = past.end() - static_cast<long>(T - 1); it != past.end();
+           ++it) {
+        const TAMHistorySample& s = *it;
         adaptor::SimAdaptor::StreamRow r;
         for (int j = 0; j < 7; ++j) {
           r.q[j] = s.q[j];
@@ -540,7 +478,7 @@ void Franka::stop_control_thread() {
 }
 
 void Franka::osc() {
-  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
@@ -773,12 +711,16 @@ void Franka::osc() {
 
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
-        this->tam_history.push_back(
-            TAMHistorySample{.t = this->tam_now(),
-                             .q = robot_state.q,
-                             .dq = robot_state.dq,
-                             .tau_cmd = tau_d_rate_limited,
-                             .gravity = gravity_array});
+        const TAMHistorySample sample{.t = this->tam_now(),
+                                      .q = robot_state.q,
+                                      .dq = robot_state.dq,
+                                      .tau_cmd = tau_d_rate_limited,
+                                      .gravity = gravity_array};
+        this->tam_history.push_back(sample);
+        this->tam_recent.push_back(sample);
+        if (this->tam_recent.size() > 32) {
+          this->tam_recent.pop_front();
+        }
       }
 
       return tau_d_rate_limited;
@@ -792,7 +734,7 @@ void Franka::osc() {
 }
 
 void Franka::joint_controller() {
-  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
@@ -891,12 +833,16 @@ void Franka::joint_controller() {
 
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
-        this->tam_history.push_back(
-            TAMHistorySample{.t = this->tam_now(),
-                             .q = robot_state.q,
-                             .dq = robot_state.dq,
-                             .tau_cmd = tau_d_rate_limited,
-                             .gravity = gravity_array});
+        const TAMHistorySample sample{.t = this->tam_now(),
+                                      .q = robot_state.q,
+                                      .dq = robot_state.dq,
+                                      .tau_cmd = tau_d_rate_limited,
+                                      .gravity = gravity_array};
+        this->tam_history.push_back(sample);
+        this->tam_recent.push_back(sample);
+        if (this->tam_recent.size() > 32) {
+          this->tam_recent.pop_front();
+        }
       }
 
       return tau_d_rate_limited;
@@ -920,7 +866,7 @@ void Franka::zero_torque_guiding() {
 }
 
 void Franka::zero_torque_controller() {
-  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   this->set_default_robot_behavior();
   if (this->m_cfg.allow_high_collision) {
     // High collision threshold values for high impedance.

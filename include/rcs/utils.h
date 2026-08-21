@@ -115,14 +115,6 @@ class ThreadSafeFixedBuffer {
     deque_.clear();
   }
 
-  // Copy of the newest ``n`` elements (oldest first). Bounded cost for
-  // readers that must not copy the whole buffer (e.g. a 1 kHz control tick).
-  std::vector<T> last_n(size_t n) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const size_t count = std::min(n, deque_.size());
-    return std::vector<T>(deque_.end() - static_cast<long>(count), deque_.end());
-  }
-
   std::vector<T> to_vector() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return std::vector<T>(deque_.begin(), deque_.end());

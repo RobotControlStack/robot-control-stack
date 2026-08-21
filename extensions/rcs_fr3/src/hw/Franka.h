@@ -5,6 +5,7 @@
 #include <franka/robot_state.h>
 
 #include <atomic>
+#include <deque>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -95,13 +96,14 @@ struct FrankaConfig : common::RobotConfig {
   common::Vector7d tam_residual_clip =
       (common::Vector7d() << 10., 10., 10., 10., 2., 2., 2.).finished();
   bool ignore_realtime = false;
-  // >0: best-effort SCHED_FIFO at this priority for the async control
-  // thread. Works on stock kernels when the rtprio rlimit allows it (unlike
-  // ignore_realtime=false, which requires a PREEMPT_RT kernel); on failure
-  // the thread keeps the normal scheduler and a warning is printed. The
-  // TAM residual adds ~0.1-0.3 ms per 1 kHz tick, which misses deadlines
-  // on a loaded non-RT machine without this.
-  int rt_priority = 0;
+  // Best-effort real-time scheduling for the async control thread at this
+  // priority (0 disables): SCHED_FIFO when the rtprio rlimit allows it,
+  // otherwise SCHED_RR via RealtimeKit, otherwise a warning and the normal
+  // scheduler. Works on stock kernels (unlike ignore_realtime=false, which
+  // requires PREEMPT_RT). On by default: the 1 kHz torque loop always
+  // benefits, and the TAM residual's ~0.1-0.3 ms per tick misses deadlines
+  // on a loaded non-RT machine without it.
+  int rt_priority = 80;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
@@ -166,6 +168,10 @@ class Franka : public common::Robot {
   }
   // Control-thread-only: ticks since the residual became active (1 s ramp).
   int tam_active_ticks = 0;
+  // Control-thread-only ring of the newest history samples so tam_forward
+  // reads its MLP window without touching the shared buffer's mutex (the
+  // control thread is the only writer of both).
+  std::deque<TAMHistorySample> tam_recent;
   void osc();
   void joint_controller();
   void zero_torque_controller();
