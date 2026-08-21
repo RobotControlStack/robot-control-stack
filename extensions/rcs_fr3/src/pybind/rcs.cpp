@@ -128,6 +128,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::hw::FrankaConfig>(hw, "FrankaConfig", robot_config)
       .def_readwrite("ik_solver", &rcs::hw::FrankaConfig::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
+      .def_readwrite("policy_rate", &rcs::hw::FrankaConfig::policy_rate)
       .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
       .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
       .def_readwrite("torque_limit", &rcs::hw::FrankaConfig::torque_limit)
@@ -148,6 +149,14 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tcp_offset_explicit",
                      &rcs::hw::FrankaConfig::tcp_offset_explicit)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
+      .def_readwrite("blocking_move_on_start",
+                     &rcs::hw::FrankaConfig::blocking_move_on_start)
+      .def_readwrite("approach_joint_speed",
+                     &rcs::hw::FrankaConfig::approach_joint_speed)
+      .def_readwrite("approach_cartesian_speed",
+                     &rcs::hw::FrankaConfig::approach_cartesian_speed)
+      .def_readwrite("approach_rotation_speed",
+                     &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 

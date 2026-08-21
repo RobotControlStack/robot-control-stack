@@ -86,8 +86,7 @@ FrankaState* Franka::get_state() {
   if (this->running_controller.load() == Controller::none) {
     current_robot_state = this->robot.readOnce();
   } else {
-    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
-    current_robot_state = this->curr_state;
+    current_robot_state = this->curr_state.load();
   }
   auto* state = new FrankaState();
   state->robot_state = current_robot_state;
@@ -111,12 +110,10 @@ common::Pose Franka::get_cartesian_position() {
   this->check_for_background_errors();
   franka::RobotState robot_state;
   if (this->running_controller.load() == Controller::none) {
-    this->curr_state = this->robot.readOnce();
-    robot_state = this->curr_state;
+    robot_state = this->robot.readOnce();
+    this->curr_state.store(robot_state);
   } else {
-    this->interpolator_mutex.lock();
-    robot_state = this->curr_state;
-    this->interpolator_mutex.unlock();
+    robot_state = this->curr_state.load();
   }
   return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
 }
@@ -125,11 +122,10 @@ common::Pose Franka::get_cartesian_flange_position() {
   this->check_for_background_errors();
   franka::RobotState robot_state;
   if (this->running_controller.load() == Controller::none) {
-    this->curr_state = this->robot.readOnce();
-    robot_state = this->curr_state;
+    robot_state = this->robot.readOnce();
+    this->curr_state.store(robot_state);
   } else {
-    std::lock_guard<std::mutex> lock(this->interpolator_mutex);
-    robot_state = this->curr_state;
+    robot_state = this->curr_state.load();
   }
   return GetFlangeInBaseFrame(robot_state);
 }
@@ -146,16 +142,14 @@ void Franka::set_joint_position(const common::VectorXd& q) {
 
 common::VectorXd Franka::get_joint_position() {
   this->check_for_background_errors();
-  common::Vector7d joints;
+  franka::RobotState robot_state;
   if (this->running_controller.load() == Controller::none) {
-    this->curr_state = this->robot.readOnce();
-    joints = common::Vector7d(this->curr_state.q.data());
+    robot_state = this->robot.readOnce();
+    this->curr_state.store(robot_state);
   } else {
-    this->interpolator_mutex.lock();
-    joints = common::Vector7d(this->curr_state.q.data());
-    this->interpolator_mutex.unlock();
+    robot_state = this->curr_state.load();
   }
-  return joints;
+  return common::Vector7d(robot_state.q.data());
 }
 
 void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
@@ -199,11 +193,14 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;  // in s
   // form deoxys/config/charmander.yml
-  int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller.load() == Controller::none) {
+  const bool starting_fresh =
+      this->running_controller.load() == Controller::none;
+
+  if (starting_fresh) {
     this->controller_time = 0.0;
+    this->m_active_policy_rate = this->m_cfg.policy_rate;
     this->get_joint_position();
     this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
   } else if (this->running_controller.load() != Controller::jsc) {
@@ -216,33 +213,72 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
     this->interpolator_mutex.lock();
   }
 
+  franka::RobotState state_now = this->curr_state.load();
+  const common::Vector7d q_now =
+      Eigen::Map<common::Vector7d>(state_now.q.data());
+
+  const bool approach_on_start =
+      starting_fresh && this->m_cfg.blocking_move_on_start;
+  double approach_time = -1.0;
+  if (approach_on_start) {
+    const double kMinApproachTime = 0.3;  // s
+    const double kMaxApproachTime = 5.0;  // s
+    const double max_gap = (desired_q - q_now).cwiseAbs().maxCoeff();
+    const double speed = std::max(this->m_cfg.approach_joint_speed, 1e-6);
+    approach_time =
+        std::clamp(max_gap / speed, kMinApproachTime, kMaxApproachTime);
+  }
+
   this->joint_interpolator.reset(
-      this->controller_time,
-      Eigen::Map<common::Vector7d>(this->curr_state.q.data()), desired_q,
-      policy_rate, traj_rate, traj_interpolation_time_fraction);
+      this->controller_time, q_now, desired_q, this->m_active_policy_rate,
+      traj_rate, traj_interpolation_time_fraction, approach_time);
 
   // if not thread is running, then start
-  if (this->running_controller.load() == Controller::none) {
+  if (starting_fresh) {
     this->running_controller.store(Controller::jsc);
     this->control_thread = std::thread(&Franka::joint_controller, this);
   } else {
     this->interpolator_mutex.unlock();
   }
+
+  if (approach_on_start) {
+    // Block until the controller has driven the robot to desired_q (or a
+    // safety timeout elapses).
+    const double pos_tol = 0.02;  // rad
+    const double vel_tol = 0.05;  // rad/s
+    const double timeout = approach_time + 2.0;
+    const auto start = std::chrono::steady_clock::now();
+    while (true) {
+      this->check_for_background_errors();
+      franka::RobotState state = this->curr_state.load();
+      const common::Vector7d q = Eigen::Map<common::Vector7d>(state.q.data());
+      const common::Vector7d dq = Eigen::Map<common::Vector7d>(state.dq.data());
+      const double elapsed = std::chrono::duration<double>(
+                                 std::chrono::steady_clock::now() - start)
+                                 .count();
+      const double pos_err = (q - desired_q).cwiseAbs().maxCoeff();
+      const double vel = dq.cwiseAbs().maxCoeff();
+      if (elapsed >= approach_time && pos_err < pos_tol && vel < vel_tol) {
+        break;
+      }
+      if (elapsed > timeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  }
 }
 
 void Franka::check_for_background_errors() {
-  std::lock_guard<std::mutex> lock(this->exception_mutex);
-  if (this->background_exception) {
+  std::exception_ptr ex = this->background_exception.load_and_clear();
+  if (ex) {
     this->stop_control_thread();
-    std::exception_ptr ex = this->background_exception;
-    this->background_exception = nullptr;
     std::rethrow_exception(ex);
   }
 }
 
 void Franka::clear_background_error() {
-  std::lock_guard<std::mutex> lock(this->exception_mutex);
-  this->background_exception = nullptr;
+  this->background_exception.store(nullptr);
 }
 
 void Franka::osc_set_cartesian_position(
@@ -251,15 +287,15 @@ void Franka::osc_set_cartesian_position(
   // from deoxys/config/osc-position-controller.yml
   double traj_interpolation_time_fraction = 1.0;
   // form deoxys/config/charmander.yml
-  int policy_rate = 20;
   int traj_rate = 500;
 
-  if (this->running_controller.load() == Controller::none) {
+  const bool starting_fresh =
+      this->running_controller.load() == Controller::none;
+
+  if (starting_fresh) {
     this->controller_time = 0.0;
-    {
-      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
-      this->curr_state = this->robot.readOnce();
-    }
+    this->m_active_policy_rate = this->m_cfg.policy_rate;
+    this->curr_state.store(this->robot.readOnce());
     this->traj_interpolator = common::LinearPoseTrajInterpolator();
   } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(
@@ -271,19 +307,79 @@ void Franka::osc_set_cartesian_position(
   }
 
   common::Pose curr_pose =
-      GetTCPInBaseFrame(this->curr_state, this->m_cfg.tcp_offset);
+      GetTCPInBaseFrame(this->curr_state.load(), this->m_cfg.tcp_offset);
+
+  const bool approach_on_start =
+      starting_fresh && this->m_cfg.blocking_move_on_start;
+  double approach_time = -1.0;
+  if (approach_on_start) {
+    const double kMinApproachTime = 0.3;  // s
+    const double kMaxApproachTime = 5.0;  // s
+    const double trans_gap =
+        (desired_pose_EE_in_base_frame.translation() - curr_pose.translation())
+            .norm();
+    double dot = std::abs(curr_pose.quaternion().normalized().dot(
+        desired_pose_EE_in_base_frame.quaternion().normalized()));
+    dot = std::min(1.0, dot);
+    const double rot_gap = 2.0 * std::acos(dot);
+    const double trans_speed =
+        std::max(this->m_cfg.approach_cartesian_speed, 1e-6);
+    const double rot_speed =
+        std::max(this->m_cfg.approach_rotation_speed, 1e-6);
+    approach_time =
+        std::clamp(std::max(trans_gap / trans_speed, rot_gap / rot_speed),
+                   kMinApproachTime, kMaxApproachTime);
+  }
+
   this->traj_interpolator.reset(
       this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
       desired_pose_EE_in_base_frame.translation(),
-      desired_pose_EE_in_base_frame.quaternion(), policy_rate, traj_rate,
-      traj_interpolation_time_fraction);
+      desired_pose_EE_in_base_frame.quaternion(), this->m_active_policy_rate,
+      traj_rate, traj_interpolation_time_fraction, approach_time);
 
   // if not thread is running, then start
-  if (this->running_controller.load() == Controller::none) {
+  if (starting_fresh) {
     this->running_controller.store(Controller::osc);
     this->control_thread = std::thread(&Franka::osc, this);
   } else {
     this->interpolator_mutex.unlock();
+  }
+
+  if (approach_on_start) {
+    // Block until the controller has driven the robot to the desired pose (or a
+    // safety timeout elapses).
+    const double pos_tol = 0.005;  // m
+    const double ori_tol = 0.02;   // rad
+    const double vel_tol = 0.05;   // rad/s (joint-space proxy for "stopped")
+    const double timeout = approach_time + 2.0;
+    const auto start = std::chrono::steady_clock::now();
+    const Eigen::Vector3d target_p =
+        desired_pose_EE_in_base_frame.translation();
+    const Eigen::Quaterniond target_q =
+        desired_pose_EE_in_base_frame.quaternion().normalized();
+    while (true) {
+      this->check_for_background_errors();
+      franka::RobotState state = this->curr_state.load();
+      const common::Vector7d dq = Eigen::Map<common::Vector7d>(state.dq.data());
+      const common::Pose meas_pose =
+          GetTCPInBaseFrame(state, this->m_cfg.tcp_offset);
+      const double pos_err = (target_p - meas_pose.translation()).norm();
+      double dot = std::abs(meas_pose.quaternion().normalized().dot(target_q));
+      dot = std::min(1.0, dot);
+      const double ori_err = 2.0 * std::acos(dot);
+      const double vel = dq.cwiseAbs().maxCoeff();
+      const double elapsed = std::chrono::duration<double>(
+                                 std::chrono::steady_clock::now() - start)
+                                 .count();
+      if (elapsed >= approach_time && pos_err < pos_tol && ori_err < ori_tol &&
+          vel < vel_tol) {
+        break;
+      }
+      if (elapsed > timeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
   }
 }
 
@@ -377,8 +473,9 @@ void Franka::osc() {
       int policy_rate = 20;
       int traj_rate = 500;
 
+      this->curr_state.store(robot_state);
+
       this->interpolator_mutex.lock();
-      this->curr_state = robot_state;
       this->controller_time += period.toSec();
       this->traj_interpolator.next_step(this->controller_time,
                                         desired_pos_EE_in_base_frame,
@@ -521,8 +618,7 @@ void Franka::osc() {
       return tau_d_rate_limited;
     });
   } catch (...) {
-    std::lock_guard<std::mutex> lock(this->exception_mutex);
-    this->background_exception = std::current_exception();
+    this->background_exception.store(std::current_exception());
   }
 
   // Ensure we mark the controller as stopped so we can restart later
@@ -568,8 +664,9 @@ void Franka::joint_controller() {
 
       common::Vector7d desired_q;
 
+      this->curr_state.store(robot_state);
+
       this->interpolator_mutex.lock();
-      this->curr_state = robot_state;
       this->controller_time += period.toSec();
       this->joint_interpolator.next_step(this->controller_time, desired_q);
       this->interpolator_mutex.unlock();
@@ -617,8 +714,7 @@ void Franka::joint_controller() {
       return tau_d_rate_limited;
     });
   } catch (...) {
-    std::lock_guard<std::mutex> lock(this->exception_mutex);
-    this->background_exception = std::current_exception();
+    this->background_exception.store(std::current_exception());
   }
 
   this->running_controller.store(Controller::none);
@@ -650,8 +746,9 @@ void Franka::zero_torque_controller() {
   try {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
+      this->curr_state.store(robot_state);
+
       this->interpolator_mutex.lock();
-      this->curr_state = robot_state;
       this->controller_time += period.toSec();
       this->interpolator_mutex.unlock();
       if (this->running_controller.load() == Controller::none) {
@@ -661,8 +758,7 @@ void Franka::zero_torque_controller() {
       return franka::Torques({0, 0, 0, 0, 0, 0, 0});
     });
   } catch (...) {
-    std::lock_guard<std::mutex> lock(this->exception_mutex);
-    this->background_exception = std::current_exception();
+    this->background_exception.store(std::current_exception());
   }
 
   this->running_controller.store(Controller::none);

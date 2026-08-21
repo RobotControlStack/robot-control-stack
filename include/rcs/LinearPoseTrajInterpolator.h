@@ -40,11 +40,17 @@ class LinearPoseTrajInterpolator {
                     const Eigen::Vector3d &p_goal,
                     const Eigen::Quaterniond &q_goal, const int &policy_rate,
                     const int &rate,
-                    const double &traj_interpolator_time_fraction) {
+                    const double &traj_interpolator_time_fraction,
+                    const double &explicit_max_time = -1.0) {
     dt_ = 1. / static_cast<double>(rate);
     last_time_ = time_sec;
+    // A positive explicit_max_time overrides the default (1 / policy_rate)
+    // interpolation window; used for a longer, gap-scaled approach on (re)start.
     max_time_ =
-        1. / static_cast<double>(policy_rate) * traj_interpolator_time_fraction;
+        explicit_max_time > 0.0
+            ? explicit_max_time
+            : 1. / static_cast<double>(policy_rate) *
+                  traj_interpolator_time_fraction;
     start_time_ = time_sec;
 
     start_ = false;
@@ -131,12 +137,18 @@ class LinearJointPositionTrajInterpolator {
                     const Eigen::Matrix<double, 7, 1> &q_start,
                     const Eigen::Matrix<double, 7, 1> &q_goal,
                     const int &policy_rate, const int &rate,
-                    const double &traj_interpolator_time_fraction) {
+                    const double &traj_interpolator_time_fraction,
+                    const double &explicit_max_time = -1.0) {
     dt_ = 1. / static_cast<double>(rate);
     last_time_ = time_sec;
 
+    // A positive explicit_max_time overrides the default (1 / policy_rate)
+    // interpolation window; used for a longer, gap-scaled approach on (re)start.
     max_time_ =
-        1. / static_cast<double>(policy_rate) * traj_interpolator_time_fraction;
+        explicit_max_time > 0.0
+            ? explicit_max_time
+            : 1. / static_cast<double>(policy_rate) *
+                  traj_interpolator_time_fraction;
     start_time_ = time_sec;
 
     start_ = false;

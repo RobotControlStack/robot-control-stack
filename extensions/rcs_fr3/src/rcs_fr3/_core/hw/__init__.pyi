@@ -105,7 +105,11 @@ class Franka(rcs._core.common.Robot):
 
 class FrankaConfig(rcs._core.common.RobotConfig):
     allow_high_collision: bool
+    approach_cartesian_speed: float
+    approach_joint_speed: float
+    approach_rotation_speed: float
     async_control: bool
+    blocking_move_on_start: bool
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
@@ -114,6 +118,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     kp_r: float
     load_parameters: FrankaLoad | None
+    policy_rate: int
     speed_factor: float
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
