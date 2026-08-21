@@ -43,10 +43,14 @@ per-joint residual; the residual also ramps in over 1 s whenever it
 ## Operational notes
 
 - The controller applies zero residual until the MLP weights and the first
-  latent arrive; the first latent needs ~4 s of control history (plus a
-  one-time JAX JIT warm-up of ~10-15 s at startup).
-- Switching controller gains (`pd_mode`) restarts the control thread, which
-  resets the history stream: the residual drops out and returns ~4 s later.
+  latent arrive. The first latent needs only ~0.5 s of control history (one
+  400 ms encoder patch plus a poll); the estimate then keeps refining as
+  context grows toward the 4 s attention window. Startup also pays a
+  one-time JAX JIT warm-up of ~10-15 s before the encoder loop begins.
+- Switching controller gains (`pd_mode`) restarts the control thread. The
+  last latent is kept (it encodes plant properties, which a gain change
+  does not alter), so the residual resumes right away and re-ramps over
+  1 s; fresh latents resume ~0.5 s after the restart.
 - Only applied-torque checkpoints are supported; `base_tam_fusion`
   checkpoints are rejected at startup.
 - The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
