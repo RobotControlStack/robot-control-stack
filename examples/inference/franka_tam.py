@@ -29,86 +29,6 @@ import rcs
 logger = logging.getLogger(__name__)
 
 
-def pad_history_gaps(
-    t: np.ndarray,
-    channels: list[np.ndarray],
-    keep: np.ndarray,
-    dt: float = 1e-3,
-    max_pad: int = 2000,
-) -> tuple[np.ndarray, list[np.ndarray], np.ndarray] | None:
-    """Fill timestamp gaps in a 1 kHz history window with masked padding rows.
-
-    Controller restarts (e.g. gain changes) leave a short hole in the sample
-    stream; the encoder expects a dense 1 ms grid and masks invalid rows via
-    ``keep_mask``. Returns None when a gap is too long to bridge (> max_pad
-    samples) — the caller should reset the encoder stream instead.
-    """
-    dts = np.diff(t)
-    gap_idx = np.nonzero(dts > 1.5 * dt)[0]
-    if gap_idx.size == 0:
-        return t, channels, keep
-    n_missing = np.round(dts[gap_idx] / dt).astype(int) - 1
-    if int(n_missing.max()) > max_pad:
-        return None
-    t_out: list[np.ndarray] = []
-    ch_out: list[list[np.ndarray]] = [[] for _ in channels]
-    keep_out: list[np.ndarray] = []
-    prev = 0
-    for idx, miss in zip(gap_idx, n_missing):
-        seg = slice(prev, idx + 1)
-        t_out.append(t[seg])
-        for ci, c in enumerate(channels):
-            ch_out[ci].append(c[seg])
-        keep_out.append(keep[seg])
-        if miss > 0:
-            t_out.append(t[idx] + dt * np.arange(1, miss + 1))
-            for ci, c in enumerate(channels):
-                ch_out[ci].append(np.zeros((miss,) + c.shape[1:], dtype=c.dtype))
-            keep_out.append(np.zeros(miss, dtype=keep.dtype))
-        prev = idx + 1
-    t_out.append(t[prev:])
-    for ci, c in enumerate(channels):
-        ch_out[ci].append(c[prev:])
-    keep_out.append(keep[prev:])
-    return (
-        np.concatenate(t_out),
-        [np.concatenate(parts) for parts in ch_out],
-        np.concatenate(keep_out),
-    )
-
-
-
-ROBOT2IP = {
-    "right": "192.168.1.12",
-}
-
-ROBOT_INSTANCE = RobotPlatform.HARDWARE
-REALSENSE_CAMERA_DICT = None
-ZED_CAMERA_DICT = {
-    "gripper_rgb": "14943057",
-    "front_rgb": "35115330",
-}
-HOME_POSE = rcs.HOME_POSITIONS["FR3_DROID"]
-ROBOTIQ_SERIAL = {
-    "right": "DAANTG8W",
-}
-INCLUDE_DEPTH = False
-
-CONTROL_MODE = ControlMode.JOINTS
-RELATIVETO = RelativeTo.NONE
-IP = "localhost"
-PORT = 8080
-
-MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
-MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
-
-
-@dataclass
 class InferenceConfig:
     vlagents_host: str = IP
     vlagents_port: int = PORT
@@ -253,7 +173,6 @@ class ModelInference:
 
         hist_encoder_framerate = SimpleFrameRate(int(self._cfg.tam_latent_rate_hz))
         latents_sent = 0
-        last_t_max = -np.inf
         while True:
             try:
                 hist = robot.get_tam_history()
@@ -266,35 +185,15 @@ class ModelInference:
                 tau_cmd = np.asarray([s.tau_cmd for s in hist], dtype=np.float32)
                 gravity = np.asarray([s.gravity for s in hist], dtype=np.float32)
 
-                # Timestamps are a robot-lifetime monotonic clock, so they
-                # survive controller restarts; going backwards means the robot
-                # object itself was recreated -> start the stream over.
-                if t[-1] < last_t_max - 0.5:
-                    logger.info("history timeline restarted (t %.3f < %.3f), resetting TAM encoder", t[-1], last_t_max)
-                    self.tam_runtime.reset()
-                    latents_sent = 0
-                last_t_max = float(t[-1])
-
-                # A controller restart (e.g. a gain switch) leaves a short hole
-                # in the 1 kHz stream: bridge it with masked padding rows so
-                # the encoder context survives; only unbridgeable gaps (>2 s)
-                # reset the stream.
-                keep = np.ones(t.shape[0], dtype=np.float32)
-                padded = pad_history_gaps(t, [q, dq, tau_cmd, gravity], keep)
-                if padded is None:
-                    logger.info("history gap too long to bridge, resetting TAM encoder")
-                    self.tam_runtime.reset()
-                    latents_sent = 0
-                    hist_encoder_framerate()
-                    continue
-                t, (q, dq, tau_cmd, gravity), keep = padded
-
                 # tau_cmd is the gravity-free commanded torque; the runtime
                 # combines it with the logged gravity into the ideal-model
-                # (gravity-included) torque the encoder was trained on.
-                # Overlapping windows are deduplicated by timestamp inside the
-                # runtime, so pushing the full buffer every poll is correct.
-                latent = self.tam_runtime.push_window(t, q, dq, tau_cmd, gravity=gravity, keep_mask=keep)
+                # (gravity-included) torque the encoder was trained on. The
+                # runtime also handles everything stream-related internally:
+                # overlapping polls are deduplicated by timestamp, short holes
+                # (e.g. a controller restart during a gain switch) are bridged
+                # with masked padding on its dense grid, and a backwards or
+                # over-long gap restarts the stream.
+                latent = self.tam_runtime.push_window(t, q, dq, tau_cmd, gravity=gravity)
                 if latent is not None:
                     robot.set_tam_latent(np.asarray(latent, dtype=np.float64).reshape((-1,)))
                     latents_sent += 1
