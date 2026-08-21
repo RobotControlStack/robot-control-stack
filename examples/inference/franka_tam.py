@@ -67,12 +67,15 @@ class InferenceConfig:
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
-    # TAM (Torque Adaptation Module): checkpoint directory (save_dict.pkl or a
-    # checkpoint_<step> dir). None disables TAM entirely.
+    # TAM (Torque Adaptation Module): master switch. When enabled, the
+    # checkpoint and ideal-model MJCF resolve automatically: the default
+    # checkpoint is downloaded once into ~/.cache/simadaptor and the MJCF is
+    # installed with the torque-adaptation-module package.
+    tam: bool = False
+    # Checkpoint directory override (save_dict.pkl or a checkpoint_<step>
+    # dir); None fetches simadaptor.assets.DEFAULT_CHECKPOINT.
     tam_ckpt: str | None = None
-    # Ideal-model MJCF override; None uses the robot model bundled with the
-    # checkpoint (raw training checkpoints may lack meshes -> pass the
-    # panda_pandagripper.xml shipped with the checkpoint hand-off).
+    # Ideal-model MJCF override; None uses the packaged panda_pandagripper.xml.
     tam_xml: str | None = None
     tam_attention_history_s: float = 4.0
     tam_latent_rate_hz: float = 5.0
@@ -142,18 +145,21 @@ class ModelInference:
         self._prev_pd_mode = 1.0
         self.tam_runtime = None
         self.tam_weight_bytes: bytes | None = None
-        if cfg.tam_ckpt is not None:
+        if cfg.tam:
             self._init_tam()
 
     def _init_tam(self) -> None:
         """Load the TAM checkpoint: the streaming history encoder runs in this
         process (JAX; a GPU is strongly recommended) and the adaptor MLP is
         exported once into the C++ controller."""
+        from simadaptor.assets import default_panda_xml, fetch_checkpoint
         from simadaptor.deploy.history_runtime import RealTimeHistoryAdaptor
 
+        ckpt = self._cfg.tam_ckpt if self._cfg.tam_ckpt is not None else fetch_checkpoint()
+        xml = self._cfg.tam_xml if self._cfg.tam_xml is not None else default_panda_xml()
         self.tam_runtime = RealTimeHistoryAdaptor(
-            simadaptor_ckpt_path=str(self._cfg.tam_ckpt),
-            xml_path=self._cfg.tam_xml,
+            simadaptor_ckpt_path=str(ckpt),
+            xml_path=str(xml),
             attention_history_s=float(self._cfg.tam_attention_history_s),
         )
         inf = self.tam_runtime.inf
@@ -182,7 +188,7 @@ class ModelInference:
         The C++ side applies zero residual until both the MLP weights and the
         first latent have arrived, then ramps the residual in over 1 s."""
         if self.tam_runtime is None or self.tam_weight_bytes is None:
-            logger.info("TAM disabled (no tam_ckpt configured); history encoder not started")
+            logger.info("TAM disabled; history encoder not started")
             return
         robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
 
@@ -395,7 +401,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
             "right": rcs.common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])),
         }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["right"].tam_enabled = cfg.tam_ckpt is not None
+        hw_cfg.robot_cfgs["right"].tam_enabled = cfg.tam
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         env_rel = env_creator.create_env(hw_cfg)
@@ -439,7 +445,7 @@ def main() -> None:
     env_rel = get_env(cfg)
     controller = ModelInference(env_rel, cfg)
 
-    if cfg.tam_ckpt is not None:
+    if cfg.tam:
         history_encoder_thread = threading.Thread(
             target=controller.run_history_encoder, name="history_encoder", daemon=True
         )
