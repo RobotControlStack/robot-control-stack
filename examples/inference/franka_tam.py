@@ -188,25 +188,12 @@ class ModelInference:
         latents_sent = 0
         while True:
             try:
-                hist = robot.get_tam_history()
-                if len(hist) == 0:
-                    hist_encoder_framerate()
-                    continue
-                t = np.asarray([s.t for s in hist], dtype=np.float64)
-                q = np.asarray([s.q for s in hist], dtype=np.float32)
-                dq = np.asarray([s.dq for s in hist], dtype=np.float32)
-                tau_cmd = np.asarray([s.tau_cmd for s in hist], dtype=np.float32)
-                gravity = np.asarray([s.gravity for s in hist], dtype=np.float32)
-
-                # tau_cmd is the gravity-free commanded torque; the runtime
-                # combines it with the logged gravity into the ideal-model
-                # (gravity-included) torque the encoder was trained on. The
-                # runtime also handles everything stream-related internally:
+                # The runtime handles everything stream-related internally:
                 # overlapping polls are deduplicated by timestamp, short holes
                 # (e.g. a controller restart during a gain switch) are bridged
                 # with masked padding on its dense grid, and a backwards or
                 # over-long gap restarts the stream.
-                latent = self.tam_runtime.push_window(t, q, dq, tau_cmd, gravity=gravity)
+                latent = self.tam_runtime.push_history_samples(robot.get_tam_history())
                 if latent is not None:
                     robot.set_tam_latent(np.asarray(latent, dtype=np.float64).reshape((-1,)))
                     latents_sent += 1
