@@ -1,6 +1,13 @@
 import copy
 import logging
+import os
 import threading
+import time
+
+# The TAM history encoder (JAX) shares the GPU with everything else on this
+# machine; never let JAX preallocate ~75% of device memory. Must be set
+# before JAX initializes its backend (first use inside _init_tam).
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -65,6 +72,11 @@ class InferenceConfig:
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
+    # TAM (Torque Adaptation Module): master switch. When enabled, everything
+    # else resolves automatically: the default checkpoint is downloaded once
+    # into ~/.cache/simadaptor and the ideal-model MJCF is installed with the
+    # torque-adaptation-module package.
+    tam: bool = False
 
 
 def build_vlagent_obs(
@@ -129,29 +141,59 @@ class ModelInference:
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
         self._prev_pd_mode = 1.0
-        # TODO: load history encoder
-        self.history_encoder = None
+        self.tam_runtime = None
+        if cfg.tam:
+            self._init_tam()
+
+    def _init_tam(self) -> None:
+        """Load the TAM checkpoint: the streaming history encoder runs in this
+        process (JAX; a GPU is strongly recommended) and the adaptor MLP is
+        exported once into the C++ controller."""
+        from simadaptor.deploy.history_runtime import RealTimeHistoryAdaptor
+
+        # from_checkpoint enforces an applied-torque checkpoint: this
+        # integration records a single commanded-torque stream.
+        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint()
+        logger.info(
+            "TAM ready: adaptor binary %d bytes, applied-torque mode",
+            len(self.tam_runtime.adaptor_weight_bytes()),
+        )
 
     def run_history_encoder(self):
+        """Feed the 1 kHz controller history through the TAM history encoder
+        (~5 Hz) and push the resulting latent back into the C++ controller.
+
+        The C++ side applies zero residual until both the MLP weights and the
+        first latent have arrived, then ramps the residual in over 1 s."""
+        if self.tam_runtime is None:
+            logger.info("TAM disabled; history encoder not started")
+            return
         robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
-        # TODO: load TAM weights from disk
-        weights = None
 
-        # flatten array to send to cpp
-        # attention: numpy vs eigen has col vs row major (numpy) how values are stored in ram
-        # and its easier to fix this in python with indexing
-        robot.set_tam_mlp_weight(weights.reshape((-1,)))
-        hist_encoder_framerate = SimpleFrameRate(5)  # 5hz
+        # The weight vector carries the packed adaptor binary, one byte per
+        # float64 element (parsed and validated on the C++ side).
+        robot.set_tam_mlp_weight(
+            np.frombuffer(self.tam_runtime.adaptor_weight_bytes(), dtype=np.uint8).astype(np.float64)
+        )
+
+        hist_encoder_framerate = SimpleFrameRate(5)  # 5 Hz latent updates
+        latents_sent = 0
         while True:
-            hist = robot.get_tam_history()
-            # TODO convert in TAM suitable dataformat
-            latent = self.history_encoder(hist)
-
-            # flatten array to send to cpp
-            # attention: numpy vs eigen has col vs row major (numpy) how values are stored in ram
-            # and its easier to fix this in python with indexing
-            latent = latent.numpy().reshape((-1,))
-            robot.set_tam_latent(latent)
+            try:
+                # The runtime handles everything stream-related internally:
+                # overlapping polls are deduplicated by timestamp, short holes
+                # (e.g. a controller restart during a gain switch) are bridged
+                # with masked padding on its dense grid, and a backwards or
+                # over-long gap restarts the stream.
+                latent = self.tam_runtime.push_history_samples(robot.get_tam_history())
+                if latent is not None:
+                    robot.set_tam_latent(np.asarray(latent, dtype=np.float64).reshape((-1,)))
+                    latents_sent += 1
+                    if latents_sent == 1:
+                        logger.info("TAM: first latent sent, residual ramps in on the controller")
+            except Exception:
+                logger.exception("TAM history encoder step failed; retrying")
+                time.sleep(0.5)
             hist_encoder_framerate()
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
@@ -320,6 +362,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
             "right": rcs.common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])),
         }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
+        hw_cfg.robot_cfgs["right"].tam_enabled = cfg.tam
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         env_rel = env_creator.create_env(hw_cfg)
@@ -363,10 +406,11 @@ def main() -> None:
     env_rel = get_env(cfg)
     controller = ModelInference(env_rel, cfg)
 
-    history_encoder_thread = threading.Thread(
-        target=controller.run_history_encoder, name="history_encoder", daemon=True
-    )
-    history_encoder_thread.start()
+    if cfg.tam:
+        history_encoder_thread = threading.Thread(
+            target=controller.run_history_encoder, name="history_encoder", daemon=True
+        )
+        history_encoder_thread.start()
 
     with env_rel:
         controller.loop()

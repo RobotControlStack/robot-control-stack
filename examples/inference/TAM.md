@@ -1,0 +1,81 @@
+# TAM (Torque Adaptation Module) integration
+
+[TAM](https://github.com/Dongwon-Son/TAM) adds a learned residual to the
+commanded joint torque at 1 kHz inside the RCS controller, conditioned on a
+latent computed from the recent control history. One process, two rates:
+
+- **1 kHz (C++ control thread)**: `Franka::tam_forward` runs a small MLP on
+  q, dq, the last 8 commanded torques (gravity-included space) and the
+  current latent, and adds the clipped residual to the controller torque.
+- **~5 Hz (Python thread in `franka_tam.py`)**: `run_history_encoder` pulls
+  the controller's history buffer, streams it through the TAM transformer
+  encoder (JAX), and pushes each latent back via `set_tam_latent`.
+
+## Setup
+
+```shell
+pip install -r requirements.txt   # includes torque-adaptation-module (JAX)
+```
+
+A CUDA-capable JAX is strongly recommended on the control machine — the
+encoder is ~20x slower than real time on CPU:
+
+```shell
+pip install "jax[cuda12]"
+```
+
+## Run
+
+Set `tam = True` on `InferenceConfig` (top of `franka_tam.py`; the file does
+not read `franka.json`). Everything else resolves automatically on first run:
+
+- the default checkpoint (DAgger-finetuned, applied-torque) downloads once
+  from the TAM GitHub releases into `~/.cache/simadaptor` (override with
+  `SIMADAPTOR_CACHE_DIR`), verified by SHA-256;
+- the ideal-model MJCF is installed with the `torque-adaptation-module`
+  package.
+
+To use a different checkpoint or MJCF, pass them to
+`RealTimeHistoryAdaptor.from_checkpoint(...)` in `_init_tam`.
+The per-joint residual is clipped at 10/10/10/10/2/2/2 Nm
+(`FrankaConfig.tam_residual_clip`, a C++-side default); the residual also ramps in over 1 s whenever it
+(re)activates.
+
+## Operational notes
+
+- The controller applies zero residual until the MLP weights and the first
+  latent arrive. The first latent needs only ~0.5 s of control history (one
+  400 ms encoder patch plus a poll); the estimate then keeps refining as
+  context grows toward the 4 s attention window. Startup also pays a
+  one-time JAX JIT warm-up of ~10-15 s before the encoder loop begins.
+- Switching controller gains (`pd_mode`) restarts the control thread, but
+  TAM adaptation continues across it: history timestamps come from a
+  robot-lifetime monotonic clock, the encoder bridges the short restart
+  gap with masked padding rows (so its context window is not cut), and the
+  latent is kept throughout (it encodes plant properties, which a gain
+  change does not alter). Only the residual re-ramps over 1 s after the
+  switch, since the gains it interacts with changed.
+- Only applied-torque checkpoints are supported; `base_tam_fusion`
+  checkpoints are rejected at startup.
+- The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
+  leaves no deadline slack on a stock (non-PREEMPT_RT) kernel. The control
+  thread therefore elevates itself to a real-time scheduling class by
+  default (`FrankaConfig.rt_priority`, default 80; 0 disables), trying in
+  order:
+
+  1. `SCHED_FIFO` at the configured priority — needs an rtprio rlimit;
+  2. RealtimeKit (`SCHED_RR`, the mechanism the desktop audio stack uses)
+     — **no host configuration needed** on a normal desktop session.
+
+  So on a desktop workstation this works out of the box. Only on headless
+  / SSH-only setups (where RealtimeKit's policy denies the request) do the
+  one-time rlimit setup:
+
+  ```shell
+  echo "$USER - rtprio 99" | sudo tee -a /etc/security/limits.conf
+  # then open a fresh login session and check: ulimit -r  ->  99
+  ```
+
+  If both mechanisms are unavailable the controller prints a warning and
+  stays on the normal scheduler; expect `communication_constraints_violation`
+  aborts on a loaded machine in that state.

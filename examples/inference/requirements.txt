@@ -1,1 +1,3 @@
 vlagents==0.3.0
+# TAM history encoder + adaptor export (installs the `simadaptor` package)
+torque-adaptation-module @ git+https://github.com/Dongwon-Son/TAM

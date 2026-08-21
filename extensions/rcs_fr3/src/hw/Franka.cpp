@@ -19,6 +19,7 @@
 
 namespace rcs {
 namespace hw {
+
 common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
   return common::Pose(robot_state.O_T_EE) *
          common::Pose(robot_state.F_T_EE).inverse();
@@ -93,22 +94,86 @@ FrankaState* Franka::get_state() {
   return state;
 }
 
-common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau) {
-  // access weight matrix thread safe
-  const std::optional<Eigen::VectorXd> weight = this->tam_mlp_weight.load();
+void Franka::set_tam_mlp_weight(const Eigen::VectorXd& weight) {
+  this->tam_mlp_weight.store(weight);
+  // The vector carries the packed TAM adaptor binary, one byte per element
+  // (the format written by SimAdaptorInference.export_simadaptor_weights_cpp;
+  // it includes the MLP architecture and the input normalization statistics).
+  // Parse here, off the 1 kHz control thread, and publish the parsed model.
+  std::string bytes(static_cast<size_t>(weight.size()), '\0');
+  for (Eigen::Index i = 0; i < weight.size(); ++i) {
+    const double v = weight(i);
+    if (!(v >= 0.0 && v <= 255.0)) {
+      throw std::runtime_error(
+          "set_tam_mlp_weight: element " + std::to_string(i) +
+          " is not a byte value; pass the .bin file bytes as float64");
+    }
+    bytes[static_cast<size_t>(i)] = static_cast<char>(static_cast<uint8_t>(v));
+  }
+  std::shared_ptr<const adaptor::SimAdaptor> model =
+      adaptor::SimAdaptor::LoadFromMemory(bytes.data(), bytes.size());
+  if (!model) {
+    throw std::runtime_error(
+        "set_tam_mlp_weight: could not parse the TAM adaptor binary");
+  }
+  if (model->dof != 7) {
+    throw std::runtime_error("set_tam_mlp_weight: expected dof=7, got " +
+                             std::to_string(model->dof));
+  }
+  this->tam_model.store(model);
+}
 
-  // no weights set yet, so TAM does not contribute any torque
-  if (!weight.has_value()) {
-    return common::Vector7d::Zero();
+common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
+                                     const franka::RobotState& robot_state,
+                                     const std::array<double, 7>& gravity) {
+  const std::shared_ptr<const adaptor::SimAdaptor> model =
+      this->tam_model.load();
+  common::Vector7d delta = common::Vector7d::Zero();
+  std::vector<adaptor::SimAdaptor::StreamRow> rows;
+  if (model) {
+    // The MLP conditions on the last history_steps samples in the
+    // ideal-model (gravity-included) torque space: history_steps-1 recorded
+    // ticks plus the current one from the arguments. The newest recorded row
+    // must be contiguous with now — right after a controller restart the
+    // buffer still ends before the restart gap (see tam_now()).
+    const int T = model->history_steps;
+    const std::deque<TAMHistorySample>& past = this->tam_recent;
+    if (past.size() + 1 >= static_cast<size_t>(T) &&
+        this->tam_now() - past.back().t <= 0.05) {
+      rows.reserve(static_cast<size_t>(T));
+      for (auto it = past.end() - static_cast<long>(T - 1); it != past.end();
+           ++it) {
+        const TAMHistorySample& s = *it;
+        adaptor::SimAdaptor::StreamRow r;
+        for (int j = 0; j < 7; ++j) {
+          r.q[j] = s.q[j];
+          r.dq[j] = s.dq[j];
+          r.tau_model[j] = s.tau_cmd[j] + s.gravity[j];
+        }
+        rows.push_back(r);
+      }
+      adaptor::SimAdaptor::StreamRow now;
+      for (int j = 0; j < 7; ++j) {
+        now.q[j] = robot_state.q[j];
+        now.dq[j] = robot_state.dq[j];
+        now.tau_model[j] = tau[j] + gravity[j];
+      }
+      rows.push_back(now);
+    }
   }
 
-  // access latent thread safe
-  const Eigen::VectorXd latent = this->tam_latent.load();
-
-  // TODO reshape weight and latent to match nn
-  // TODO forward nn
-  common::Vector7d tam_tau = common::Vector7d::Zero();
-  return tam_tau;
+  const bool active =
+      !rows.empty() && model->forward_stream(rows, this->tam_latent.load(),
+                                             this->m_cfg.tam_residual_clip,
+                                             delta);
+  if (!active) {
+    this->tam_active_ticks = 0;
+    return common::Vector7d::Zero();
+  }
+  // Ramp the residual in over ~1 s whenever it (re)activates so enabling
+  // TAM (or the first latent) never steps the torque.
+  this->tam_active_ticks = std::min(this->tam_active_ticks + 1, 1000);
+  return (static_cast<double>(this->tam_active_ticks) / 1000.0) * delta;
 }
 
 void Franka::set_default_robot_behavior() {
@@ -413,6 +478,7 @@ void Franka::stop_control_thread() {
 }
 
 void Franka::osc() {
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
@@ -420,6 +486,11 @@ void Franka::osc() {
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
+  // The TAM history buffer intentionally survives controller restarts:
+  // timestamps come from a robot-lifetime monotonic clock, so a restart is
+  // just a short gap in a continuous stream. Only the residual ramp starts
+  // over (the gains may have changed).
+  this->tam_active_ticks = 0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
@@ -629,7 +700,8 @@ void Franka::osc() {
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
       if (this->m_cfg.tam_enabled) {
-        Eigen::VectorXd::Map(&tau_d_array[0], 7) += tam_forward(tau_d_array);
+        Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
+            tam_forward(tau_d_array, robot_state, gravity_array);
       }
 
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
@@ -639,12 +711,16 @@ void Franka::osc() {
 
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
-        this->tam_history.push_back(
-            TAMHistorySample{.t = period.toSec(),
-                             .q = robot_state.q,
-                             .dq = robot_state.dq,
-                             .tau_cmd = tau_d_rate_limited,
-                             .gravity = gravity_array});
+        const TAMHistorySample sample{.t = this->tam_now(),
+                                      .q = robot_state.q,
+                                      .dq = robot_state.dq,
+                                      .tau_cmd = tau_d_rate_limited,
+                                      .gravity = gravity_array};
+        this->tam_history.push_back(sample);
+        this->tam_recent.push_back(sample);
+        if (this->tam_recent.size() > 32) {
+          this->tam_recent.pop_front();
+        }
       }
 
       return tau_d_rate_limited;
@@ -658,12 +734,18 @@ void Franka::osc() {
 }
 
 void Franka::joint_controller() {
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
+  // The TAM history buffer intentionally survives controller restarts:
+  // timestamps come from a robot-lifetime monotonic clock, so a restart is
+  // just a short gap in a continuous stream. Only the residual ramp starts
+  // over (the gains may have changed).
+  this->tam_active_ticks = 0;
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
@@ -738,8 +820,10 @@ void Franka::joint_controller() {
       auto time =
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+      std::array<double, 7> gravity_array = model.gravity(robot_state);
       if (this->m_cfg.tam_enabled) {
-        Eigen::VectorXd::Map(&tau_d_array[0], 7) += tam_forward(tau_d_array);
+        Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
+            tam_forward(tau_d_array, robot_state, gravity_array);
       }
 
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
@@ -749,12 +833,16 @@ void Franka::joint_controller() {
 
       if (this->m_cfg.tam_enabled) {
         // safe q, q_dot and tau
-        this->tam_history.push_back(
-            TAMHistorySample{.t = period.toSec(),
-                             .q = robot_state.q,
-                             .dq = robot_state.dq,
-                             .tau_cmd = tau_d_rate_limited,
-                             .gravity = model.gravity(robot_state)});
+        const TAMHistorySample sample{.t = this->tam_now(),
+                                      .q = robot_state.q,
+                                      .dq = robot_state.dq,
+                                      .tau_cmd = tau_d_rate_limited,
+                                      .gravity = gravity_array};
+        this->tam_history.push_back(sample);
+        this->tam_recent.push_back(sample);
+        if (this->tam_recent.size() > 32) {
+          this->tam_recent.pop_front();
+        }
       }
 
       return tau_d_rate_limited;
@@ -778,6 +866,7 @@ void Franka::zero_torque_guiding() {
 }
 
 void Franka::zero_torque_controller() {
+  adaptor::TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   this->set_default_robot_behavior();
   if (this->m_cfg.allow_high_collision) {
     // High collision threshold values for high impedance.
