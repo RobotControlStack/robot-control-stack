@@ -55,15 +55,23 @@ per-joint residual; the residual also ramps in over 1 s whenever it
   checkpoints are rejected at startup.
 - The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
   leaves no deadline slack on a stock (non-PREEMPT_RT) kernel. With TAM
-  enabled the example therefore sets `FrankaConfig.rt_priority = 80`: the
-  control thread elevates itself to SCHED_FIFO, which works on stock
-  kernels but requires an rtprio rlimit — one-time setup:
+  enabled the example therefore sets `FrankaConfig.rt_priority = 80` and
+  the control thread elevates itself to a real-time scheduling class,
+  trying in order:
+
+  1. `SCHED_FIFO` at the configured priority — needs an rtprio rlimit;
+  2. RealtimeKit (`SCHED_RR`, the mechanism the desktop audio stack uses)
+     — **no host configuration needed** on a normal desktop session.
+
+  So on a desktop workstation this works out of the box. Only on headless
+  / SSH-only setups (where RealtimeKit's policy denies the request) do the
+  one-time rlimit setup:
 
   ```shell
   echo "$USER - rtprio 99" | sudo tee -a /etc/security/limits.conf
   # then open a fresh login session and check: ulimit -r  ->  99
   ```
 
-  Without the rlimit the controller prints a warning and stays on the
-  normal scheduler; expect `communication_constraints_violation` aborts on
-  a loaded machine in that state.
+  If both mechanisms are unavailable the controller prints a warning and
+  stays on the normal scheduler; expect `communication_constraints_violation`
+  aborts on a loaded machine in that state.
