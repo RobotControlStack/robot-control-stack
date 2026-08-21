@@ -1,5 +1,6 @@
 import copy
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,6 +12,7 @@ from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3
 from rcs.utils import SimpleFrameRate
+from rcs_fr3._core.hw import Franka
 from vlagents.client import RemoteAgent
 from vlagents.policies.interface import Act, Obs, SingleAct, SingleObs
 
@@ -129,6 +131,28 @@ class ModelInference:
         self._prev_pd_mode = 1.0
         # TODO: load history encoder
         self.history_encoder = None
+
+    def run_history_encoder(self):
+        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
+        # TODO: load TAM weights from disk
+        weights = None
+
+        # flatten array to send to cpp
+        # attention: numpy vs eigen has col vs row major (numpy) how values are stored in ram
+        # and its easier to fix this in python with indexing
+        robot.set_tam_mlp_weight(weights.reshape((-1,)))
+        hist_encoder_framerate = SimpleFrameRate(5)  # 5hz
+        while True:
+            hist = robot.get_tam_history()
+            # TODO convert in TAM suitable dataformat
+            latent = self.history_encoder(hist)
+
+            # flatten array to send to cpp
+            # attention: numpy vs eigen has col vs row major (numpy) how values are stored in ram
+            # and its easier to fix this in python with indexing
+            latent = latent.numpy().reshape((-1,))
+            robot.set_tam_latent(latent)
+            hist_encoder_framerate()
 
     def obs_rcs2agents(self, obs: dict, info: dict | None = None) -> Obs:
         cameras = {}
@@ -338,6 +362,11 @@ def main() -> None:
     cfg = InferenceConfig()
     env_rel = get_env(cfg)
     controller = ModelInference(env_rel, cfg)
+
+    history_encoder_thread = threading.Thread(
+        target=controller.run_history_encoder, name="history_encoder", daemon=True
+    )
+    history_encoder_thread.start()
 
     with env_rel:
         controller.loop()
