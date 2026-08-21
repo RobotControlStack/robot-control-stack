@@ -1,7 +1,6 @@
 import copy
 import logging
 import os
-import tempfile
 import threading
 import time
 
@@ -158,33 +157,20 @@ class ModelInference:
         """Load the TAM checkpoint: the streaming history encoder runs in this
         process (JAX; a GPU is strongly recommended) and the adaptor MLP is
         exported once into the C++ controller."""
-        from simadaptor.assets import default_panda_xml, fetch_checkpoint
         from simadaptor.deploy.history_runtime import RealTimeHistoryAdaptor
 
-        ckpt = self._cfg.tam_ckpt if self._cfg.tam_ckpt is not None else fetch_checkpoint()
-        xml = self._cfg.tam_xml if self._cfg.tam_xml is not None else default_panda_xml()
-        self.tam_runtime = RealTimeHistoryAdaptor(
-            simadaptor_ckpt_path=str(ckpt),
-            xml_path=str(xml),
+        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint(
+            self._cfg.tam_ckpt,
+            xml_path=self._cfg.tam_xml,
             attention_history_s=float(self._cfg.tam_attention_history_s),
         )
-        inf = self.tam_runtime.inf
-        params = getattr(inf, "_simadaptor_params", None) or {}
-        mode = getattr(getattr(inf, "dagger_cfg", None), "history_torque_mode", None) or getattr(
-            getattr(inf, "cfg", None), "history_torque_mode", None
-        )
-        if "history_fusion" in params or mode == "base_tam_fusion":
+        if self.tam_runtime.history_torque_mode != "applied":
             raise RuntimeError(
-                "base_tam_fusion checkpoints are not supported by this integration: "
-                "the controller history records only the final commanded torque, "
-                "but fused checkpoints need separate base/residual streams. "
-                "Use an applied-torque checkpoint."
+                "this integration records only the final commanded torque, so it "
+                "supports applied-torque checkpoints; got "
+                f"{self.tam_runtime.history_torque_mode!r}"
             )
-        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
-            weights_path = f.name
-        inf.export_simadaptor_weights_cpp(weights_path)
-        with open(weights_path, "rb") as f:
-            self.tam_weight_bytes = f.read()
+        self.tam_weight_bytes = self.tam_runtime.adaptor_weight_bytes()
         logger.info("TAM ready: adaptor binary %d bytes, applied-torque mode", len(self.tam_weight_bytes))
 
     def run_history_encoder(self):
