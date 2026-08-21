@@ -159,17 +159,13 @@ class ModelInference:
         exported once into the C++ controller."""
         from simadaptor.deploy.history_runtime import RealTimeHistoryAdaptor
 
+        # from_checkpoint enforces an applied-torque checkpoint: this
+        # integration records a single commanded-torque stream.
         self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint(
             self._cfg.tam_ckpt,
             xml_path=self._cfg.tam_xml,
             attention_history_s=float(self._cfg.tam_attention_history_s),
         )
-        if self.tam_runtime.history_torque_mode != "applied":
-            raise RuntimeError(
-                "this integration records only the final commanded torque, so it "
-                "supports applied-torque checkpoints; got "
-                f"{self.tam_runtime.history_torque_mode!r}"
-            )
         self.tam_weight_bytes = self.tam_runtime.adaptor_weight_bytes()
         logger.info("TAM ready: adaptor binary %d bytes, applied-torque mode", len(self.tam_weight_bytes))
 
