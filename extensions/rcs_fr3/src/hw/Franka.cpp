@@ -189,90 +189,53 @@ void Franka::set_tam_mlp_weight(const Eigen::VectorXd& weight) {
 common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
                                      const franka::RobotState& robot_state,
                                      const std::array<double, 7>& gravity) {
-  // no weights set yet, so TAM does not contribute any torque
   const std::shared_ptr<const adaptor::SimAdaptor> model =
       this->tam_model.load();
-  if (!model) {
-    this->tam_active_ticks = 0;
-    return common::Vector7d::Zero();
-  }
-
-  // latent from the history-encoder thread; zero torque until the first one
-  // with the expected dimension arrives.
-  const Eigen::VectorXd latent = this->tam_latent.load();
-  if (latent.size() == 0 ||
-      latent.size() != model->expected_history_embedding_cols()) {
-    this->tam_active_ticks = 0;
-    return common::Vector7d::Zero();
-  }
-
-  // The adaptor conditions on the last ``history_steps`` samples: the current
-  // tick from the arguments plus history_steps-1 recorded ticks.
-  const int T = model->history_steps;
-  const int D = model->dof;
-  const std::vector<TAMHistorySample> past =
-      this->tam_history.last_n(static_cast<size_t>(T - 1));
-  if (past.size() + 1 < static_cast<size_t>(T)) {
-    this->tam_active_ticks = 0;
-    return common::Vector7d::Zero();
-  }
-  // The MLP window assumes contiguous 1 kHz samples. Right after a
-  // controller restart the newest recorded rows predate the restart gap;
-  // hold the residual for the few ms it takes to refill with fresh rows.
-  if (this->tam_now() - past.back().t > 0.05) {
-    this->tam_active_ticks = 0;
-    return common::Vector7d::Zero();
-  }
-
-  adaptor::M emb_row(1, latent.size());
-  for (Eigen::Index i = 0; i < latent.size(); ++i) {
-    emb_row(0, i) = static_cast<float>(latent(i));
-  }
-  adaptor::M q_hist(1, T * D);
-  adaptor::M dq_hist(1, T * D);
-  adaptor::M tau_hist(1, T * D);
-  // Torque inputs are in the ideal-model (gravity-included) space:
-  // recorded tau_cmd is the gravity-free command, so add the recorded gravity.
-  for (int t = 0; t < T - 1; ++t) {
-    const TAMHistorySample& sample = past[static_cast<size_t>(t)];
-    const int offset = t * D;  // oldest history at the lowest offset
-    for (int j = 0; j < D; ++j) {
-      q_hist(0, offset + j) = static_cast<float>(sample.q[j]);
-      dq_hist(0, offset + j) = static_cast<float>(sample.dq[j]);
-      tau_hist(0, offset + j) =
-          static_cast<float>(sample.tau_cmd[j] + sample.gravity[j]);
+  common::Vector7d delta = common::Vector7d::Zero();
+  std::vector<adaptor::SimAdaptor::StreamRow> rows;
+  if (model) {
+    // The MLP conditions on the last history_steps samples in the
+    // ideal-model (gravity-included) torque space: history_steps-1 recorded
+    // ticks plus the current one from the arguments. The newest recorded row
+    // must be contiguous with now — right after a controller restart the
+    // buffer still ends before the restart gap (see tam_now()).
+    const int T = model->history_steps;
+    const std::vector<TAMHistorySample> past =
+        this->tam_history.last_n(static_cast<size_t>(T - 1));
+    if (past.size() + 1 == static_cast<size_t>(T) &&
+        this->tam_now() - past.back().t <= 0.05) {
+      rows.reserve(static_cast<size_t>(T));
+      for (const TAMHistorySample& s : past) {
+        adaptor::SimAdaptor::StreamRow r;
+        for (int j = 0; j < 7; ++j) {
+          r.q[j] = s.q[j];
+          r.dq[j] = s.dq[j];
+          r.tau_model[j] = s.tau_cmd[j] + s.gravity[j];
+        }
+        rows.push_back(r);
+      }
+      adaptor::SimAdaptor::StreamRow now;
+      for (int j = 0; j < 7; ++j) {
+        now.q[j] = robot_state.q[j];
+        now.dq[j] = robot_state.dq[j];
+        now.tau_model[j] = tau[j] + gravity[j];
+      }
+      rows.push_back(now);
     }
   }
-  const int offset = (T - 1) * D;
-  for (int j = 0; j < D; ++j) {
-    q_hist(0, offset + j) = static_cast<float>(robot_state.q[j]);
-    dq_hist(0, offset + j) = static_cast<float>(robot_state.dq[j]);
-    tau_hist(0, offset + j) = static_cast<float>(tau[j] + gravity[j]);
-  }
 
-  adaptor::M delta_tau;
-  try {
-    delta_tau = model->forward(q_hist, dq_hist, tau_hist, emb_row);
-  } catch (...) {
+  const bool active =
+      !rows.empty() && model->forward_stream(rows, this->tam_latent.load(),
+                                             this->m_cfg.tam_residual_clip,
+                                             delta);
+  if (!active) {
     this->tam_active_ticks = 0;
     return common::Vector7d::Zero();
   }
-  if (delta_tau.size() != D) {
-    this->tam_active_ticks = 0;
-    return common::Vector7d::Zero();
-  }
-
-  // Ramp the residual in over ~1 s after it becomes active so enabling TAM
-  // (or the first latent) never steps the torque, then clip per joint.
+  // Ramp the residual in over ~1 s whenever it (re)activates so enabling
+  // TAM (or the first latent) never steps the torque.
   this->tam_active_ticks = std::min(this->tam_active_ticks + 1, 1000);
-  const double ramp = static_cast<double>(this->tam_active_ticks) / 1000.0;
-  common::Vector7d tam_tau = common::Vector7d::Zero();
-  for (int j = 0; j < D; ++j) {
-    const double v = static_cast<double>(delta_tau(0, j));
-    const double lim = std::abs(this->m_cfg.tam_residual_clip(j));
-    tam_tau(j) = std::isfinite(v) ? ramp * std::clamp(v, -lim, lim) : 0.0;
-  }
-  return tam_tau;
+  return (static_cast<double>(this->tam_active_ticks) / 1000.0) * delta;
 }
 
 void Franka::set_default_robot_behavior() {

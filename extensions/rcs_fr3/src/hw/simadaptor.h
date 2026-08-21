@@ -317,6 +317,64 @@ struct SimAdaptor {
     return use_jointwise_conditioning ? (dof * emb_dim) : emb_dim;
   }
 
+
+  // A single sample of a streaming controller history (torque in the
+  // ideal-model, gravity-included space).
+  struct StreamRow {
+    std::array<double, 7> q{};
+    std::array<double, 7> dq{};
+    std::array<double, 7> tau_model{};
+  };
+
+  // Residual for the newest sample of a 1 kHz stream.
+  // ``rows`` must hold exactly ``history_steps`` samples, oldest first;
+  // ``latent`` is the history embedding. Returns false (with ``delta`` zero)
+  // when the inputs do not match the model or the forward fails. The result
+  // is clipped per joint to ``|clip|``; ramping is the caller's policy.
+  bool forward_stream(const std::vector<StreamRow>& rows,
+                      const Eigen::VectorXd& latent,
+                      const Eigen::Matrix<double, 7, 1>& clip,
+                      Eigen::Matrix<double, 7, 1>& delta) const {
+    delta.setZero();
+    const int T = history_steps;
+    const int D = dof;
+    if (D > 7 || static_cast<int>(rows.size()) != T ||
+        latent.size() != expected_history_embedding_cols()) {
+      return false;
+    }
+    M emb(1, latent.size());
+    for (Eigen::Index i = 0; i < latent.size(); ++i) {
+      emb(0, i) = static_cast<float>(latent(i));
+    }
+    M q_hist(1, T * D);
+    M dq_hist(1, T * D);
+    M tau_hist(1, T * D);
+    for (int t = 0; t < T; ++t) {
+      const StreamRow& r = rows[static_cast<size_t>(t)];
+      const int offset = t * D;
+      for (int j = 0; j < D; ++j) {
+        q_hist(0, offset + j) = static_cast<float>(r.q[j]);
+        dq_hist(0, offset + j) = static_cast<float>(r.dq[j]);
+        tau_hist(0, offset + j) = static_cast<float>(r.tau_model[j]);
+      }
+    }
+    M out;
+    try {
+      out = forward(q_hist, dq_hist, tau_hist, emb);
+    } catch (...) {
+      return false;
+    }
+    if (out.size() != D) {
+      return false;
+    }
+    for (int j = 0; j < D; ++j) {
+      const double v = static_cast<double>(out(0, j));
+      const double lim = std::abs(clip(j));
+      delta(j) = std::isfinite(v) ? std::clamp(v, -lim, lim) : 0.0;
+    }
+    return true;
+  }
+
   M forward(const M& q, const M& qd, const M& tau, const M& history_emb) const {
     return forward_with_aux(q, qd, tau, history_emb).delta_tau;
   }
