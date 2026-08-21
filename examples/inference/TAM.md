@@ -37,8 +37,8 @@ not read `franka.json`). Everything else resolves automatically on first run:
 
 To use a different checkpoint or MJCF, pass them to
 `RealTimeHistoryAdaptor.from_checkpoint(...)` in `_init_tam`.
-`FrankaConfig.tam_residual_clip` (default 10/10/10/10/2/2/2 Nm) bounds the
-per-joint residual; the residual also ramps in over 1 s whenever it
+The per-joint residual is clipped at 10/10/10/10/2/2/2 Nm
+(`FrankaConfig.tam_residual_clip`, a C++-side default); the residual also ramps in over 1 s whenever it
 (re)activates.
 
 ## Operational notes
@@ -58,10 +58,10 @@ per-joint residual; the residual also ramps in over 1 s whenever it
 - Only applied-torque checkpoints are supported; `base_tam_fusion`
   checkpoints are rejected at startup.
 - The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
-  leaves no deadline slack on a stock (non-PREEMPT_RT) kernel. With TAM
-  enabled the example therefore sets `FrankaConfig.rt_priority = 80` and
-  the control thread elevates itself to a real-time scheduling class,
-  trying in order:
+  leaves no deadline slack on a stock (non-PREEMPT_RT) kernel. The control
+  thread therefore elevates itself to a real-time scheduling class by
+  default (`FrankaConfig.rt_priority`, default 80; 0 disables), trying in
+  order:
 
   1. `SCHED_FIFO` at the configured priority — needs an rtprio rlimit;
   2. RealtimeKit (`SCHED_RR`, the mechanism the desktop audio stack uses)

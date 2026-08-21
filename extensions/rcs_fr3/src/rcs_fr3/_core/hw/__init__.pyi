@@ -125,9 +125,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     load_parameters: FrankaLoad | None
     policy_rate: int
     speed_factor: float
-    rt_priority: int
     tam_enabled: bool
-    tam_residual_clip: numpy.ndarray[tuple[typing.Literal[7], typing.Literal[1]], numpy.dtype[numpy.float64]]
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]

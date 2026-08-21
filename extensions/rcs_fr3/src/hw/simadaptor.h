@@ -2,8 +2,16 @@
 
 #include <Eigen/Dense>
 
+#include <pthread.h>
+#include <sched.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <iostream>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -16,6 +24,61 @@
 #include <vector>
 
 namespace adaptor {
+
+// Best-effort real-time scheduling for the calling thread (a 1 kHz robot
+// control loop). Two mechanisms, tried in order:
+//  1. SCHED_FIFO at the given priority — needs an rtprio rlimit
+//     (one line in /etc/security/limits.conf + a fresh login).
+//  2. RealtimeKit (the D-Bus service the desktop audio stack uses), which
+//     can grant SCHED_RR without any host configuration. rtkit caps the
+//     priority (typically 20) and requires a finite RLIMIT_RTTIME on the
+//     process; both are fine here — SCHED_RR at any priority preempts all
+//     normal threads, and a control thread blocks every millisecond so it
+//     can never approach the runtime limit.
+// If both fail the thread stays on the normal scheduler and a warning is
+// printed; expect communication-constraint violations on a loaded machine
+// in that state. priority <= 0 disables.
+inline void TryElevateControlThreadPriority(int priority) {
+  if (priority <= 0) {
+    return;
+  }
+  sched_param param{};
+  param.sched_priority = priority;
+  if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) == 0) {
+    std::cerr << "[rcs] control thread on SCHED_FIFO priority " << priority
+              << std::endl;
+    return;
+  }
+
+  rlimit rttime{};
+  rttime.rlim_cur = 200000;  // 200 ms of uninterrupted RT CPU (rtkit requires a finite cap)
+  rttime.rlim_max = 200000;
+  setrlimit(RLIMIT_RTTIME, &rttime);
+  const int rtkit_priority = std::min(priority, 20);
+  const long pid = static_cast<long>(getpid());
+  const long tid = static_cast<long>(syscall(SYS_gettid));
+  const std::string cmd =
+      "busctl --system --timeout=2 call org.freedesktop.RealtimeKit1 "
+      "/org/freedesktop/RealtimeKit1 org.freedesktop.RealtimeKit1 "
+      "MakeThreadRealtimeWithPID ttu " +
+      std::to_string(pid) + " " + std::to_string(tid) + " " +
+      std::to_string(rtkit_priority) + " >/dev/null 2>&1";
+  const int sys_rc = std::system(cmd.c_str());
+  (void)sys_rc;
+  const int policy = sched_getscheduler(0);
+  if (policy == SCHED_RR || policy == SCHED_FIFO) {
+    std::cerr << "[rcs] control thread on SCHED_RR priority " << rtkit_priority
+              << " via RealtimeKit" << std::endl;
+    return;
+  }
+
+  std::cerr << "[rcs] real-time scheduling unavailable (SCHED_FIFO denied, "
+               "RealtimeKit not reachable); control thread stays on the "
+               "normal scheduler. For the strong SCHED_FIFO path add "
+               "\"<user> - rtprio 99\" to /etc/security/limits.conf and open "
+               "a fresh login session." << std::endl;
+}
+
 
 using M = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using V = Eigen::VectorXf;

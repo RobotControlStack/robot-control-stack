@@ -363,11 +363,6 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].tam_enabled = cfg.tam
-        if cfg.tam:
-            # SCHED_FIFO for the 1 kHz thread (best-effort; needs an rtprio
-            # rlimit): the TAM residual leaves no deadline slack on a stock
-            # kernel otherwise.
-            hw_cfg.robot_cfgs["right"].rt_priority = 80
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         env_rel = env_creator.create_env(hw_cfg)
