@@ -1,8 +1,14 @@
 import copy
 import logging
+import os
 import tempfile
 import threading
 import time
+
+# The TAM history encoder (JAX) shares the GPU with everything else on this
+# machine; never let JAX preallocate ~75% of device memory. Must be set
+# before JAX initializes its backend (first use inside _init_tam).
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 from dataclasses import dataclass, field
 from typing import Any
 
