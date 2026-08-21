@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "rcs/Kinematics.h"
+#include "simadaptor.h"
 #include "rcs/LinearPoseTrajInterpolator.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
@@ -30,7 +31,10 @@ struct TAMHistorySample {
 };
 
 const double DEFAULT_SPEED_FACTOR = 0.2;
-const size_t TAM_HISTORY_SIZE = 200;
+// 4 s of 1 kHz samples: the history-encoder thread polls at ~5 Hz and
+// tolerates late polls without losing stream continuity (200 rows gave
+// the Python side a zero-margin 0.2 s window).
+const size_t TAM_HISTORY_SIZE = 4000;
 
 struct FrankaLoad {
   double load_mass;
@@ -85,6 +89,10 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool tam_enabled = false;
+  // Per-joint |clip| of the TAM residual torque in Nm before it is added to
+  // the controller torque (wrist joints have a 12 Nm limit; keep headroom).
+  common::Vector7d tam_residual_clip =
+      (common::Vector7d() << 10., 10., 10., 10., 2., 2., 2.).finished();
   bool ignore_realtime = false;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
@@ -137,6 +145,10 @@ class Franka : public common::Robot {
   common::ThreadSafeValue<std::optional<Eigen::VectorXd>> tam_mlp_weight{
       std::nullopt};
   common::ThreadSafeFixedBuffer<TAMHistorySample> tam_history{TAM_HISTORY_SIZE};
+  // Parsed TAM MLP (set_tam_mlp_weight parses off the control thread).
+  common::ThreadSafeValue<std::shared_ptr<const adaptor::SimAdaptor>> tam_model;
+  // Control-thread-only: ticks since the residual became active (1 s ramp).
+  int tam_active_ticks = 0;
   void osc();
   void joint_controller();
   void zero_torque_controller();
@@ -195,9 +207,10 @@ class Franka : public common::Robot {
 
   common::Pose get_base_pose_in_world_coordinates() override;
 
-  void set_tam_mlp_weight(const Eigen::VectorXd& weight) {
-    this->tam_mlp_weight.store(weight);
-  }
+  // Parses the packed TAM adaptor binary (one byte per vector element) and
+  // publishes it to the control thread; throws std::runtime_error on a
+  // malformed buffer. Parsing happens here, off the 1 kHz thread.
+  void set_tam_mlp_weight(const Eigen::VectorXd& weight);
   void set_tam_latent(const Eigen::VectorXd& latent) {
     this->tam_latent.store(latent);
   }
@@ -206,7 +219,9 @@ class Franka : public common::Robot {
     return this->tam_history.to_vector();
   }
 
-  common::Vector7d tam_forward(const std::array<double, 7>& tau);
+  common::Vector7d tam_forward(const std::array<double, 7>& tau,
+                               const franka::RobotState& robot_state,
+                               const std::array<double, 7>& gravity);
 
   void reset() override;
   void close() override {};
