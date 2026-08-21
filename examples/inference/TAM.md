@@ -49,7 +49,17 @@ per-joint residual; the residual also ramps in over 1 s whenever it
   resets the history stream: the residual drops out and returns ~4 s later.
 - Only applied-torque checkpoints are supported; `base_tam_fusion`
   checkpoints are rejected at startup.
-- The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick. Without a
-  PREEMPT_RT kernel, keep the machine lightly loaded; if the robot aborts
-  with `communication_constraints_violation`, give the process real-time
-  scheduling (e.g. grant an rtprio limit and launch under `chrt -f 80`).
+- The residual MLP adds ~0.1-0.3 ms to every 1 kHz control tick, which
+  leaves no deadline slack on a stock (non-PREEMPT_RT) kernel. With TAM
+  enabled the example therefore sets `FrankaConfig.rt_priority = 80`: the
+  control thread elevates itself to SCHED_FIFO, which works on stock
+  kernels but requires an rtprio rlimit — one-time setup:
+
+  ```shell
+  echo "$USER - rtprio 99" | sudo tee -a /etc/security/limits.conf
+  # then open a fresh login session and check: ulimit -r  ->  99
+  ```
+
+  Without the rlimit the controller prints a warning and stays on the
+  normal scheduler; expect `communication_constraints_violation` aborts on
+  a loaded machine in that state.

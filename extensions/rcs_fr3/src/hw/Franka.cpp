@@ -14,11 +14,33 @@
 #include <string>
 #include <thread>
 
+#include <pthread.h>
+#include <sched.h>
+
 #include "FrankaMotionGenerator.h"
 #include "rcs/Pose.h"
 
 namespace rcs {
 namespace hw {
+
+// Best-effort SCHED_FIFO for the calling control thread; see
+// FrankaConfig::rt_priority.
+static void TryElevateControlThreadPriority(int priority) {
+  if (priority <= 0) {
+    return;
+  }
+  sched_param param{};
+  param.sched_priority = priority;
+  const int rc = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+  if (rc == 0) {
+    std::cerr << "[rcs] control thread on SCHED_FIFO priority " << priority
+              << std::endl;
+  } else {
+    std::cerr << "[rcs] SCHED_FIFO " << priority << " denied (error " << rc
+              << "); control thread stays on the normal scheduler. Raise the "
+                 "rtprio rlimit (ulimit -r) to enable." << std::endl;
+  }
+}
 common::Pose GetFlangeInBaseFrame(const franka::RobotState& robot_state) {
   return common::Pose(robot_state.O_T_EE) *
          common::Pose(robot_state.F_T_EE).inverse();
@@ -506,6 +528,7 @@ void Franka::stop_control_thread() {
 }
 
 void Franka::osc() {
+  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
@@ -757,6 +780,7 @@ void Franka::osc() {
 }
 
 void Franka::joint_controller() {
+  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   franka::Model model = this->robot.loadModel();
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
@@ -884,6 +908,7 @@ void Franka::zero_torque_guiding() {
 }
 
 void Franka::zero_torque_controller() {
+  TryElevateControlThreadPriority(this->m_cfg.rt_priority);
   this->set_default_robot_behavior();
   if (this->m_cfg.allow_high_collision) {
     // High collision threshold values for high impedance.

@@ -94,6 +94,13 @@ struct FrankaConfig : common::RobotConfig {
   common::Vector7d tam_residual_clip =
       (common::Vector7d() << 10., 10., 10., 10., 2., 2., 2.).finished();
   bool ignore_realtime = false;
+  // >0: best-effort SCHED_FIFO at this priority for the async control
+  // thread. Works on stock kernels when the rtprio rlimit allows it (unlike
+  // ignore_realtime=false, which requires a PREEMPT_RT kernel); on failure
+  // the thread keeps the normal scheduler and a warning is printed. The
+  // TAM residual adds ~0.1-0.3 ms per 1 kHz tick, which misses deadlines
+  // on a loaded non-RT machine without this.
+  int rt_priority = 0;
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<

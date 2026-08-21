@@ -169,6 +169,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tam_residual_clip",
                      &rcs::hw::FrankaConfig::tam_residual_clip)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
+      .def_readwrite("rt_priority", &rcs::hw::FrankaConfig::rt_priority)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
   rcs::hw::FR3Config default_fr3_config;
