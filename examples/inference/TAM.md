@@ -35,7 +35,8 @@ not read `franka.json`). Everything else resolves automatically on first run:
 - the ideal-model MJCF is installed with the `torque-adaptation-module`
   package.
 
-`tam_ckpt` / `tam_xml` on `InferenceConfig` override both.
+To use a different checkpoint or MJCF, pass them to
+`RealTimeHistoryAdaptor.from_checkpoint(...)` in `_init_tam`.
 `FrankaConfig.tam_residual_clip` (default 10/10/10/10/2/2/2 Nm) bounds the
 per-joint residual; the residual also ramps in over 1 s whenever it
 (re)activates.

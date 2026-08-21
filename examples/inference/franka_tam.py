@@ -72,18 +72,11 @@ class InferenceConfig:
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
-    # TAM (Torque Adaptation Module): master switch. When enabled, the
-    # checkpoint and ideal-model MJCF resolve automatically: the default
-    # checkpoint is downloaded once into ~/.cache/simadaptor and the MJCF is
-    # installed with the torque-adaptation-module package.
+    # TAM (Torque Adaptation Module): master switch. When enabled, everything
+    # else resolves automatically: the default checkpoint is downloaded once
+    # into ~/.cache/simadaptor and the ideal-model MJCF is installed with the
+    # torque-adaptation-module package.
     tam: bool = False
-    # Checkpoint directory override (save_dict.pkl or a checkpoint_<step>
-    # dir); None fetches simadaptor.assets.DEFAULT_CHECKPOINT.
-    tam_ckpt: str | None = None
-    # Ideal-model MJCF override; None uses the packaged panda_pandagripper.xml.
-    tam_xml: str | None = None
-    tam_attention_history_s: float = 4.0
-    tam_latent_rate_hz: float = 5.0
 
 
 def build_vlagent_obs(
@@ -149,7 +142,6 @@ class ModelInference:
         self._action_buffer = []
         self._prev_pd_mode = 1.0
         self.tam_runtime = None
-        self.tam_weight_bytes: bytes | None = None
         if cfg.tam:
             self._init_tam()
 
@@ -161,13 +153,11 @@ class ModelInference:
 
         # from_checkpoint enforces an applied-torque checkpoint: this
         # integration records a single commanded-torque stream.
-        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint(
-            self._cfg.tam_ckpt,
-            xml_path=self._cfg.tam_xml,
-            attention_history_s=float(self._cfg.tam_attention_history_s),
+        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint()
+        logger.info(
+            "TAM ready: adaptor binary %d bytes, applied-torque mode",
+            len(self.tam_runtime.adaptor_weight_bytes()),
         )
-        self.tam_weight_bytes = self.tam_runtime.adaptor_weight_bytes()
-        logger.info("TAM ready: adaptor binary %d bytes, applied-torque mode", len(self.tam_weight_bytes))
 
     def run_history_encoder(self):
         """Feed the 1 kHz controller history through the TAM history encoder
@@ -175,16 +165,18 @@ class ModelInference:
 
         The C++ side applies zero residual until both the MLP weights and the
         first latent have arrived, then ramps the residual in over 1 s."""
-        if self.tam_runtime is None or self.tam_weight_bytes is None:
+        if self.tam_runtime is None:
             logger.info("TAM disabled; history encoder not started")
             return
         robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
 
         # The weight vector carries the packed adaptor binary, one byte per
         # float64 element (parsed and validated on the C++ side).
-        robot.set_tam_mlp_weight(np.frombuffer(self.tam_weight_bytes, dtype=np.uint8).astype(np.float64))
+        robot.set_tam_mlp_weight(
+            np.frombuffer(self.tam_runtime.adaptor_weight_bytes(), dtype=np.uint8).astype(np.float64)
+        )
 
-        hist_encoder_framerate = SimpleFrameRate(int(self._cfg.tam_latent_rate_hz))
+        hist_encoder_framerate = SimpleFrameRate(5)  # 5 Hz latent updates
         latents_sent = 0
         while True:
             try:
