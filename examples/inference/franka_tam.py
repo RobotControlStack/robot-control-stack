@@ -29,6 +29,37 @@ import rcs
 logger = logging.getLogger(__name__)
 
 
+ROBOT2IP = {
+    "right": "192.168.1.12",
+}
+
+ROBOT_INSTANCE = RobotPlatform.HARDWARE
+REALSENSE_CAMERA_DICT = None
+ZED_CAMERA_DICT = {
+    "gripper_rgb": "14943057",
+    "front_rgb": "35115330",
+}
+HOME_POSE = rcs.HOME_POSITIONS["FR3_DROID"]
+ROBOTIQ_SERIAL = {
+    "right": "DAANTG8W",
+}
+INCLUDE_DEPTH = False
+
+CONTROL_MODE = ControlMode.JOINTS
+RELATIVETO = RelativeTo.NONE
+IP = "localhost"
+PORT = 8080
+
+MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
+MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+
+
+@dataclass
 class InferenceConfig:
     vlagents_host: str = IP
     vlagents_port: int = PORT
