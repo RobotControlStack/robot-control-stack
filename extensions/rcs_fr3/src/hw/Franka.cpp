@@ -9,10 +9,13 @@
 #include <Eigen/Core>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "FrankaMotionGenerator.h"
 #include "rcs/Pose.h"
@@ -129,8 +132,18 @@ common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
   const std::shared_ptr<const adaptor::SimAdaptor> model =
       this->tam_model.load();
   common::Vector7d delta = common::Vector7d::Zero();
+  common::Vector7d delta_raw = common::Vector7d::Zero();
+  // Reset this tick's diagnostic scratch (control-thread only).
+  TAMForwardDiag& diag = this->last_tam_diag;
+  diag = TAMForwardDiag();
+  diag.model_present = static_cast<bool>(model);
+  const double latent_set_t = this->tam_latent_set_time.load();
+  diag.latent_norm = this->tam_latent_norm.load();
+  diag.latent_size = static_cast<int>(this->tam_latent.load().size());
+  diag.latent_age = latent_set_t < 0.0 ? -1.0 : (this->tam_now() - latent_set_t);
   std::vector<adaptor::SimAdaptor::StreamRow> rows;
   if (model) {
+    diag.history_steps = model->history_steps;
     // The MLP conditions on the last history_steps samples in the
     // ideal-model (gravity-included) torque space: history_steps-1 recorded
     // ticks plus the current one from the arguments. The newest recorded row
@@ -159,21 +172,168 @@ common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
         now.tau_model[j] = tau[j] + gravity[j];
       }
       rows.push_back(now);
+      diag.window_ok = true;
+      diag.window_dt =
+          (T > 1) ? (this->tam_now() -
+                     past[past.size() - static_cast<size_t>(T - 1)].t)
+                  : 0.0;
+      diag.max_ood_tau = model->now_row_tau_ood(now);
     }
   }
+
+  // this->tam_latent.store(); // ensure the latent is up-to-date for the forward
 
   const bool active =
       !rows.empty() && model->forward_stream(rows, this->tam_latent.load(),
                                              this->m_cfg.tam_residual_clip,
-                                             delta);
+                                             delta, &delta_raw);
+  diag.active = active;
   if (!active) {
     this->tam_active_ticks = 0;
+    diag.active_ticks = 0;
+    diag.ramp = 0.0;
     return common::Vector7d::Zero();
   }
   // Ramp the residual in over ~1 s whenever it (re)activates so enabling
   // TAM (or the first latent) never steps the torque.
   this->tam_active_ticks = std::min(this->tam_active_ticks + 1, 1000);
-  return (static_cast<double>(this->tam_active_ticks) / 1000.0) * delta;
+  const double ramp = static_cast<double>(this->tam_active_ticks) / 1000.0;
+  const common::Vector7d applied = ramp * delta;
+  diag.ramp = ramp;
+  diag.active_ticks = this->tam_active_ticks;
+  diag.delta_raw = delta_raw;
+  diag.delta_clipped = delta;
+  diag.delta_applied = applied;
+  // print applied
+  std::cout << "[tam] applied: " << applied.transpose() << std::endl;
+  return applied;
+}
+
+common::Vector7d Franka::tam_forward_test(const Eigen::MatrixXd& q,
+                                          const Eigen::MatrixXd& qd,
+                                          const Eigen::MatrixXd& tau_cmd,
+                                          const Eigen::MatrixXd& gravity,
+                                          const Eigen::VectorXd& latent) {
+  const std::shared_ptr<const adaptor::SimAdaptor> model = this->tam_model.load();
+  if (!model) {
+    throw std::runtime_error(
+        "tam_forward_test: no TAM model set; call set_tam_mlp_weight() first");
+  }
+  const int T = model->history_steps;
+  const int R = static_cast<int>(q.rows());
+  auto check = [&](const Eigen::MatrixXd& m, const char* name) {
+    if (m.rows() != R || m.cols() != 7) {
+      throw std::runtime_error(
+          std::string("tam_forward_test: ") + name +
+          " must be [R x 7] with R matching q; got [" + std::to_string(m.rows()) +
+          " x " + std::to_string(m.cols()) + "], q has " + std::to_string(R) +
+          " rows");
+    }
+  };
+  check(qd, "qd");
+  check(tau_cmd, "tau_cmd");
+  check(gravity, "gravity");
+  if (R < T) {
+    throw std::runtime_error(
+        "tam_forward_test: need at least history_steps=" + std::to_string(T) +
+        " rows, got " + std::to_string(R));
+  }
+  if (latent.size() != model->expected_history_embedding_cols()) {
+    throw std::runtime_error(
+        "tam_forward_test: latent size " + std::to_string(latent.size()) +
+        " != expected " + std::to_string(model->expected_history_embedding_cols()));
+  }
+  if (R != T) {
+    std::cout << "[tam_test] window has " << R << " rows; model history_steps="
+              << T << " -> using the LAST " << T << " rows (matches live path)"
+              << std::endl;
+  }
+
+  // Take the last T rows (as the live path takes the last history_steps of the
+  // recent buffer). Build model-space torque as tau_cmd + gravity per row (pass
+  // gravity=0 if tau_cmd is already model-space).
+  const int off = R - T;
+  std::vector<adaptor::SimAdaptor::StreamRow> rows(static_cast<size_t>(T));
+  for (int t = 0; t < T; ++t) {
+    const int r = off + t;
+    for (int j = 0; j < 7; ++j) {
+      rows[static_cast<size_t>(t)].q[j] = q(r, j);
+      rows[static_cast<size_t>(t)].dq[j] = qd(r, j);
+      rows[static_cast<size_t>(t)].tau_model[j] = tau_cmd(r, j) + gravity(r, j);
+    }
+  }
+
+  common::Vector7d delta = common::Vector7d::Zero();
+  common::Vector7d raw = common::Vector7d::Zero();
+  const bool ok = model->forward_stream(rows, latent, this->m_cfg.tam_residual_clip,
+                                        delta, &raw);
+  if (!ok) {
+    throw std::runtime_error(
+        "tam_forward_test: forward_stream failed (history_steps / latent size / "
+        "internal shape mismatch)");
+  }
+  std::cout << std::setprecision(9);
+  std::cout << "[tam_test] raw residual (pre-clip, pre-ramp): " << raw.transpose()
+            << std::endl;
+  std::cout << "[tam_test] clipped residual                 : " << delta.transpose()
+            << std::endl;
+  // Return the RAW residual: the pure adaptor-MLP output to compare against the
+  // Python reference. (This does NOT touch the control loop or the robot.)
+  return raw;
+}
+
+void Franka::tam_debug_record(const TAMDebugSample& s) {
+  // Single writer (control thread). Preallocated ring; overwrite oldest.
+  if (this->tam_debug_log.empty()) return;
+  this->tam_debug_log[this->tam_debug_head] = s;
+  this->tam_debug_head = (this->tam_debug_head + 1) % this->tam_debug_log.size();
+  if (this->tam_debug_head == 0) this->tam_debug_full = true;
+}
+
+size_t Franka::dump_tam_debug_log(const std::string& path) {
+  // Must be called with the control thread stopped (no concurrent writer).
+  const size_t cap = this->tam_debug_log.size();
+  const size_t n = this->tam_debug_full ? cap : this->tam_debug_head;
+  if (n == 0) {
+    std::cerr << "[tam] dump_tam_debug_log: no samples recorded" << std::endl;
+    return 0;
+  }
+  std::ofstream out(path);
+  if (!out.is_open()) {
+    throw std::runtime_error("dump_tam_debug_log: cannot open " + path);
+  }
+  out << "t,period,compute_us,latent_norm,latent_age,latent_size,ramp,"
+         "active_ticks,window_dt,history_steps,max_ood_tau,model_present,"
+         "window_ok,active";
+  const char* names[] = {"q",           "dq",         "desired_q",
+                         "tau_pd",      "delta_raw",  "delta_clipped",
+                         "delta_applied", "tau_post_tam", "tau_final",
+                         "gravity",     "tau_meas"};
+  for (const char* nm : names) {
+    for (int j = 0; j < 7; ++j) out << "," << nm << j;
+  }
+  out << "\n";
+  out << std::setprecision(9);
+  const size_t start = this->tam_debug_full ? this->tam_debug_head : 0;
+  for (size_t k = 0; k < n; ++k) {
+    const TAMDebugSample& s = this->tam_debug_log[(start + k) % cap];
+    out << s.t << "," << s.period << "," << s.compute_us << "," << s.latent_norm
+        << "," << s.latent_age << "," << s.latent_size << "," << s.ramp << ","
+        << s.active_ticks << "," << s.window_dt << "," << s.history_steps << ","
+        << s.max_ood_tau << "," << ((s.flags & 1) ? 1 : 0) << ","
+        << ((s.flags & 2) ? 1 : 0) << "," << ((s.flags & 4) ? 1 : 0);
+    const std::array<const std::array<double, 7>*, 11> vecs = {
+        &s.q,           &s.dq,         &s.desired_q,   &s.tau_pd,
+        &s.delta_raw,   &s.delta_clipped, &s.delta_applied, &s.tau_post_tam,
+        &s.tau_final,   &s.gravity,    &s.tau_meas};
+    for (const auto* v : vecs) {
+      for (int j = 0; j < 7; ++j) out << "," << (*v)[j];
+    }
+    out << "\n";
+  }
+  out.close();
+  std::cerr << "[tam] wrote " << n << " rows to " << path << std::endl;
+  return n;
 }
 
 void Franka::set_default_robot_behavior() {
@@ -703,9 +863,15 @@ void Franka::osc() {
         Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
             tam_forward(tau_d_array, robot_state, gravity_array);
       }
+      // Intended (pre-rate-limit) commanded torque, optionally recorded into the
+      // TAM history so the rate limiter does not distort TAM's conditioning.
+      const std::array<double, 7> tau_pre_ratelimit = tau_d_array;
 
-      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+      std::array<double, 7> tau_d_rate_limited =
+          this->m_cfg.rate_limit
+              ? franka::limitRate(franka::kMaxTorqueRate, tau_d_array,
+                                  robot_state.tau_J_d)
+              : tau_d_array;
 
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
 
@@ -714,7 +880,9 @@ void Franka::osc() {
         const TAMHistorySample sample{.t = this->tam_now(),
                                       .q = robot_state.q,
                                       .dq = robot_state.dq,
-                                      .tau_cmd = tau_d_rate_limited,
+                                      .tau_cmd = this->m_cfg.tam_history_pre_ratelimit
+                                                     ? tau_pre_ratelimit
+                                                     : tau_d_rate_limited,
                                       .gravity = gravity_array};
         this->tam_history.push_back(sample);
         this->tam_recent.push_back(sample);
@@ -820,14 +988,23 @@ void Franka::joint_controller() {
       auto time =
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+      // Controller torque before the TAM residual (for logging).
+      const std::array<double, 7> tau_pd_array = tau_d_array;
+
       std::array<double, 7> gravity_array = model.gravity(robot_state);
       if (this->m_cfg.tam_enabled) {
         Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
             tam_forward(tau_d_array, robot_state, gravity_array);
       }
 
-      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+      // tau after adding the TAM residual, before rate-limit / safety clip.
+      const std::array<double, 7> tau_post_tam_array = tau_d_array;
+
+      std::array<double, 7> tau_d_rate_limited =
+          this->m_cfg.rate_limit
+              ? franka::limitRate(franka::kMaxTorqueRate, tau_d_array,
+                                  robot_state.tau_J_d)
+              : tau_d_array;
 
       TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
 
@@ -836,13 +1013,52 @@ void Franka::joint_controller() {
         const TAMHistorySample sample{.t = this->tam_now(),
                                       .q = robot_state.q,
                                       .dq = robot_state.dq,
-                                      .tau_cmd = tau_d_rate_limited,
+                                      .tau_cmd = this->m_cfg.tam_history_pre_ratelimit
+                                                     ? tau_post_tam_array
+                                                     : tau_d_rate_limited,
                                       .gravity = gravity_array};
         this->tam_history.push_back(sample);
         this->tam_recent.push_back(sample);
         if (this->tam_recent.size() > 32) {
           this->tam_recent.pop_front();
         }
+      }
+
+      if (this->tam_logging.load()) {
+        const std::chrono::high_resolution_clock::time_point t_end =
+            std::chrono::high_resolution_clock::now();
+        const TAMForwardDiag& d = this->last_tam_diag;
+        TAMDebugSample dbg;
+        dbg.t = this->tam_now();
+        dbg.period = period.toSec();
+        dbg.compute_us =
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                    t_end - t1)
+                                    .count());
+        dbg.q = robot_state.q;
+        dbg.dq = robot_state.dq;
+        dbg.tau_pd = tau_pd_array;
+        dbg.tau_post_tam = tau_post_tam_array;
+        dbg.tau_final = tau_d_rate_limited;
+        dbg.gravity = gravity_array;
+        dbg.tau_meas = robot_state.tau_J;
+        for (int j = 0; j < 7; ++j) {
+          dbg.desired_q[j] = desired_q[j];
+          dbg.delta_raw[j] = d.delta_raw[j];
+          dbg.delta_clipped[j] = d.delta_clipped[j];
+          dbg.delta_applied[j] = d.delta_applied[j];
+        }
+        dbg.latent_norm = d.latent_norm;
+        dbg.latent_age = d.latent_age;
+        dbg.latent_size = d.latent_size;
+        dbg.ramp = d.ramp;
+        dbg.active_ticks = d.active_ticks;
+        dbg.window_dt = d.window_dt;
+        dbg.history_steps = d.history_steps;
+        dbg.max_ood_tau = d.max_ood_tau;
+        dbg.flags = (d.model_present ? 1 : 0) | (d.window_ok ? 2 : 0) |
+                    (d.active ? 4 : 0);
+        this->tam_debug_record(dbg);
       }
 
       return tau_d_rate_limited;

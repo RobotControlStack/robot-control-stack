@@ -86,6 +86,17 @@ class Franka(rcs._core.common.Robot):
     def get_config(self) -> FrankaConfig: ...
     def get_state(self) -> FrankaState: ...
     def get_tam_history(self) -> list[TAMHistorySample]: ...
+    def tam_forward_test(
+        self,
+        q: numpy.ndarray,
+        qd: numpy.ndarray,
+        tau_cmd: numpy.ndarray,
+        gravity: numpy.ndarray,
+        latent: numpy.ndarray,
+    ) -> numpy.ndarray: ...
+    def set_tam_logging(self, on: bool) -> None: ...
+    def clear_tam_debug_log(self) -> None: ...
+    def dump_tam_debug_log(self, path: str) -> int: ...
     def osc_set_cartesian_position(self, desired_pos_EE_in_base_frame: rcs._core.common.Pose) -> None: ...
     def set_cartesian_position_ik(
         self, pose: rcs._core.common.Pose, max_time: float, elbow: float | None, max_force: float | None = 5
@@ -124,8 +135,11 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     kp_r: float
     load_parameters: FrankaLoad | None
     policy_rate: int
+    rate_limit: bool
     speed_factor: float
     tam_enabled: bool
+    tam_history_pre_ratelimit: bool
+    tam_residual_clip: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]

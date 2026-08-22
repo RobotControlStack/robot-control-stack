@@ -166,6 +166,11 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("approach_rotation_speed",
                      &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("tam_enabled", &rcs::hw::FrankaConfig::tam_enabled)
+      .def_readwrite("tam_residual_clip",
+                     &rcs::hw::FrankaConfig::tam_residual_clip)
+      .def_readwrite("rate_limit", &rcs::hw::FrankaConfig::rate_limit)
+      .def_readwrite("tam_history_pre_ratelimit",
+                     &rcs::hw::FrankaConfig::tam_history_pre_ratelimit)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
@@ -359,7 +364,17 @@ PYBIND11_MODULE(_core, m) {
            py::arg("weight"))
       .def("set_tam_latent", &rcs::hw::Franka::set_tam_latent,
            py::arg("latent"))
-      .def("get_tam_history", &rcs::hw::Franka::get_tam_history);
+      .def("get_tam_history", &rcs::hw::Franka::get_tam_history)
+      .def("tam_forward_test", &rcs::hw::Franka::tam_forward_test,
+           py::arg("q"), py::arg("qd"), py::arg("tau_cmd"), py::arg("gravity"),
+           py::arg("latent"))
+      .def("tam_history_steps", &rcs::hw::Franka::tam_history_steps)
+      .def("tam_latent_dim", &rcs::hw::Franka::tam_latent_dim)
+      .def("set_tam_logging", &rcs::hw::Franka::set_tam_logging,
+           py::arg("on"))
+      .def("clear_tam_debug_log", &rcs::hw::Franka::clear_tam_debug_log)
+      .def("dump_tam_debug_log", &rcs::hw::Franka::dump_tam_debug_log,
+           py::arg("path"));
 
   py::object gripper =
       (py::object)py::module_::import("rcs").attr("common").attr("Gripper");

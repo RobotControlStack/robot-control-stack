@@ -32,6 +32,56 @@ struct TAMHistorySample {
   std::array<double, 7> gravity;
 };
 
+// Per-tick diagnostic record for debugging the TAM integration. Filled on the
+// 1 kHz control thread into a preallocated ring (no allocation, no I/O in the
+// loop) and dumped to CSV off the control thread via dump_tam_debug_log().
+struct TAMDebugSample {
+  double t = 0.0;             // tam_now() timestamp (s, robot-lifetime clock)
+  double period = 0.0;        // libfranka control period (s)
+  double compute_us = 0.0;    // controller compute time this tick (us)
+  std::array<double, 7> q{};
+  std::array<double, 7> dq{};
+  std::array<double, 7> desired_q{};        // interpolated joint target
+  std::array<double, 7> tau_pd{};           // controller torque BEFORE TAM
+  std::array<double, 7> delta_raw{};        // TAM residual pre-clip, pre-ramp
+  std::array<double, 7> delta_clipped{};    // TAM residual post-clip, pre-ramp
+  std::array<double, 7> delta_applied{};    // TAM residual actually added (post-ramp)
+  std::array<double, 7> tau_post_tam{};     // tau_pd + delta_applied (pre rate-limit)
+  std::array<double, 7> tau_final{};        // after limitRate + safety clip (applied & recorded)
+  std::array<double, 7> gravity{};          // model.gravity(robot_state)
+  std::array<double, 7> tau_meas{};         // robot_state.tau_J (measured link torque)
+  double latent_norm = 0.0;                 // ||latent|| used this tick
+  double latent_age = 0.0;                  // s since the latent was last set
+  int latent_size = 0;
+  double ramp = 0.0;                        // residual ramp scalar [0,1]
+  int active_ticks = 0;
+  double window_dt = 0.0;                   // t(now) - t(oldest row in MLP window)
+  int history_steps = 0;
+  double max_ood_tau = 0.0;                 // max |z-score| of now-row torque vs norm_stats
+  // bit0: model present, bit1: MLP window valid, bit2: forward_stream active
+  int flags = 0;
+};
+
+// Control-thread-only scratch that tam_forward fills each tick so the control
+// loop can log what went in and out of the module. No synchronization needed:
+// tam_forward is only ever called from the control thread.
+struct TAMForwardDiag {
+  bool model_present = false;
+  bool window_ok = false;
+  bool active = false;
+  int history_steps = 0;
+  double window_dt = 0.0;
+  double latent_age = 0.0;
+  double latent_norm = 0.0;
+  int latent_size = 0;
+  double ramp = 0.0;
+  int active_ticks = 0;
+  double max_ood_tau = 0.0;
+  Eigen::Matrix<double, 7, 1> delta_raw = Eigen::Matrix<double, 7, 1>::Zero();
+  Eigen::Matrix<double, 7, 1> delta_clipped = Eigen::Matrix<double, 7, 1>::Zero();
+  Eigen::Matrix<double, 7, 1> delta_applied = Eigen::Matrix<double, 7, 1>::Zero();
+};
+
 const double DEFAULT_SPEED_FACTOR = 0.2;
 // 4 s of 1 kHz samples: the history-encoder thread polls at ~5 Hz and
 // tolerates late polls without losing stream continuity (200 rows gave
@@ -95,6 +145,18 @@ struct FrankaConfig : common::RobotConfig {
   // the controller torque (wrist joints have a 12 Nm limit; keep headroom).
   common::Vector7d tam_residual_clip =
       (common::Vector7d() << 10., 10., 10., 10., 2., 2., 2.).finished();
+  // Apply franka::limitRate to the final commanded torque. On by default to
+  // satisfy the FCI torque-rate reflex. Can be disabled to test whether the
+  // rate limiter (which sits inside the TAM feedback loop and distorts the
+  // applied-torque history TAM conditions on) is the source of oscillation.
+  // NOTE: off usually trips FCI because PD+residual can sum past the reflex.
+  bool rate_limit = true;
+  // What TAM records as the "applied torque" history. When true, record the
+  // pre-rate-limit intended torque (tau_pd + residual) instead of the
+  // post-limiter command, so the rate limiter (needed for FCI) no longer
+  // distorts the history TAM conditions on -- keeping TAM's feedback consistent
+  // with training while the robot still receives a smooth command.
+  bool tam_history_pre_ratelimit = false;
   bool ignore_realtime = false;
   // Best-effort real-time scheduling for the async control thread at this
   // priority (0 disables): SCHED_FIFO when the rtprio rlimit allows it,
@@ -172,6 +234,21 @@ class Franka : public common::Robot {
   // reads its MLP window without touching the shared buffer's mutex (the
   // control thread is the only writer of both).
   std::deque<TAMHistorySample> tam_recent;
+  // Wall time (tam_now() clock) at which the most recent latent was set, so the
+  // control thread can log how stale the latent is. -1 until the first latent.
+  std::atomic<double> tam_latent_set_time{-1.0};
+  std::atomic<double> tam_latent_norm{0.0};
+  // Control-thread-only scratch filled by tam_forward each tick.
+  TAMForwardDiag last_tam_diag;
+  // Debug ring buffer (preallocated; single writer = control thread). When
+  // logging is on the control loop overwrites the oldest slot, so after a
+  // failure the buffer holds the most recent tam_debug_capacity ticks.
+  std::atomic<bool> tam_logging{false};
+  size_t tam_debug_capacity = 120000;  // ~2 min at 1 kHz
+  std::vector<TAMDebugSample> tam_debug_log;
+  size_t tam_debug_head = 0;   // next slot to write
+  bool tam_debug_full = false; // whether the ring has wrapped
+  void tam_debug_record(const TAMDebugSample& s);
   void osc();
   void joint_controller();
   void zero_torque_controller();
@@ -236,6 +313,8 @@ class Franka : public common::Robot {
   void set_tam_mlp_weight(const Eigen::VectorXd& weight);
   void set_tam_latent(const Eigen::VectorXd& latent) {
     this->tam_latent.store(latent);
+    this->tam_latent_norm.store(latent.norm());
+    this->tam_latent_set_time.store(this->tam_now());
   }
 
   std::vector<TAMHistorySample> get_tam_history() {
@@ -245,6 +324,50 @@ class Franka : public common::Robot {
   common::Vector7d tam_forward(const std::array<double, 7>& tau,
                                const franka::RobotState& robot_state,
                                const std::array<double, 7>& gravity);
+
+  // Offline self-test: run the TAM adaptor MLP on a fully static window and the
+  // given latent, print and return the residual. Uses ONLY the passed inputs
+  // (ignores live robot_state / tam_recent) and does NOT command the robot — for
+  // validating the C++ adaptor against the Python reference on known inputs.
+  // q/qd/tau_cmd/gravity are each [history_steps x 7]; tau_model is built as
+  // tau_cmd + gravity per row (matching the live path). Returns the RAW residual
+  // (pre-clip, pre-ramp); the clipped residual is also printed. Requires
+  // set_tam_mlp_weight() first; throws on shape/latent mismatch.
+  common::Vector7d tam_forward_test(const Eigen::MatrixXd& q,
+                                    const Eigen::MatrixXd& qd,
+                                    const Eigen::MatrixXd& tau_cmd,
+                                    const Eigen::MatrixXd& gravity,
+                                    const Eigen::VectorXd& latent);
+
+  // Number of history rows the loaded TAM adaptor consumes (0 if no model set),
+  // and the expected latent length. Useful to slice test windows correctly.
+  int tam_history_steps() const {
+    const auto m = this->tam_model.load();
+    return m ? m->history_steps : 0;
+  }
+  int tam_latent_dim() const {
+    const auto m = this->tam_model.load();
+    return m ? m->expected_history_embedding_cols() : 0;
+  }
+
+  // TAM debugging: enable/disable per-tick recording, clear the ring, and dump
+  // it to CSV. dump/clear must be called with the control thread stopped.
+  void set_tam_logging(bool on) {
+    if (on && this->tam_debug_log.size() != this->tam_debug_capacity) {
+      // Preallocate off the control thread so the 1 kHz loop never allocates.
+      this->tam_debug_log.assign(this->tam_debug_capacity, TAMDebugSample());
+      this->tam_debug_head = 0;
+      this->tam_debug_full = false;
+    }
+    this->tam_logging.store(on);
+  }
+  void clear_tam_debug_log() {
+    this->tam_debug_head = 0;
+    this->tam_debug_full = false;
+  }
+  // Writes the recorded ticks (chronological order) to a CSV file. Returns the
+  // number of rows written.
+  size_t dump_tam_debug_log(const std::string& path);
 
   void reset() override;
   void close() override {};

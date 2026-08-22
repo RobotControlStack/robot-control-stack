@@ -169,16 +169,24 @@ struct LayerNorm {
     const int D = static_cast<int>(X.cols());
     M Y(B, D);
     for (int i = 0; i < B; ++i) {
-      float mean = X.row(i).mean();
-      float var = 0.0f;
+      // Accumulate mean/variance in double: the stable two-pass variance
+      // matches JAX's LayerNorm (whose float32 fast-variance agrees with the
+      // exact value here) far better than a float32 computation would. The
+      // downstream AdaLN scale (gamma up to ~30x) amplifies any LayerNorm error,
+      // so this precision matters for matching the trained model.
+      double mean = 0.0;
+      for (int j = 0; j < D; ++j) mean += static_cast<double>(X(i, j));
+      mean /= static_cast<double>(D);
+      double var = 0.0;
       for (int j = 0; j < D; ++j) {
-        const float d = X(i, j) - mean;
+        const double d = static_cast<double>(X(i, j)) - mean;
         var += d * d;
       }
-      var /= static_cast<float>(D);
-      const float denom = 1.0f / std::sqrt(var + eps);
+      var /= static_cast<double>(D);
+      const float denom = 1.0f / std::sqrt(static_cast<float>(var) + eps);
+      const float meanf = static_cast<float>(mean);
       for (int j = 0; j < D; ++j) {
-        const float normed = (X(i, j) - mean) * denom;
+        const float normed = (X(i, j) - meanf) * denom;
         Y(i, j) = normed * gamma(j) + beta(j);
       }
     }
@@ -394,11 +402,31 @@ struct SimAdaptor {
   // ``latent`` is the history embedding. Returns false (with ``delta`` zero)
   // when the inputs do not match the model or the forward fails. The result
   // is clipped per joint to ``|clip|``; ramping is the caller's policy.
+  // OOD diagnostic: max over joints of the normalized ("z-score") torque of the
+  // newest (now) row, using the checkpoint's norm_stats. Large values mean the
+  // torque history fed to the MLP is far from the training distribution.
+  // Returns 0 when the checkpoint carries no norm_stats.
+  double now_row_tau_ood(const StreamRow& now) const {
+    if (!norm_stats.enabled) return 0.0;
+    const int base = (history_steps - 1) * dof;
+    double m = 0.0;
+    for (int j = 0; j < dof; ++j) {
+      const Eigen::Index idx = static_cast<Eigen::Index>(base + j);
+      if (idx >= norm_stats.mean_tau.size()) break;
+      const double z = (now.tau_model[j] - static_cast<double>(norm_stats.mean_tau(idx))) *
+                       static_cast<double>(norm_stats.inv_std_tau(idx));
+      m = std::max(m, std::abs(z));
+    }
+    return m;
+  }
+
   bool forward_stream(const std::vector<StreamRow>& rows,
                       const Eigen::VectorXd& latent,
                       const Eigen::Matrix<double, 7, 1>& clip,
-                      Eigen::Matrix<double, 7, 1>& delta) const {
+                      Eigen::Matrix<double, 7, 1>& delta,
+                      Eigen::Matrix<double, 7, 1>* raw_delta_out = nullptr) const {
     delta.setZero();
+    if (raw_delta_out) raw_delta_out->setZero();
     const int T = history_steps;
     const int D = dof;
     if (D > 7 || static_cast<int>(rows.size()) != T ||
@@ -433,6 +461,7 @@ struct SimAdaptor {
     for (int j = 0; j < D; ++j) {
       const double v = static_cast<double>(out(0, j));
       const double lim = std::abs(clip(j));
+      if (raw_delta_out) (*raw_delta_out)(j) = v;
       delta(j) = std::isfinite(v) ? std::clamp(v, -lim, lim) : 0.0;
     }
     return true;
