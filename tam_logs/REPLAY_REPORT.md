@@ -284,3 +284,58 @@ noticeably *lower* with TAM off. It did not. So:
   kinematic/model offset**: TCP/flange definition, FK-model-vs-real, mounting, or
   table-height reference — rather than load mass or gravity compensation.
 - TAM's vertical **overshoot to ~+3 cm reproduces with payload too**, unchanged.
+
+---
+
+# Dataset 2 with higher end-effector mass (desk EE config)
+
+Same aug13 ep0 replay, but with the **end-effector mass raised in the desk/EE
+configuration** (i.e. the mass the controller's gravity compensation models).
+TAM off `20260821_215253`, TAM on `20260821_215112`. TAM-on ran **stably**
+(active 0.95, OOD max 2.4σ, wrist J7 `dq` ≤0.69 rad/s).
+
+Joint RMS(`q_meas`−`q_ds`) [deg]:
+
+| | j0 | j1 | j2 | j3 | j4 | j5 | j6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| TAM off | 1.39 | 2.22 | 0.68 | 0.71 | 0.82 | 0.74 | 0.88 |
+| TAM on | 0.62 | 3.11 | 0.59 | 1.76 | 0.43 | 0.37 | 0.61 |
+
+EE deviation from sim [mm] (flange):
+
+| axis | RMS off | RMS on | max off | max on |
+| --- | --- | --- | --- | --- |
+| x | 4.2 | 15.1 | 10.3 | 24.9 |
+| y | 18.5 | 10.1 | 31.5 | 16.8 |
+| z | 22.1 | 46.7 | 39.4 | 61.6 |
+| 3D | 29.1 | 50.2 | | |
+
+![aug13 high-mass joints](./report_assets/replay_aug13_himass_joint.png)
+![aug13 high-mass EE](./report_assets/replay_aug13_himass_ee.png)
+
+## The higher EE mass shifts the vertical bias
+
+Comparing the mean EE-Z bias and the bottom-out height across the aug13 EE
+configurations:
+
+| EE config | mean EE-Z off | mean EE-Z on | z bottom off | z bottom on | (sim bottom 145 mm) |
+| --- | --- | --- | --- | --- | --- |
+| nominal | −27.7 mm | +31.9 mm | 135 mm | 182 mm | |
+| + physical block (unmodeled) | −28.3 mm | +29.7 mm | 135 mm | 184 mm | |
+| **higher modeled EE mass** | **−16.7 mm** | **+42.4 mm** | **148 mm** | **201 mm** | |
+
+- **TAM off improves** with the higher modeled EE mass: the downward bias
+  shrinks (−27.7 → −16.7 mm) and the arm bottoms at 148 mm, essentially at the
+  sim's 145 mm (no longer driving into the table). Raising the gravity-comp mass
+  pushes the compliant arm up, cancelling part of the −3 cm sag.
+- **TAM on gets worse**: the upward overshoot grows (+31.9 → +42.4 mm), bottoming
+  56 mm above sim, and the 3D EE error rises to 50 mm (vs 29 mm off). TAM adds
+  its correction on top of the already-raised arm.
+
+This is consistent with the earlier finding and sharpens it: the vertical bias
+is a **gravity-compensation / modeled-mass** effect. It is insensitive to an
+*unmodeled* physical payload (the block, which `setLoad` never saw) but **shifts
+directly with the modeled EE mass** in the config. Tuning the modeled EE mass
+moves the TAM-off arm toward the sim height, but TAM then over-corrects further
+up — so the modeled-mass calibration and TAM's vertical authority need to be
+addressed together, not in isolation.
