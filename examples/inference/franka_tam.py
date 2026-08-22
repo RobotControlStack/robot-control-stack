@@ -28,6 +28,16 @@ import rcs
 logger = logging.getLogger(__name__)
 
 
+def tam_ideal_model_xml() -> str:
+    """The ideal-model MJCF used by BOTH the TAM history encoder and the
+    controller's ideal-model gravity compensation
+    (``FrankaConfig.tam_ideal_model_path``). They must be the same model, so
+    both sides resolve it through this one function."""
+    from simadaptor.assets import default_panda_xml
+
+    return str(default_panda_xml())
+
+
 ROBOT2IP = {
     "right": "192.168.1.12",
 }
@@ -188,7 +198,8 @@ class ModelInference:
 
         # from_checkpoint enforces an applied-torque checkpoint: this
         # integration records a single commanded-torque stream.
-        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint()
+        self.tam_runtime = RealTimeHistoryAdaptor.from_checkpoint(xml_path=tam_ideal_model_xml())
+        self._check_ideal_model_alignment()
         logger.info(
             "TAM ready: adaptor binary %d bytes, applied-torque mode",
             len(self.tam_runtime.adaptor_weight_bytes()),
@@ -277,6 +288,27 @@ class ModelInference:
                 self._cfg.tam_warmup_timeout_s, last_ms,
             )
         rt.reset()  # discard synthetic history before the live stream
+
+    def _check_ideal_model_alignment(self) -> None:
+        """Refuse to run if the controller's ideal-model gravity uses a
+        different MJCF than the history encoder: the adaptor's torque space,
+        the encoder's ideal model and the gravity feedforward must agree."""
+        if ROBOT_INSTANCE != RobotPlatform.HARDWARE:
+            return
+        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
+        controller_xml = str(robot.get_config().tam_ideal_model_path)
+        encoder_xml = str(self.tam_runtime.inf.xml_path)
+        if not controller_xml:
+            raise RuntimeError(
+                "TAM is enabled but FrankaConfig.tam_ideal_model_path is empty; the "
+                "controller would use the robot's gravity model while the encoder "
+                f"uses {encoder_xml}"
+            )
+        if os.path.realpath(controller_xml) != os.path.realpath(encoder_xml):
+            raise RuntimeError(
+                "ideal-model mismatch: controller gravity uses "
+                f"{controller_xml} but the history encoder uses {encoder_xml}"
+            )
 
     def run_history_encoder(self):
         """Feed the 1 kHz controller history through the TAM history encoder
@@ -543,9 +575,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         if cfg.tam:
             # TAM's training convention: the plant sees the ideal model's
             # gravity compensation (see FrankaConfig.tam_ideal_model_path).
-            from simadaptor.assets import default_panda_xml
-
-            hw_cfg.robot_cfgs["right"].tam_ideal_model_path = str(default_panda_xml())
+            hw_cfg.robot_cfgs["right"].tam_ideal_model_path = tam_ideal_model_xml()
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         hw_cfg.robot_cfgs["right"].allow_high_collision = True
