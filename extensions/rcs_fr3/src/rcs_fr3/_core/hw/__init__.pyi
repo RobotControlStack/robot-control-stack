@@ -138,6 +138,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     rate_limit: bool
     speed_factor: float
     tam_enabled: bool
+    tam_ideal_model_path: str
     tam_history_pre_ratelimit: bool
     tam_residual_clip: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     tcp_offset: rcs._core.common.Pose

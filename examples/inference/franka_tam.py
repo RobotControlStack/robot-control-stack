@@ -540,6 +540,12 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         }
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].tam_enabled = cfg.tam
+        if cfg.tam:
+            # TAM's training convention: the plant sees the ideal model's
+            # gravity compensation (see FrankaConfig.tam_ideal_model_path).
+            from simadaptor.assets import default_panda_xml
+
+            hw_cfg.robot_cfgs["right"].tam_ideal_model_path = str(default_panda_xml())
         hw_cfg.robot_cfgs["right"].speed_factor = 0.4
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         hw_cfg.robot_cfgs["right"].allow_high_collision = True

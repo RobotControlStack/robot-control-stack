@@ -166,6 +166,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("approach_rotation_speed",
                      &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("tam_enabled", &rcs::hw::FrankaConfig::tam_enabled)
+      .def_readwrite("tam_ideal_model_path",
+                     &rcs::hw::FrankaConfig::tam_ideal_model_path)
       .def_readwrite("tam_residual_clip",
                      &rcs::hw::FrankaConfig::tam_residual_clip)
       .def_readwrite("rate_limit", &rcs::hw::FrankaConfig::rate_limit)

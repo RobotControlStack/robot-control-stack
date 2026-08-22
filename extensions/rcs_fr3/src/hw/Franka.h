@@ -16,6 +16,7 @@
 
 #include "rcs/Kinematics.h"
 #include "simadaptor.h"
+#include "tam_ideal_gravity.h"
 #include "rcs/LinearPoseTrajInterpolator.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
@@ -141,6 +142,14 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool tam_enabled = false;
+  // Path of the TAM ideal-model MJCF (the checkpoint's training model, e.g.
+  // simadaptor.assets.default_panda_xml()). When set and TAM is enabled, the
+  // controller commands ``g_ideal(q) - g_robot(q)`` on top of the robot's own
+  // gravity compensation, so the plant receives PD + g_ideal + residual — the
+  // convention TAM was trained with. Without it the robot's own gravity model
+  // defines TAM's reference, which biases the arm by
+  // (g_robot - g_ideal)/kp (centimetres at soft gains). Empty = off.
+  std::string tam_ideal_model_path;
   // Per-joint |clip| of the TAM residual torque in Nm before it is added to
   // the controller torque (wrist joints have a 12 Nm limit; keep headroom).
   common::Vector7d tam_residual_clip =
@@ -230,6 +239,9 @@ class Franka : public common::Robot {
   }
   // Control-thread-only: ticks since the residual became active (1 s ramp).
   int tam_active_ticks = 0;
+  // Control-thread-only: ideal-model gravity (see tam_ideal_model_path);
+  // created at controller start, null when unset or unloadable.
+  std::unique_ptr<adaptor::IdealModelGravity> tam_ideal_gravity;
   // Control-thread-only ring of the newest history samples so tam_forward
   // reads its MLP window without touching the shared buffer's mutex (the
   // control thread is the only writer of both).

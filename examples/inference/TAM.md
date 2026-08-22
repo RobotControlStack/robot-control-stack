@@ -41,6 +41,24 @@ The per-joint residual is clipped at 10/10/10/10/2/2/2 Nm
 (`FrankaConfig.tam_residual_clip`, a C++-side default); the residual also ramps in over 1 s whenever it
 (re)activates.
 
+## Gravity convention (ideal-model compensation)
+
+TAM was trained with a controller that compensates gravity using the *ideal*
+model. A real robot compensates with its own model, so without correction
+TAM's reference is the ideal model driven by `PD + g_robot`, which sits
+`(g_robot - g_ideal)/kp` away from the gravity-free reference — centimetres of
+end-effector height at soft gains, and dependent on the end-effector load
+configured in Desk. With `FrankaConfig.tam_ideal_model_path` set (the example
+passes `simadaptor.assets.default_panda_xml()` whenever `tam=True`), the
+controller commands `g_ideal(q) - g_robot(q)` on top of the robot's own
+compensation, so the plant receives `PD + g_ideal + residual`: TAM's reference
+becomes the ideal model under exact compensation (a gravity-free PD, like a
+gravcomp simulator), independent of the Desk load, and the TAM history stays
+truthful (`tau_cmd + g_robot` *is* `PD + g_ideal + residual`). Note that with
+this on but TAM off, the arm runs on ideal-model compensation and may sag a
+little more than with the robot's own; the correction is therefore only
+applied while TAM is enabled.
+
 ## Operational notes
 
 - The controller applies zero residual until the MLP weights and the first

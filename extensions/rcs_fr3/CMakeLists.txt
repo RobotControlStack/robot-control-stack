@@ -41,6 +41,7 @@ set(BUILD_DOCUMENTATION OFF)
 include(FetchContent)
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(MuJoCo REQUIRED)  # TAM ideal-model gravity (tam_ideal_gravity.h)
 find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 

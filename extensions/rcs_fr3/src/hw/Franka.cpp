@@ -651,6 +651,18 @@ void Franka::osc() {
   // just a short gap in a continuous stream. Only the residual ramp starts
   // over (the gains may have changed).
   this->tam_active_ticks = 0;
+  this->tam_ideal_gravity.reset();
+  if (this->m_cfg.tam_enabled && !this->m_cfg.tam_ideal_model_path.empty()) {
+    try {
+      this->tam_ideal_gravity = std::make_unique<adaptor::IdealModelGravity>(
+          this->m_cfg.tam_ideal_model_path);
+      std::cerr << "[rcs] TAM: ideal-model gravity from "
+                << this->m_cfg.tam_ideal_model_path << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "[rcs] TAM: ideal-model gravity disabled (" << e.what()
+                << "); TAM will use the robot's gravity model" << std::endl;
+    }
+  }
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
@@ -859,6 +871,17 @@ void Franka::osc() {
       auto time =
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
+      if (this->m_cfg.tam_enabled && this->tam_ideal_gravity) {
+        // Let the plant see the ideal model's gravity compensation (TAM's
+        // training convention): the robot adds its own model gravity
+        // internally, so command the difference. The TAM history then
+        // records tau_cmd + g_robot = PD + g_ideal + residual, truthfully.
+        const std::array<double, 7> g_ideal =
+            this->tam_ideal_gravity->gravity(robot_state.q);
+        for (int j = 0; j < 7; ++j) {
+          tau_d_array[j] += g_ideal[j] - gravity_array[j];
+        }
+      }
       if (this->m_cfg.tam_enabled) {
         Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
             tam_forward(tau_d_array, robot_state, gravity_array);
@@ -914,6 +937,18 @@ void Franka::joint_controller() {
   // just a short gap in a continuous stream. Only the residual ramp starts
   // over (the gains may have changed).
   this->tam_active_ticks = 0;
+  this->tam_ideal_gravity.reset();
+  if (this->m_cfg.tam_enabled && !this->m_cfg.tam_ideal_model_path.empty()) {
+    try {
+      this->tam_ideal_gravity = std::make_unique<adaptor::IdealModelGravity>(
+          this->m_cfg.tam_ideal_model_path);
+      std::cerr << "[rcs] TAM: ideal-model gravity from "
+                << this->m_cfg.tam_ideal_model_path << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "[rcs] TAM: ideal-model gravity disabled (" << e.what()
+                << "); TAM will use the robot's gravity model" << std::endl;
+    }
+  }
 
   // conservative collision and impedance behavior
   this->set_default_robot_behavior();
@@ -992,6 +1027,17 @@ void Franka::joint_controller() {
       const std::array<double, 7> tau_pd_array = tau_d_array;
 
       std::array<double, 7> gravity_array = model.gravity(robot_state);
+      if (this->m_cfg.tam_enabled && this->tam_ideal_gravity) {
+        // Let the plant see the ideal model's gravity compensation (TAM's
+        // training convention): the robot adds its own model gravity
+        // internally, so command the difference. The TAM history then
+        // records tau_cmd + g_robot = PD + g_ideal + residual, truthfully.
+        const std::array<double, 7> g_ideal =
+            this->tam_ideal_gravity->gravity(robot_state.q);
+        for (int j = 0; j < 7; ++j) {
+          tau_d_array[j] += g_ideal[j] - gravity_array[j];
+        }
+      }
       if (this->m_cfg.tam_enabled) {
         Eigen::VectorXd::Map(&tau_d_array[0], 7) +=
             tam_forward(tau_d_array, robot_state, gravity_array);
