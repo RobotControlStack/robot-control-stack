@@ -203,3 +203,59 @@ joints (J1–J4) receive full residuals (up to ~±5 Nm); the wrist is limited to
 - `tam_history_pre_ratelimit` — record pre-limiter torque into TAM history.
 - `tam_residual_clip` — per-joint residual authority (the wrist-stability knob).
 - 1 kHz controller debug log + 5 Hz encoder log + `plot_tam_log.py`.
+
+---
+
+# Validating the C++ adaptor against the JAX reference
+
+To make sure the C++ TAM adaptor (`extensions/rcs_fr3/src/hw/simadaptor.h`)
+computes the same thing as the trained JAX model, we compared both on one
+fixed, hash-verified input.
+
+## Method
+
+1. **Golden input** (`tam_golden_check.py make-input`, in
+   `examples/inference/`): a deterministic, closed-form trajectory (sines, no
+   RNG) run through MuJoCo to produce `q`, `qd`, gravity-free `tau_cmd`, and
+   `gravity`, plus a 32-row model-space adaptor window (`adaptor_q/dq/tau_model`,
+   with the last row offset so an off-by-one in the window is detectable). Every
+   array is SHA-256 checked on load.
+2. **Reference latent + output** (`tam_golden_check.py run`): streams the input
+   through the JAX history encoder to produce the latent `z_final`, then runs the
+   JAX adaptor to print the reference `delta_tau` / `tau_out`.
+3. **C++ output** (`tam_cpp_test.py` → `Franka.tam_forward_test`): loads the same
+   exported adaptor weights, feeds the same adaptor window and the same
+   `z_final`, and returns the C++ residual — using only the static inputs, never
+   commanding the robot.
+4. **Bisection**: an independent float64 numpy reimplementation of
+   `SimAdaptorJointwiseFlat`, plus JAX `capture_intermediates`, let us compare
+   every layer (norm → stems → AdaLN blocks → direct head) between C++, numpy,
+   and JAX.
+
+## Result
+
+- **Input normalization / preprocessing is correct.** The C++ loads the
+  training `norm_stats` from the exported blob and applies them before the
+  network: toggling normalization changes the output by ~12 Nm, and the C++ sits
+  on the normalized side, matching the reference to `6e-6`. The
+  normalized-and-projected stem input matches JAX to `~1e-7`.
+- **The C++ adaptor matches a float64 reference to `~1e-5`** end-to-end — the
+  architecture, weights, latent layout, GELU, AdaLN, and direct head are all
+  correct.
+- **Residual vs the JAX golden: ~1 %** (`~0.03` Nm on a `~3` Nm output). This is
+  float32 reduction-order noise in the LayerNorm (JAX's fused kernel differs from
+  Eigen, and even from JAX's own eager LayerNorm) amplified by the AdaLN scale
+  (gamma up to ~33×). It is not a logic bug and is deployment-negligible (the
+  residual is then clipped, ramped, and rate-limited). The C++ LayerNorm
+  accumulates variance in double for numerical stability.
+
+## Reproduce
+
+```bash
+# on the reference machine: build the golden input and run the JAX model
+python examples/inference/tam_golden_check.py make-input --out golden_input.npz
+python examples/inference/tam_golden_check.py run --input golden_input.npz --save-latent z_final.npz
+# on the robot workstation: run the C++ adaptor on the same input + latent
+GOLDEN_INPUT=golden_input.npz Z_FINAL=z_final.npz \
+  python examples/inference/tam_cpp_test.py
+```
