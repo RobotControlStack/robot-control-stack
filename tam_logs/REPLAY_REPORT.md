@@ -294,3 +294,59 @@ noticeably *lower* with TAM off. It did not. So:
   kinematic/model offset**: TCP/flange definition, FK-model-vs-real, mounting, or
   table-height reference — rather than load mass or gravity compensation.
 - TAM's vertical **overshoot to ~+3 cm reproduces with payload too**, unchanged.
+
+---
+
+# Dataset 2 with ideal-model gravity feedforward — the vertical bias is fixed
+
+The vertical bias diagnosed above turned out to be a **gravity-model reference**
+mismatch: TAM was trained with an *ideal* MJCF gravity model, but the controller
+was using the *robot's own* gravity compensation as the reference, biasing the
+arm by `(g_robot − g_ideal) / kp` (centimetres at soft gains). The new
+`FrankaConfig.tam_ideal_model_path` makes the controller command
+`g_ideal(q) − g_robot(q)` on top of the robot's gravity comp (when TAM is on), so
+the plant sees `PD + g_ideal + residual` — the convention TAM expects.
+
+Same aug13 ep0 replay, with the ideal-model gravity feedforward enabled. TAM off
+`20260824_113508` (unchanged — the feedforward only applies when TAM is on), TAM
+on `20260824_114621`. TAM-on ran **stably** (active 0.94, OOD max 1.7σ, wrist J7
+`dq` ≤0.55 rad/s).
+
+Joint RMS(`q_meas`−`q_ds`) [deg] — TAM now improves every joint, J1 especially:
+
+| | j0 | j1 | j2 | j3 | j4 | j5 | j6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| TAM off | 1.36 | 2.54 | 0.71 | 1.15 | 0.83 | 0.79 | 0.85 |
+| **TAM on** | **0.56** | **1.06** | **0.39** | **0.83** | **0.49** | **0.43** | **0.69** |
+
+EE deviation from sim [mm] (flange):
+
+| axis | RMS off | RMS on | max off | max on |
+| --- | --- | --- | --- | --- |
+| x | 8.2 | **5.3** | 16.7 | 19.7 |
+| y | 18.6 | **8.8** | 32.3 | 15.5 |
+| z | 30.2 | **14.2** | 50.5 | 41.9 |
+| **3D** | 36.4 | **17.5** | | |
+
+![aug13 ideal-gravity joints](./report_assets/replay_aug13_idealgrav_joint.png)
+![aug13 ideal-gravity EE](./report_assets/replay_aug13_idealgrav_ee.png)
+
+## The overshoot is gone
+
+| config | mean EE-Z (replay − sim) | EE-Z bottoms at (sim 145 mm) |
+| --- | --- | --- |
+| robot-gravity ref, TAM on (`163735`) | +31.9 mm (too high) | 182 mm — 37 mm above sim |
+| **ideal-gravity ref, TAM on (`114621`)** | **−8.8 mm** | **144 mm — 1 mm from sim** |
+
+- With the ideal-model gravity feedforward, TAM-on's mean EE-Z bias collapses
+  from **+31.9 mm to −8.8 mm**, the 3D EE error more than halves (38.8 → 17.5 mm),
+  and the arm now **bottoms out at 144 mm vs sim's 145 mm** — grasp height is
+  essentially recovered.
+- This confirms the root cause and the fix: the ~3 cm vertical bias was the
+  `g_robot − g_ideal` reference mismatch, not a TCP/kinematic offset. It
+  reconciles the earlier observations — an *unmodeled* block didn't change the
+  bias (gravity comp was blind to it), the *modeled* EE mass shifted it, and
+  using the *ideal model* as the gravity reference removes it.
+- Residual gap: TAM-on is now ~1 cm low on average (−8.8 mm) with y/z errors of
+  ~9/14 mm RMS — small enough to grasp, and a candidate for further tuning
+  (checkpoint choice, residual authority) rather than a systematic offset.
