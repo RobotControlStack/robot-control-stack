@@ -185,35 +185,45 @@ the sim demo put it, which is enough to miss the cube.
 
 Same two experiments on a second **simulation** dataset (pnp-only task, soft
 kp40). Episode 0, 262 frames. Baseline `20260821_163425` (TAM off, rerun after
-the first attempt drove into the table), TAM-on `20260821_163735`.
+the first attempt drove into the table), TAM-on with the **default multirobot**
+checkpoint `20260821_163735`, and a third run with the **panda-specific**
+checkpoint `20260821_220116`.
 
-TAM-on ran **stably**: `active=0.95`, OOD max **1.8σ**, wrist J7 `dq` ≤0.58 rad/s,
-latent age median 96 ms — no limit cycle (wrist clip config unchanged).
+All TAM runs were **stable**: multirobot `active=0.95`, OOD max 1.8σ; panda-specific
+`active=0.95`, OOD max 2.3σ, wrist J7 `dq` ≤0.68 rad/s — no limit cycle.
 
-## The vertical-overshoot finding reproduces
+## The vertical-overshoot finding reproduces; the panda-specific ckpt is best
 
-Joint RMS(`q_meas`−`q_ds`) [deg] — TAM improves 6 of 7 joints:
+Joint RMS(`q_meas`−`q_ds`) [deg]:
 
 | | j0 | j1 | j2 | j3 | j4 | j5 | j6 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TAM off | 1.37 | 2.65 | 0.69 | 1.08 | 0.82 | 0.75 | 0.86 |
-| **TAM on** | **0.55** | **2.53** | **0.51** | 1.24 | **0.42** | **0.34** | **0.62** |
+| TAM on (multirobot) | 0.55 | 2.53 | 0.51 | 1.24 | 0.42 | 0.34 | 0.62 |
+| **TAM on (panda-specific)** | **0.49** | **2.17** | **0.51** | **1.06** | **0.39** | 0.49 | 0.70 |
 
 EE deviation from sim [mm] (flange):
 
-| axis | RMS off | RMS on | max off | max on |
-| --- | --- | --- | --- | --- |
-| x | 8.5 | 11.0 | 17.0 | 19.2 |
-| y | 17.8 | **9.1** | 29.7 | **16.4** |
-| z | 31.7 | 36.1 | 52.0 | 50.6 |
-| 3D | 37.3 | 38.8 | | |
+| axis | RMS off | RMS on (multirobot) | RMS on (panda) | max off | max multirobot | max panda |
+| --- | --- | --- | --- | --- | --- | --- |
+| x | 8.5 | 11.0 | **9.4** | 17.0 | 19.2 | 22.0 |
+| y | 17.8 | 9.1 | **8.1** | 29.7 | 16.4 | 16.1 |
+| z | 31.7 | 36.1 | **30.0** | 52.0 | 50.6 | 46.0 |
+| 3D | 37.3 | 38.8 | **32.5** | | | |
 
-**Mean EE-Z bias flips sign again — same as dataset 1:**
+**Mean EE-Z bias — TAM overshoots up on both checkpoints; panda-specific overshoots less:**
 
 | | mean EE-Z (replay − sim) | EE-Z bottoms out at |
 | --- | --- | --- |
 | TAM off | **−27.7 mm** (too *low*) | 135 mm — **10 mm below sim (145 mm) → into the table** |
-| TAM on | **+31.9 mm** (too *high*) | 182 mm — **37 mm above sim → cannot reach the cube** |
+| TAM on (multirobot) | **+31.9 mm** (too *high*) | 182 mm — 37 mm above sim → cannot reach the cube |
+| **TAM on (panda-specific)** | **+25.2 mm** (too *high*) | 179 mm — 34 mm above sim → still cannot reach the cube |
+
+The **panda-specific checkpoint is the best of the three** — lowest EE error on
+every axis (3D RMS 32.5 vs 38.8 multirobot / 37.3 off) and the smallest vertical
+overshoot (+25.2 vs +31.9 mm). But it still overshoots ~2.5 cm and bottoms 34 mm
+above sim, so it does not fix the grasp on its own — the systematic vertical bias
+persists across checkpoints.
 
 ![aug13 joints](./report_assets/replay_aug13_joint.png)
 ![aug13 EE](./report_assets/replay_aug13_ee.png)

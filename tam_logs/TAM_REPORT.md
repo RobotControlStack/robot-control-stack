@@ -196,6 +196,37 @@ joints (J1–J4) receive full residuals (up to ~±5 Nm); the wrist is limited to
   policy or the execution. **Next step: replay training-data trajectories** on
   the robot to isolate policy vs. execution (method TBD in follow-up).
 
+## Policy run with the panda-specific checkpoint (`20260821_221915`)
+
+Live policy inference with the **panda-specific** TAM checkpoint (vs the default
+multirobot one used in the runs above), soft kp40, stable wrist clip
+`[10,10,10,10,0.5,0.5,0.5]`. Ran for **67.5 s**.
+
+- **Stable and in-distribution** the whole run: `active=0.99`, `window_ok=1.00`,
+  OOD median 0.74σ, p99 1.3σ, only 0.16 % of ticks above 3σ (max 6.0σ), and
+  **flat over time** (first/last third mean 0.83/0.81 — no buildup). Latent
+  healthy (age median 102 ms, max 400 ms). No wrist limit cycle: peak |dq| ≤1.24
+  rad/s on every joint.
+- **More active than the multirobot checkpoint.** The panda-specific checkpoint
+  applies larger arm-joint residuals — max |applied residual| per joint
+  `[8.9, 5.5, 7.0, 4.8, 0.5, 0.5, 0.5] Nm` (vs `[2.4, 5.3, 1.4, 3.0, …]` for the
+  multirobot ckpt), with the wrist clipped at ±0.5. RMS tracking error is
+  comparable: `[1.2, 2.6, 1.3, 2.3, 0.6, 2.1, 1.7]°`.
+
+| metric | multirobot ckpt (`154529`, 21 s) | panda-specific (`221915`, 67 s) |
+| --- | --- | --- |
+| active / window_ok | 0.97 / 1.00 | 0.99 / 1.00 |
+| OOD median / max | 0.94σ / 1.5σ | 0.74σ / 6.0σ (0.16 % >3σ) |
+| peak \|dq\| (max joint) | 0.26 rad/s | 1.24 rad/s |
+| max \|residual\| J1 | 5.3 Nm | 8.9 Nm |
+
+So the panda-specific checkpoint runs **stably and in-distribution** on the real
+robot and drives the arm more strongly (consistent with the replay finding that
+it tracks the sim slightly better). The vertical-offset grasp issue is expected
+to persist — the replay study attributes it to a modeled-mass / gravity-comp
+bias that TAM over-corrects, independent of the checkpoint (see
+`REPLAY_REPORT.md`).
+
 ## Config knobs added during this investigation
 
 - `tam_warmup` (+ `tam_warmup_target_ms` / `_streak` / `_timeout_s`) — pre-compile the encoder.
