@@ -350,3 +350,43 @@ EE deviation from sim [mm] (flange):
 - Residual gap: TAM-on is now ~1 cm low on average (−8.8 mm) with y/z errors of
   ~9/14 mm RMS — small enough to grasp, and a candidate for further tuning
   (checkpoint choice, residual authority) rather than a systematic offset.
+
+---
+
+# Dataset 2, episode 1 with the block grasped (ideal-model gravity)
+
+Latest replays on **episode 1**, which includes the **block grasped** (payload in
+the gripper), with the ideal-model gravity feedforward enabled. TAM off
+`20260824_132707`, TAM on `20260824_132554`. 274 frames. TAM-on ran very
+calmly: active 0.96, OOD max **1.1σ**, wrist J7 `dq` ≤0.26 rad/s.
+
+Joint RMS(`q_meas`−`q_ds`) [deg] — TAM improves every joint:
+
+| | j0 | j1 | j2 | j3 | j4 | j5 | j6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| TAM off | 1.30 | 2.17 | 0.86 | 1.22 | 0.81 | 0.83 | 0.61 |
+| **TAM on** | **0.40** | **0.72** | **0.38** | **0.79** | **0.44** | **0.44** | **0.41** |
+
+EE deviation from sim [mm] (flange):
+
+| axis | RMS off | RMS on | max off | max on |
+| --- | --- | --- | --- | --- |
+| x | 10.2 | **4.2** | 22.0 | 8.4 |
+| y | 18.5 | **6.0** | 31.7 | 11.4 |
+| z | 27.9 | **11.5** | 61.3 | 25.1 |
+| **3D** | 35.0 | **13.7** | | |
+
+| config | mean EE-Z (replay − sim) | EE-Z bottoms at (sim 221 mm) |
+| --- | --- | --- |
+| TAM off | −19.3 mm | 225 mm |
+| **TAM on** | **−7.6 mm** | **218 mm — 3 mm from sim** |
+
+![aug13 ep1 grasp joints](./report_assets/replay_aug13_ep1grasp_joint.png)
+![aug13 ep1 grasp EE](./report_assets/replay_aug13_ep1grasp_ee.png)
+
+**With the block actually grasped, TAM + ideal-model gravity tracks the sim
+tightly**: 3D EE error 35.0 → 13.7 mm, z RMS 27.9 → 11.5 mm, and the grasp/place
+height is essentially matched (bottom-out 218 mm vs sim 221 mm). The overshoot
+seen before the gravity fix does not return under payload — TAM-on is a small
+~0.8 cm low, well within grasp tolerance, and the run is the calmest yet
+(OOD ≤1.1σ, wrist velocity ≤0.26 rad/s).
