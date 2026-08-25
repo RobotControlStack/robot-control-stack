@@ -8,7 +8,7 @@ version = "0.7.2"
 description="RCS RobotiQ module"
 dependencies = [
     "rcs-core>=0.7.2",
-    "2f85-python-driver @ git+https://github.com/RobotControlStack/2f85-python-driver.git",
+    "robotiq2f @ git+https://github.com/RobotControlStack/robotiq2f.git",
 ]
 readme = "README.md"
 maintainers = [

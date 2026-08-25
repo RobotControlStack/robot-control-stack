@@ -2,7 +2,7 @@ import typing
 
 from rcs._core.common import Gripper, GripperConfig, GripperState
 from rcs.common_typing import GripperConfigKwargs
-from Robotiq2F85Driver.Robotiq2F85Driver import GripperStatus, Robotiq2F85Driver
+from robotiq2f import Robotiq2FStatus, Robotiq2F85
 
 import rcs
 
@@ -22,7 +22,9 @@ class RobotiQ2F85GripperConfig(GripperConfig):
             serial_number: Get the serial number with `udevadm info -a -n /dev/ttyUSB0 | grep serial`, make sure you have read/write permissions to the port.
             speed: Speed in mm/s. Must be between 20 and 150 mm/s.
             force: Force in N. Must be between 20 and 235 N.
-            async_control: If True, gripper commands return immediately without waiting for the movement to complete. A new command interrupts any ongoing movement.
+            async_control: If True, gripper commands return immediately without waiting for the movement to complete
+                (a new command interrupts any ongoing movement), and the driver polls the gripper status in a
+                background thread so that state reads are served from cache instead of blocking on Modbus.
         """
         super().__init__(**kwargs)
         self.serial_number = serial_number
@@ -33,7 +35,7 @@ class RobotiQ2F85GripperConfig(GripperConfig):
 
 
 class RobotiQ2F85GripperState(GripperState):
-    def __init__(self, state: GripperStatus) -> None:
+    def __init__(self, state: Robotiq2FStatus) -> None:
         super().__init__()
         self.state = state
 
@@ -42,13 +44,11 @@ class RobotiQ2F85Gripper(Gripper):
     def __init__(self, cfg: RobotiQ2F85GripperConfig):
         super().__init__()
         self._cfg: RobotiQ2F85GripperConfig = cfg
-        self.gripper = Robotiq2F85Driver(serial_number=cfg.serial_number)
-        self._last_normalized_width = 1.0
+        self.gripper = Robotiq2F85(serial_number=cfg.serial_number, async_control=cfg.async_control)
         self.gripper.reset()
 
     def get_normalized_width(self) -> float:
-        # Return the last commanded width to avoid a synchronous Modbus read on every env step.
-        return self._last_normalized_width
+        return self.gripper.opening / self.gripper.MAX_OPENING
 
     def grasp(self) -> None:
         """
@@ -72,13 +72,11 @@ class RobotiQ2F85Gripper(Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
-        self._last_normalized_width = width
-        abs_width = width * 85
+        abs_width = width * self.gripper.MAX_OPENING
         self.gripper.go_to(
             opening=float(abs_width),
             speed=self._cfg.speed,
             force=force if force != 0 else self._cfg.force,
-            blocking_call=not self._cfg.async_control,
         )
 
     def shut(self) -> None:
