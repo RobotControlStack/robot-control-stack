@@ -2,7 +2,7 @@ import typing
 
 from rcs._core.common import Gripper, GripperConfig, GripperState
 from rcs.common_typing import GripperConfigKwargs
-from robotiq2f import Robotiq2FStatus, Robotiq2F85
+from robotiq2f import Robotiq2F85, Robotiq2FStatus
 
 import rcs
 

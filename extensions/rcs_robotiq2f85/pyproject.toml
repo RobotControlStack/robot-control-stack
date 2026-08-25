@@ -8,7 +8,7 @@ version = "0.7.2"
 description="RCS RobotiQ module"
 dependencies = [
     "rcs-core>=0.7.2",
-    "robotiq2f @ git+https://github.com/RobotControlStack/robotiq2f.git",
+    "robotiq2f==0.2.0",
     "typer~=0.9",
 ]
 readme = "README.md"
