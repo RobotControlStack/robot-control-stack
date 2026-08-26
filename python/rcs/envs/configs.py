@@ -36,7 +36,7 @@ class EmptyWorldFR3(SimEnvCreator):
     gripper_prefix_template = "gripper"
 
     def config(self) -> SimEnvCreatorConfig:
-        q_home = rcs.ROBOTS[RobotType.FR3].q_home
+        q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
         q_home[-1] = np.pi / 4
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
             robot_type=RobotType.FR3,
@@ -181,7 +181,6 @@ class EmptyWorldFR3(SimEnvCreator):
 
 
 class EmptyWorldFR3Duo(SimEnvCreator):
-    gripper_mesh_quaternion_offset: ClassVar[list[float]] = [0, 0, 0.7071068, 0.7071068]
 
     def config(self) -> SimEnvCreatorConfig:
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
