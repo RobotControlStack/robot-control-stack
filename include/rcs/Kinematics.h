@@ -38,8 +38,17 @@ class Pin : public Kinematics {
   pinocchio::Model model;
   pinocchio::Data data;
 
+  VectorXd q_lower;
+  VectorXd q_upper;
+  bool enforce_limits;
+
+  VectorXd nullspace_q;
+  double nullspace_gain;
+
  public:
-  Pin(const std::string& path, const std::string& frame_id, bool urdf);
+  Pin(const std::string& path, const std::string& frame_id, bool urdf,
+      const VectorXd& nullspace_q = VectorXd(), double nullspace_gain = 0.0,
+      bool enforce_limits = true);
   std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
