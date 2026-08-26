@@ -179,6 +179,38 @@ class EmptyWorldFR3(SimEnvCreator):
             gripper_offsets=gripper_offsets,
         )
 
+class EmptyWorldDroid(EmptyWorldFR3):
+    # TODO: add zed cameras
+
+    def config(self) -> SimEnvCreatorConfig:
+        cfg = super().config()
+        lead_robot_name = self.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
+
+        assert cfg.gripper_cfgs is not None
+        gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+        gripper_cfg.actuator = "fingers_actuator"
+        gripper_cfg.joints = ["right_driver_joint", "left_driver_joint"]
+        gripper_cfg.collision_geoms = []
+        gripper_cfg.collision_geoms_fingers = []
+        gripper_cfg.max_actuator_width = 0
+        gripper_cfg.min_actuator_width = 255
+        gripper_cfg.max_joint_width = 0.005
+        gripper_cfg.min_joint_width = 1.0
+        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+
+        cfg.gripper_offsets = {
+            lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        }
+
+        cfg.camera_cfgs = None
+        cfg.camera_adds = None
+
+        return cfg
+
 
 class EmptyWorldFR3Duo(SimEnvCreator):
 
@@ -526,6 +558,7 @@ class EmptyWorldYam(EmptyWorldFR3):
 
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
 gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
+gym.register(id="rcs/droid", entry_point=EmptyWorldDroid())
 gym.register(id="rcs/ur5e", entry_point=EmptyWorldUR5e())
 gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
