@@ -29,6 +29,8 @@ struct SimRobotConfig : common::RobotConfig {
       "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
       "fr3_joint5", "fr3_joint6", "fr3_joint7",
   };
+  std::optional<std::vector<double>> kp;
+  std::optional<std::vector<double>> kv;
   std::string base = "base";
 
   void add_prefix(const std::string& id) {
