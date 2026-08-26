@@ -78,7 +78,7 @@ Pose Pin::forward(const VectorXd& q0, const Pose& tcp_offset) {
                          data.oMf[this->FRAME_ID].translation());
 
   // apply the tcp offset
-  return pose * tcp_offset.inverse();
+  return pose * tcp_offset;
 }
 
 }  // namespace common
