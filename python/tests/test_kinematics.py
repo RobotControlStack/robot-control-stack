@@ -90,8 +90,8 @@ def test_kinematics_nullspace_bias(robot_name):
     q_seed[2] += 0.5
     q_seed[3] += 0.3
 
-    q_plain = pin_plain.inverse(pose_home, q_seed, NO_TCP_OFFSET)
-    q_ns = pin_ns.inverse(pose_home, q_seed, NO_TCP_OFFSET)
+    q_plain: np.ndarray | None = pin_plain.inverse(pose_home, q_seed, NO_TCP_OFFSET)
+    q_ns: np.ndarray | None = pin_ns.inverse(pose_home, q_seed, NO_TCP_OFFSET)
 
     assert q_plain is not None, "plain IK failed"
     assert q_ns is not None, "null-space IK failed"
