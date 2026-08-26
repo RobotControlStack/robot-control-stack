@@ -1,5 +1,7 @@
 #include "rcs/Kinematics.h"
 
+#include <cmath>
+#include <limits>
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/jacobian.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
@@ -28,6 +30,14 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
 
   this->q_lower = this->model.lowerPositionLimit;
   this->q_upper = this->model.upperPositionLimit;
+  const double inf = std::numeric_limits<double>::infinity();
+  for (Eigen::Index i = 0; i < this->q_lower.size(); i++) {
+    if (!std::isfinite(this->q_lower[i]) || !std::isfinite(this->q_upper[i]) ||
+        this->q_lower[i] >= this->q_upper[i]) {
+      this->q_lower[i] = -inf;
+      this->q_upper[i] = inf;
+    }
+  }
   this->enforce_limits = enforce_limits;
 
   this->nullspace_gain = nullspace_gain;
