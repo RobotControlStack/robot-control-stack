@@ -543,7 +543,9 @@ PYBIND11_MODULE(_core, m) {
                       std::vector<std::string> arm_collision_geoms,
                       std::vector<std::string> joints,
                       std::optional<rcs::common::VectorXd> q_home,
-                      std::vector<std::string> actuators, std::string base,
+                      std::vector<std::string> actuators,
+                      std::optional<std::vector<double>> kp,
+                      std::optional<std::vector<double>> kv, std::string base,
                       size_t dof,
                       const Eigen::Matrix<double, 2, Eigen::Dynamic,
                                           Eigen::ColMajor>& joint_limits) {
@@ -559,6 +561,8 @@ PYBIND11_MODULE(_core, m) {
             config.arm_collision_geoms = arm_collision_geoms;
             config.joints = joints;
             config.actuators = actuators;
+            config.kp = kp;
+            config.kv = kv;
             config.base = base;
             config.dof = dof;
             config.joint_limits = joint_limits;
@@ -580,6 +584,7 @@ PYBIND11_MODULE(_core, m) {
           py::arg("joints") = default_simrobot_cfg.joints,
           py::arg("q_home") = default_simrobot_cfg.q_home,
           py::arg("actuators") = default_simrobot_cfg.actuators,
+          py::arg("kp") = std::nullopt, py::arg("kv") = std::nullopt,
           py::arg("base") = default_simrobot_cfg.base,
           py::arg("dof") = default_simrobot_cfg.dof,
           py::arg("joint_limits") = default_simrobot_cfg.joint_limits)
@@ -594,6 +599,12 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::sim::SimRobotConfig::arm_collision_geoms)
       .def_readwrite("joints", &rcs::sim::SimRobotConfig::joints)
       .def_readwrite("actuators", &rcs::sim::SimRobotConfig::actuators)
+      .def_readwrite(
+          "kp", &rcs::sim::SimRobotConfig::kp,
+          "Per-joint position gains; None uses the MuJoCo XML values")
+      .def_readwrite(
+          "kv", &rcs::sim::SimRobotConfig::kv,
+          "Per-joint velocity gains; None uses the MuJoCo XML values")
       .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
       .def_readwrite("dof", &rcs::sim::SimRobotConfig::dof)
       .def_readwrite("joint_limits", &rcs::sim::SimRobotConfig::joint_limits)

@@ -29,6 +29,7 @@ SimRobot::SimRobot(std::shared_ptr<Sim> sim,
                    bool register_convergence_callback)
     : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
   this->init_ids();
+  this->set_config(cfg);
   if (register_convergence_callback) {
     this->sim->register_cb(std::bind(&SimRobot::is_arrived_callback, this),
                            this->cfg.seconds_between_callbacks);
@@ -101,6 +102,22 @@ void SimRobot::init_ids() {
 bool SimRobot::set_config(const SimRobotConfig& cfg) {
   this->cfg = cfg;
   this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
+  if (cfg.kp.has_value() != cfg.kv.has_value())
+    throw std::runtime_error("kp and kv must both be set or unset");
+  if (cfg.kp.has_value()) {
+    size_t n = std::size(this->ids.actuators);
+    if (cfg.kp->size() != n || cfg.kv->size() != n)
+      throw std::runtime_error("kp/kv size must match number of joints");
+    for (size_t i = 0; i < n; ++i) {
+      int act = this->ids.actuators[i];
+      if (this->sim->m->actuator_gaintype[act] != mjGAIN_FIXED ||
+          this->sim->m->actuator_biastype[act] != mjBIAS_AFFINE)
+        throw std::runtime_error("kp/kv require a position actuator");
+      this->sim->m->actuator_gainprm[act * mjNGAIN + 0] = (*cfg.kp)[i];
+      this->sim->m->actuator_biasprm[act * mjNBIAS + 1] = -(*cfg.kp)[i];
+      this->sim->m->actuator_biasprm[act * mjNBIAS + 2] = -(*cfg.kv)[i];
+    }
+  }
   return true;
 }
 
