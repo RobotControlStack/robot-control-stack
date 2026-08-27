@@ -5,8 +5,8 @@
 
   <asset>
     <material name="black" rgba="0.1 0.1 0.1 1"/>
-    <mesh name="wrist_camera_setup" file="wrist_camera_setup.stl" scale="0.01 0.01 0.01"/>
-    <mesh name="wrist_camera_setup_collision" file="wrist_camera_setup_collision.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="wrist_camera_setup" file="camera_mount.obj" scale="0.01 0.01 0.01"/>
+    <mesh name="wrist_camera_setup_collision" file="camera_mount.stl" scale="0.01 0.01 0.01"/>
   </asset>
 
   <default>
