@@ -231,6 +231,7 @@ OBJECT_PATHS: dict[str, str] = {
 CAMERA_PATHS: dict[str, str] = {
     "d405": "assets/cameras/d405/d405.xml",
     "zed_mini": "assets/cameras/zed_mini/zed_mini.xml",
+    "zed2i": "assets/cameras/zed2i/zed2i.xml",
 }
 
 # we add our task classes here
