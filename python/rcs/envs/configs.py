@@ -1,6 +1,6 @@
 import copy
 import time
-from typing import ClassVar, Literal
+from typing import Literal
 
 import gymnasium as gym
 import numpy as np
@@ -179,6 +179,7 @@ class EmptyWorldFR3(SimEnvCreator):
             gripper_offsets=gripper_offsets,
         )
 
+
 class EmptyWorldDroid(EmptyWorldFR3):
 
     def config(self) -> SimEnvCreatorConfig:
@@ -201,24 +202,23 @@ class EmptyWorldDroid(EmptyWorldFR3):
         gripper_cfg.min_joint_width = 1.0
         gripper_cfg.gripper_type = GripperType("Robotiq2F85")
 
-        cfg.gripper_offsets = {
-            lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
-        }
+        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
 
         cfg.robot_frame_objects = {
             "right": {
                 "zed_mount": (
                     OBJECT_PATHS["droid_wrist_mount"],
-                    rcs.common.Pose(rpy_vector=[-np.pi/2, 0, np.pi/2], translation=[-0.034, 0, -0.008]),
+                    rcs.common.Pose(
+                        rpy_vector=np.array([-np.pi / 2, 0, np.pi / 2]), translation=np.array([-0.034, 0, -0.008])
+                    ),
                 )
             },
         }
         cfg.camera_adds = {
             "wrist": CameraAdderConfig(
                 xml_path=CAMERA_PATHS["zed_mini"],
-
                 offset=rcs.common.Pose(
-                    translation=[-0.077, 0.009, -0.008],
+                    translation=np.array([-0.077, 0.009, -0.008]),
                     rpy_vector=np.deg2rad([0, -70, 0]),
                 ),
                 robot_name="right",
@@ -227,24 +227,24 @@ class EmptyWorldDroid(EmptyWorldFR3):
                 xml_path=CAMERA_PATHS["zed2i"],
                 offset=rcs.common.Pose(
                     # values from RoboLab
-                    translation=[0.039831, 0.577923, 0.676088],
-                    quaternion=[-0.415841, 0.851484, 0.287128, -0.140028],
+                    translation=np.array([0.039831, 0.577923, 0.676088]),
+                    quaternion=np.array([-0.415841, 0.851484, 0.287128, -0.140028]),
                 ),
             ),
             "over_shoulder_right": CameraAdderConfig(
                 xml_path=CAMERA_PATHS["zed2i"],
                 offset=rcs.common.Pose(
                     # values from RoboLab
-                    translation=[0.039831, -0.577923, 0.676088],
-                    quaternion=[0.851484, -0.415841, -0.140028, 0.287128],
+                    translation=np.array([0.039831, -0.577923, 0.676088]),
+                    quaternion=np.array([0.851484, -0.415841, -0.140028, 0.287128]),
                 ),
             ),
             "front": CameraAdderConfig(
                 xml_path=CAMERA_PATHS["zed2i"],
                 offset=rcs.common.Pose(
                     # values from head camera in RoboLab
-                    translation=[1.51669, -0.005, 1.01102],
-                    quaternion=[0.335028, 0.622701, 0.622701, -0.335028],
+                    translation=np.array([1.51669, -0.005, 1.01102]),
+                    quaternion=np.array([0.335028, 0.622701, 0.622701, -0.335028]),
                 ),
             ),
         }
