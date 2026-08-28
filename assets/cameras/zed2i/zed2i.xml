@@ -25,14 +25,14 @@
     <body name="zed2i" childclass="zed2i">
       <geom mesh="zed2i" quat="0 0 1 0" material="black" class="visual"/>
       <geom mesh="zed2i_coll" quat="0 0 1 0" material="black" class="collision"/>
-      <!-- from real camera
+      <!-- from real camera after calibration
       [786.14367676   0.         723.64068604   0.        ]
       [  0.         786.14367676 406.79891968   0.        ]
       [  0.           0.           1.           0.        ]]
-      >>> np.arctan(1080/(2*786.14367676 ))*360/np.pi
-      np.float64(68.9701380548596) -->
+      >>> np.arctan(720/(2*786.14367676 ))*360/np.pi
+      np.float64(49.209076483949794) -->
 
-      <camera name="camera" pos="0 -0.02 0.005" euler="-1.5707963267948966 0 0" fovy="69"/>
+      <camera name="camera" pos="0 -0.02 0.005" euler="-1.5707963267948966 0 0" fovy="49"/>
     </body>
   </worldbody>
 
