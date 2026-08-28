@@ -227,6 +227,7 @@ OBJECT_PATHS: dict[str, str] = {
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
     "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
     "green_cube": "assets/objects/green_cube/green_cube.xml",
+    "red_cube": "assets/objects/red_cube/red_cube.xml",
 }
 
 CAMERA_PATHS: dict[str, str] = {
