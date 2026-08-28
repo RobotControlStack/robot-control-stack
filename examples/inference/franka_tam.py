@@ -295,7 +295,7 @@ class ModelInference:
         the encoder's ideal model and the gravity feedforward must agree."""
         if ROBOT_INSTANCE != RobotPlatform.HARDWARE:
             return
-        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
+        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")
         controller_xml = str(robot.get_config().tam_ideal_model_path)
         encoder_xml = str(self.tam_runtime.inf.xml_path)
         if not controller_xml:
@@ -353,8 +353,6 @@ class ModelInference:
                 push_ms = (time.perf_counter() - t_push0) * 1e3
                 if latent is not None:
                     latent_arr = np.asarray(latent, dtype=np.float64).reshape((-1,))
-                    print(latent_arr.shape)
-                    breakpoint()
                     robot.set_tam_latent(latent_arr)
                     latents_sent += 1
                     if latents_sent == 1:
@@ -588,9 +586,13 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         # rcfg.kp = np.array([110, 110, 100, 80, 40, 40, 40])
         # rcfg.kd = np.array([21, 21, 20, 18, 12, 13, 13])
 
-        rcfg.kp = np.array([40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0])
-        rcfg.kd = np.array([13.0, 13.0, 13.0, 13.0, 13.0, 13.0, 13.0])
-        rcfg.torque_limit = np.array([87.0, 87.0, 87.0, 87.0, 87.0, 87.0, 87.0])
+        # rcfg.kp = np.array([40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0])
+        # rcfg.kd = np.array([13.0, 13.0, 13.0, 13.0, 13.0, 13.0, 13.0])
+
+        # rcfg.kp = np.array([200.0, 200.0, 200.0, 200.0, 50.0, 50.0, 30.0])
+        # rcfg.kd = np.array([40.0, 40.0, 40.0, 40.0, 10.0, 10.0, 8.0])
+
+        rcfg.torque_limit = np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0])
         rcfg.rate_limit = cfg.rate_limit
         rcfg.tam_history_pre_ratelimit = cfg.tam_history_pre_ratelimit
         if cfg.tam_residual_clip is not None:
@@ -638,17 +640,18 @@ def main() -> None:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         input("Press Enter to start the inference loop (Ctrl+C to stop)...")
         if cfg.tam:
-            # history_encoder_thread = threading.Thread(
-            #     target=controller.run_history_encoder, name="history_encoder", daemon=True
-            # )
-            # history_encoder_thread.start()
-            robot: Franka = controller.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")
-            latent = np.load("/home/tobi/Downloads/z_final.npz")["z_final"]
-            latent_arr = np.asarray(latent, dtype=np.float64).reshape((-1,))
+            history_encoder_thread = threading.Thread(
+                target=controller.run_history_encoder, name="history_encoder", daemon=True
+            )
+            history_encoder_thread.start()
 
-            golden_input = np.load("/home/tobi/Downloads/golden_input.npz") # with keys: meta_json, t, q, qd, tau_cmd...)
-            # breakpoint()
-            robot.set_tam_latent(latent_arr)
+            # robot: Franka = controller.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")
+            # latent = np.load("/home/tobi/Downloads/z_final.npz")["z_final"]
+            # latent_arr = np.asarray(latent, dtype=np.float64).reshape((-1,))
+
+            # golden_input = np.load("/home/tobi/Downloads/golden_input.npz") # with keys: meta_json, t, q, qd, tau_cmd...)
+            # # breakpoint()
+            # robot.set_tam_latent(latent_arr)
 
     with env_rel:
         controller.loop()
