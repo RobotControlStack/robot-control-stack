@@ -24,6 +24,8 @@ docs/_build
 CLAUDE.md
 uv.lock
 *.parquet
+*.whl
+tam_logs
 
 
 # TAM debug run logs (large CSVs); reports + report_assets are kept
