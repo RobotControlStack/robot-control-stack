@@ -1,6 +1,6 @@
 import copy
 import time
-from typing import ClassVar, Literal
+from typing import Literal
 
 import gymnasium as gym
 import numpy as np
@@ -36,7 +36,7 @@ class EmptyWorldFR3(SimEnvCreator):
     gripper_prefix_template = "gripper"
 
     def config(self) -> SimEnvCreatorConfig:
-        q_home = rcs.ROBOTS[RobotType.FR3].q_home
+        q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
         q_home[-1] = np.pi / 4
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
             robot_type=RobotType.FR3,
@@ -180,8 +180,109 @@ class EmptyWorldFR3(SimEnvCreator):
         )
 
 
+class EmptyWorldDroid(EmptyWorldFR3):
+
+    def config(self) -> SimEnvCreatorConfig:
+        cfg = super().config()
+        lead_robot_name = self.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
+
+        assert cfg.gripper_cfgs is not None
+        gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+        gripper_cfg.actuator = "fingers_actuator"
+        gripper_cfg.joints = ["right_driver_joint", "left_driver_joint"]
+        gripper_cfg.collision_geoms = []
+        gripper_cfg.collision_geoms_fingers = []
+        gripper_cfg.max_actuator_width = 0
+        gripper_cfg.min_actuator_width = 255
+        gripper_cfg.max_joint_width = 0.005
+        gripper_cfg.min_joint_width = 1.0
+        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+
+        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
+
+        cfg.robot_frame_objects = {
+            "right": {
+                "zed_mount": (
+                    OBJECT_PATHS["droid_wrist_mount"],
+                    rcs.common.Pose(
+                        rpy_vector=np.array([-np.pi / 2, 0, np.pi / 2]), translation=np.array([-0.034, 0, -0.008])
+                    ),
+                )
+            },
+        }
+        cfg.camera_adds = {
+            "wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed_mini"],
+                offset=rcs.common.Pose(
+                    translation=np.array([-0.077, 0.009, -0.008]),
+                    rpy_vector=np.deg2rad([0, -70, 0]),
+                ),
+                robot_name="right",
+            ),
+            "over_shoulder_left": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from RoboLab
+                    translation=np.array([0.039831, 0.577923, 0.676088]),
+                    quaternion=np.array([-0.415841, 0.851484, 0.287128, -0.140028]),
+                ),
+            ),
+            "over_shoulder_right": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from RoboLab
+                    translation=np.array([0.039831, -0.577923, 0.676088]),
+                    quaternion=np.array([0.851484, -0.415841, -0.140028, 0.287128]),
+                ),
+            ),
+            "front": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from head camera in RoboLab
+                    translation=np.array([1.51669, -0.005, 1.01102]),
+                    quaternion=np.array([0.335028, 0.622701, 0.622701, -0.335028]),
+                ),
+            ),
+        }
+        cfg.camera_cfgs = {
+            "over_shoulder_left": SimCameraConfig(
+                identifier="over_shoulder_left",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "over_shoulder_right": SimCameraConfig(
+                identifier="over_shoulder_right",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "front": SimCameraConfig(
+                identifier="front",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "wrist": SimCameraConfig(
+                identifier="wrist",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+        }
+
+        return cfg
+
+
 class EmptyWorldFR3Duo(SimEnvCreator):
-    gripper_mesh_quaternion_offset: ClassVar[list[float]] = [0, 0, 0.7071068, 0.7071068]
 
     def config(self) -> SimEnvCreatorConfig:
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
@@ -527,6 +628,7 @@ class EmptyWorldYam(EmptyWorldFR3):
 
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
 gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
+gym.register(id="rcs/droid", entry_point=EmptyWorldDroid())
 gym.register(id="rcs/ur5e", entry_point=EmptyWorldUR5e())
 gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())

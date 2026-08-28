@@ -1,0 +1,14 @@
+<mujoco model="red_cube">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+
+  <worldbody>
+    <body name="box_body">
+        <geom type="box" size="0.02 0.02 0.02" rgba="1 0 0 1" name="box_geom" friction="0.63 0.3 0.1" priority="1" density="440" group="1" />
+        <joint type="free" name="box_joint" />
+    </body>
+  </worldbody>
+
+</mujoco>
