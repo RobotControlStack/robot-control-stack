@@ -66,6 +66,13 @@ robot2world = {
 }
 
 config: QuestConfig | GelloConfig
+
+import scipy.spatial.transform as spt
+quat_offset = spt.Rotation.from_quat([0.7071068, 0, 0.7071068, 0])
+quat_finetune = spt.Rotation.from_euler("xyz", [0,-1.5,4], degrees=True)
+quat_final = quat_finetune * quat_offset
+quat_final = quat_final.as_quat()
+
 config = QuestConfig(
     mq3_addr=MQ3_ADDR,
     simulation=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
@@ -73,7 +80,7 @@ config = QuestConfig(
     display_cameras=False,
     umi_mode=True,
     umi_mode_tool_offset={
-        "right": rcs.common.Pose(translation=np.array([0.2, 0.01, -0.06]), quaternion=np.array([0.7071068, 0, 0.7071068, 0]))
+        "right": rcs.common.Pose(translation=np.array([0.20, -0.007, -0.05]), quaternion=quat_final)
     },
     absolute_tracking=ROBOT_INSTANCE == RobotPlatform.SIMULATION,
 )
