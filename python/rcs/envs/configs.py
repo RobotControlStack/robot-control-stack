@@ -180,7 +180,6 @@ class EmptyWorldFR3(SimEnvCreator):
         )
 
 class EmptyWorldDroid(EmptyWorldFR3):
-    # TODO: add zed cameras
 
     def config(self) -> SimEnvCreatorConfig:
         cfg = super().config()
@@ -206,8 +205,79 @@ class EmptyWorldDroid(EmptyWorldFR3):
             lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
         }
 
-        cfg.camera_cfgs = None
-        cfg.camera_adds = None
+        cfg.robot_frame_objects = {
+            "right": {
+                "zed_mount": (
+                    OBJECT_PATHS["droid_wrist_mount"],
+                    rcs.common.Pose(rpy_vector=[-np.pi/2, 0, np.pi/2], translation=[-0.034, 0, -0.008]),
+                )
+            },
+        }
+        cfg.camera_adds = {
+            "wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed_mini"],
+
+                offset=rcs.common.Pose(
+                    translation=[-0.077, 0.009, -0.008],
+                    rpy_vector=np.deg2rad([0, -70, 0]),
+                ),
+                robot_name="right",
+            ),
+            "over_shoulder_left": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from RoboLab
+                    translation=[0.039831, 0.577923, 0.676088],
+                    quaternion=[-0.415841, 0.851484, 0.287128, -0.140028],
+                ),
+            ),
+            "over_shoulder_right": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from RoboLab
+                    translation=[0.039831, -0.577923, 0.676088],
+                    quaternion=[0.851484, -0.415841, -0.140028, 0.287128],
+                ),
+            ),
+            "front": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["zed2i"],
+                offset=rcs.common.Pose(
+                    # values from head camera in RoboLab
+                    translation=[1.51669, -0.005, 1.01102],
+                    quaternion=[0.335028, 0.622701, 0.622701, -0.335028],
+                ),
+            ),
+        }
+        cfg.camera_cfgs = {
+            "over_shoulder_left": SimCameraConfig(
+                identifier="over_shoulder_left",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "over_shoulder_right": SimCameraConfig(
+                identifier="over_shoulder_right",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "front": SimCameraConfig(
+                identifier="front",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+            "wrist": SimCameraConfig(
+                identifier="wrist",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+        }
 
         return cfg
 
