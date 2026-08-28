@@ -23,8 +23,8 @@
 
   <worldbody>
     <body name="zed2i" childclass="zed2i">
-      <geom mesh="zed2i" quat="1 0 0 0" material="black" class="visual"/>
-      <geom mesh="zed2i_coll" quat="1 0 0 0" material="black" class="collision"/>
+      <geom mesh="zed2i" quat="0 0 1 0" material="black" class="visual"/>
+      <geom mesh="zed2i_coll" quat="0 0 1 0" material="black" class="collision"/>
       <!-- from real camera
       [786.14367676   0.         723.64068604   0.        ]
       [  0.         786.14367676 406.79891968   0.        ]
