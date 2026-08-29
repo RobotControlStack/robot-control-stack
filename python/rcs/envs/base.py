@@ -1077,7 +1077,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
-        if self.binary:
+        if self.prev_action_obs:
             observation[self.gripper_key] = (
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
@@ -1100,7 +1100,7 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = np.clip(np.asarray(gripper_action, dtype=np.float32), 0.0, 1.0)
 
         if self._command_changed(gripper_action):
-            if self.prev_action_obs:
+            if self.binary:
                 self.gripper.grasp() if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
