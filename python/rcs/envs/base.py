@@ -1042,10 +1042,11 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
 
+    GRIPPER_THRESHOLD = 0.5
     BINARY_GRIPPER_CLOSED: ClassVar[list[float]] = [0]
     BINARY_GRIPPER_OPEN: ClassVar[list[float]] = [1]
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, prev_action_obs: bool = False):
         super().__init__(env)
         self.binary = binary
         self.observation_space: gym.spaces.Dict
@@ -1055,6 +1056,7 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self.gripper = gripper
         self._last_gripper_cmd = None
+        self.prev_action_obs = prev_action_obs
 
     def _command_changed(self, gripper_action: np.ndarray) -> bool:
         if self._last_gripper_cmd is None:
@@ -1098,8 +1100,8 @@ class GripperWrapper(ActObsInfoWrapper):
         gripper_action = np.clip(np.asarray(gripper_action, dtype=np.float32), 0.0, 1.0)
 
         if self._command_changed(gripper_action):
-            if self.binary:
-                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+            if self.prev_action_obs:
+                self.gripper.grasp() if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
             self._last_gripper_cmd = gripper_action.tolist()
