@@ -226,6 +226,7 @@ OBJECT_PATHS: dict[str, str] = {
     "fr3_single_mount": "assets/objects/fr3_single_mount/fr3_single_mount.xml",
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
     "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
+    "green_cuboid": "assets/objects/green_cuboid/green_cuboid.xml",
     "green_cube": "assets/objects/green_cube/green_cube.xml",
     "red_cube": "assets/objects/red_cube/red_cube.xml",
 }

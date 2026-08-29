@@ -1,4 +1,4 @@
-<mujoco model="green_cube">
+<mujoco model="green_cuboid">
   <compiler angle="radian" meshdir="assets" autolimits="true"/>
 
   <option cone="elliptic" impratio="10"/>
