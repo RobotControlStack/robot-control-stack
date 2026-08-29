@@ -6,7 +6,7 @@
 
   <worldbody>
     <body name="box_body">
-        <geom type="box" size="0.032 0.016 0.0288" rgba="0 0.984 0.373 1" name="box_geom" friction="1 0.3 0.1" density="50" group="1" />
+        <geom type="box" size="0.032 0.016 0.0288" rgba="0 0.984 0.373 1" name="box_geom" friction="1 0.3 0.1" density="50" group="1" priority="1" solref="0.004 1" solimp="0.95 0.99 0.001" />
         <joint type="free" name="box_joint" />
     </body>
   </worldbody>
