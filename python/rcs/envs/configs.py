@@ -392,7 +392,6 @@ class EmptyWorldFR3Duo(SimEnvCreator):
         world_frame_objects: dict[str, tuple[str, rcs.common.Pose]] | None = None
         root_frame_objects: dict[str, tuple[str, rcs.common.Pose]] | None = {
             "duo_mount": (OBJECT_PATHS["fr3_duo_mount"], DEFAULT_TRANSFORMS["FR3_DUOMOUNT_BASE"]),
-            # "green_cube": (OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1])),
         }
         robot_frame_objects: dict[str, dict[str, tuple[str, rcs.common.Pose]]] | None = {
             "left": {
