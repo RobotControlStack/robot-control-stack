@@ -102,7 +102,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
         cfg.gripper_offsets = {"right": rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
         cfg.root_frame_objects = {
             "": (
-                rcs.OBJECT_PATHS["green_cube"],
+                rcs.OBJECT_PATHS["green_cuboid"],
                 Pose(translation=np.array([0.5, 0.0, 0.05]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])),
             )
         }

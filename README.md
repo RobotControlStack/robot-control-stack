@@ -55,7 +55,7 @@ from rcs.envs.base import (
     RobotWrapper,
     SimEnv,
 )
-from rcs.envs.scenes import EmptyWorldFR3
+from rcs.envs.configs import EmptyWorldFR3
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
 import rcs

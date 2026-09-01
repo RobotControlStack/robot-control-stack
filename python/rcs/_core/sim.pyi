@@ -263,11 +263,29 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
             "fr3_joint6",
             "fr3_joint7",
         ],
+        kp: list[float] | None = None,
+        kv: list[float] | None = None,
         base: str = "base",
         dof: int = 7,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
     def add_prefix(self, id: str) -> None: ...
+    @property
+    def kp(self) -> list[float] | None:
+        """
+        Per-joint position gains; None uses the MuJoCo XML values
+        """
+
+    @kp.setter
+    def kp(self, arg0: list[float] | None) -> None: ...
+    @property
+    def kv(self) -> list[float] | None:
+        """
+        Per-joint velocity gains; None uses the MuJoCo XML values
+        """
+
+    @kv.setter
+    def kv(self, arg0: list[float] | None) -> None: ...
 
 class SimRobotState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
