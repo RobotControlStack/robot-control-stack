@@ -60,6 +60,10 @@ ROBOT_KEY = "right"
 class ReplayConfig:
     dataset_root: Path = DATASET_ROOT
     episode: int = int(os.environ.get("EPISODE", "0"))
+    # Apply franka::limitRate to the final commanded torque (FCI torque-rate
+    # reflex). True in every previous replay run (it was inherited from
+    # InferenceConfig.rate_limit, which defaults to True, and never overridden).
+    rate_limit: bool = True
     # Run the replay with TAM enabled? Start with False to see the raw sim2real
     # execution gap of the bare soft controller, then re-run with True to see
     # whether TAM closes it. (Run both for the aug13 dataset, same episode.)
@@ -138,6 +142,7 @@ def main() -> None:
     rcfg = ReplayConfig()
     cfg = InferenceConfig()  # inherits gains, TAM flags, warmup, logging, fps
     cfg.tam = rcfg.tam  # replay decides TAM on/off independently of the policy default
+    cfg.rate_limit = rcfg.rate_limit
 
     # We bypass ModelInference.__init__ (to avoid the policy server), so create
     # the log directory here the same way it does.
@@ -206,6 +211,7 @@ def main() -> None:
                     "n_frames": int(n),
                     "fps": cfg.fps,
                     "tam": bool(cfg.tam),
+                    "rate_limit": bool(cfg.rate_limit),
                     "tam_residual_clip": list(cfg.tam_residual_clip)
                     if cfg.tam_residual_clip is not None else None,
                     "task": list(task) if hasattr(task, "__len__") else str(task),

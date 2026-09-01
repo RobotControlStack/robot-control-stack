@@ -181,7 +181,6 @@ common::Vector7d Franka::tam_forward(const std::array<double, 7>& tau,
     }
   }
 
-  // this->tam_latent.store(); // ensure the latent is up-to-date for the forward
 
   const bool active =
       !rows.empty() && model->forward_stream(rows, this->tam_latent.load(),
