@@ -6,6 +6,8 @@
 #include <rcs/Robot.h>
 #include <rcs/utils.h>
 
+#include <numbers>
+
 #include "sim/sim.h"
 
 namespace rcs {
