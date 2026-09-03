@@ -23,8 +23,9 @@
 
   <worldbody>
     <body name="zed_mini" childclass="zed_mini">
-      <geom mesh="zed_mini" quat="1 0 0 0" material="black" class="visual"/>
-      <geom mesh="zed_mini_coll" quat="1 0 0 0" material="black" class="collision"/>
+      <geom mesh="zed_mini" quat="1 0 0 0" material="black" class="visual" mass="0"/>
+      <!-- Real measured mass 56.9 g; COM/inertia derived from the mesh at this mass. -->
+      <geom mesh="zed_mini_coll" quat="1 0 0 0" material="black" class="collision" mass="0.0569"/>
 <!-- intrinsic matrix from real camera -->
 <!-- [[733.30859375   0.         645.03240967   0.        ]
       [  0.         733.30859375 358.78286743   0.        ]
