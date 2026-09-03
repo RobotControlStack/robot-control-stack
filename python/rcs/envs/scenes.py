@@ -106,6 +106,11 @@ class SimEnvCreatorConfig(typing.Generic[TaskConfig]):
     """shared base frame is a common reference frame for all robots in the scene and the origin for all actions and observations, e.g. the middle of franka duo
     thus this transformation defines the offset of each robot's base to this shared base frame."""
     add_gravcomp: bool = False
+    gravcomp_ignore: set[str] = field(default_factory=set)
+    """ids of attached cameras (``camera_adds`` keys) and robot-frame objects (``robot_frame_objects`` ids)
+    that should NOT be gravity-compensated even when ``add_gravcomp`` is True, e.g. a wrist camera and its
+    mount that the real robot's controller does not compensate. The simulated arm then carries them as an
+    uncompensated load, matching the hardware."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
     headless: bool = False
     shared_base_frame_to_root_frame: rcs.common.Pose = field(default_factory=rcs.common.Pose)
@@ -321,6 +326,10 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                         else camera_add_cfg.attachment_site
                     ),
                 )
+
+        # attachments the real robot's controller does not gravity-compensate (prefix = id + "_")
+        if cfg.gravcomp_ignore:
+            composer.ignore_gravcomp({f"{object_id}_" for object_id in cfg.gravcomp_ignore})
 
         return composer
 
