@@ -4,7 +4,7 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform, GripperType
 from rcs._core.sim import SimConfig
 from rcs.camera.utils import capture_blank_camera_images
-from rcs.envs.base import BlankCameraObservationWrapper, ControlMode, RelativeTo
+from rcs.envs.base import BlankCameraObservationWrapper, CameraSetWrapper, ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo, EmptyWorldFR3
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
@@ -12,6 +12,7 @@ from rcs.operator.gello import GelloConfig, GelloOperator
 from rcs.operator.interface import TeleopLoop
 from rcs.operator.quest import QuestConfig, QuestOperator
 from simpub.sim.mj_publisher import MujocoPublisher
+from rcs_rumi import RumiFTRCSWrapper, RumiMode
 
 import rcs
 
@@ -37,8 +38,7 @@ RECORD_FPS = 30
 # "right_wrist": "230422271040",
 
 CAMERA_DICT = {
-    "wrist": "230422271040",
-    "side": "243122074917",
+    "wrist": "230422272017",
 }
 # CAMERA_DICT = None
 ZED_CAMERA_DICT = None
@@ -47,11 +47,11 @@ MQ3_ADDR = "10.42.0.1"  # Jin: IPv4 address of the wifi you are connected, join 
 # Jin: After that, exit quest_align_frame.py (ctrl c a few times), then run franka.py; then you are ready to teleop
 INCLUDE_DEPTH = False
 
-DIGIT_DICT = {"digit_right_left": "D21154", "digit_right_right": "D21296"}
-# DIGIT_DICT = None
+# DIGIT_DICT = {"digit_right_left": "D21154", "digit_right_right": "D21296"}
+DIGIT_DICT = None
 
 
-DATASET_PATH = "box_pnp"
+DATASET_PATH = "rumi_debug"
 INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
@@ -96,6 +96,7 @@ config = QuestConfig(
 def get_env():
     blank_camera_dict: dict[str, np.ndarray] = {}
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+        raise NotImplementedError("Hardware mode is not implemented yet.")
         from rcs_fr3.configs import SingleArmFR3MultiHardwareEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
@@ -197,12 +198,85 @@ def get_env():
         sim_cfg_data.relative_to = RelativeTo.NONE
         sim_cfg_data.max_relative_movement = None
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
+
+        # Build the physical sensor stack independently of the simulated robot.
+        from rcs_fr3.creators import HardwareCameraCreatorConfig, _create_hardware_camera_set
+
+        camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
+        if CAMERA_DICT is not None:
+            try:
+                from rcs_realsense.utils import reset_cameras
+
+                reset_cameras()
+            except Exception as e:
+                logger.warning("Could not reset RealSense cameras; continuing without a reset: %s", e)
+            camera_cfgs["realsense"] = HardwareCameraCreatorConfig(
+                camera_type_id="realsense",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=640,
+                        resolution_height=480,
+                        frame_rate=30,
+                    )
+                    for name, identifier in CAMERA_DICT.items()
+                },
+            )
+        if ZED_CAMERA_DICT is not None:
+            camera_cfgs["zed"] = HardwareCameraCreatorConfig(
+                camera_type_id="zed",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=640,
+                        resolution_height=480,
+                        frame_rate=30,
+                    )
+                    for name, identifier in ZED_CAMERA_DICT.items()
+                },
+                kwargs={
+                    "enable_depth": INCLUDE_DEPTH,
+                    "enable_imu": False,
+                },
+            )
+        if DIGIT_DICT is not None:
+            camera_cfgs["digit"] = HardwareCameraCreatorConfig(
+                camera_type_id="digit",
+                camera_cfgs={
+                    name: BaseCameraConfig(
+                        identifier=identifier,
+                        resolution_width=320,
+                        resolution_height=240,
+                        frame_rate=30,
+                    )
+                    for name, identifier in DIGIT_DICT.items()
+                },
+            )
+
+        hardware_camera_set = _create_hardware_camera_set(camera_cfgs or None)
+        if hardware_camera_set is not None:
+            # CameraSetWrapper owns the complete camera observation payload. Disable
+            # MuJoCo cameras to avoid duplicate names and an inconsistent space.
+            sim_cfg_data.camera_cfgs = None
+            sim_cfg_data.camera_adds = None
+
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
         # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
         sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
-
         env_rel = scene.create_env(sim_cfg_data)
+
+        if hardware_camera_set is not None:
+            try:
+                hardware_camera_set.start()
+                hardware_camera_set.wait_for_frames()
+            except Exception:
+                hardware_camera_set.close()
+                env_rel.close()
+                raise
+            env_rel = CameraSetWrapper(env_rel, hardware_camera_set, include_depth=INCLUDE_DEPTH)
+            if DIGIT_DICT is not None:
+                blank_camera_dict = capture_blank_camera_images(hardware_camera_set, DIGIT_DICT)
 
         sim = env_rel.get_wrapper_attr("sim")
         MujocoPublisher(sim.model, sim.data, MQ3_ADDR, visible_geoms_groups=list(range(1, 3)))
@@ -211,6 +285,7 @@ def get_env():
     if blank_camera_dict:
         env_rel = BlankCameraObservationWrapper(env_rel, blank_camera_dict)
 
+    env_rel = RumiFTRCSWrapper(env_rel, read_timeout=0.1, sim_robot_gripper_prefix="gripper", mode=RumiMode.WILD)
     env_rel = StorageWrapper(
         env_rel,
         DATASET_PATH,
