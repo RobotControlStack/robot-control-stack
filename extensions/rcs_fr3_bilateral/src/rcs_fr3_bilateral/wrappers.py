@@ -56,6 +56,7 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
     """
 
     LEADER_ACTION_KEY = "bilateral_leader_action"
+    LEADER_ROBOT_STATE_KEY = "bilateral_leader_robot_state"
     FOLLOWER_STATE_KEY = "bilateral_follower_state"
 
     def __init__(
@@ -188,6 +189,8 @@ class BilateralFR3Wrapper(ActObsInfoWrapper):
             else self._get_leader_arm_action()
         )
         robot_info[self.LEADER_ACTION_KEY] = dispatched_leader_action
+        leader_state = self.teleop.get_leader().get_state()
+        robot_info[self.LEADER_ROBOT_STATE_KEY] = self._robot_state_to_dict(leader_state.robot_state)
         # Match the standard RCS recording schema so joint-space dataset
         # converters can consume bilateral recordings without special cases.
         robot_info["absolute_action"] = dispatched_leader_action[self.joints_key].copy()
