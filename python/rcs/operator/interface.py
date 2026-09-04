@@ -8,6 +8,7 @@ from time import sleep
 from typing import Any
 
 import gymnasium as gym
+import numpy as np
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ArmWithGripper, ControlMode, RelativeTo
 from rcs.sim.sim import Sim
@@ -68,6 +69,9 @@ class BaseOperatorConfig:
 class TeleopLoop:
     """Interface for an operator device"""
 
+    CATCH_DISTANCE_METERS = 0.07
+    CATCH_ROTATION_RADIANS = np.deg2rad(30.0)
+
     # Define this as a class attribute so it can be accessed without instantiating
     control_mode: tuple[ControlMode, RelativeTo]
 
@@ -78,6 +82,7 @@ class TeleopLoop:
         env_frequency: int = 30,
         robot_platform: RobotPlatform = RobotPlatform.HARDWARE,
         key_translation: dict[str, str] | None = None,
+        catch_to_teleop: bool = False,
     ):
         super().__init__()
         self.env = env
@@ -91,8 +96,72 @@ class TeleopLoop:
         else:
             self.key_translation = key_translation
 
+        self.catch_to_teleop = catch_to_teleop
+        self._caught_to_teleop = not catch_to_teleop
+        self._catch_wait_message_shown = False
+
         # Absolute operators (RelativeTo.NONE) need an initial sync
         self._synced = self.operator.control_mode[1] != RelativeTo.NONE
+
+    def _reset_catch_state(self):
+        self._caught_to_teleop = not self.catch_to_teleop
+        self._catch_wait_message_shown = False
+
+    def _try_catch_to_teleop(self, controller_actions: dict[str, ArmWithGripper]) -> bool:
+        """Latch teleoperation once the right controller target is near the robot TCP."""
+        if self._caught_to_teleop:
+            return True
+
+        if not self._catch_wait_message_shown:
+            print(
+                "Waiting for catch-to-teleop: move the right controller target within "
+                "5 cm and 15 degrees of the robot TCP."
+            )
+            self._catch_wait_message_shown = True
+
+        controller = "right"
+        robot = self.key_translation.get(controller)
+        if robot is None or controller not in controller_actions or robot not in self._last_obs:
+            return False
+
+        controller_action = controller_actions[controller]
+        robot_observation = self._last_obs[robot]
+        if "tquat" not in controller_action or "tquat" not in robot_observation:
+            return False
+
+        # QuestOperator's tquat target is produced from _last_controller_pose,
+        # which already includes umi_mode_tool_offset.
+        controller_tquat = np.asarray(controller_action["tquat"], dtype=np.float64)
+        tcp_tquat = np.asarray(robot_observation["tquat"], dtype=np.float64)
+        if controller_tquat.shape != (7,) or tcp_tquat.shape != (7,):
+            return False
+        if not np.all(np.isfinite(controller_tquat)) or not np.all(np.isfinite(tcp_tquat)):
+            return False
+
+        distance = float(np.linalg.norm(controller_tquat[:3] - tcp_tquat[:3]))
+
+        controller_quaternion = controller_tquat[3:]
+        tcp_quaternion = tcp_tquat[3:]
+        controller_quaternion_norm = float(np.linalg.norm(controller_quaternion))
+        tcp_quaternion_norm = float(np.linalg.norm(tcp_quaternion))
+        if controller_quaternion_norm == 0.0 or tcp_quaternion_norm == 0.0:
+            return False
+        controller_quaternion = controller_quaternion / controller_quaternion_norm
+        tcp_quaternion = tcp_quaternion / tcp_quaternion_norm
+        # q and -q encode the same orientation, so abs(dot) gives the shortest
+        # rotational error between the two normalized quaternions.
+        cosine_half_angle = float(np.clip(abs(np.dot(controller_quaternion, tcp_quaternion)), 0.0, 1.0))
+        rotation_error = 2.0 * float(np.arccos(cosine_half_angle))
+
+        if distance > self.CATCH_DISTANCE_METERS or rotation_error > self.CATCH_ROTATION_RADIANS:
+            return False
+
+        self._caught_to_teleop = True
+        print(
+            "Catch-to-teleop engaged "
+            f"(distance: {distance * 100:.1f} cm, rotation error: {np.rad2deg(rotation_error):.1f} degrees)."
+        )
+        return True
 
     def stop(self):
         self.operator.close()
@@ -161,6 +230,7 @@ class TeleopLoop:
                 self.operator.set_camera(self._last_obs)
                 self.operator.reset_operator_state()
                 self._synced = self.operator.control_mode[1] != RelativeTo.NONE
+                self._reset_catch_state()
                 # consume new commands because of potential origin reset
                 continue
 
@@ -170,6 +240,7 @@ class TeleopLoop:
                 self.operator.set_camera(self._last_obs)
                 self.operator.reset_operator_state()
                 self._synced = self.operator.control_mode[1] != RelativeTo.NONE
+                self._reset_catch_state()
                 # consume new commands because of potential origin reset
                 continue
 
@@ -211,6 +282,10 @@ class TeleopLoop:
 
             # 2. Step the Environment
             actions = self.operator.consume_action()
+            if not self._try_catch_to_teleop(actions):
+                # Translating an empty action creates absolute hold commands from
+                # the latest observation, preventing a jump to the controller.
+                actions = {}
             actions = self._translate_keys(actions)
             self._last_obs, _, _, _, _ = self.env.step(actions)
             self.operator.set_camera(self._last_obs)
