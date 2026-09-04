@@ -5,9 +5,9 @@
 
 
   <worldbody>
-    <body name="box_body">
-        <geom type="box" size="0.02 0.02 0.02" rgba="1 0 0 1" name="box_geom" friction="0.63 0.3 0.1" priority="1" density="440" group="1" solref="0.004 1" solimp="0.95 0.99 0.001" />
-        <joint type="free" name="box_joint" />
+    <body name="red_cube_body">
+        <geom type="box" size="0.02 0.02 0.02" rgba="1 0 0 1" name="red_cube_geom" friction="0.63 0.3 0.1" priority="1" density="440" group="1" solref="0.004 1" solimp="0.95 0.99 0.001" />
+        <joint type="free" name="red_cube_joint" />
     </body>
   </worldbody>
 
