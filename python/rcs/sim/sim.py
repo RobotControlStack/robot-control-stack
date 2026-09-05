@@ -1,6 +1,8 @@
 import atexit
 import contextlib
 import multiprocessing as mp
+import shutil
+import sys
 import typing
 import uuid
 from logging import getLogger
@@ -29,6 +31,20 @@ logger = getLogger(__name__)
 FPS = 60
 RAW_STATE_ENCODING = "raw"
 ROOT_RELATIVE_FREE_STATE_ENCODING = "root_relative_free"
+
+
+def configure_viewer_mp_context(ctx: "mp.context.SpawnContext") -> None:
+    """On macOS the passive MuJoCo viewer must run under ``mjpython``.
+    """
+    if sys.platform != "darwin":
+        return
+    mjpython = shutil.which("mjpython")
+    if mjpython is None:
+        logger.warning(
+            "mjpython not found on PATH; the passive MuJoCo viewer will not work on macOS."
+        )
+        return
+    ctx.set_executable(mjpython)
 
 
 def gui_loop(gui_uuid: str, close_event):
@@ -66,6 +82,7 @@ class Sim(_Sim):
         self.data = mj.MjData(self.model)
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")
+        configure_viewer_mp_context(self._mp_context)
         self._gui_uuid: Optional[str] = None
         self._gui_client: Optional[_GuiClient] = None
         self._gui_process: Optional[mp.context.SpawnProcess] = None
@@ -244,6 +261,7 @@ class Sim(_Sim):
             self._gui_process = self._mp_context.Process(
                 target=gui_loop,
                 args=(self._gui_uuid, self._stop_event),
+                daemon=True,
             )
             self._gui_process.start()
         if not self._gui_atexit_registered:
