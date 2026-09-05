@@ -32,7 +32,7 @@ dependencies = [
   "tilburg-hand",
   "digit-interface",
   "pyopengl>=3.1.9",
-  "ompl>=1.7.0",
+  "ompl>=1.7.0; sys_platform == 'linux'",
   "rpyc~=6.0.2",
   "pyarrow",
   "simplejpeg",
