@@ -42,6 +42,28 @@ jobs:
       - name: Ensure all unittests(pytest) are passing
         run: xvfb-run make pytest
 
+  pythonpackage-macos:
+    runs-on: macos-14
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: upgrade pip
+        run: pip install --upgrade pip
+      - name: Install building dependencies
+        run: python -m pip install --group build_deps
+      - name: Install wheel
+        run: python -m pip install wheel
+      - name: Build and install rcs-core
+        run: python -m pip install -ve . --no-build-isolation
+      - name: Import smoke test
+        run: python -c "import rcs; from rcs import _core; import rcs.sim.sim; print('rcs-core import OK on macOS')"
+
   check-paths:
     runs-on: ubuntu-latest
     outputs:

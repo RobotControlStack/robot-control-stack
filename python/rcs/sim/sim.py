@@ -34,15 +34,12 @@ ROOT_RELATIVE_FREE_STATE_ENCODING = "root_relative_free"
 
 
 def configure_viewer_mp_context(ctx: "mp.context.SpawnContext") -> None:
-    """On macOS the passive MuJoCo viewer must run under ``mjpython``.
-    """
+    """On macOS the passive MuJoCo viewer must run under ``mjpython``."""
     if sys.platform != "darwin":
         return
     mjpython = shutil.which("mjpython")
     if mjpython is None:
-        logger.warning(
-            "mjpython not found on PATH; the passive MuJoCo viewer will not work on macOS."
-        )
+        logger.warning("mjpython not found on PATH; the passive MuJoCo viewer will not work on macOS.")
         return
     ctx.set_executable(mjpython)
 
