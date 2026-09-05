@@ -22,9 +22,10 @@
 
   <worldbody>
     <body name="base" childclass="wrist_camera_setup">
-      <geom mesh="wrist_camera_setup" quat="1 0 0 0" material="black" class="visual"/>
+      <geom mesh="wrist_camera_setup" quat="1 0 0 0" material="black" class="visual" mass="0"/>
       <!-- <geom mesh="wrist_camera_setup" quat="1 0 0 0" material="black" class="collision"/> -->
-      <geom mesh="wrist_camera_setup_collision" quat="1 0 0 0" material="black" class="collision"/>
+      <!-- Real measured mass 47.7 g; COM/inertia derived from the mesh at this mass. -->
+      <geom mesh="wrist_camera_setup_collision" quat="1 0 0 0" material="black" class="collision" mass="0.0477"/>
     </body>
   </worldbody>
 
