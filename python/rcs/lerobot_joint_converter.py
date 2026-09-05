@@ -104,6 +104,7 @@ class JointDatasetConverter:
         video_encoding: bool = False,
         video_backend: str | None = None,
         disable_stationary_frame_filtering: bool = False,
+        use_tquat_env_action: bool = True
     ):
         self.root = Path(root)
         self.conn = duckdb.connect()
@@ -126,7 +127,10 @@ class JointDatasetConverter:
         self._source_column_types: dict[str, str] | None = None
         self._arm_action_is_joint_source: dict[str, bool] = {}
         self.video_encoding = video_encoding
-
+        self.use_tquat_env_action = use_tquat_env_action
+        if self.joints and self.use_tquat_env_action:
+            raise RuntimeError("Cannot have joints be true and also use tquat_action!")
+        print("using tquat as action")
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
         self.ik = rcs.common.Pin(
             rcs.ROBOTS[robot_type].mjcf_model_path,
@@ -265,6 +269,10 @@ class JointDatasetConverter:
         return field_type is not None
 
     def _arm_action_select(self, robot_key: str) -> str:
+        if self.use_tquat_env_action: 
+            if not self._source_has_path("env_action", robot_key, "tquat"):
+                raise ValueError(f"The source data doesn't have the path env_action.{robot_key}.tquat!")
+            return f"env_action.{robot_key}.tquat AS tquat_env_action_{robot_key}"
         if self._source_has_path("info", robot_key, "absolute_action"):
             self._arm_action_is_joint_source[robot_key] = self.joints
             return f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}"
@@ -303,7 +311,6 @@ class JointDatasetConverter:
             [self._arm_action_select(robot_key) for robot_key in self.robot_keys]
             + [f"env_action.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
-
         return self.conn.execute(
             f"""
             SELECT
@@ -387,8 +394,11 @@ class JointDatasetConverter:
         actions = []
         for robot_key in self.robot_keys:
             observation_joints = row[f"observation_joints_{robot_key}"]
-            absolute_action = row[f"absolute_action_{robot_key}"]
             action_gripper = row[f"action_gripper_{robot_key}"]
+            if self.use_tquat_env_action:
+                absolute_action = row[f"tquat_env_action_{robot_key}"]
+            else:
+                absolute_action = row[f"absolute_action_{robot_key}"]
             if (
                 self._is_missing(observation_joints)
                 or self._is_missing(absolute_action)
