@@ -57,6 +57,8 @@ struct FrankaConfig : common::RobotConfig {
   Eigen::Vector3d osc_Kp_r = (Eigen::Vector3d() << 250., 250., 250.).finished();
   std::optional<Eigen::Vector3d> osc_Kd_p = std::nullopt;
   std::optional<Eigen::Vector3d> osc_Kd_r = std::nullopt;
+  common::Vector7d osc_torque_limits = common::Vector7d::Constant(5.0);
+  common::Vector7d osc_torque_rate_limits = common::Vector7d::Constant(1000.0);
   size_t dof = 7;
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<

@@ -185,7 +185,7 @@ void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
 void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   this->check_for_background_errors();
   // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 1.0;  // in s
+  double traj_interpolation_time_fraction = .033;//1.0;  // in s
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
@@ -266,7 +266,7 @@ void Franka::osc_set_cartesian_position(
     const common::Pose& desired_pose_EE_in_base_frame) {
   this->check_for_background_errors();
   // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 1.0;
+  double traj_interpolation_time_fraction = .033; //1.0;
   // form deoxys/config/charmander.yml
   int policy_rate = 20;
   int traj_rate = 500;
@@ -346,6 +346,11 @@ void Franka::osc() {
       this->m_cfg.osc_Kd_p.value_or(this->m_cfg.osc_Kp_p.cwiseSqrt() * 2.0);
   const Eigen::Vector3d osc_Kd_r =
       this->m_cfg.osc_Kd_r.value_or(this->m_cfg.osc_Kp_r.cwiseSqrt() * 2.0);
+  const common::Vector7d& torque_limits = this->m_cfg.osc_torque_limits;
+  std::array<double, 7> torque_rate_limits{};
+  for (size_t i = 0; i < torque_rate_limits.size(); ++i) {
+    torque_rate_limits[i] = this->m_cfg.osc_torque_rate_limits[i];
+  }
   Kp_p.diagonal() = this->m_cfg.osc_Kp_p;
   Kp_r.diagonal() = this->m_cfg.osc_Kp_r;
   Kd_p.diagonal() = osc_Kd_p;
@@ -522,12 +527,9 @@ void Franka::osc() {
           std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
+          torque_rate_limits, tau_d_array, robot_state.tau_J_d);
 
-      // deoxys/config/control_config.yml
-      double min_torque = -5;
-      double max_torque = 5;
-      TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
+      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limits);
 
       return tau_d_rate_limited;
     });

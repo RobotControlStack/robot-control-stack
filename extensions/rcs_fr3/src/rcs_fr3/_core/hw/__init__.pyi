@@ -122,6 +122,8 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     nominal_end_effector_frame: rcs._core.common.Pose | None
     osc_Kd_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     osc_Kd_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
+    osc_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    osc_torque_rate_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     osc_Kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     osc_Kp_r: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     speed_factor: float
@@ -336,6 +338,8 @@ class FR3Config(FrankaConfig):
         joint_controller_interpolation: bool = True,
         joint_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
         torque_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_torque_rate_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
 
 class PandaConfig(FrankaConfig):
@@ -366,6 +370,8 @@ class PandaConfig(FrankaConfig):
         joint_controller_interpolation: bool = True,
         joint_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
         torque_controller_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_torque_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
+        osc_torque_rate_limits: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
 
 class FrankaState(rcs._core.common.RobotState):

@@ -150,6 +150,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("osc_Kp_r", &rcs::hw::FrankaConfig::osc_Kp_r)
       .def_readwrite("osc_Kd_p", &rcs::hw::FrankaConfig::osc_Kd_p)
       .def_readwrite("osc_Kd_r", &rcs::hw::FrankaConfig::osc_Kd_r)
+      .def_readwrite("osc_torque_limits", &rcs::hw::FrankaConfig::osc_torque_limits)
+      .def_readwrite("osc_torque_rate_limits", &rcs::hw::FrankaConfig::osc_torque_rate_limits)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
   rcs::hw::FR3Config default_fr3_config;
@@ -170,7 +172,9 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<Eigen::Vector3d> osc_Kd_r,
                   bool joint_controller_interpolation,
                   rcs::common::Vector7d joint_controller_torque_limits,
-                  rcs::common::Vector7d torque_controller_torque_limits) {
+                  rcs::common::Vector7d torque_controller_torque_limits,
+                  rcs::common::Vector7d osc_torque_limits,
+                  rcs::common::Vector7d osc_torque_rate_limits) {
                  rcs::hw::FR3Config cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
@@ -197,6 +201,8 @@ PYBIND11_MODULE(_core, m) {
                      joint_controller_torque_limits;
                  cfg.torque_controller_torque_limits =
                      torque_controller_torque_limits;
+                 cfg.osc_torque_limits = osc_torque_limits;
+                 cfg.osc_torque_rate_limits = osc_torque_rate_limits;
                  return cfg;
                }),
            py::arg("ip"), py::arg("ik_solver") = default_fr3_config.ik_solver,
@@ -226,7 +232,9 @@ PYBIND11_MODULE(_core, m) {
            py::arg("joint_controller_torque_limits") =
                default_fr3_config.joint_controller_torque_limits,
            py::arg("torque_controller_torque_limits") =
-               default_fr3_config.torque_controller_torque_limits);
+               default_fr3_config.torque_controller_torque_limits,
+           py::arg("osc_torque_limits") = default_fr3_config.osc_torque_limits,
+           py::arg("osc_torque_rate_limits") = default_fr3_config.osc_torque_rate_limits);
   rcs::hw::PandaConfig default_panda_config;
   py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
       .def(py::init(
@@ -245,7 +253,9 @@ PYBIND11_MODULE(_core, m) {
                   std::optional<Eigen::Vector3d> osc_Kd_r,
                   bool joint_controller_interpolation,
                   rcs::common::Vector7d joint_controller_torque_limits,
-                  rcs::common::Vector7d torque_controller_torque_limits) {
+                  rcs::common::Vector7d torque_controller_torque_limits,
+                  rcs::common::Vector7d osc_torque_limits,
+                  rcs::common::Vector7d osc_torque_rate_limits) {
                  rcs::hw::PandaConfig cfg;
                  cfg.ik_solver = ik_solver;
                  cfg.speed_factor = speed_factor;
@@ -272,6 +282,8 @@ PYBIND11_MODULE(_core, m) {
                      joint_controller_torque_limits;
                  cfg.torque_controller_torque_limits =
                      torque_controller_torque_limits;
+                 cfg.osc_torque_limits = osc_torque_limits;
+                 cfg.osc_torque_rate_limits = osc_torque_rate_limits;
                  return cfg;
                }),
            py::arg("ip"), py::arg("ik_solver") = default_panda_config.ik_solver,
@@ -301,7 +313,9 @@ PYBIND11_MODULE(_core, m) {
            py::arg("joint_controller_torque_limits") =
                default_panda_config.joint_controller_torque_limits,
            py::arg("torque_controller_torque_limits") =
-               default_panda_config.torque_controller_torque_limits);
+               default_panda_config.torque_controller_torque_limits,
+           py::arg("osc_torque_limits") = default_panda_config.osc_torque_limits,
+           py::arg("osc_torque_rate_limits") = default_panda_config.osc_torque_rate_limits);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
