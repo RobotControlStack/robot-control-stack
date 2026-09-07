@@ -24,7 +24,11 @@ DEFAULT_REPO_ID = "rcs/grasp_joint_simple"
 DEFAULT_ROBOT_TYPE = "FR3"
 DEFAULT_FPS = 30
 DEFAULT_ROBOT_KEYS = ["left", "right"]
-DEFAULT_JOINTS = False
+DEFAULT_SOURCE_ACTION_IS_JOINT = False
+DEFAULT_ACTION_SOURCE_FIELD = "absolute_action"
+DEFAULT_RETURNED_STATE_TYPE = "joints"
+DEFAULT_RETURNED_ACTION_TYPE = "tquat"
+DEFAULT_DELTA_FROM_OBSERVATION = False
 DEFAULT_GRIPPER_TYPE = "Robotiq2F85"
 DEFAULT_BINARIZE_GRIPPER = False
 DEFAULT_GRIPPER_BINARIZE_THRESHOLD = 0.9
@@ -95,7 +99,11 @@ class JointDatasetConverter:
         repo_id: str = DEFAULT_REPO_ID,
         fps: int = DEFAULT_FPS,
         robot_keys: list[str] | None = None,
-        joints: bool = DEFAULT_JOINTS,
+        source_action_is_joint: bool = DEFAULT_SOURCE_ACTION_IS_JOINT,
+        action_source_field: str = DEFAULT_ACTION_SOURCE_FIELD,
+        returned_state_type: str = DEFAULT_RETURNED_STATE_TYPE,
+        returned_action_type: str = DEFAULT_RETURNED_ACTION_TYPE,
+        delta_from_observation: bool = DEFAULT_DELTA_FROM_OBSERVATION,
         cameras: list[CamConversionConfig] | None = None,
         image_batch_size: int = DEFAULT_IMAGE_BATCH_SIZE,
         per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
@@ -104,8 +112,21 @@ class JointDatasetConverter:
         video_encoding: bool = False,
         video_backend: str | None = None,
         disable_stationary_frame_filtering: bool = False,
-        use_tquat_env_action: bool = True
     ):
+        valid_state_types = {"tquat", "xyzrpy", "joints"}
+        valid_action_types = {"tquat", "delta_tquat", "xyzrpy", "delta_xyzrpy", "joints"}
+        valid_types = {
+            "tquat": 7,
+            "delta_tquat": 7,
+            "xyzrpy": 6,
+            "delta_xyzrpy": 6,
+            "joints": per_robot_arm_dim,
+        }
+        if returned_state_type not in valid_state_types or returned_action_type not in valid_action_types:
+            raise ValueError(
+                "returned_state_type and returned_action_type must be one of: "
+                "tquat, delta_tquat, xyzrpy, delta_xyzrpy, joints"
+            )
         self.root = Path(root)
         self.conn = duckdb.connect()
         self.dataset_paths = dataset_paths or list(DEFAULT_DATASET_PATHS)
@@ -113,13 +134,18 @@ class JointDatasetConverter:
         self.robot_type = robot_type
         self.fps = fps
         self.robot_keys = robot_keys or list(DEFAULT_ROBOT_KEYS)
-        self.joints = joints
+        self.source_action_is_joint = source_action_is_joint
+        self.action_source_field = action_source_field
+        self.returned_state_type = returned_state_type
+        self.returned_action_type = returned_action_type
+        self.delta_from_observation = delta_from_observation
         self.gripper_type = gripper_type
         self.cameras = cameras or list(DEFAULT_CAMERAS)
         self.image_batch_size = image_batch_size
         self.per_robot_arm_dim = per_robot_arm_dim
-        self.per_robot_state_dim = self.per_robot_arm_dim + 1
-        self.state_dim = len(self.robot_keys) * self.per_robot_state_dim
+        self._arm_dims = valid_types
+        self.state_dim = len(self.robot_keys) * (self._arm_dims[returned_state_type] + 1)
+        self.action_dim = len(self.robot_keys) * (self._arm_dims[returned_action_type] + 1)
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.disable_stationary_frame_filtering = disable_stationary_frame_filtering
@@ -127,10 +153,6 @@ class JointDatasetConverter:
         self._source_column_types: dict[str, str] | None = None
         self._arm_action_is_joint_source: dict[str, bool] = {}
         self.video_encoding = video_encoding
-        self.use_tquat_env_action = use_tquat_env_action
-        if self.joints and self.use_tquat_env_action:
-            raise RuntimeError("Cannot have joints be true and also use tquat_action!")
-        print("using tquat as action")
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
         self.ik = rcs.common.Pin(
             rcs.ROBOTS[robot_type].mjcf_model_path,
@@ -170,9 +192,19 @@ class JointDatasetConverter:
 
     def _build_features(self) -> dict[str, dict[str, Any]]:
         state_names = []
+        action_names = []
+        component_names = {
+            "joints": ["joint_{}".format(i) for i in range(self.per_robot_arm_dim)],
+            "tquat": ["x", "y", "z", "qx", "qy", "qz", "qw"],
+            "delta_tquat": ["delta_x", "delta_y", "delta_z", "delta_qx", "delta_qy", "delta_qz", "delta_qw"],
+            "xyzrpy": ["x", "y", "z", "roll", "pitch", "yaw"],
+            "delta_xyzrpy": ["delta_x", "delta_y", "delta_z", "delta_roll", "delta_pitch", "delta_yaw"],
+        }
         for robot_key in self.robot_keys:
-            state_names.extend([f"{robot_key}_joint_{i}" for i in range(self.per_robot_arm_dim)])
+            state_names.extend([f"{robot_key}_{name}" for name in component_names[self.returned_state_type]])
             state_names.append(f"{robot_key}_gripper")
+            action_names.extend([f"{robot_key}_{name}" for name in component_names[self.returned_action_type]])
+            action_names.append(f"{robot_key}_gripper")
 
         features = {
             camera.dataset_key: {
@@ -189,8 +221,8 @@ class JointDatasetConverter:
         }
         features["action"] = {
             "dtype": "float32",
-            "shape": (self.state_dim,),
-            "names": state_names,
+            "shape": (self.action_dim,),
+            "names": action_names,
         }
         return features
 
@@ -269,22 +301,15 @@ class JointDatasetConverter:
         return field_type is not None
 
     def _arm_action_select(self, robot_key: str) -> str:
-        if self.use_tquat_env_action: 
-            if not self._source_has_path("env_action", robot_key, "tquat"):
-                raise ValueError(f"The source data doesn't have the path env_action.{robot_key}.tquat!")
-            return f"env_action.{robot_key}.tquat AS tquat_env_action_{robot_key}"
-        if self._source_has_path("info", robot_key, "absolute_action"):
-            self._arm_action_is_joint_source[robot_key] = self.joints
-            return f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}"
-
-        if self._source_has_path("env_action", robot_key, "joints"):
-            self._arm_action_is_joint_source[robot_key] = True
-            return f"env_action.{robot_key}.joints AS absolute_action_{robot_key}"
+        for root in ("info", "env_action", "action"):
+            if self._source_has_path(root, robot_key, self.action_source_field):
+                self._arm_action_is_joint_source[robot_key] = self.source_action_is_joint
+                alias = f"source_action_{robot_key}"
+                return f"{root}.{robot_key}.{self.action_source_field} AS {alias}"
 
         msg = (
-            f"Could not find an action source for robot '{robot_key}'. Expected either "
-            f"info.{robot_key}.absolute_action from RelativeActionSpace or "
-            f"env_action.{robot_key}.joints from absolute joint-control recordings."
+            f"Could not find action field '{self.action_source_field}' for robot '{robot_key}' "
+            f"in info, env_action, or action."
         )
         raise ValueError(msg)
 
@@ -304,7 +329,11 @@ class JointDatasetConverter:
 
     def _fetch_transition_table(self, episode_id: str) -> pd.DataFrame:
         observation_selects = ",\n                    ".join(
-            [f"obs.{robot_key}.joints AS observation_joints_{robot_key}" for robot_key in self.robot_keys]
+            [
+                f"obs.{robot_key}.{field} AS observation_{field}_{robot_key}"
+                for robot_key in self.robot_keys
+                for field in ("joints", "tquat", "xyzrpy")
+            ]
             + [f"obs.{robot_key}.gripper AS observation_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
         action_selects = ",\n                    ".join(
@@ -378,74 +407,222 @@ class JointDatasetConverter:
                 raise ValueError(msg)
 
             joints_vec = np.asarray(joints, dtype=np.float32)
+            arm_state = row[f"observation_{self.returned_state_type}_{robot_key}"]
             gripper_vec = np.asarray(gripper, dtype=np.float32)
-            if joints_vec.shape != (self.per_robot_arm_dim,) or gripper_vec.shape != (1,):
+            arm_state_vec = np.asarray(arm_state, dtype=np.float32)
+            expected_state_shape = (self._arm_dims[self.returned_state_type],)
+            if (
+                joints_vec.shape != (self.per_robot_arm_dim,)
+                or arm_state_vec.shape != expected_state_shape
+                or gripper_vec.shape != (1,)
+            ):
                 msg = (
                     f"Unexpected observation shapes for robot '{robot_key}' at step {row['step']}: "
-                    f"joints={joints_vec.shape}, gripper={gripper_vec.shape}"
+                    f"joints={joints_vec.shape}, {self.returned_state_type}={arm_state_vec.shape}, "
+                    f"gripper={gripper_vec.shape}"
                 )
                 raise ValueError(msg)
             gripper_vec = self._maybe_binarize_gripper(gripper_vec)
-            vectors.append(np.concatenate([joints_vec, gripper_vec]).astype(np.float32))
+            vectors.append(np.concatenate([arm_state_vec, gripper_vec]).astype(np.float32))
 
         return np.concatenate(vectors).astype(np.float32)
 
-    def _convert_action_to_joint_space(self, row: pd.Series) -> np.ndarray | None:
+    def _convert_action_to_joint_space(
+        self, row: pd.Series, next_row: pd.Series | None = None
+    ) -> np.ndarray | None:
         actions = []
+        is_delta_action = self.returned_action_type in {"delta_tquat", "delta_xyzrpy"}
+        if is_delta_action and next_row is None:
+            return None
         for robot_key in self.robot_keys:
             observation_joints = row[f"observation_joints_{robot_key}"]
             action_gripper = row[f"action_gripper_{robot_key}"]
-            if self.use_tquat_env_action:
-                absolute_action = row[f"tquat_env_action_{robot_key}"]
-            else:
-                absolute_action = row[f"absolute_action_{robot_key}"]
+            source_action = row[f"source_action_{robot_key}"]
             if (
                 self._is_missing(observation_joints)
-                or self._is_missing(absolute_action)
+                or self._is_missing(source_action)
                 or self._is_missing(action_gripper)
             ):
                 msg = f"Missing action inputs for robot '{robot_key}' at step {row['step']}"
                 raise ValueError(msg)
 
             observation_joints_vec = np.asarray(observation_joints, dtype=np.float64)
-            absolute_action_vec = np.asarray(absolute_action, dtype=np.float64)
+            source_action_vec = np.asarray(source_action, dtype=np.float64)
             action_gripper_vec = np.asarray(action_gripper, dtype=np.float32)
             if (
                 observation_joints_vec.shape != (self.per_robot_arm_dim,)
-                or absolute_action_vec.shape != (self.per_robot_arm_dim,)
+                or source_action_vec.shape != ((self.per_robot_arm_dim,) if self._arm_action_is_joint_source.get(robot_key, self.source_action_is_joint) else (7,))
                 or action_gripper_vec.shape != (1,)
             ):
                 msg = (
                     f"Unexpected action shapes for robot '{robot_key}' at step {row['step']}: "
                     f"observation_joints={observation_joints_vec.shape}, "
-                    f"absolute_action={absolute_action_vec.shape}, action_gripper={action_gripper_vec.shape}"
+                    f"source_action={source_action_vec.shape}, action_gripper={action_gripper_vec.shape}"
                 )
                 raise ValueError(msg)
             action_gripper_vec = self._maybe_binarize_gripper(action_gripper_vec)
 
-            if self._arm_action_is_joint_source.get(robot_key, self.joints):
-                arm_action_vec = absolute_action_vec.astype(np.float32)
+            source_is_joint = self._arm_action_is_joint_source.get(robot_key, self.source_action_is_joint)
+            if is_delta_action and self.delta_from_observation:
+                next_observed_tquat = np.asarray(
+                    next_row[f"observation_tquat_{robot_key}"], dtype=np.float64
+                )
+                observed_tquat = np.asarray(row[f"observation_tquat_{robot_key}"], dtype=np.float64)
+                observed_pose = rcs.common.Pose(
+                    translation=observed_tquat[:3], quaternion=observed_tquat[3:]
+                )
+                next_observed_pose = rcs.common.Pose(
+                    translation=next_observed_tquat[:3], quaternion=next_observed_tquat[3:]
+                )
+                observed_xyzrpy = np.asarray(
+                    row[f"observation_xyzrpy_unwrapped_{robot_key}"], dtype=np.float64
+                )
+                next_observed_xyzrpy = np.asarray(
+                    next_row[f"observation_xyzrpy_unwrapped_{robot_key}"], dtype=np.float64
+                )
+                arm_action_vec = self._format_delta_pose(
+                    observed_pose,
+                    next_observed_pose,
+                    observed_xyzrpy,
+                    next_observed_xyzrpy,
+                )
+            elif source_is_joint and self.returned_action_type == "joints":
+                arm_action_vec = source_action_vec.astype(np.float32)
+            elif not source_is_joint and self.returned_action_type == "tquat":
+                arm_action_vec = source_action_vec.astype(np.float32)
+            elif source_is_joint:
+                source_pose = self.ik.forward(source_action_vec, self.tcp_offset)
+                if is_delta_action:
+                    next_source = np.asarray(next_row[f"source_action_{robot_key}"], dtype=np.float64)
+                    next_pose = self.ik.forward(next_source, self.tcp_offset)
+                    arm_action_vec = self._format_delta_pose(
+                        source_pose,
+                        next_pose,
+                        row.get(f"source_action_xyzrpy_{robot_key}"),
+                        next_row.get(f"source_action_xyzrpy_{robot_key}"),
+                    )
+                else:
+                    arm_action_vec = self._format_action_pose(source_pose)
             else:
-                target_pose = rcs.common.Pose(
-                    translation=absolute_action_vec[:3],
-                    quaternion=absolute_action_vec[3:7],
-                )
-                ik_joints: np.ndarray | None = self.ik.inverse(
-                    target_pose, observation_joints_vec, tcp_offset=self.tcp_offset
-                )
-                if ik_joints is None:
-                    msg = f"IK failed for robot '{robot_key}' at step {row['step']}, ignoring step"
-                    warnings.warn(msg, stacklevel=1)
-                    return None
-                arm_action_vec = np.asarray(ik_joints, dtype=np.float32)
+                source_pose = rcs.common.Pose(translation=source_action_vec[:3], quaternion=source_action_vec[3:7])
+                if self.returned_action_type in {"joints"}:
+                    ik_joints: np.ndarray | None = self.ik.inverse(
+                        source_pose, observation_joints_vec, tcp_offset=self.tcp_offset
+                    )
+                    if ik_joints is None:
+                        msg = f"IK failed for robot '{robot_key}' at step {row['step']}, ignoring step"
+                        warnings.warn(msg, stacklevel=1)
+                        return None
+                    arm_action_vec = np.asarray(ik_joints, dtype=np.float32)
+                else:
+                    if is_delta_action:
+                        next_source = np.asarray(next_row[f"source_action_{robot_key}"], dtype=np.float64)
+                        next_pose = rcs.common.Pose(
+                            translation=next_source[:3], quaternion=next_source[3:7]
+                        )
+                        arm_action_vec = self._format_delta_pose(
+                            source_pose,
+                            next_pose,
+                            row.get(f"source_action_xyzrpy_{robot_key}"),
+                            next_row.get(f"source_action_xyzrpy_{robot_key}"),
+                        )
+                    else:
+                        arm_action_vec = self._format_action_pose(source_pose)
+
+            arm_action_vec = np.asarray(arm_action_vec, dtype=np.float32)
 
             actions.append(np.concatenate([arm_action_vec, action_gripper_vec]).astype(np.float32))
 
         concatenated = np.concatenate(actions).astype(np.float32)
-        if concatenated.shape != (self.state_dim,):
+        if concatenated.shape != (self.action_dim,):
             msg = f"Unexpected concatenated action shape {concatenated.shape} at step {row['step']}"
             raise ValueError(msg)
         return concatenated
+
+    def _format_action_pose(self, target_pose: rcs.common.Pose) -> np.ndarray:
+        if self.returned_action_type == "tquat":
+            return np.concatenate([target_pose.translation(), target_pose.rotation_q()])
+        if self.returned_action_type == "xyzrpy":
+            return target_pose.xyzrpy()
+
+        raise ValueError(f"Unsupported returned action type: {self.returned_action_type}")
+
+    def _format_delta_pose(
+        self,
+        current_pose: rcs.common.Pose,
+        next_pose: rcs.common.Pose,
+        current_xyzrpy: np.ndarray | None = None,
+        next_xyzrpy: np.ndarray | None = None,
+    ) -> np.ndarray:
+        delta_pose = next_pose * current_pose.inverse()
+        # q and -q represent the same rotation. Select the shortest-arc
+        # representative before converting to RPY; otherwise a sign flip can
+        # appear as an artificial +/-pi Euler rotation.
+        delta_quaternion = np.asarray(delta_pose.rotation_q(), dtype=np.float64)
+        if delta_quaternion[3] < 0:
+            delta_quaternion = -delta_quaternion
+        if self.returned_action_type == "delta_tquat":
+            return np.concatenate([delta_pose.translation(), delta_quaternion])
+        if self.returned_action_type == "delta_xyzrpy":
+            current_xyzrpy = current_xyzrpy if current_xyzrpy is not None else current_pose.xyzrpy()
+            next_xyzrpy = next_xyzrpy if next_xyzrpy is not None else next_pose.xyzrpy()
+            # Compute the local rotation from the relative pose instead of
+            # subtracting two independently chosen Euler-angle branches. The
+            # latter can turn a small motion into a +/-pi jump near an Euler
+            # representation boundary.
+            # RCS's native rotvec is the shortest rotational representation of
+            # the relative pose and is not subject to Euler branch selection.
+            rotation_delta = np.asarray(delta_pose.rotvec(), dtype=np.float64)[3:]
+            if np.linalg.norm(rotation_delta) > np.pi + 1e-5:
+                raise ValueError(
+                    f"Relative rotation exceeds the shortest-arc bound at delta conversion: "
+                    f"{rotation_delta}"
+                )
+            return np.concatenate(
+                [
+                    next_xyzrpy[:3] - current_xyzrpy[:3],
+                    rotation_delta,
+                ]
+            )
+        raise ValueError(f"Unsupported returned action type: {self.returned_action_type}")
+
+    @staticmethod
+    def _rotation_vector_from_quaternion(quaternion: np.ndarray) -> np.ndarray:
+        """Return the shortest local rotational increment from an xyzw quaternion."""
+        quaternion = np.asarray(quaternion, dtype=np.float64)
+        quaternion /= np.linalg.norm(quaternion)
+        if quaternion[3] < 0:
+            quaternion = -quaternion
+        vector = quaternion[:3]
+        vector_norm = np.linalg.norm(vector)
+        if vector_norm < 1e-12:
+            return 2.0 * vector
+        angle = 2.0 * np.arctan2(vector_norm, quaternion[3])
+        return vector * (angle / vector_norm)
+
+    @staticmethod
+    def _unwrap_rpy_sequence(rpy_values: np.ndarray) -> np.ndarray:
+        """Keep equivalent Euler branches continuous across an episode."""
+        continuous = np.empty_like(rpy_values)
+        continuous[0] = rpy_values[0]
+        two_pi = 2 * np.pi
+
+        for index in range(1, len(rpy_values)):
+            rpy = rpy_values[index]
+            previous = continuous[index - 1]
+            candidates = []
+            alternate = rpy.copy()
+            alternate[3:] = np.array([rpy[3] + np.pi, np.pi - rpy[4], rpy[5] + np.pi])
+            for candidate in (rpy, alternate):
+                turns = np.round((previous[3:] - candidate[3:]) / two_pi)
+                adjusted = candidate.copy()
+                adjusted[3:] += turns * two_pi
+                candidates.append(adjusted)
+            continuous[index] = min(
+                candidates, key=lambda candidate: np.linalg.norm(candidate[3:] - previous[3:])
+            )
+
+        return continuous
 
     def _prepare_transition_table(self, table: pd.DataFrame) -> pd.DataFrame:
         if len(table) == 0:
@@ -453,7 +630,47 @@ class JointDatasetConverter:
 
         df = table.copy()  # noqa: PD901
         df["observation_state"] = df.apply(self._build_observation_state, axis=1)
-        df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
+        returned_action_type = getattr(self, "returned_action_type", DEFAULT_RETURNED_ACTION_TYPE)
+        delta_from_observation = getattr(self, "delta_from_observation", DEFAULT_DELTA_FROM_OBSERVATION)
+        if returned_action_type == "delta_xyzrpy" and not delta_from_observation:
+            for robot_key in self.robot_keys:
+                action_rpy = []
+                for _, row in df.iterrows():
+                    source_action = row[f"source_action_{robot_key}"]
+                    source_is_joint = self._arm_action_is_joint_source.get(
+                        robot_key, self.source_action_is_joint
+                    )
+                    source_vec = np.asarray(source_action, dtype=np.float64)
+                    source_pose = (
+                        self.ik.forward(source_vec, self.tcp_offset)
+                        if source_is_joint
+                        else rcs.common.Pose(translation=source_vec[:3], quaternion=source_vec[3:7])
+                    )
+                    action_rpy.append(source_pose.xyzrpy())
+                unwrapped = self._unwrap_rpy_sequence(np.stack(action_rpy))
+                df[f"source_action_xyzrpy_{robot_key}"] = list(unwrapped)
+        if returned_action_type == "delta_xyzrpy" and delta_from_observation:
+            for robot_key in self.robot_keys:
+                observation_xyzrpy = np.stack(
+                    [
+                        np.asarray(row[f"observation_xyzrpy_{robot_key}"], dtype=np.float64)
+                        for _, row in df.iterrows()
+                    ]
+                )
+                unwrapped = self._unwrap_rpy_sequence(observation_xyzrpy)
+                df[f"observation_xyzrpy_unwrapped_{robot_key}"] = list(unwrapped)
+        if returned_action_type in {"delta_tquat", "delta_xyzrpy"} and not delta_from_observation:
+            df["action_vector"] = [
+                self._convert_action_to_joint_space(row, next_row)
+                for (_, row), (_, next_row) in zip(df.iloc[:-1].iterrows(), df.iloc[1:].iterrows())
+            ] + [None]
+        elif returned_action_type in {"delta_tquat", "delta_xyzrpy"}:
+            df["action_vector"] = [
+                self._convert_action_to_joint_space(row, next_row)
+                for (_, row), (_, next_row) in zip(df.iloc[:-1].iterrows(), df.iloc[1:].iterrows())
+            ] + [None]
+        else:
+            df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
         df = df[df["action_vector"].notna()]  # noqa: PD901
         if self.disable_stationary_frame_filtering:
@@ -535,7 +752,11 @@ def run_conversion(
     robot_type: str = DEFAULT_ROBOT_TYPE,
     fps: int = DEFAULT_FPS,
     robot_keys: list[str] | None = None,
-    joints: bool = DEFAULT_JOINTS,
+    source_action_is_joint: bool = DEFAULT_SOURCE_ACTION_IS_JOINT,
+    action_source_field: str = DEFAULT_ACTION_SOURCE_FIELD,
+    returned_state_type: str = DEFAULT_RETURNED_STATE_TYPE,
+    returned_action_type: str = DEFAULT_RETURNED_ACTION_TYPE,
+    delta_from_observation: bool = DEFAULT_DELTA_FROM_OBSERVATION,
     gripper_type: str = DEFAULT_GRIPPER_TYPE,
     cameras: list[CamConversionConfig] | None = None,
     image_batch_size: int = DEFAULT_IMAGE_BATCH_SIZE,
@@ -563,7 +784,11 @@ def run_conversion(
         repo_id=repo_id,
         fps=fps,
         robot_keys=robot_keys,
-        joints=joints,
+        source_action_is_joint=source_action_is_joint,
+        action_source_field=action_source_field,
+        returned_state_type=returned_state_type,
+        returned_action_type=returned_action_type,
+        delta_from_observation=delta_from_observation,
         cameras=cameras,
         image_batch_size=image_batch_size,
         per_robot_arm_dim=per_robot_arm_dim,

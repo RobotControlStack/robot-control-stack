@@ -12,7 +12,11 @@ from rcs.lerobot_joint_converter import (
     DEFAULT_GRIPPER_TYPE,
     DEFAULT_HF_DATA_DIR,
     DEFAULT_IMAGE_BATCH_SIZE,
-    DEFAULT_JOINTS,
+    DEFAULT_ACTION_SOURCE_FIELD,
+    DEFAULT_RETURNED_ACTION_TYPE,
+    DEFAULT_RETURNED_STATE_TYPE,
+    DEFAULT_SOURCE_ACTION_IS_JOINT,
+    DEFAULT_DELTA_FROM_OBSERVATION,
     DEFAULT_PER_ROBOT_ARM_DIM,
     DEFAULT_REPO_ID,
     DEFAULT_ROBOT_KEYS,
@@ -141,9 +145,21 @@ def lerobot_convert(
             help="Robot keys to concatenate. Repeat for multiple robots. Example: --robot-key left --robot-key right",
         ),
     ] = None,
-    joints: Annotated[
-        bool, typer.Option(help="Whether absolute_action is already in joint space. Example: --joints")
-    ] = DEFAULT_JOINTS,
+    source_action_is_joint: Annotated[
+        bool, typer.Option(help="Whether the selected source action field is in joint space.")
+    ] = DEFAULT_SOURCE_ACTION_IS_JOINT,
+    action_source_field: Annotated[
+        str, typer.Option(help="Action field to read from the source recording.")
+    ] = DEFAULT_ACTION_SOURCE_FIELD,
+    returned_state_type: Annotated[
+        str, typer.Option(help="Observation state representation: tquat, xyzrpy, or joints.")
+    ] = DEFAULT_RETURNED_STATE_TYPE,
+    returned_action_type: Annotated[
+        str, typer.Option(help="Exported action representation: tquat, xyzrpy, or joints.")
+    ] = DEFAULT_RETURNED_ACTION_TYPE,
+    delta_from_observation: Annotated[
+        bool, typer.Option(help="For delta actions, compute each delta from observation N to observation N+1.")
+    ] = DEFAULT_DELTA_FROM_OBSERVATION,
     gripper_type: Annotated[
         str, typer.Option(help="Gripper type used to derive TCP offset. Example: --gripper-type Robotiq2F85")
     ] = DEFAULT_GRIPPER_TYPE,
@@ -197,7 +213,11 @@ def lerobot_convert(
         robot_type=robot_type,
         fps=fps,
         robot_keys=robot_keys or list(DEFAULT_ROBOT_KEYS),
-        joints=joints,
+        source_action_is_joint=source_action_is_joint,
+        action_source_field=action_source_field,
+        returned_state_type=returned_state_type,
+        returned_action_type=returned_action_type,
+        delta_from_observation=delta_from_observation,
         gripper_type=gripper_type,
         cameras=cameras,
         image_batch_size=image_batch_size,
@@ -232,9 +252,21 @@ def lmdb_convert(
         list[str] | None,
         typer.Option("--robot-key", help="Robot keys to concatenate. Repeat for multiple robots."),
     ] = None,
-    joints: Annotated[
-        bool, typer.Option(help="Whether info.absolute_action is already in joint space.")
-    ] = DEFAULT_JOINTS,
+    source_action_is_joint: Annotated[
+        bool, typer.Option(help="Whether the selected source action field is in joint space.")
+    ] = DEFAULT_SOURCE_ACTION_IS_JOINT,
+    action_source_field: Annotated[
+        str, typer.Option(help="Action field to read from the source recording.")
+    ] = DEFAULT_ACTION_SOURCE_FIELD,
+    returned_state_type: Annotated[
+        str, typer.Option(help="Observation state representation: tquat, xyzrpy, or joints.")
+    ] = DEFAULT_RETURNED_STATE_TYPE,
+    returned_action_type: Annotated[
+        str, typer.Option(help="Exported action representation: tquat, xyzrpy, or joints.")
+    ] = DEFAULT_RETURNED_ACTION_TYPE,
+    delta_from_observation: Annotated[
+        bool, typer.Option(help="For delta actions, compute each delta from observation N to observation N+1.")
+    ] = DEFAULT_DELTA_FROM_OBSERVATION,
     gripper_type: Annotated[str, typer.Option(help="Gripper type used for the TCP offset.")] = DEFAULT_GRIPPER_TYPE,
     camera_specs: Annotated[
         list[str] | None,
@@ -284,7 +316,11 @@ def lmdb_convert(
         robot_type=robot_type,
         fps=fps,
         robot_keys=robot_keys or list(DEFAULT_ROBOT_KEYS),
-        joints=joints,
+        source_action_is_joint=source_action_is_joint,
+        action_source_field=action_source_field,
+        returned_state_type=returned_state_type,
+        returned_action_type=returned_action_type,
+        delta_from_observation=delta_from_observation,
         gripper_type=gripper_type,
         cameras=cameras,
         image_batch_size=image_batch_size,
