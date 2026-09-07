@@ -88,6 +88,8 @@ class YamHardwareEnvCreatorConfig:
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -99,7 +101,7 @@ class RCSYamConfigEnvCreator(RCSEnvCreator[YamHardwareEnvCreatorConfig]):
             urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
         )
         robot = Yam(cfg.robot_cfg, ik)
-        env: gym.Env = HardwareEnv()
+        env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
 
         if cfg.gripper_cfg is not None:
@@ -127,6 +129,8 @@ class YamMultiHardwareEnvCreatorConfig:
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -144,6 +148,7 @@ class RCSYamMultiConfigEnvCreator(RCSEnvCreator[YamMultiHardwareEnvCreatorConfig
                     camera_cfgs=None,
                     max_relative_movement=cfg.max_relative_movement,
                     relative_to=cfg.relative_to,
+                    frequency=cfg.frequency,
                     wrapper_cfg=cfg.wrapper_cfg,
                 )
             )
