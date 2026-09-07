@@ -315,7 +315,15 @@ class RotVec:
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
 class Pin(Kinematics):
-    def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = False) -> None: ...
+    def __init__(
+        self,
+        path: str,
+        frame_id: str = "fr3_link8",
+        urdf: bool = False,
+        nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        nullspace_gain: float = 0.0,
+        enforce_limits: bool = True,
+    ) -> None: ...
 
 def FrankaHandTCPOffset() -> numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]: ...
 def IdentityRotMatrix() -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
