@@ -211,6 +211,28 @@ class BaseEnv(gym.Env):
 class HardwareEnv(BaseEnv):
     PLATFORM = RobotPlatform.HARDWARE
 
+    def __init__(self, frequency: float | None = None) -> None:
+        """
+        Args:
+            frequency: Control frequency in Hz. Each env step is rate limited such that
+                the loop runs at this frequency, analogous to `SimConfig.frequency` in realtime sim.
+                None disables rate limiting.
+        """
+        super().__init__()
+        assert frequency is not None and frequency > 0, "frequency must be set to a positive value"
+        self.frame_rate = SimpleFrameRate(frequency, "Hardware Loop")
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+        ret = super().step(action)
+        self.frame_rate()
+        return ret
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.frame_rate.reset()
+        return super().reset(seed=seed, options=options)
+
 
 class SimEnv(BaseEnv):
     PLATFORM = RobotPlatform.SIMULATION

@@ -4,6 +4,12 @@
 
 We build and test RCS on the latest Debian and on the latest Ubuntu LTS.
 
+```{note}
+**Platform support:** The core package `rcs-core` (MuJoCo simulation + Python API)
+is supported on **Linux and macOS** (Apple Silicon / arm64). The hardware
+extensions are **Linux only**.
+```
+
 ### Prerequisites
 
 1.  Install the system dependencies:

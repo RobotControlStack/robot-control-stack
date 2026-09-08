@@ -122,6 +122,7 @@ if __name__ == "__main__":
 > **Note:** This and other examples can be found in the [`examples/`]() folder.
 
 ## 🛠️ Installation
+* *Platform support: The core package `rcs-core` (MuJoCo simulation + Python API) is supported on **Linux and macOS** (Apple Silicon / arm64). The hardware extensions are **Linux only**.*
 * *For Python >3.11: The `rcs_realsense` extension won't work due to the `pyrealsense2` version RCS utilizes.*
 * *For Python >3.12: The `ompl` python module is currently not available on PyPI. If OMPL is not used, it is safe to remove this dependency in `pyproject.toml`.*
 ### Via PyPI/pip
@@ -169,6 +170,8 @@ export RCS_PREFIX=/path/to/rcs-assets
 ## 🦾 Hardware Extensions
 
 RCS supports various hardware extensions to seamlessly connect your policies to the real world (e.g., FR3, xArm7, YAM, RealSense). These are located in the `extensions` directory.
+
+> **Note:** Hardware extensions are supported on **Linux only**. On macOS you can use the core `rcs-core` package for simulation, but the hardware extensions are not supported.
 
 To install a specific robot extension (example for Franka FR3):
 
