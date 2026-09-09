@@ -194,6 +194,19 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
         attachment_site="tcp_site",
     ),
+    common.RobotType("Rizon4S"): RobotMetaConfig(
+        mjcf_model_path="assets/robots/rizon4s/rizon4s.xml",
+        dof=7,
+        # flange pointing straight down (joint2 - joint4 + joint6 = -pi/2), about 0.56 m in front of
+        # and 0.46 m above the base
+        q_home=np.array([0.0, -0.2, 0.0, 1.8, 0.0, 2.0 - np.pi / 2, 0.0]),
+        joint_limits=np.array(
+            [
+                [-2.8798, -2.3562, -3.0543, -1.9548, -3.0543, -1.4835, -3.0543],
+                [2.8798, 2.3562, 3.0543, 2.7751, 3.0543, 4.6251, 3.0543],
+            ]
+        ),
+    ),
 }
 
 

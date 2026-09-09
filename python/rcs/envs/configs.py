@@ -625,6 +625,46 @@ class EmptyWorldYam(EmptyWorldFR3):
         return cfg
 
 
+class EmptyWorldRizon4S(EmptyWorldFR3):
+    """Flexiv Rizon 4s with a Robotiq 2F85 gripper mounted on the flange."""
+
+    def config(self) -> SimEnvCreatorConfig:
+        rt = RobotType("Rizon4S")
+        cfg = super().config()
+        lead_robot_name = self.lead_robot_name(cfg)
+
+        robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.robot_type = rt
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
+        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
+        robot_cfg.arm_collision_geoms = []
+        robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        robot_cfg.dof = rcs.ROBOTS[rt].dof
+        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
+        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
+        robot_cfg.base = "base"
+
+        assert cfg.gripper_cfgs is not None
+        gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+        gripper_cfg.actuator = "fingers_actuator"
+        gripper_cfg.joints = ["right_driver_joint", "left_driver_joint"]
+        gripper_cfg.collision_geoms = []
+        gripper_cfg.collision_geoms_fingers = []
+        gripper_cfg.max_actuator_width = 0
+        gripper_cfg.min_actuator_width = 255
+        gripper_cfg.max_joint_width = 0.005
+        gripper_cfg.min_joint_width = 1.0
+        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+
+        cfg.camera_cfgs = None
+        cfg.camera_adds = None
+        cfg.gripper_offsets = None
+
+        return cfg
+
+
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
 gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
 gym.register(id="rcs/droid", entry_point=EmptyWorldDroid())
@@ -632,6 +672,7 @@ gym.register(id="rcs/ur5e", entry_point=EmptyWorldUR5e())
 gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
 gym.register(id="rcs/yam", entry_point=EmptyWorldYam())
+gym.register(id="rcs/rizon4s", entry_point=EmptyWorldRizon4S())
 
 
 if __name__ == "__main__":
