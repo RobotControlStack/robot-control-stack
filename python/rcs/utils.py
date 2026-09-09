@@ -128,7 +128,7 @@ def _render_action_panel(
 
     fig.tight_layout()
     fig.canvas.draw()
-    image = np.asarray(fig.canvas.buffer_rgba())[..., :3].copy()
+    image = np.asarray(fig.canvas.buffer_rgba())[..., :3].copy()  # type: ignore[attr-defined]
     plt.close(fig)
     return image
 

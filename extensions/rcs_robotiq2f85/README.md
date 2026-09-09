@@ -28,16 +28,27 @@ pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_robotiq2f85
 ```
 
-Get the serial number of the gripper:
+## Serials
 
 ```shell
+python -m rcs_robotiq2f85 serials
+# the following command also works
 udevadm info -a -n /dev/ttyUSB0 | grep serial
 ```
 
-Provide device permissions if needed:
+Lists every `/dev/ttyUSB*` device with its serial number. The serial number is what you pass as
+`serial_number` to `RobotiQ2F85GripperConfig`.
+
+To access the serial port, add yourself to the `dialout` group, then log out and back in:
 
 ```shell
-chmod 777 /dev/ttyUSB0
+sudo adduser $USER dialout
+```
+
+As a temporary alternative that is reset when the gripper is replugged:
+
+```shell
+sudo chmod 666 /dev/ttyUSB0
 ```
 
 ## Usage

@@ -2,6 +2,12 @@
 
 RCS is designed to be modular. Core functionality is kept minimal, while specific hardware support and additional features are provided through **extensions**.
 
+```{note}
+Extensions are supported on **Linux only**. The core `rcs-core` package (MuJoCo
+simulation + Python API) also runs on macOS (Apple Silicon / arm64), but the
+hardware extensions are not supported there.
+```
+
 ## What is an Extension?
 
 An extension is a separate Python package that integrates with RCS. Extensions can provide:

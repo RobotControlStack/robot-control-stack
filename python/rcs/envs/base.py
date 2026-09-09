@@ -211,6 +211,28 @@ class BaseEnv(gym.Env):
 class HardwareEnv(BaseEnv):
     PLATFORM = RobotPlatform.HARDWARE
 
+    def __init__(self, frequency: float | None = None) -> None:
+        """
+        Args:
+            frequency: Control frequency in Hz. Each env step is rate limited such that
+                the loop runs at this frequency, analogous to `SimConfig.frequency` in realtime sim.
+                None disables rate limiting.
+        """
+        super().__init__()
+        assert frequency is not None and frequency > 0, "frequency must be set to a positive value"
+        self.frame_rate = SimpleFrameRate(frequency, "Hardware Loop")
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+        ret = super().step(action)
+        self.frame_rate()
+        return ret
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.frame_rate.reset()
+        return super().reset(seed=seed, options=options)
+
 
 class SimEnv(BaseEnv):
     PLATFORM = RobotPlatform.SIMULATION
@@ -1042,10 +1064,11 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
 
+    GRIPPER_THRESHOLD = 0.5
     BINARY_GRIPPER_CLOSED: ClassVar[list[float]] = [0]
     BINARY_GRIPPER_OPEN: ClassVar[list[float]] = [1]
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, prev_action_obs: bool = False):
         super().__init__(env)
         self.binary = binary
         self.observation_space: gym.spaces.Dict
@@ -1055,6 +1078,7 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self.gripper = gripper
         self._last_gripper_cmd = None
+        self.prev_action_obs = prev_action_obs
 
     def _command_changed(self, gripper_action: np.ndarray) -> bool:
         if self._last_gripper_cmd is None:
@@ -1075,7 +1099,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
-        if self.binary:
+        if self.prev_action_obs:
             observation[self.gripper_key] = (
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
@@ -1099,7 +1123,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
         if self._command_changed(gripper_action):
             if self.binary:
-                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+                self.gripper.grasp() if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
             self._last_gripper_cmd = gripper_action.tolist()

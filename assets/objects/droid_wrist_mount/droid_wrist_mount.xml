@@ -1,0 +1,31 @@
+<mujoco model="wrist_camera_setup">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="black" rgba="0.1 0.1 0.1 1"/>
+    <mesh name="wrist_camera_setup" file="camera_mount.obj" scale="0.01 0.01 0.01"/>
+    <mesh name="wrist_camera_setup_collision" file="camera_mount.stl" scale="0.01 0.01 0.01"/>
+  </asset>
+
+  <default>
+    <default class="wrist_camera_setup">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="wrist_camera_setup">
+      <geom mesh="wrist_camera_setup" quat="1 0 0 0" material="black" class="visual"/>
+      <!-- <geom mesh="wrist_camera_setup" quat="1 0 0 0" material="black" class="collision"/> -->
+      <geom mesh="wrist_camera_setup_collision" quat="1 0 0 0" material="black" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>

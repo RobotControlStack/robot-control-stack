@@ -148,7 +148,7 @@ class PickTaskConfig(BaseTaskConfig):
             translation=np.array([0.5, 0.0, 0.05]), quaternion=np.array([0, 0, 0, 1])
         )
     )
-    object_xml = rcs.OBJECT_PATHS["green_cube"]
+    object_xml = rcs.OBJECT_PATHS["green_cuboid"]
     object_joint: str = "box_joint"
     prefix: str = "PickTask_"
     include_rotation: bool = True

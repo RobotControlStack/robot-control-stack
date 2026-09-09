@@ -99,6 +99,8 @@ class UR5eHardwareEnvCreatorConfig:
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -110,7 +112,7 @@ class RCSUR5eConfigEnvCreator(RCSEnvCreator[UR5eHardwareEnvCreatorConfig]):
             urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
         )
         robot = UR5e(cfg.robot_cfg, ik)
-        env: gym.Env = HardwareEnv()
+        env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
 
         if cfg.gripper_cfg is not None:

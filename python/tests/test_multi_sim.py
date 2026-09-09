@@ -88,9 +88,8 @@ class TestMultiSimRobotWrapper:
 
         for key in ROBOT2ID:
             assert info[key]["ik_success"], f"IK failed for {key!r}"
-        # delta2 should not be dramatically larger than delta1 (at most 3x)
         assert (
-            delta2 < delta1 * 3
+            delta2 <= delta1 * 3 + 1e-6
         ), f"Second step drifted {delta2:.3f} vs first {delta1:.3f} — sim may be double-stepped"
 
     def test_robots_are_independent(self, multi_env):

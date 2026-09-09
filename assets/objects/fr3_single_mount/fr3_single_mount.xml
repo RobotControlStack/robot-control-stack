@@ -1,0 +1,32 @@
+<mujoco model="fr3_single_mount">
+  <compiler angle="radian" assetdir="assets" autolimits="true"/>
+
+  <asset>
+    <mesh name="fr3_single_mount" file="fr3_single_mount.obj" inertia="shell"/>
+    <texture name="fr3_single_mount_tex" type="2d" file="fr3_single_mount_albedotransparency.png"/>
+    <texture name="fr3_single_mount_normal" type="2d" file="fr3_single_mount_normal.png" colorspace="linear"/>
+    <material name="tex_fr3_single_mount">
+      <layer texture="fr3_single_mount_tex" role="rgb"/>
+      <layer texture="fr3_single_mount_normal" role="normal"/>
+    </material>
+  </asset>
+
+  <default>
+    <default class="fr3_single_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom type="box" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="fr3_single_mount" childclass="fr3_single_mount">
+      <geom name="fr3_single_mount_visual" mesh="fr3_single_mount" material="tex_fr3_single_mount" class="visual"/>
+      <geom name="fr3_single_mount_collision" size="0.1125 0.127485 0.0056555" pos="0 0 0.0056655" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>
