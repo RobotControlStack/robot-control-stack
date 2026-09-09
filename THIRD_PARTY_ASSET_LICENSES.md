@@ -23,6 +23,16 @@ The following directories contain third-party assets:
 - `assets/grippers/robotiq_2f85/`
   Origin: MuJoCo Menagerie `robotiq_2f85/`
   License: BSD-style license reproduced below
+- `assets/robots/rizon4s/`
+  Origin: MuJoCo Menagerie `flexiv_rizon4s/`
+  License: Apache License 2.0
+- `assets/robots/yam/`
+  Origin: MuJoCo Menagerie `i2rt_yam/`
+  License: MIT license reproduced below
+- `assets/grippers/flexiv_grav/`
+  Origin: meshes from Flexiv Robotics `flexiv_description` (https://github.com/flexivrobotics/flexiv_description),
+  MJCF generated from its URDF by `assets/grippers/flexiv_grav/convert_from_urdf.py`
+  License: Apache License 2.0
 - `assets/cameras/d405/`
   Origin: Intel RealSense D405 camera assets distributed via MuJoCo Menagerie RealSense assets
   License: Apache License 2.0 notice reproduced below for the upstream Intel RealSense asset family
@@ -318,4 +328,30 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## I2RT YAM
+
+```text
+MIT License
+
+Copyright (c) 2025 i2rt robotics
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
