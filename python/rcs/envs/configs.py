@@ -626,7 +626,7 @@ class EmptyWorldYam(EmptyWorldFR3):
 
 
 class EmptyWorldRizon4S(EmptyWorldFR3):
-    """Flexiv Rizon 4s with a Robotiq 2F85 gripper mounted on the flange."""
+    """Flexiv Rizon 4s with the Flexiv Grav (GN-01) gripper mounted on the flange."""
 
     def config(self) -> SimEnvCreatorConfig:
         rt = RobotType("Rizon4S")
@@ -635,7 +635,7 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         robot_cfg.robot_type = rt
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType("FlexivGrav")]
         robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
         robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
@@ -648,15 +648,17 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
 
         assert cfg.gripper_cfgs is not None
         gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
+        gripper_cfg.gripper_type = GripperType("FlexivGrav")
+        # The actuator is commanded in finger opening width (0 m closed, 0.1 m open).
         gripper_cfg.actuator = "fingers_actuator"
-        gripper_cfg.joints = ["right_driver_joint", "left_driver_joint"]
-        gripper_cfg.collision_geoms = []
-        gripper_cfg.collision_geoms_fingers = []
-        gripper_cfg.max_actuator_width = 0
-        gripper_cfg.min_actuator_width = 255
-        gripper_cfg.max_joint_width = 0.005
-        gripper_cfg.min_joint_width = 1.0
-        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+        gripper_cfg.min_actuator_width = 0.0
+        gripper_cfg.max_actuator_width = 0.1
+        # Width is read back from the driving knuckle joints, whose angle maps linearly to the width.
+        gripper_cfg.joints = ["left_outer_knuckle_joint", "right_outer_knuckle_joint"]
+        gripper_cfg.min_joint_width = -0.155
+        gripper_cfg.max_joint_width = 0.7854
+        gripper_cfg.collision_geoms = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
+        gripper_cfg.collision_geoms_fingers = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
 
         cfg.camera_cfgs = None
         cfg.camera_adds = None

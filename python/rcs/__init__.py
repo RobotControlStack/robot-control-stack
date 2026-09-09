@@ -213,6 +213,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
 GRIPPER_PATHS: dict[common.GripperType, str] = {
     common.GripperType.FrankaHand: "assets/grippers/franka_hand/franka_hand.xml",
     common.GripperType("Robotiq2F85"): "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
+    common.GripperType("FlexivGrav"): "assets/grippers/flexiv_grav/flexiv_grav.xml",
 }
 
 GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
@@ -221,6 +222,9 @@ GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     # The yam gripper is part of the robot mjcf, hence it needs no entry in GRIPPER_PATHS
     # and no mount offset, only the offset from the flange to the point between the fingers.
     common.GripperType("Yam"): common.Pose(translation=np.array([0.0, 0.0, 0.1347])),
+    # The "grav_tcp" frame of Flexiv's URDF, which Flexiv's own software uses as TCP. It sits roughly at the
+    # pad center of the fully open gripper; the closed finger tips ("closed_fingers_tcp") are at 0.2 m.
+    common.GripperType("FlexivGrav"): common.Pose(translation=np.array([0.0, 0.0, 0.15])),
 }
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
@@ -230,6 +234,8 @@ GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType("Robotiq2F85"): common.Pose(
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
+    # The Grav bolts directly onto the Rizon flange, its fingers open along the flange y axis.
+    common.GripperType("FlexivGrav"): common.Pose(),
 }
 
 SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.xml"}
