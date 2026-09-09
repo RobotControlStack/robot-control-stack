@@ -131,6 +131,24 @@ stiffness change and the gripper, and
 [examples/rizon4s/rizon4s_env_cartesian_control.py](../../examples/rizon4s/rizon4s_env_cartesian_control.py)
 for a maintained Cartesian control example that runs in simulation and on hardware.
 
+## Dual arm setups
+
+`DefaultRizon4SDualMultiHardwareEnv` combines two arms with `MultiRobotWrapper`, one env per robot
+connection, for the duo arrangement of `rcs/rizon4s_duo`: bases 0.3 m apart in y, each tilted 45
+degrees about x away from the other arm. Actions and observations are expressed in the shared base
+frame between the two bases, `robot_to_shared_base_frame` holds the pose of each base in that frame
+and can be replaced for other mounts. See
+[examples/teleop/rizon.py](../../examples/teleop/rizon.py) for teleoperation of the duo with a Meta
+Quest.
+
+```python
+from rcs_flexiv.configs import DefaultRizon4SDualMultiHardwareEnv
+
+creator = DefaultRizon4SDualMultiHardwareEnv()
+creator.left_sn, creator.right_sn = "Rizon4s-123456", "Rizon4s-654321"
+env = creator.create_env(creator.config())
+```
+
 ## Safety notes
 
 - `Flexiv` clears minor faults and servos on during construction, and `RobotWrapper.reset` retries

@@ -3,7 +3,6 @@ import typing
 from dataclasses import dataclass, field
 
 import gymnasium as gym
-import rcs
 from rcs._core.common import BaseCameraConfig
 from rcs.camera.hw import DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
 from rcs.envs.base import (
@@ -12,13 +11,15 @@ from rcs.envs.base import (
     CoverWrapper,
     GripperWrapper,
     HardwareEnv,
+    MultiRobotWrapper,
     RelativeActionSpace,
     RelativeTo,
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
-
 from rcs_flexiv.hw import Flexiv, FlexivConfig, FlexivGripper, FlexivGripperConfig
+
+import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -108,5 +109,53 @@ class RCSFlexivConfigEnvCreator(RCSEnvCreator[FlexivHardwareEnvCreatorConfig]):
         return CoverWrapper(env)
 
     def config(self) -> FlexivHardwareEnvCreatorConfig:
+        msg = "Implement config() in a subclass or pass `cfg=` explicitly."
+        raise NotImplementedError(msg)
+
+
+@dataclass(kw_only=True)
+class FlexivMultiHardwareEnvCreatorConfig:
+    robot_cfgs: dict[str, FlexivConfig]
+    control_mode: ControlMode
+    gripper_cfgs: dict[str, FlexivGripperConfig | None] | None = None
+    camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
+    max_relative_movement: float | tuple[float, float] | None = None
+    relative_to: RelativeTo = RelativeTo.LAST_STEP
+    robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
+    """Pose of each robot's base in the shared base frame, in which actions and observations are expressed."""
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
+    wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
+
+
+class RCSFlexivMultiConfigEnvCreator(RCSEnvCreator[FlexivMultiHardwareEnvCreatorConfig]):
+    def create_env(self, cfg: FlexivMultiHardwareEnvCreatorConfig) -> gym.Env:
+        envs: dict[str, gym.Env] = {}
+        for robot_name, robot_cfg in cfg.robot_cfgs.items():
+            envs[robot_name] = RCSFlexivConfigEnvCreator().create_env(
+                FlexivHardwareEnvCreatorConfig(
+                    robot_cfg=robot_cfg,
+                    control_mode=cfg.control_mode,
+                    gripper_cfg=cfg.gripper_cfgs[robot_name] if cfg.gripper_cfgs is not None else None,
+                    # The cameras observe the whole scene, so they are attached once around the
+                    # combined env instead of per arm.
+                    camera_cfgs=None,
+                    max_relative_movement=cfg.max_relative_movement,
+                    relative_to=cfg.relative_to,
+                    frequency=cfg.frequency,
+                    wrapper_cfg=cfg.wrapper_cfg,
+                )
+            )
+
+        env: gym.Env = MultiRobotWrapper(envs, cfg.robot_to_shared_base_frame)
+        camera_set = _create_hardware_camera_set(cfg.camera_cfgs)
+        if camera_set is not None:
+            camera_set.start()
+            camera_set.wait_for_frames()
+            logger.info("CameraSet started")
+            env = CameraSetWrapper(env, camera_set, cfg.wrapper_cfg.include_depth)
+        return CoverWrapper(env)
+
+    def config(self) -> FlexivMultiHardwareEnvCreatorConfig:
         msg = "Implement config() in a subclass or pass `cfg=` explicitly."
         raise NotImplementedError(msg)

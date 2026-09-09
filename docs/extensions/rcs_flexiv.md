@@ -63,7 +63,8 @@ timeout hits. The same flag exists on `FlexivGripperConfig`. `move_home` always 
 - The active tool in Flexiv Elements determines the gravity compensation, pass the gripper's tool
   as `tool_name`.
 - The simulated counterpart is registered as `rcs/rizon4s` in core RCS and uses the same kinematics
-  and gripper.
+  and gripper. `DefaultRizon4SDualMultiHardwareEnv` and `rcs/rizon4s_duo` provide a dual-arm setup
+  with the bases 0.3 m apart and tilted 45 degrees outward, see `examples/teleop/rizon.py`.
 
 See `extensions/rcs_flexiv/README.md` for the full extension documentation and
 `extensions/rcs_flexiv/src/rcs_flexiv/scripts/test_robot.py` for a bring-up script. For a maintained
