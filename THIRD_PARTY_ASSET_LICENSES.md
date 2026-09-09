@@ -23,6 +23,9 @@ The following directories contain third-party assets:
 - `assets/grippers/robotiq_2f85/`
   Origin: MuJoCo Menagerie `robotiq_2f85/`
   License: BSD-style license reproduced below
+- `assets/robots/rizon4s/`
+  Origin: MuJoCo Menagerie `flexiv_rizon4s/`
+  License: Apache License 2.0
 - `assets/cameras/d405/`
   Origin: Intel RealSense D405 camera assets distributed via MuJoCo Menagerie RealSense assets
   License: Apache License 2.0 notice reproduced below for the upstream Intel RealSense asset family

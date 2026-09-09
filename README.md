@@ -14,7 +14,7 @@
 
 **Robot Control Stack (RCS)** is a flexible, native [Gymnasium](https://gymnasium.farama.org/) wrapper-based robot control interface designed specifically for modern robot learning and Vision-Language-Action (VLA) models. 
 
-It completely unifies **MuJoCo simulation** and real-world physical robot control into a single, seamless API. Currently, RCS natively supports five robots out-of-the-box: **Franka FR3/Panda, xArm7, UR5e, SO101, and I2RT YAM.**
+It completely unifies **MuJoCo simulation** and real-world physical robot control into a single, seamless API. Currently, RCS natively supports six robots out-of-the-box: **Franka FR3/Panda, xArm7, UR5e, SO101, I2RT YAM, and Flexiv Rizon 4s** (Rizon 4s in simulation only so far).
 
 ![RCS Demo](https://raw.githubusercontent.com/RobotControlStack/robotcontrolstack.github.io/refs/heads/master/static/videos/grid.webp)
 
