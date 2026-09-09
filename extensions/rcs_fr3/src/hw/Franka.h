@@ -95,6 +95,18 @@ struct FrankaConfig : common::RobotConfig {
   // the controller torque (wrist joints have a 12 Nm limit; keep headroom).
   common::Vector7d tam_residual_clip =
       (common::Vector7d() << 10., 10., 10., 10., 2., 2., 2.).finished();
+  // Apply franka::limitRate to the final commanded torque. On by default to
+  // satisfy the FCI torque-rate reflex. Can be disabled to test whether the
+  // rate limiter (which sits inside the TAM feedback loop and distorts the
+  // applied-torque history TAM conditions on) is the source of oscillation.
+  // NOTE: off usually trips FCI because PD+residual can sum past the reflex.
+  bool rate_limit = true;
+  // What TAM records as the "applied torque" history. When true, record the
+  // pre-rate-limit intended torque (tau_pd + residual) instead of the
+  // post-limiter command, so the rate limiter (needed for FCI) no longer
+  // distorts the history TAM conditions on -- keeping TAM's feedback consistent
+  // with training while the robot still receives a smooth command.
+  bool tam_history_pre_ratelimit = false;
   bool ignore_realtime = false;
   // Best-effort real-time scheduling for the async control thread at this
   // priority (0 disables): SCHED_FIFO when the rtprio rlimit allows it,
@@ -245,6 +257,31 @@ class Franka : public common::Robot {
   common::Vector7d tam_forward(const std::array<double, 7>& tau,
                                const franka::RobotState& robot_state,
                                const std::array<double, 7>& gravity);
+
+  // Offline self-test: run the TAM adaptor MLP on a fully static window and the
+  // given latent, print and return the residual. Uses ONLY the passed inputs
+  // (ignores live robot_state / tam_recent) and does NOT command the robot — for
+  // validating the C++ adaptor against the Python reference on known inputs.
+  // q/qd/tau_cmd/gravity are each [history_steps x 7]; tau_model is built as
+  // tau_cmd + gravity per row (matching the live path). Returns the RAW residual
+  // (pre-clip, pre-ramp); the clipped residual is also printed. Requires
+  // set_tam_mlp_weight() first; throws on shape/latent mismatch.
+  common::Vector7d tam_forward_test(const Eigen::MatrixXd& q,
+                                    const Eigen::MatrixXd& qd,
+                                    const Eigen::MatrixXd& tau_cmd,
+                                    const Eigen::MatrixXd& gravity,
+                                    const Eigen::VectorXd& latent);
+
+  // Number of history rows the loaded TAM adaptor consumes (0 if no model set),
+  // and the expected latent length. Useful to slice test windows correctly.
+  int tam_history_steps() const {
+    const auto m = this->tam_model.load();
+    return m ? m->history_steps : 0;
+  }
+  int tam_latent_dim() const {
+    const auto m = this->tam_model.load();
+    return m ? m->expected_history_embedding_cols() : 0;
+  }
 
   void reset() override;
   void close() override {};
