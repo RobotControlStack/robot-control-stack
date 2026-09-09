@@ -26,7 +26,6 @@ import logging
 import os
 import threading
 import time
-import types
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -171,12 +170,18 @@ def main() -> None:
     robot = env.get_wrapper_attr("robot")[ROBOT_KEY]
 
     # Stand up the TAM runtime the same way franka_tam does, without pulling in
-    # the policy server: reuse ModelInference's methods against a light shim that
-    # only carries the attributes those methods touch (_cfg, env, tam_runtime).
-    shim = types.SimpleNamespace(_cfg=cfg, env=env, tam_runtime=None)
+    # the policy server. We reuse ModelInference's TAM helpers, so we need a real
+    # ModelInference instance (its methods call each other via self, e.g.
+    # _init_tam -> _check_ideal_model_alignment). Create one WITHOUT running
+    # __init__ (which would open a RemoteAgent to the policy server) and set only
+    # the attributes those helpers touch.
+    helper = ModelInference.__new__(ModelInference)
+    helper._cfg = cfg
+    helper.env = env
+    helper.tam_runtime = None
     if cfg.tam:
-        ModelInference._init_tam(shim)
-        ModelInference.warmup_history_encoder(shim)
+        helper._init_tam()
+        helper.warmup_history_encoder()
 
     replay_log = None
     if rcfg.log_dir:
@@ -206,7 +211,7 @@ def main() -> None:
     input("Press Enter to start replay (Ctrl+C to abort)...")
     if cfg.tam:
         threading.Thread(
-            target=ModelInference.run_history_encoder, args=(shim,),
+            target=helper.run_history_encoder,
             name="history_encoder", daemon=True,
         ).start()
 

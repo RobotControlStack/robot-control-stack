@@ -283,7 +283,7 @@ class ModelInference:
         the encoder's ideal model and the gravity feedforward must agree."""
         if ROBOT_INSTANCE != RobotPlatform.HARDWARE:
             return
-        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")()
+        robot: Franka = self.env.get_wrapper_attr("envs")["right"].get_wrapper_attr("robot")
         controller_xml = str(robot.get_config().tam_ideal_model_path)
         encoder_xml = str(self.tam_runtime.inf.xml_path)
         if not controller_xml:
