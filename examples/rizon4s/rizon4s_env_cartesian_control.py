@@ -3,6 +3,9 @@ from time import sleep
 
 import gymnasium as gym
 import numpy as np
+import rcs
+from rcs import sim
+from rcs._core.common import RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import (
     ControlMode,
@@ -16,20 +19,23 @@ from rcs.envs.base import (
 from rcs.envs.configs import EmptyWorldRizon4S
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 
-import rcs
-from rcs import sim
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 """
-This script demonstrates Cartesian position control of the Flexiv Rizon 4s arm in simulation. The
-arm is driven to its home pose on reset and then moves 1cm forward and backward along the base x
-axis in a loop while opening and closing the Robotiq 2F85 gripper. Every step goes through inverse
+This script demonstrates Cartesian position control of the Flexiv Rizon 4s arm in synchronous mode.
+The arm is driven to its home pose on reset and then moves 1cm forward and backward along the base x
+axis in a loop while opening and closing the Flexiv Grav gripper. Every step goes through inverse
 kinematics, so the printed TCP positions tracking the commanded ones show that IK works.
 
-Hardware support for the Rizon 4s is not part of rcs yet, so this example is simulation only.
+To control a real Rizon 4s, install the rcs_flexiv extension (`pip install -ve extensions/rcs_flexiv`),
+set ROBOT_SN and the gripper's tool name and set ROBOT_INSTANCE to RobotPlatform.HARDWARE. The robot
+has to be in auto mode with the E-stop released, see the extension README.
 """
+
+ROBOT_INSTANCE = RobotPlatform.SIMULATION  # Change to RobotPlatform.HARDWARE for the real arm
+ROBOT_SN = "Rizon4s-123456"
+GRIPPER_TOOL_NAME = None  # tool created for the Grav in Flexiv Elements, None keeps the active tool
 
 STEP_SIZE = 0.01  # meters per step
 STEPS_PER_LEG = 10  # steps forward before reversing
@@ -37,6 +43,23 @@ CYCLES = 100
 
 
 def main():
+    if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
+        from rcs_flexiv.configs import DefaultRizon4SHardwareEnv
+
+        env_creator = DefaultRizon4SHardwareEnv()
+        env_creator.robot_sn = ROBOT_SN
+        env_creator.tool_name = GRIPPER_TOOL_NAME
+        hw_cfg = env_creator.config()
+        hw_cfg.control_mode = ControlMode.CARTESIAN_TQuat
+        # Synchronous mode: every command returns once the arm has reached its target.
+        hw_cfg.robot_cfg.async_control = False
+        hw_cfg.max_relative_movement = (0.05, np.deg2rad(5))
+        hw_cfg.relative_to = RelativeTo.LAST_STEP
+        env_hw = env_creator.create_env(hw_cfg)
+        input("the arm is going to move, press enter whenever you are ready")
+        run(env_hw)
+        return
+
     scene = EmptyWorldRizon4S()
     sim_cfg_data = scene.prefixed_cfg(scene.config())
     rizon = scene.lead_robot_name(sim_cfg_data)
@@ -59,7 +82,7 @@ def main():
     )
 
     robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
-    env_rel: gym.Env = SimEnv(simulation)
+    env_rel = SimEnv(simulation)
     env_rel = RobotWrapper(env_rel, robot, ControlMode.CARTESIAN_TQuat)
 
     gripper = sim.SimGripper(simulation, gripper_cfg)
@@ -75,7 +98,10 @@ def main():
     )
     env_rel = CoverWrapper(env_rel)
     env_rel.get_wrapper_attr("sim").open_gui()
+    run(env_rel)
 
+
+def run(env_rel: gym.Env) -> None:
     # Homing happens on reset, driving the joints to the home pose.
     env_rel.reset()
 
