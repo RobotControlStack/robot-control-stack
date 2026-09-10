@@ -1,4 +1,7 @@
-"""Hardware abstraction layer for Flexiv robots and grippers, built on the Flexiv RDK Python bindings.
+"""Hardware abstraction layer for Flexiv robots and grippers, built on the Flexiv RDK 1.9 Python bindings.
+
+RDK 1.9.x is the release line for the Rizon series (robot software v3.9 to v3.11), RDK 2.x only supports the
+Enlight series and has a different, joint-group based API.
 
 The arm is driven through the RDK's non-real-time (NRT) control modes, in which the robot's internal
 motion generator smoothens the discrete targets RCS sends. Sending a new target while the previous
@@ -15,9 +18,8 @@ import time
 import typing
 
 import numpy as np
-from rcs.common_typing import GripperConfigKwargs, RobotConfigKwargs
-
 from rcs import common
+from rcs.common_typing import GripperConfigKwargs, RobotConfigKwargs
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,6 @@ class FlexivConfig(common.RobotConfig):
         robot_sn: str,
         control_mode: FlexivControlMode = FlexivControlMode.JOINT_IMPEDANCE,
         async_control: bool = True,
-        joint_group: str | None = None,
         tool_name: str | None = None,
         joint_stiffness: np.ndarray | None = None,
         joint_damping_ratio: np.ndarray | None = None,
@@ -70,8 +71,6 @@ class FlexivConfig(common.RobotConfig):
             control_mode: RDK controller used to track targets, see `FlexivControlMode`.
             async_control: If True, the setters return once the target was handed to the robot. If False, they poll
                 the measured state until the target is reached within tolerance or `command_timeout` hits.
-            joint_group: Name of the RDK joint group to control, e.g. "ARM_1". None picks the first single-arm
-                group, which is the only one on single-arm robots like the Rizon.
             tool_name: Name of the tool (Flexiv Elements -> Settings -> Tool) to activate on the robot. The active
                 tool determines the gravity compensation and the TCP the robot's Cartesian controller uses. None keeps
                 the currently active tool.
@@ -107,7 +106,6 @@ class FlexivConfig(common.RobotConfig):
         self.robot_sn = robot_sn
         self.control_mode = control_mode
         self.async_control = async_control
-        self.joint_group = joint_group
         self.tool_name = tool_name
         self.joint_stiffness = joint_stiffness
         self.joint_damping_ratio = joint_damping_ratio
@@ -138,7 +136,7 @@ class FlexivRobotState(common.RobotState):
         self.dq = np.asarray(states.dq, dtype=np.float64)
         self.tau = np.asarray(states.tau, dtype=np.float64)
         self.tau_ext = np.asarray(states.tau_ext, dtype=np.float64)
-        self.tcp_wrench = np.asarray(states.tcp_wrench, dtype=np.float64)
+        self.tcp_wrench = np.asarray(states.ext_wrench_in_world, dtype=np.float64)
         """External wrench at the TCP in the world frame [f_x, f_y, f_z, m_x, m_y, m_z]."""
         self.flange_pose = np.asarray(states.flange_pose, dtype=np.float64)
         """[x, y, z, q_w, q_x, q_y, q_z] as reported by the RDK."""
@@ -177,29 +175,26 @@ class Flexiv(common.Robot):
             FlexivControlMode.CARTESIAN_IMPEDANCE: flexivrdk.Mode.NRT_CARTESIAN_MOTION_FORCE,
         }
 
-        self._robot = flexivrdk.Robot(cfg.robot_sn, cfg.verbose)
+        self._robot = flexivrdk.Robot(cfg.robot_sn, [], cfg.verbose)
         self._closed = False
         self._make_operational()
         self._info = self._robot.info()
-        self._group = self._resolve_group(cfg.joint_group)
-        group_dof = int(self._info.DoF[self._group])
-        if group_dof != self._dof:
-            msg = f"Joint group {self._group_name} has {group_dof} joints, but the config expects dof={self._dof}."
+        if int(self._info.DoF) != self._dof:
+            msg = f"The robot has {self._info.DoF} joints, but the config expects dof={self._dof}."
             raise ValueError(msg)
 
         self._tool = flexivrdk.Tool(self._robot)
         if cfg.tool_name is not None:
-            self._tool.Switch(self._group, cfg.tool_name)
+            self._tool.Switch(cfg.tool_name)
         self._tool_tcp = self._read_tool_tcp()
 
         self._ensure_mode(cfg.control_mode)
         logger.info(
-            "Connected to %s (%s, RDK %s), controlling %s with tool %s in %s.",
+            "Connected to %s (%s, robot software %s) with tool %s in %s.",
             self._info.serial_num,
-            flexivrdk.kProductModelNames[self._info.product_model],
+            self._info.model_name,
             self._info.software_ver,
-            self._group_name,
-            self._tool.name(self._group),
+            self._tool.name(),
             cfg.control_mode.value,
         )
 
@@ -212,11 +207,6 @@ class Flexiv(common.Robot):
     def rdk_robot(self) -> typing.Any:
         """The underlying `flexivrdk.Robot`, shared with the gripper interface."""
         return self._robot
-
-    @property
-    def joint_group(self) -> typing.Any:
-        """The `flexivrdk.JointGroup` this instance controls."""
-        return self._group
 
     # ------------------------------------------------------------------ common.Robot interface
 
@@ -236,15 +226,13 @@ class Flexiv(common.Robot):
     def set_config(self, robot_cfg: FlexivConfig) -> None:
         """Replaces the config and re-applies the impedance settings if the robot is in the affected mode."""
         self._config = robot_cfg
-        if robot_cfg.tool_name is not None and robot_cfg.tool_name != self._tool.name(self._group):
-            self._tool.Switch(self._group, robot_cfg.tool_name)
+        if robot_cfg.tool_name is not None and robot_cfg.tool_name != self._tool.name():
+            self._tool.Switch(robot_cfg.tool_name)
             self._tool_tcp = self._read_tool_tcp()
         self._ensure_mode(robot_cfg.control_mode)
 
     def get_state(self) -> FlexivRobotState:
-        return FlexivRobotState(
-            self._states(), self._rdk.kModeNames[self._robot.mode()], self._robot.operational(), self._robot.fault()
-        )
+        return FlexivRobotState(self._states(), self._robot.mode().name, self._robot.operational(), self._robot.fault())
 
     def get_ik(self) -> common.Kinematics | None:
         return self.ik
@@ -253,7 +241,7 @@ class Flexiv(common.Robot):
         pass
 
     def automatic_error_recovery(self) -> None:
-        """Called by `RobotWrapper.reset` when homing raises: clears faults, servos on and restores the mode."""
+        """Called by `RobotWrapper.reset` when homing raises: clears faults, enables the robot and restores the mode."""
         self._make_operational()
         self._ensure_mode(self._config.control_mode)
 
@@ -289,7 +277,7 @@ class Flexiv(common.Robot):
         self._ensure_mode(FlexivControlMode.CARTESIAN_IMPEDANCE)
         # The RDK tracks the pose of the active tool's TCP, RCS commands the pose of its own TCP offset.
         rdk_target = pose * self._config.tcp_offset.inverse() * self._tool_tcp
-        cmd = self._rdk.NrtCartesianCmd(
+        self._robot.SendCartesianMotionForce(
             _pose_to_rdk(rdk_target),
             [0.0] * 6,
             [0.0] * 6,
@@ -298,7 +286,6 @@ class Flexiv(common.Robot):
             self._config.max_linear_acceleration,
             self._config.max_angular_acceleration,
         )
-        self._robot.SendCartesianMotionForce({self._group: cmd})
         if not self._config.async_control:
             self._wait_for_pose(pose, self._config.command_timeout)
 
@@ -309,7 +296,7 @@ class Flexiv(common.Robot):
         """
         if self._config.q_home is None:
             logger.info("No q_home configured, running the RDK Home primitive.")
-            self._robot.Home([self._group])
+            self._run_home_primitive()
             return
         home = np.asarray(self._config.q_home, dtype=np.float64)
         low, high = self._config.joint_limits
@@ -327,12 +314,12 @@ class Flexiv(common.Robot):
     @property
     def nominal_joint_stiffness(self) -> np.ndarray:
         """Nominal (maximum) joint stiffness K_q of the robot in Nm/rad."""
-        return np.asarray(self._info.K_q_nom[self._group], dtype=np.float64)
+        return np.asarray(self._info.K_q_nom, dtype=np.float64)
 
     @property
     def nominal_cartesian_stiffness(self) -> np.ndarray:
         """Nominal (maximum) Cartesian stiffness K_x of the robot in N/m and Nm/rad."""
-        return np.asarray(self._info.K_x_nom[self._group], dtype=np.float64)
+        return np.asarray(self._info.K_x_nom, dtype=np.float64)
 
     def set_joint_impedance(self, stiffness: np.ndarray | None, damping_ratio: np.ndarray | None = None) -> None:
         """Updates K_q and Z_q of the joint impedance controller, applied immediately if that mode is active.
@@ -360,26 +347,23 @@ class Flexiv(common.Robot):
 
     # ------------------------------------------------------------------ internals
 
-    @property
-    def _group_name(self) -> str:
-        return str(self._rdk.kJointGroupNames[self._group])
-
-    def _resolve_group(self, name: str | None) -> typing.Any:
-        groups = self._info.single_arm_groups
-        if not groups:
-            msg = "The connected robot has no single-arm joint group."
-            raise RuntimeError(msg)
-        if name is None:
-            return next(iter(groups))
-        for group in groups:
-            if self._rdk.kJointGroupNames[group] == name:
-                return group
-        available = [self._rdk.kJointGroupNames[g] for g in groups]
-        msg = f"Joint group {name} not found, available single-arm groups: {available}."
-        raise ValueError(msg)
-
     def _states(self) -> typing.Any:
-        return self._robot.states()[self._group]
+        return self._robot.states()
+
+    def _run_home_primitive(self) -> None:
+        """Runs the Home primitive of the robot and restores the configured control mode afterwards."""
+        self._robot.SwitchMode(self._rdk.Mode.NRT_PRIMITIVE_EXECUTION)
+        self._robot.ExecutePrimitive("Home", {})
+        deadline = time.time() + self._config.command_timeout + 30.0
+        while not self._robot.primitive_states().get("reachedTarget", 0):
+            if self._robot.fault():
+                msg = "Robot fault while homing."
+                raise RuntimeError(msg)
+            if time.time() > deadline:
+                msg = "The Home primitive did not reach its target in time."
+                raise RuntimeError(msg)
+            time.sleep(0.1)
+        self._ensure_mode(self._config.control_mode)
 
     def _make_operational(self) -> None:
         if self._robot.fault():
@@ -391,11 +375,11 @@ class Flexiv(common.Robot):
             if not self._robot.estop_released():
                 msg = "The emergency stop is pressed, release it and try again."
                 raise RuntimeError(msg)
-            self._robot.ServoOn()
+            self._robot.Enable()
             deadline = time.time() + self._config.startup_timeout
             while not self._robot.operational():
                 if time.time() > deadline:
-                    status = self._rdk.kOpStatusNames[self._robot.operational_status()]
+                    status = self._robot.operational_status().name
                     msg = f"Robot did not become operational within {self._config.startup_timeout} s, status: {status}."
                     raise RuntimeError(msg)
                 time.sleep(0.5)
@@ -404,7 +388,7 @@ class Flexiv(common.Robot):
     def _read_tool_tcp(self) -> common.Pose:
         """Pose of the active tool's TCP in the flange frame, identity if it cannot be read."""
         try:
-            return _pose_from_rdk(self._tool.params(self._group).tcp_location)
+            return _pose_from_rdk(self._tool.params().tcp_location)
         except Exception as e:
             logger.warning("Could not read the active tool parameters, assuming the TCP is at the flange: %s", e)
             return common.Pose()
@@ -430,7 +414,7 @@ class Flexiv(common.Robot):
         cfg = self._config
         k_q = self.nominal_joint_stiffness if cfg.joint_stiffness is None else np.asarray(cfg.joint_stiffness)
         z_q = [] if cfg.joint_damping_ratio is None else np.asarray(cfg.joint_damping_ratio).tolist()
-        self._robot.SetJointImpedance(self._group, k_q.tolist(), z_q)
+        self._robot.SetJointImpedance(k_q.tolist(), z_q)
 
     def _apply_cartesian_impedance(self) -> None:
         cfg = self._config
@@ -438,27 +422,24 @@ class Flexiv(common.Robot):
             self.nominal_cartesian_stiffness if cfg.cartesian_stiffness is None else np.asarray(cfg.cartesian_stiffness)
         )
         if cfg.cartesian_damping_ratio is None:
-            self._robot.SetCartesianImpedance(self._group, k_x.tolist())
+            self._robot.SetCartesianImpedance(k_x.tolist())
         else:
-            self._robot.SetCartesianImpedance(
-                self._group, k_x.tolist(), np.asarray(cfg.cartesian_damping_ratio).tolist()
-            )
+            self._robot.SetCartesianImpedance(k_x.tolist(), np.asarray(cfg.cartesian_damping_ratio).tolist())
         max_wrench = (
             [float("inf")] * 6 if cfg.max_contact_wrench is None else np.asarray(cfg.max_contact_wrench).tolist()
         )
-        self._robot.SetMaxContactWrench(self._group, max_wrench)
+        self._robot.SetMaxContactWrench(max_wrench)
         if cfg.null_space_posture is not None:
-            self._robot.SetNullSpacePosture(self._group, np.asarray(cfg.null_space_posture).tolist())
+            self._robot.SetNullSpacePosture(np.asarray(cfg.null_space_posture).tolist())
 
     def _send_joint_target(self, q: np.ndarray, max_velocity: float) -> None:
         self._ensure_mode(self._joint_mode())
-        cmd = self._rdk.NrtJointPositionCmd(
+        self._robot.SendJointPosition(
             q.tolist(),
             [0.0] * self._dof,
             [float(max_velocity)] * self._dof,
             [float(self._config.max_joint_acceleration)] * self._dof,
         )
-        self._robot.SendJointPosition({self._group: cmd})
 
     def _wait_for_joints(self, q: np.ndarray, timeout: float) -> None:
         deadline = time.time() + timeout
@@ -554,12 +535,11 @@ class FlexivGripper(common.Gripper):
 
         self._cfg = cfg
         self._robot = robot
-        self._group = robot.joint_group
         self._gripper = flexivrdk.Gripper(robot.rdk_robot)
-        self._gripper.Enable(self._group, cfg.device_name)
+        self._gripper.Enable(cfg.device_name)
         if cfg.manual_init:
             self._initialize()
-        params = self._gripper.params()[self._group]
+        params = self._gripper.params()
         self._min_width = float(params.min_width)
         self._max_width = float(params.max_width)
         self._velocity = float(np.clip(cfg.velocity or params.max_vel, params.min_vel, params.max_vel))
@@ -593,14 +573,14 @@ class FlexivGripper(common.Gripper):
             raise ValueError(msg)
         target = self._min_width + width * (self._max_width - self._min_width)
         self._closing = target < self._states().width
-        self._gripper.Move(self._group, target, self._velocity, force if force > 0 else self._force_limit)
+        self._gripper.Move(target, self._velocity, force if force > 0 else self._force_limit)
         if not self._cfg.async_control:
             self._wait_for_width(target)
 
     def grasp(self) -> None:
         if self._cfg.force_control_grasp:
             self._closing = True
-            self._gripper.Grasp(self._group, self._grasp_force)
+            self._gripper.Grasp(self._grasp_force)
             if not self._cfg.async_control:
                 self._wait_for_width(self._min_width)
             return
@@ -623,18 +603,18 @@ class FlexivGripper(common.Gripper):
     def close(self) -> None:
         """Stops the fingers, the robot connection belongs to the robot and is closed there."""
         try:
-            self._gripper.Stop(self._group)
+            self._gripper.Stop()
         except Exception as e:
             logger.warning("Stopping the gripper on close failed: %s", e)
 
     # ------------------------------------------------------------------ internals
 
     def _states(self) -> typing.Any:
-        return self._gripper.states()[self._group]
+        return self._gripper.states()
 
     def _initialize(self) -> None:
         logger.info("Initializing gripper %s, the fingers will move.", self._cfg.device_name)
-        self._gripper.Init(self._group)
+        self._gripper.Init()
         # Init returns once the request is delivered, the sequence itself takes a few seconds.
         deadline = time.time() + self._cfg.init_timeout
         time.sleep(1.0)

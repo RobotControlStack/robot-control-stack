@@ -33,8 +33,8 @@ set ROBOT_SN and the gripper's tool name and set ROBOT_INSTANCE to RobotPlatform
 has to be in auto mode with the E-stop released, see the extension README.
 """
 
-ROBOT_INSTANCE = RobotPlatform.SIMULATION  # Change to RobotPlatform.HARDWARE for the real arm
-ROBOT_SN = "Rizon4s-123456"
+ROBOT_INSTANCE = RobotPlatform.HARDWARE  # Change to RobotPlatform.HARDWARE for the real arm
+ROBOT_SN = "Rizon4s-063650"
 GRIPPER_TOOL_NAME = None  # tool created for the Grav in Flexiv Elements, None keeps the active tool
 
 STEP_SIZE = 0.01  # meters per step
@@ -55,6 +55,7 @@ def main():
         hw_cfg.robot_cfg.async_control = False
         hw_cfg.max_relative_movement = (0.05, np.deg2rad(5))
         hw_cfg.relative_to = RelativeTo.LAST_STEP
+        hw_cfg.frequency = 25  # limit the rate at which we send commands to the robot
         env_hw = env_creator.create_env(hw_cfg)
         input("the arm is going to move, press enter whenever you are ready")
         run(env_hw)

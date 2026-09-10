@@ -21,9 +21,20 @@ pip install -ve . --no-build-isolation
 pip install -ve extensions/rcs_flexiv
 ```
 
-The `flexivrdk` package is pulled from PyPI. It ships prebuilt wheels for Linux, macOS and Windows
-and Python 3.10, 3.12 and 3.14, see the RDK's
-[environment compatibility](https://github.com/flexivrobotics/flexiv_rdk#environment-compatibility).
+The `flexivrdk` package is pulled from PyPI and pinned to 1.9.2, which ships prebuilt wheels for
+Linux, macOS and Windows and Python 3.10, 3.12 and 3.14.
+
+The RDK version has to match the robot software version shown in Flexiv Elements, otherwise the
+connection is refused as incompatible. RDK 1.9.x is the release line for the Rizon series, RDK 2.x
+only supports the Enlight series and has a different API. If your robot runs another software
+version, install the matching `flexivrdk` after this extension:
+
+| robot software | `flexivrdk`  |
+| -------------- | ------------ |
+| v3.11.2        | 1.9.3        |
+| v3.11.1        | 1.9.1, 1.9.2 |
+| v3.11          | 1.9.0        |
+| v3.10          | 1.8.x        |
 
 ## Robot setup
 
@@ -32,6 +43,8 @@ of the RDK manual once: the workstation needs a network connection to the robot 
 robot needs an RDK license. Before running RCS:
 
 - Release the E-stop and put the robot into auto mode in Flexiv Elements.
+- The serial number is passed as model name without spaces, a dash and the number, e.g.
+  `Rizon4s-063650`.
 - Create a tool for the mounted gripper in Flexiv Elements -> Settings -> Tool and pass its name as
   `tool_name`, so that gravity compensation accounts for the gripper. The Grav ships with a tool
   definition, check the tool list in Elements for its name.
@@ -94,7 +107,7 @@ from rcs.envs.base import ControlMode
 from rcs_flexiv.configs import DefaultRizon4SHardwareEnv
 
 env_creator = DefaultRizon4SHardwareEnv()
-env_creator.robot_sn = "Rizon4s-123456"
+env_creator.robot_sn = "Rizon4s-063650"
 env_creator.tool_name = "Flexiv-GN01"
 
 cfg = env_creator.config()
@@ -112,7 +125,7 @@ import rcs
 from rcs import common
 from rcs_flexiv.hw import Flexiv, FlexivConfig, FlexivControlMode, FlexivGripper, FlexivGripperConfig
 
-cfg = FlexivConfig(robot_sn="Rizon4s-123456", control_mode=FlexivControlMode.JOINT_IMPEDANCE, dof=7, ...)
+cfg = FlexivConfig(robot_sn="Rizon4s-063650", control_mode=FlexivControlMode.JOINT_IMPEDANCE, dof=7, ...)
 ik = common.Pin(cfg.kinematic_model_path, cfg.attachment_site)
 robot = Flexiv(cfg, ik)
 gripper = FlexivGripper(FlexivGripperConfig(device_name="Flexiv-GN01"), robot)
@@ -145,7 +158,7 @@ Quest.
 from rcs_flexiv.configs import DefaultRizon4SDualMultiHardwareEnv
 
 creator = DefaultRizon4SDualMultiHardwareEnv()
-creator.left_sn, creator.right_sn = "Rizon4s-123456", "Rizon4s-654321"
+creator.left_sn, creator.right_sn = "Rizon4s-063650", "Rizon4s-654321"
 env = creator.create_env(creator.config())
 ```
 

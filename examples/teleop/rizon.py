@@ -31,7 +31,7 @@ put both robots into auto mode with released E-stops and set ROBOT_INSTANCE to R
 ROBOT_INSTANCE = RobotPlatform.SIMULATION
 # The teleop loop matches robots to controllers by name: each arm is named after the controller
 # that drives it.
-ROBOT_SN = {"left": "Rizon4s-123456", "right": "Rizon4s-654321"}
+ROBOT_SN = {"left": "Rizon4s-063650", "right": "Rizon4s-654321"}
 GRIPPER_DEVICE_NAME = "Flexiv-GN01"
 GRIPPER_TOOL_NAME = None  # tool created for the Grav in Flexiv Elements, None keeps the active tool
 

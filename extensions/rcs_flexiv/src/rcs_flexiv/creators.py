@@ -3,6 +3,7 @@ import typing
 from dataclasses import dataclass, field
 
 import gymnasium as gym
+import rcs
 from rcs._core.common import BaseCameraConfig
 from rcs.camera.hw import DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
 from rcs.envs.base import (
@@ -17,9 +18,8 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
-from rcs_flexiv.hw import Flexiv, FlexivConfig, FlexivGripper, FlexivGripperConfig
 
-import rcs
+from rcs_flexiv.hw import Flexiv, FlexivConfig, FlexivGripper, FlexivGripperConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

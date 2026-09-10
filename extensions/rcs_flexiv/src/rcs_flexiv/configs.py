@@ -1,5 +1,7 @@
+import rcs
 from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
+
 from rcs_flexiv.creators import (
     FlexivHardwareEnvCreatorConfig,
     FlexivMultiHardwareEnvCreatorConfig,
@@ -8,13 +10,11 @@ from rcs_flexiv.creators import (
 )
 from rcs_flexiv.hw import FlexivConfig, FlexivControlMode, FlexivGripperConfig
 
-import rcs
-
 
 class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
     """Rizon 4s with a Grav GN-01 gripper, Cartesian control through RCS's IK and joint impedance on the robot."""
 
-    robot_sn = "Rizon4s-123456"
+    robot_sn = "Rizon4s-063650"
     gripper_device_name = "Flexiv-GN01"
     """Gripper device name from Flexiv Elements -> Settings -> Device."""
     tool_name: str | None = None
@@ -58,7 +58,7 @@ class DefaultRizon4SDualMultiHardwareEnv(RCSFlexivMultiConfigEnvCreator):
     about x away from the other arm (right +45, left -45 degrees). Both arms run in async mode, as needed for
     teleoperation."""
 
-    left_sn = "Rizon4s-123456"
+    left_sn = "Rizon4s-063650"
     right_sn = "Rizon4s-654321"
     gripper_device_name = "Flexiv-GN01"
     tool_name: str | None = None

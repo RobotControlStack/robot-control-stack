@@ -18,7 +18,9 @@ pip install -ve extensions/rcs_flexiv
 
 Complete the [first time setup](https://www.flexiv.com/software/rdk/manual/index.html#first-time-setup)
 of the RDK once, release the E-stop and switch the robot into auto mode in Flexiv Elements before
-connecting.
+connecting. The extension pins `flexivrdk` 1.9.2, the RDK line for the Rizon series matching robot
+software v3.11.1; install the `flexivrdk` version matching your robot software if it differs. Serial
+numbers are passed as `Rizon4s-063650`.
 
 ## Usage
 
@@ -27,7 +29,7 @@ from rcs.envs.base import ControlMode
 from rcs_flexiv.configs import DefaultRizon4SHardwareEnv
 
 env_creator = DefaultRizon4SHardwareEnv()
-env_creator.robot_sn = "Rizon4s-123456"
+env_creator.robot_sn = "Rizon4s-063650"
 env_creator.tool_name = "Flexiv-GN01"  # tool created for the gripper in Flexiv Elements
 
 cfg = env_creator.config()
