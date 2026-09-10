@@ -1104,7 +1104,7 @@ class GripperWrapper(ActObsInfoWrapper):
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
         else:
-            observation[self.gripper_key] = [self.gripper.get_normalized_width()]
+            observation[self.gripper_key] = [1- ((1 - self.gripper.get_normalized_width())*0.856)]
         info.update({"gripper_type": self.gripper.get_config().gripper_type.id})
 
         return observation, info
@@ -1124,6 +1124,8 @@ class GripperWrapper(ActObsInfoWrapper):
         if self._command_changed(gripper_action):
             if self.binary:
                 self.gripper.grasp() if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
+                #self.gripper.set_normalized_width(1-0.72) if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
+                # self._last_gripper_cmd = [1-0.856] if gripper_action[0] < self.GRIPPER_THRESHOLD else [1]
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
             self._last_gripper_cmd = gripper_action.tolist()

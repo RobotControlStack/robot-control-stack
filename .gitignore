@@ -24,4 +24,13 @@ docs/_build
 CLAUDE.md
 uv.lock
 *.parquet
+*.png
+*.whl
+*.zip
+*.mp4
+vlagent_eval_runs
+replay_logs
+outputs
+first_frames_depth
+arth
 
