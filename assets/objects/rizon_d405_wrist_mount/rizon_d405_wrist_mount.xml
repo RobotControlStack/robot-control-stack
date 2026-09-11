@@ -1,0 +1,38 @@
+<mujoco model="rizon_d405_wrist_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="black" rgba="0.1 0.1 0.1 1"/>
+
+    <mesh name="rizon_d405_wrist_mount" file="rizon_d405_wrist_mount.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="rizon_d405_wrist_mount_collision" file="rizon_d405_wrist_mount_collision.stl" scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <default>
+    <default class="rizon_d405_wrist_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black" density="1250"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3" density="0"/>
+      </default>
+    </default>
+  </default>
+
+  <!--
+    The mount frame is the Rizon attachment-site (flange) frame. The rail is screwed to the accessory
+    pocket on the front of the wrist link 78 mm above the flange face (z < 0) and runs down the link
+    to the camera shelf on the -x side next to the Grav. Only the lower bracket has a collision
+    geom; the rail hugs the wrist link, which has its own collision geom. The camera itself is a
+    separate object (assets/cameras/d405) placed by rcs.
+  -->
+  <worldbody>
+    <body name="base" childclass="rizon_d405_wrist_mount">
+      <geom mesh="rizon_d405_wrist_mount" class="visual"/>
+      <geom mesh="rizon_d405_wrist_mount_collision" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>
