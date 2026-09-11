@@ -264,7 +264,7 @@ DEFAULT_TRANSFORMS = {
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
     "FR3_ROBOTIQ_WRIST_D405_CAMERA": common.Pose(
-        translation=np.array([0.060, 0.0, 0.0665]), rpy_vector=np.array([np.pi, -np.pi * 11 / 18, 0])
+        translation=np.array([0.060, 0.0, 0.0665]), rpy_vector=np.array([-np.pi/2, -np.pi * 11 / 18, 0])
     ),
     "FR3_DUOMOUNT_HEIGHT_OFFSET": common.Pose(
         translation=np.array([0.0, 0.0, 0.342]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])
