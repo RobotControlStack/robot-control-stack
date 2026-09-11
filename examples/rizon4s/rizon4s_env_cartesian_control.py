@@ -3,11 +3,11 @@ from time import sleep
 
 import gymnasium as gym
 import numpy as np
-import rcs
-from rcs import sim
 from rcs._core.common import RobotPlatform
 from rcs._core.sim import SimConfig
+from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
+    CameraSetWrapper,
     ControlMode,
     CoverWrapper,
     GripperWrapper,
@@ -18,6 +18,9 @@ from rcs.envs.base import (
 )
 from rcs.envs.configs import EmptyWorldRizon4S
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+
+import rcs
+from rcs import sim
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,9 +36,10 @@ set ROBOT_SN and the gripper's tool name and set ROBOT_INSTANCE to RobotPlatform
 has to be in auto mode with the E-stop released, see the extension README.
 """
 
-ROBOT_INSTANCE = RobotPlatform.HARDWARE  # Change to RobotPlatform.HARDWARE for the real arm
+ROBOT_INSTANCE = RobotPlatform.SIMULATION  # Change to RobotPlatform.HARDWARE for the real arm
 ROBOT_SN = "Rizon4s-063650"
 GRIPPER_TOOL_NAME = None  # tool created for the Grav in Flexiv Elements, None keeps the active tool
+GRIPPER_MANUAL_INIT = True  # the 48 V Grav does not initialize on power-on, the fingers move to both stops
 
 STEP_SIZE = 0.01  # meters per step
 STEPS_PER_LEG = 10  # steps forward before reversing
@@ -45,11 +49,14 @@ CYCLES = 100
 def main():
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
         from rcs_flexiv.configs import DefaultRizon4SHardwareEnv
+        from rcs_flexiv.hw import FlexivControlMode
 
         env_creator = DefaultRizon4SHardwareEnv()
         env_creator.robot_sn = ROBOT_SN
         env_creator.tool_name = GRIPPER_TOOL_NAME
+        env_creator.gripper_manual_init = GRIPPER_MANUAL_INIT
         hw_cfg = env_creator.config()
+        hw_cfg.robot_cfg.control_mode = FlexivControlMode.CARTESIAN_IMPEDANCE
         hw_cfg.control_mode = ControlMode.CARTESIAN_TQuat
         # Synchronous mode: every command returns once the arm has reached its target.
         hw_cfg.robot_cfg.async_control = False
@@ -67,6 +74,7 @@ def main():
 
     robot_cfg = sim_cfg_data.robot_cfgs[rizon]
     gripper_cfg = sim_cfg_data.gripper_cfgs[rizon]  # type: ignore[index]
+    camera_cfgs = sim_cfg_data.camera_cfgs
     # Synchronous mode: the simulation steps until the commanded pose is reached.
     sim_cfg = SimConfig(
         realtime=False,
@@ -91,6 +99,10 @@ def main():
 
     env_rel = RobotSimWrapper(env_rel)
     env_rel = GripperWrapperSim(env_rel)
+
+    if camera_cfgs is not None:
+        camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)
+        env_rel = CameraSetWrapper(env_rel, camera_set, include_depth=True)  # type: ignore[arg-type]
 
     env_rel = RelativeActionSpace(
         env_rel,
