@@ -20,6 +20,7 @@ class ModelComposer:
         self.spec.compiler.autolimits = True
         self.add_gravcomp = add_gravcomp
         self._gravcomp_prefixes: set[str] = set()
+        self._gravcomp_ignore_prefixes: set[str] = set()
         self._root_relative_replay_free_joints: set[str] = set()
 
     def _resolve_asset_paths(self, spec: mujoco.MjSpec, xml_path: str):
@@ -71,6 +72,9 @@ class ModelComposer:
     def _prefixed_free_joint_names(self, spec: mujoco.MjSpec, prefix: str) -> list[str]:
         free_joint_type = int(mujoco.mjtJoint.mjJNT_FREE)
         return [f"{prefix}{joint.name}" for joint in spec.joints if joint.name and int(joint.type) == free_joint_type]
+
+    def ignore_gravcomp(self, prefixes: set[str]):
+        self._gravcomp_ignore_prefixes.update(prefixes)
 
     def register_root_relative_replay_free_joints(self, joint_names: list[str]):
         self._root_relative_replay_free_joints.update(joint_names)
@@ -329,10 +333,13 @@ class ModelComposer:
         if not self.add_gravcomp or not self._gravcomp_prefixes:
             return
 
+        def _ignored(name: str) -> bool:
+            return any(name.startswith(prefix) for prefix in self._gravcomp_ignore_prefixes)
+
         for body in self.spec.bodies:
-            if body.name and any(body.name.startswith(prefix) for prefix in self._gravcomp_prefixes):
+            if body.name and any(body.name.startswith(prefix) for prefix in self._gravcomp_prefixes) and not _ignored(body.name):
                 body.gravcomp = 1
 
         for joint in self.spec.joints:
-            if joint.name and any(joint.name.startswith(prefix) for prefix in self._gravcomp_prefixes):
+            if joint.name and any(joint.name.startswith(prefix) for prefix in self._gravcomp_prefixes) and not _ignored(joint.name):
                 joint.actgravcomp = True

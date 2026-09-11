@@ -23,17 +23,29 @@
 
   <worldbody>
     <body name="zed_mini" childclass="zed_mini">
-      <geom mesh="zed_mini" quat="1 0 0 0" material="black" class="visual"/>
-      <geom mesh="zed_mini_coll" quat="1 0 0 0" material="black" class="collision"/>
-<!-- intrinsic matrix from real camera -->
-<!-- [[733.30859375   0.         645.03240967   0.        ]
-      [  0.         733.30859375 358.78286743   0.        ]
+      <!-- Housing geoms shifted by G = inv(_WRIST_CAM_OFFSET) @ O_orig, where O_orig is the
+           ORIGINAL manual wrist placement (single_arm.py, pre-hand-eye: translation
+           [-0.077,0.009,-0.008], rpy deg [0,-70,0]) at which the mesh sat correctly in the
+           mount. This puts the housing back where it belongs while the <camera> below stays
+           at the new calibrated optical pose. Purely visual/collision -- does NOT affect the
+           camera image or _WRIST_CAM_OFFSET (those depend only on the <camera> pose). -->
+      <geom mesh="zed_mini" pos="-0.029645 0.002464 -0.004295" quat="0.999847 0.011973 0.010415 -0.00733" material="black" class="visual" mass="0"/>
+      <!-- Real measured mass 56.9 g; COM/inertia derived from the mesh at this mass. -->
+      <geom mesh="zed_mini_coll" pos="-0.029645 0.002464 -0.004295" quat="0.999847 0.011973 0.010415 -0.00733" material="black" class="collision" mass="0.0569"/>
+<!-- intrinsic matrix from real camera (serial 14943057, ZED_M, 1280x720) -->
+<!-- [[740.23132324   0.         602.53009033   0.        ]
+      [  0.         740.23132324 357.18844604   0.        ]
       [  0.           0.           1.           0.        ]] -->
-<!-- >>> np.arctan(720/(2*733.30859375))*360/np.pi
-     np.float64(52.295211753153616) -->
+<!-- Full intrinsics (not just fovy) so the sim matches the real off-center principal
+     point (cx=602.53, cy=357.19 vs centre 640,360 -- ~37px horizontal offset a fovy-only
+     camera ignores). MuJoCo principalpixel is +X-LEFT, +Y-UP:
+     principalpixel = [-(cx - W/2), -(cy - H/2)] = [37.47, 2.81]
+     (verified by rendering: on-axis point lands at (602,357)). pos/quat unchanged so
+     _WRIST_CAM_OFFSET / the mesh offset are unaffected. -->
 
-
-      <camera name="camera" pos="0 0.0255 0" quat="0.5 0.5 -0.5 -0.5" fovy="52"/>  
+      <camera name="camera" pos="0 0.0255 0" quat="0.5 0.5 -0.5 -0.5"
+              resolution="1280 720" sensorsize="0.005325 0.0029953"
+              focalpixel="740.23132324 740.23132324" principalpixel="37.4699097 2.8115540"/>
     </body>
   </worldbody>
 
