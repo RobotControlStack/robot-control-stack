@@ -5,7 +5,7 @@
 
   <default>
     <default class="Rizon4S">
-      <geom type="mesh" material="robot"/>
+      <geom type="mesh" material="robot" group="2"/>
       <position inheritrange="1"/>
       <default class="joint1">
         <joint actuatorfrcrange="-123 123" armature="3.17"/>
