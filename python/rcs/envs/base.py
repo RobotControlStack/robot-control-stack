@@ -413,7 +413,8 @@ class RobotWrapper(ActObsInfoWrapper):
                 try:
                     self.robot.move_home()
                     exception = False
-                except Exception:
+                except Exception as e:
+                    print(e)
                     self.robot.automatic_error_recovery()  # type: ignore[attr-defined]
                     sleep(0.1)
         return super().reset(seed=seed, options=options)

@@ -198,7 +198,8 @@ RECORD_FPS = 30
 # "right_wrist": "230422271040",
 
 CAMERA_DICT = {
-    "wrist": "230422272017",
+    # "wrist": "230422272017", # from rumi
+    "wrist": "230422271040", # from bilateral setup
 }
 # CAMERA_DICT = None
 ZED_CAMERA_DICT = None
@@ -207,11 +208,11 @@ MQ3_ADDR = "10.42.0.1"  # Jin: IPv4 address of the wifi you are connected, join 
 # Jin: After that, exit quest_align_frame.py (ctrl c a few times), then run franka.py; then you are ready to teleop
 INCLUDE_DEPTH = False
 
-# DIGIT_DICT = {"digit_right_left": "D21154", "digit_right_right": "D21296"}
-DIGIT_DICT = None
+DIGIT_DICT = {"digit_right_left": "D21154", "digit_right_right": "D21296"}
+# DIGIT_DICT = None
 
 
-DATASET_PATH = "rumi_debug"
+DATASET_PATH = "rumi_box"
 INSTRUCTION = "pick up cube"
 RECORD_FPS = 30
 
@@ -350,7 +351,7 @@ def get_env():
         )
         sim_cfg_data.robot_cfgs['right'].tcp_offset=rcs.GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
         # q_home measured based on ergonomics, adjust depending on setup
-        sim_cfg_data.robot_cfgs['right'].q_home=np.array([-0.87038961,-0.22665566,  1.52779737, -2.30577027, -0.114296,    2.53977886,   0.72123607])
+        sim_cfg_data.robot_cfgs['right'].q_home=np.array([0.15028019, 0.01051560, -0.10704955, -2.22298265, -0.05059264, 2.20077586, 0.06108246])
         sim_cfg_data.gripper_offsets['right'] = rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=True, frequency=RECORD_FPS, max_convergence_steps=500
@@ -425,7 +426,7 @@ def get_env():
         if sim_cfg_data.root_frame_objects is None:
             sim_cfg_data.root_frame_objects = {}
         # cfg.root_frame_objects["green_cube"] = (rcs.OBJECT_PATHS["green_cube"], Pose(translation=[0.5, 0, 0.5], quaternion=[0, 0, 0, 1]))
-        sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
+        # sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
         env_rel = scene.create_env(sim_cfg_data)
 
         if hardware_camera_set is not None:

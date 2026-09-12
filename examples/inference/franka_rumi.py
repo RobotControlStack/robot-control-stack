@@ -63,7 +63,7 @@ else:
         "digit_right_left": "D21182",
         "digit_right_right": "D21193",
     }
-DIGIT_DICT = None 
+# DIGIT_DICT = None 
 ZED_CAMERA_DICT = None
 INSTRUCTION = "pick up cube"
 FPS = 30
@@ -77,6 +77,9 @@ PORT = 20000
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
+ACTION_SPACES = ("joints", "xyzrpy", "delta_xyzrpy", "tquat", "delta_tquat")
+ACTION_SPACE = "delta_xyzrpy"
+INTEGRATE_DELTAS_FROM_COMMAND = True
 # Set to True to close the binary gripper after every environment reset.
 # The robot arm still returns to its configured home position.
 START_GRIPPER_CLOSED = False
@@ -108,6 +111,8 @@ class InferenceConfig:
     n_action_steps: int | None = None
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
+    action_space: str = ACTION_SPACE
+    integrate_deltas_from_command: bool = INTEGRATE_DELTAS_FROM_COMMAND
 
 
 def load_inference_config() -> InferenceConfig:
@@ -115,6 +120,10 @@ def load_inference_config() -> InferenceConfig:
         CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
         return InferenceConfig()
     cfg = InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+    if cfg.action_space not in ACTION_SPACES:
+        raise ValueError(f"action_space must be one of {ACTION_SPACES}, got {cfg.action_space!r}")
+    if cfg.integrate_deltas_from_command and cfg.action_space not in {"delta_xyzrpy", "delta_tquat"}:
+        raise ValueError("integrate_deltas_from_command requires delta_xyzrpy or delta_tquat action_space")
     # Keep inference single-arm even if existing config stores two-arm keys.
     cfg.robot_keys = [key for key in cfg.robot_keys if key == "right"]
     if "right" not in cfg.robot_keys:
@@ -158,6 +167,22 @@ class ModelInference:
         )
         self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
+        self._commanded_pose = None
+
+    def _reset(self) -> tuple[dict, dict]:
+        """Reset and initialize the commanded Cartesian reference from measured state."""
+        obs, info = reset_env(self.env, self._cfg)
+        if self._cfg.integrate_deltas_from_command:
+            initial_tquat = np.asarray(obs["right"]["tquat"], dtype=np.float64).reshape(-1).copy()
+            if initial_tquat.shape != (7,) or not np.isfinite(initial_tquat).all():
+                raise ValueError(f"Invalid reset tquat for integrated replay: {initial_tquat}")
+            self._commanded_pose = rcs.common.Pose(
+                translation=initial_tquat[:3].reshape(3, 1),
+                quaternion=initial_tquat[3:].reshape(4, 1),
+            )
+        else:
+            self._commanded_pose = None
+        return obs, info
 
     def submit_command(self, command: str) -> None:
         self._command_queue.put(command)
@@ -225,24 +250,60 @@ class ModelInference:
     def action_agents2rcs(self, action: Act) -> dict[str, Any]:
         act = {}
         action_values = np.asarray(action.action, dtype=np.float32) if action.action is not None else np.array([])
+        action_dim = {"joints": 8, "xyzrpy": 7, "delta_xyzrpy": 7, "tquat": 8, "delta_tquat": 8}[
+            self._cfg.action_space
+        ]
         for idx, robot in enumerate(self._cfg.robot_keys):
-            # TODO: this is currently hard coded for franka joints
-            start = idx * 8
-            end = start + 8
+            start = idx * action_dim
+            end = start + action_dim
             if end > len(action_values):
                 logger.warning(
-                    "Action vector too short for robot %s: expected 8 values, got %d",
+                    "Action vector too short for robot %s: expected %d values, got %d",
                     robot,
+                    action_dim,
                     max(0, len(action_values) - start),
                 )
                 continue
             act[robot] = {}
-            act[robot]["joints"] = action_values[start:end - 1]
+            arm_action = action_values[start : end - 1]
+            if self._cfg.action_space == "joints":
+                act[robot]["joints"] = arm_action
+            elif self._cfg.integrate_deltas_from_command:
+                if self._commanded_pose is None:
+                    raise RuntimeError("Commanded pose was not initialized after environment reset")
+                if self._cfg.action_space == "delta_xyzrpy":
+                    delta_rotation = rcs.common.Pose(rpy_vector=arm_action[3:].reshape(3, 1), translation=np.zeros((3, 1)))
+                    next_rotation = delta_rotation * rcs.common.Pose(
+                        quaternion=self._commanded_pose.rotation_q().reshape(4, 1)
+                    )
+                    self._commanded_pose = rcs.common.Pose(
+                        translation=(
+                            np.asarray(self._commanded_pose.translation()).reshape(-1) + arm_action[:3]
+                        ).reshape(3, 1),
+                        quaternion=next_rotation.rotation_q().reshape(4, 1),
+                    )
+                    act[robot]["xyzrpy"] = np.asarray(self._commanded_pose.xyzrpy()).reshape(-1)
+                elif self._cfg.action_space == "delta_tquat":
+                    delta_pose = rcs.common.Pose(
+                        translation=arm_action[:3].reshape(3, 1),
+                        quaternion=arm_action[3:].reshape(4, 1),
+                    )
+                    self._commanded_pose = delta_pose * self._commanded_pose
+                    act[robot]["tquat"] = np.concatenate(
+                        [
+                            np.asarray(self._commanded_pose.translation()).reshape(-1),
+                            np.asarray(self._commanded_pose.rotation_q()).reshape(-1),
+                        ]
+                    )
+            elif self._cfg.action_space in {"xyzrpy", "delta_xyzrpy"}:
+                act[robot]["xyzrpy"] = arm_action
+            else:
+                act[robot]["tquat"] = arm_action
             act[robot]["gripper"] = action_values[end - 1 : end]
         return act
 
     def loop(self):
-        obs, _ = reset_env(self.env, self._cfg)
+        obs, _ = self._reset()
         obs_dict = self.obs_rcs2agents(obs)
         logger.info(
             "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
@@ -275,7 +336,7 @@ class ModelInference:
                 if isinstance(self.env, StorageWrapper):
                     self.env.base_dir = self._cfg.record_path
                     self.env.set_instruction(self._cfg.instruction)
-                obs, _ = reset_env(self.env, self._cfg)
+                obs, _ = self._reset()
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -284,7 +345,7 @@ class ModelInference:
                 if self._episode_running:
                     logger.info("marking episode successful and resetting environment")
                 self.env.get_wrapper_attr("success")()
-                obs, _ = reset_env(self.env, self._cfg)
+                obs, _ = self._reset()
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -292,7 +353,7 @@ class ModelInference:
             if stop_requested:
                 if self._episode_running:
                     logger.info("stopping episode and resetting environment")
-                obs, _ = reset_env(self.env, self._cfg)
+                obs, _ = self._reset()
                 obs_dict = self.obs_rcs2agents(obs)
                 self._action_buffer = []
                 self._episode_running = False
@@ -416,22 +477,50 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
                 },
             )
         hw_cfg.camera_cfgs = camera_cfgs or None
-        hw_cfg.control_mode = CONTROL_MODE
+        if cfg.action_space == "joints":
+            hw_cfg.control_mode = ControlMode.JOINTS
+            hw_cfg.relative_to = RelativeTo.NONE
+            hw_cfg.max_relative_movement = cfg.max_rel_mov_joints
+        elif cfg.action_space in {"xyzrpy", "delta_xyzrpy"}:
+            hw_cfg.control_mode = ControlMode.CARTESIAN_TRPY
+            hw_cfg.relative_to = (
+                RelativeTo.NONE
+                if cfg.action_space == "xyzrpy"
+                or cfg.integrate_deltas_from_command and cfg.action_space == "delta_xyzrpy"
+                else RelativeTo.LAST_STEP
+            )
+            hw_cfg.max_relative_movement = cfg.max_rel_mov_cart
+        else:
+            hw_cfg.control_mode = ControlMode.CARTESIAN_TQuat
+            hw_cfg.relative_to = (
+                RelativeTo.NONE
+                if cfg.action_space == "tquat"
+                or cfg.integrate_deltas_from_command and cfg.action_space == "delta_tquat"
+                else RelativeTo.LAST_STEP
+            )
+            hw_cfg.max_relative_movement = cfg.max_rel_mov_cart
+        if cfg.integrate_deltas_from_command and cfg.action_space in {"delta_xyzrpy", "delta_tquat"}:
+            # Avoid LimitedAbsoluteAction recomputing an integrated target
+            # from the measured pose.
+            hw_cfg.max_relative_movement = None
         hw_cfg.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        hw_cfg.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
-        hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
 
         # Gains used for USBC: x10
         # Gains for Box, wiping vase/chalk, screw: x 7
-        hw_cfg.robot_cfgs["right"].joint_controller_Kp = 10*np.array([24,24,24,24,10,6,3])
+        hw_cfg.robot_cfgs["right"].joint_controller_Kp = 20*np.array([24,24,24,24,10,6,3])
         hw_cfg.robot_cfgs["right"].joint_controller_Kd = 2*np.sqrt(hw_cfg.robot_cfgs["right"].joint_controller_Kp)
         hw_cfg.robot_cfgs["right"].joint_controller_torque_limits = np.array([12.0, 12.0, 12.0, 10.0, 5.0, 4.0, 3.0])
-
-        hw_cfg.robot_cfgs["right"].q_home = np.array([-0.87038961,-0.22665566,  1.52779737, -2.30577027, -0.114296,    2.53977886,   0.72123607])
-
+        # 2 *  np.asarray([200, 200, 75]) # board task
+        hw_cfg.robot_cfgs["right"].osc_Kp_p = 2 *  np.asarray([150, 150, 150])#np.asarray([150, 150, 150])
+        hw_cfg.robot_cfgs["right"].osc_Kp_r = 1 *  np.asarray([250, 250, 250])
+        hw_cfg.robot_cfgs["right"].osc_torque_limits = np.asarray([12.0, 12.0, 12.0, 10.0, 5.0, 4.0, 3.0])
+        # q_home for gear
+        # hw_cfg.robot_cfgs["right"].q_home = np.array([ 0.12982505,  0.22033154, -0.19202998, -2.25742164,  0.55279994, 2.9276454 , -0.6510375 ])
+        # q_home for board
+        hw_cfg.robot_cfgs["right"].q_home = np.array([ 0.10142963,  0.02549116, -0.15556482, -2.34184856,  0.16230607, 2.71370075, -0.24183754])
         hw_cfg.wrapper_cfg.binary_gripper = False
         env_rel = env_creator.create_env(hw_cfg)
         if DIGIT_DICT is not None:
@@ -446,10 +535,31 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
         )
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        sim_cfg_data.control_mode = ControlMode.JOINTS
-        sim_cfg_data.relative_to = RELATIVETO
+        if cfg.action_space == "joints":
+            sim_cfg_data.control_mode = ControlMode.JOINTS
+            sim_cfg_data.relative_to = RelativeTo.NONE
+            sim_cfg_data.max_relative_movement = cfg.max_rel_mov_joints
+        elif cfg.action_space in {"xyzrpy", "delta_xyzrpy"}:
+            sim_cfg_data.control_mode = ControlMode.CARTESIAN_TRPY
+            sim_cfg_data.relative_to = (
+                RelativeTo.NONE
+                if cfg.action_space == "xyzrpy"
+                or cfg.integrate_deltas_from_command and cfg.action_space == "delta_xyzrpy"
+                else RelativeTo.LAST_STEP
+            )
+            sim_cfg_data.max_relative_movement = cfg.max_rel_mov_cart
+        else:
+            sim_cfg_data.control_mode = ControlMode.CARTESIAN_TQuat
+            sim_cfg_data.relative_to = (
+                RelativeTo.NONE
+                if cfg.action_space == "tquat"
+                or cfg.integrate_deltas_from_command and cfg.action_space == "delta_tquat"
+                else RelativeTo.LAST_STEP
+            )
+            sim_cfg_data.max_relative_movement = cfg.max_rel_mov_cart
+        if cfg.integrate_deltas_from_command and cfg.action_space in {"delta_xyzrpy", "delta_tquat"}:
+            sim_cfg_data.max_relative_movement = None
         sim_cfg_data.wrapper_cfg.binary_gripper = False
-        sim_cfg_data.max_relative_movement = cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
 
 
         # if sim_cfg_data.root_frame_objects is None:
@@ -475,7 +585,6 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
 def main():
     cfg = load_inference_config()
     env_rel = get_env(cfg)
-    reset_env(env_rel, cfg)
 
     # Path(VIDEO_PATH).mkdir(parents=True, exist_ok=True)
     # timestamp = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))

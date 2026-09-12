@@ -259,7 +259,7 @@ class SingleArmFR3MultiHardwareEnv(RCSFR3MultiConfigEnvCreator):
             right_cfg.gripper_cfg = RobotiQ2F85GripperConfig(
                 serial_number=self.gripper_serial_number,
                 speed=100,
-                force=50,
+                force=20,
                 async_control=True,
             )
         elif grippertype == common.GripperType.FrankaHand:

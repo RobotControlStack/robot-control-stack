@@ -9,11 +9,13 @@
   "jpeg_encoding": true,
   "on_same_machine": false,
   "fps": 30,
-  "record_path": "rumi_pnp",
+  "record_path": "rumi_board_raw",
   "n_action_steps": null,
   "max_rel_mov_joints": 0.08726646259971647,
   "max_rel_mov_cart": [
     0.5,
     1.5707963267948966
-  ]
+  ],
+  "action_space": "delta_xyzrpy",
+  "integrate_deltas_from_command": true
 }
