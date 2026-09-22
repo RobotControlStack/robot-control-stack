@@ -520,6 +520,7 @@ class MultiRobotWrapper(gym.Env):
             env_item.unwrapped.main_greenlet = main_gr
 
     def _translate_pose(self, key, dic, to_world=True, relative=True):
+        dic = dict(dic)
         r2w = self.robot_to_shared_base_frame.get(key, common.Pose())
         if not to_world:
             r2w = r2w.inverse()
