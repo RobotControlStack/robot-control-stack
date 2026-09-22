@@ -61,6 +61,11 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
     v.noalias() = -J.transpose() * JJt.ldlt().solve(err);
     q = pinocchio::integrate(model, q, v * this->DT);
   }
+  // a converged solution outside the joint limits cannot be executed
+  if (success && ((q.array() < model.lowerPositionLimit.array()).any() ||
+                  (q.array() > model.upperPositionLimit.array()).any())) {
+    success = false;
+  }
   if (success) {
     return q;
   } else {

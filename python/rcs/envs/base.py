@@ -395,33 +395,18 @@ class RobotWrapper(ActObsInfoWrapper):
         ):
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
-        last_action = self.prev_action
         self.prev_action = copy.deepcopy(action)
 
         # shallow copy
         action = dict(action)
-        if self.get_base_control_mode() == ControlMode.JOINTS and (
-            last_action is None
-            or not np.allclose(action[self.joints_key], last_action[self.joints_key], atol=1e-03, rtol=0)
-        ):
-            self.robot.set_joint_position(action[self.joints_key])
-            action.pop(self.joints_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
-            last_action is None
-            or not np.allclose(action[self.trpy_key], last_action[self.trpy_key], atol=1e-03, rtol=0)
-        ):
-            self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
-            )
-            action.pop(self.trpy_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat and (
-            last_action is None
-            or not np.allclose(action[self.tquat_key], last_action[self.tquat_key], atol=1e-03, rtol=0)
-        ):
-            self.robot.set_cartesian_position(
-                common.Pose(translation=action[self.tquat_key][:3], quaternion=action[self.tquat_key][3:])
-            )
-            action.pop(self.tquat_key)
+        if self.get_base_control_mode() == ControlMode.JOINTS:
+            self.robot.set_joint_position(action.pop(self.joints_key))
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY:
+            trpy = action.pop(self.trpy_key)
+            self.robot.set_cartesian_position(common.Pose(translation=trpy[:3], rpy_vector=trpy[3:]))
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat:
+            tquat = action.pop(self.tquat_key)
+            self.robot.set_cartesian_position(common.Pose(translation=tquat[:3], quaternion=tquat[3:]))
         return action
 
     def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -967,11 +952,16 @@ class RelativeActionSpace(ActObsInfoWrapper):
 class CameraSetWrapper(ActObsInfoWrapper):
     RGB_KEY = "rgb"
     DEPTH_KEY = "depth"
+    RENDER_KEY = "render"
+    """optional bool in the action dict: False keeps the frames of the last step instead of capturing new ones,
+    e.g. for intermediate steps of an action chunk whose images nobody looks at"""
 
     def __init__(self, env, camera_set: BaseCameraSet, include_depth: bool = False):
         super().__init__(env)
         self.camera_set = camera_set
         self.include_depth = include_depth
+        self._render = True
+        self._last_frames: tuple[dict[str, Any], dict[str, Any]] | None = None
 
         self.observation_space: gym.spaces.Dict
         # rgb is always included
@@ -1012,11 +1002,22 @@ class CameraSetWrapper(ActObsInfoWrapper):
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[dict, dict[str, Any]]:
         self.camera_set.clear_buffer()
+        self._render = True
+        self._last_frames = None
         return super().reset(seed=seed, options=options)
+
+    def action(self, action: dict[str, Any]) -> dict[str, Any]:
+        action = dict(action)
+        self._render = bool(action.pop(self.RENDER_KEY, True))
+        return action
 
     def observation(self, observation: dict, info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
         info = copy.deepcopy(info)
+        if not self._render and self._last_frames is not None:
+            observation[self.camera_key], camera_info = self._last_frames
+            info.update(camera_info)
+            return observation, info
         frameset = self.camera_set.get_latest_frames()
         if frameset is None:
             observation[self.camera_key] = {}
@@ -1055,6 +1056,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
         info["camera_available"] = True
         if frameset.avg_timestamp is not None:
             info["frame_timestamp"] = frameset.avg_timestamp
+        self._last_frames = (frame_dict, {k: info[k] for k in ("camera_available", "frame_timestamp") if k in info})
         return observation, info
 
     def close(self):
