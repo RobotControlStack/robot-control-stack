@@ -15,8 +15,6 @@ from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
-
-# from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
 from vlagents.policies.interface import Obs, SingleAct, SingleObs
 
@@ -66,7 +64,11 @@ DIGIT_DICT = None
 INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
 FPS = 30
 CONTROL_MODE = ControlMode.JOINTS
+# key of the RCS action dict for each control mode, matches the action space of the vlagents policy
+ACTION_KEY = {ControlMode.JOINTS: "joints", ControlMode.CARTESIAN_TRPY: "xyzrpy", ControlMode.CARTESIAN_TQuat: "tquat"}
 RELATIVETO = RelativeTo.NONE
+# simulation scene, e.g. a duobench task: `from duobench.tasks.transfer_cube import TransferCubeEnvConfig; SIM_SCENE = TransferCubeEnvConfig()`
+SIM_SCENE = EmptyWorldFR3Duo()
 # RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
 RECORD_PATH = "inference_recordings"
 MODEL = "lerobot"
@@ -113,7 +115,9 @@ def load_inference_config() -> InferenceConfig:
     if not CONFIG_PATH.exists():
         CONFIG_PATH.write_text(json.dumps(asdict(InferenceConfig()), indent=2) + "\n")
         return InferenceConfig()
-    return InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+    cfg = InferenceConfig(**json.loads(CONFIG_PATH.read_text()))
+    cfg.max_rel_mov_cart = tuple(cfg.max_rel_mov_cart)
+    return cfg
 
 
 class ModelInference:
@@ -174,13 +178,24 @@ class ModelInference:
             obs_by_robot[robot] = SingleObs(
                 cameras=copy.deepcopy(cameras),
                 joints=np.asarray(obs[robot]["joints"], dtype=np.float32),
-                gripper=float(obs[robot]["gripper"]),
+                gripper=float(np.squeeze(obs[robot]["gripper"])),
                 xyzrpy=np.asarray(obs[robot]["xyzrpy"], dtype=np.float32) if "xyzrpy" in obs[robot] else None,
                 tquat=np.asarray(obs[robot]["tquat"], dtype=np.float32) if "tquat" in obs[robot] else None,
-                # info=copy.deepcopy(info) if info is not None else {},
+                info=self.info_rcs2agents(info, robot),
             )
 
         return Obs(obs=obs_by_robot, language_instruction=self._cfg.instruction)
+
+    def info_rcs2agents(self, info: dict | None, robot: str) -> dict[str, Any]:
+        # per robot flags (collision, ik_success, ...) and task level progress (e.g. duobench stage and subinstruction)
+        if info is None:
+            return {}
+        scalar = (bool, int, float, str)
+        agent_info = {k: v for k, v in info.get(robot, {}).items() if isinstance(v, scalar)}
+        agent_info.update(
+            {k: v for k, v in info.items() if isinstance(v, (*scalar, dict)) and k not in self._cfg.robot_keys}
+        )
+        return agent_info
 
     def act(self, obs_dict: Obs) -> dict[str, SingleAct]:
         if self._cfg.n_action_steps is None:
@@ -203,14 +218,14 @@ class ModelInference:
         for robot in self._cfg.robot_keys:
             robot_action = action[robot]
             act[robot] = {
-                "joints": np.asarray(robot_action.action, dtype=np.float32),
+                ACTION_KEY[CONTROL_MODE]: np.asarray(robot_action.action, dtype=np.float32),
                 "gripper": np.asarray([robot_action.gripper], dtype=np.float32),
             }
         return act
 
     def loop(self):
-        obs, _ = self.env.reset()
-        obs_dict = self.obs_rcs2agents(obs)
+        obs, info = self.env.reset()
+        obs_dict = self.obs_rcs2agents(obs, info)
         logger.info(
             "waiting for input: 'e' to start, 'r' to start and record, 's' for success and reset, 'q' to stop and reset, and 'o' to reload config"
         )
@@ -243,8 +258,8 @@ class ModelInference:
                 if isinstance(self.env, StorageWrapper):
                     self.env.base_dir = self._cfg.record_path
                     self.env.set_instruction(self._cfg.instruction)
-                obs, _ = self.env.reset()
-                obs_dict = self.obs_rcs2agents(obs)
+                obs, info = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs, info)
                 self._action_buffer = []
                 self._episode_running = False
 
@@ -252,16 +267,16 @@ class ModelInference:
                 if self._episode_running:
                     logger.info("marking episode successful and resetting environment")
                 self.env.get_wrapper_attr("success")()
-                obs, _ = self.env.reset()
-                obs_dict = self.obs_rcs2agents(obs)
+                obs, info = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs, info)
                 self._action_buffer = []
                 self._episode_running = False
 
             if stop_requested:
                 if self._episode_running:
                     logger.info("stopping episode and resetting environment")
-                obs, _ = self.env.reset()
-                obs_dict = self.obs_rcs2agents(obs)
+                obs, info = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs, info)
                 self._action_buffer = []
                 self._episode_running = False
 
@@ -277,6 +292,8 @@ class ModelInference:
                         if record_requested:
                             self.env.start_record()
                     logger.info("starting episode%s", " with recording" if record_requested else "")
+                    # stateful policies (e.g. VLM agents with memory) start a new episode here
+                    self.remote_agent.reset(obs_dict, self._cfg.instruction)
                     self._episode_running = True
                 else:
                     sleep(0.05)
@@ -285,16 +302,15 @@ class ModelInference:
             action = self.act(copy.deepcopy(obs_dict))
             if any(robot_action.done for robot_action in action.values()):
                 logger.info("done issued by agent, resetting environment")
-                obs, _ = self.env.reset()
-                obs_dict = self.obs_rcs2agents(obs)
+                obs, info = self.env.reset()
+                obs_dict = self.obs_rcs2agents(obs, info)
                 self._action_buffer = []
                 self._episode_running = False
                 continue
             a = self.action_agents2rcs(action)
             obs, _, _, _, info = self.env.step(a)
-            # print(obs["left"]["joints"], obs["left"]["gripper"], obs["right"]["joints"], obs["right"]["gripper"])
 
-            obs_dict = self.obs_rcs2agents(obs)
+            obs_dict = self.obs_rcs2agents(obs, info)
 
 
 def command_loop(controller: ModelInference) -> None:
@@ -393,24 +409,18 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
     else:
-        # FR3
-
-        scene = EmptyWorldFR3Duo()
+        scene = SIM_SCENE
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
         )
         sim_cfg_data.wrapper_cfg.include_depth = INCLUDE_DEPTH
-        sim_cfg_data.control_mode = ControlMode.JOINTS
+        sim_cfg_data.control_mode = CONTROL_MODE
         sim_cfg_data.relative_to = RELATIVETO
         sim_cfg_data.wrapper_cfg.binary_gripper = True
         sim_cfg_data.max_relative_movement = (
             cfg.max_rel_mov_joints if CONTROL_MODE == ControlMode.JOINTS else cfg.max_rel_mov_cart
         )
-
-        # if sim_cfg_data.root_frame_objects is None:
-        #     sim_cfg_data.root_frame_objects = {}
-        # sim_cfg_data.task_cfg = PickTaskConfig(robot_name="right")
 
         env_rel = scene.create_env(sim_cfg_data)
 

@@ -58,9 +58,15 @@ When [franka.py](franka.py) is running, it waits for keyboard input on stdin. Th
 The script translates RCS observations to the `vlagents` `Obs` format as follows:
 
 - Camera frames are passed to `RemoteAgent` at native resolution; the client resizes them to `image_size` before JPEG or shared-memory transport.
-- Each robot gets a `SingleObs` containing the shared camera set plus its own joints and gripper state.
+- Each robot gets a `SingleObs` containing the shared camera set plus its own joints, gripper state, tool pose (`xyzrpy`, `tquat`) and the scalar entries of the RCS `info` dict (e.g. `collision`, `ik_success`, and the duobench task stage when a duobench scene is used in simulation).
 
-Action chunks contain one action dictionary per environment step. For each robot, the script forwards `SingleAct.action` as the joint command and `SingleAct.gripper` as the gripper command. The action dictionary must include every configured `robot_key`.
+Action chunks contain one action dictionary per environment step. For each robot, the script forwards `SingleAct.action` under the RCS action key selected by `CONTROL_MODE` (`joints`, `xyzrpy` or `tquat`) and `SingleAct.gripper` as the gripper command. The action dictionary must include every configured `robot_key`.
+
+## Episode Lifecycle
+
+When an episode starts (`e` or `r`), the script calls `RemoteAgent.reset(obs, instruction)` before the first `act` so that stateful policies (e.g. the `vlm` agent, which keeps the whole episode history) can start fresh. Stateless policies ignore the call.
+
+For a duobench task in simulation, set `ROBOT_INSTANCE = RobotPlatform.SIMULATION` and `SIM_SCENE` to the task config (see the comment in the script). The same script with `ROBOT_INSTANCE = RobotPlatform.HARDWARE` runs the policy on the real Franka duo.
 
 ## Running
 
