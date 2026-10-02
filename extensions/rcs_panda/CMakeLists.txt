@@ -41,7 +41,6 @@ set(BUILD_DOCUMENTATION OFF)
 include(FetchContent)
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
-find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
 set(RCS_PANDA_MATERIALIZED_SRC_DIR "${CMAKE_CURRENT_BINARY_DIR}/materialized_src_fr3")

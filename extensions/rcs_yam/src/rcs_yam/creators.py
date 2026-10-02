@@ -17,6 +17,7 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
+from rcs.kinematics import PinocchioKinematics
 from rcs_yam.hw import Yam, YamConfig, YamGripper
 
 import rcs
@@ -95,11 +96,7 @@ class YamHardwareEnvCreatorConfig:
 
 class RCSYamConfigEnvCreator(RCSEnvCreator[YamHardwareEnvCreatorConfig]):
     def create_env(self, cfg: YamHardwareEnvCreatorConfig) -> gym.Env:
-        ik = rcs.common.Pin(
-            cfg.robot_cfg.kinematic_model_path,
-            cfg.robot_cfg.attachment_site,
-            urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
+        ik = PinocchioKinematics.from_robot_config(cfg.robot_cfg)
         robot = Yam(cfg.robot_cfg, ik)
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)

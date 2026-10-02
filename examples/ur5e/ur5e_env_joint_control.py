@@ -17,6 +17,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.configs import EmptyWorldUR5e
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs.kinematics import PinocchioKinematics
 from rcs_ur5e.configs import DefaultUR5eHardwareEnv
 
 import rcs
@@ -54,11 +55,8 @@ def main():
             async_control=False,
         )
 
-        kinematic_model_path, attachment_site = scene.kinematics_cfg(sim_cfg_data)[ur5e]
-        ik = rcs.common.Pin(
-            kinematic_model_path,
-            attachment_site,
-        )
+        ik_robot_cfg = scene.kinematics_cfg(sim_cfg_data)[ur5e]
+        ik = PinocchioKinematics.from_robot_config(ik_robot_cfg)
         mjmodel = scene.create_model(sim_cfg_data)
         simulation = sim.Sim(mjmodel, sim_cfg)
 

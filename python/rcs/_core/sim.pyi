@@ -268,6 +268,7 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
         base: str = "base",
         dof: int = 7,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
+        base_frame: str | None = None,
     ) -> None: ...
     def add_prefix(self, id: str) -> None: ...
     @property

@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
+from rcs.kinematics import PinocchioKinematics
 
 import rcs
 from rcs import common
 
-# Restrict this test to robot models that are expected to work through the generic Pin binding.
-# Panda currently segfaults in the native binding here, and SO101 uses a dedicated IK implementation.
+# The Panda MJCF places its attachment_site in a joint-less body which Pinocchio does not export.
 PIN_SUPPORTED_ROBOTS = [
     common.RobotType.FR3,
     common.RobotType("XArm7"),
@@ -24,11 +24,7 @@ def test_kinematics_identity(robot_name):
 
     frame_id = robot.attachment_site
 
-    # Initialize Pinocchio interface
-    try:
-        pin = common.Pin(model_path, frame_id, False)
-    except Exception as e:
-        pytest.fail(f"Failed to initialize Pin for {robot_name}: {e}")
+    pin = PinocchioKinematics(model_path, frame_id, robot.base_frame, robot.dof)
 
     q_home = robot.q_home
 
@@ -57,7 +53,10 @@ def test_kinematics_identity(robot_name):
     # Add small noise to q_home to test non-trivial pose
     # Ensure we stay within limits if possible, but for small noise it should be fine
     np.random.seed(42)
-    q_perturbed = q_home + np.random.uniform(-0.1, 0.1, size=q_home.shape)
+    # the solver keeps solutions within the joint limits of the model
+    q_perturbed = np.clip(
+        q_home + np.random.uniform(-0.1, 0.1, size=q_home.shape), pin.kinematics.q_min, pin.kinematics.q_max
+    )
 
     pose_perturbed = pin.forward(q_perturbed, tcp_offset)  # type: ignore
     q_sol_perturbed: np.ndarray | None = pin.inverse(pose_perturbed, q_home, tcp_offset)  # Use q_home as seed

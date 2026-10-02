@@ -22,6 +22,7 @@ from rcs.envs.base import (
     SimEnv,
 )
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs.kinematics import PinocchioKinematics
 from rcs.sim.composer import ModelComposer
 from rcs.sim.sim import Sim
 
@@ -167,18 +168,10 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                 )
         return prefixed_cfg
 
-    def kinematics_cfg(self, cfg: SimEnvCreatorConfig) -> dict[str, tuple[str, str]]:
-        """
-        Returns the kinematic configuration for each robot in the scene.
-        Returns:
-            dict[str, tuple[str, str]]: A dictionary mapping robot names to a tuple of (kinematic_model_path, attachment_site).
-        """
+    def kinematics_cfg(self, cfg: SimEnvCreatorConfig) -> dict[str, SimRobotConfig]:
+        """Robot configurations (without scene prefixes) to construct the kinematics of each robot from."""
         o_cfg = cfg if cfg._original_cfg is None else cfg._original_cfg
-
-        return {
-            robot_name: (rcfg.kinematic_model_path, rcfg.attachment_site)
-            for robot_name, rcfg in o_cfg.robot_cfgs.items()
-        }
+        return dict(o_cfg.robot_cfgs)
 
     def robot_names(self, cfg: SimEnvCreatorConfig) -> list[str]:
         return list(cfg.robot_cfgs)
@@ -349,12 +342,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
         kinematics_cfg = self.kinematics_cfg(cfg)
         for robot_name in self.robot_names(cfg):
             env = SimEnv(simulation)
-            kinematic_model_path, attachment_site = kinematics_cfg[robot_name]
-            ik = rcs.common.Pin(
-                kinematic_model_path,
-                attachment_site,
-            )
-            # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(cfg.robot_cfgs[lead_robot_name].kinematic_model_path)
+            ik = PinocchioKinematics.from_robot_config(kinematics_cfg[robot_name])
 
             env = self.add_robot_env(prefixed_cfg, robot_name, env, simulation, ik)
             if prefixed_cfg.gripper_cfgs is not None:

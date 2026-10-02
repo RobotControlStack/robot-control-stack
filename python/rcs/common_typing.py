@@ -1,5 +1,6 @@
 # ATTENTION: auto generated from C++ stub files, use `make stubgen` to update!
 """TypedDict helpers generated from `python/rcs/_core/common.pyi`."""
+
 from __future__ import annotations
 
 from typing import TypedDict
@@ -7,7 +8,7 @@ from typing import TypedDict
 import numpy
 from rcs._core import common
 
-__all__ = ["BaseCameraConfigKwargs", "RobotConfigKwargs", "GripperConfigKwargs"]
+__all__ = ["BaseCameraConfigKwargs", "GripperConfigKwargs", "RobotConfigKwargs"]
 
 
 class BaseCameraConfigKwargs(TypedDict, total=False):
@@ -26,6 +27,7 @@ class RobotConfigKwargs(TypedDict, total=False):
     attachment_site: str
     kinematic_model_path: str
     q_home: numpy.ndarray | None
+    base_frame: str | None
 
 
 class GripperConfigKwargs(TypedDict, total=False):

@@ -57,6 +57,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.configs import EmptyWorldFR3
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs.kinematics import PinocchioKinematics
 
 import rcs
 from rcs import sim
@@ -76,13 +77,10 @@ if __name__ == "__main__":
         frequency=1,  # in Hz (1 sec delay)
     )
     mjmodel = scene.create_model(cfg)
-    kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[fr3]
+    ik_robot_cfg = scene.kinematics_cfg(cfg)[fr3]
 
     simulation = sim.Sim(mjmodel, sim_cfg)
-    ik = rcs.common.Pin(
-        kinematic_model_path,
-        attachment_site,
-    )
+    ik = PinocchioKinematics.from_robot_config(ik_robot_cfg)
 
     # base env
     robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)

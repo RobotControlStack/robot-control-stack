@@ -5,6 +5,7 @@ from rcs._core.common import RobotPlatform
 from rcs._core.sim import CameraType, SimConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.configs import EmptyWorldFR3
+from rcs.kinematics import PinocchioKinematics
 from rcs_fr3._core import hw
 from rcs_fr3.configs import DefaultFR3HardwareEnv
 from rcs_fr3.desk import FCI, ContextManager, Desk, load_creds_franka_desk
@@ -75,11 +76,8 @@ def main():
 
             robot_cfg = cfg.robot_cfgs[fr3]
 
-            kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[fr3]
-            ik = rcs.common.Pin(
-                kinematic_model_path,
-                attachment_site,
-            )
+            ik_robot_cfg = scene.kinematics_cfg(cfg)[fr3]
+            ik = PinocchioKinematics.from_robot_config(ik_robot_cfg)
             robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
 
             gripper_cfg = cfg.gripper_cfgs[fr3]  # type: ignore
@@ -111,11 +109,7 @@ def main():
             env_cfg = default_env.config()
             fr3_cfg = env_cfg.robot_cfg
             fr3_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
-            ik = rcs.common.Pin(
-                fr3_cfg.kinematic_model_path,
-                fr3_cfg.attachment_site,
-                urdf=fr3_cfg.kinematic_model_path.endswith(".urdf"),
-            )
+            ik = PinocchioKinematics.from_robot_config(fr3_cfg)
             robot = hw.Franka(fr3_cfg, ik)
 
             gripper_cfg_hw = env_cfg.gripper_cfg

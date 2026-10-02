@@ -19,9 +19,8 @@ from rcs.envs.base import (
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
 from rcs.hand.tilburg_hand import THConfig, TilburgHand
+from rcs.kinematics import PinocchioKinematics
 from rcs_xarm7.hw import XArm7, XArm7Config
-
-import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -101,11 +100,7 @@ class RCSXArm7ConfigEnvCreator(RCSEnvCreator[XArm7HardwareEnvCreatorConfig]):
         calibration_dir = cfg.calibration_dir
         if isinstance(calibration_dir, str):
             calibration_dir = Path(calibration_dir)
-        ik = rcs.common.Pin(
-            cfg.robot_cfg.kinematic_model_path,
-            cfg.robot_cfg.attachment_site,
-            urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
+        ik = PinocchioKinematics.from_robot_config(cfg.robot_cfg)
         robot = XArm7(cfg=cfg.robot_cfg, ik=ik)
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)

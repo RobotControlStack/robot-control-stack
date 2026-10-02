@@ -71,7 +71,7 @@ import numpy as np
 # Load simulation scene
 robot_meta = rcs.ROBOTS[rcs.common.RobotType.FR3]
 simulation = sim.Sim(rcs.SCENE_PATHS["empty_world"])
-ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site)
+ik = PinocchioKinematics(robot_meta.mjcf_model_path, robot_meta.attachment_site, robot_meta.base_frame, robot_meta.dof)
 
 # Configure robot
 cfg = sim.SimRobotConfig()

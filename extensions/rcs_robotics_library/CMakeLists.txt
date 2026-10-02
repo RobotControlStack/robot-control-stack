@@ -43,7 +43,6 @@ include(FetchContent)
 
 find_package(Eigen3 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
-find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
 FetchContent_Declare(rl

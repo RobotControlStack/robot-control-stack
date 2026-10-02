@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from rcs._core.common import GripperType, RobotType
+from rcs.kinematics import PinocchioKinematics
 
 import rcs
 
@@ -121,10 +122,8 @@ class JointDatasetConverter:
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
-        self.ik = rcs.common.Pin(
-            rcs.ROBOTS[robot_type].mjcf_model_path,
-            rcs.ROBOTS[robot_type].attachment_site,
-        )
+        robot = rcs.ROBOTS[robot_type]
+        self.ik = PinocchioKinematics(robot.mjcf_model_path, robot.attachment_site, robot.base_frame, robot.dof)
         self.camera_resizers = {
             camera.name: v2.Resize(camera.resolution)  # type: ignore[name-defined]  # noqa: F821
             for camera in self.cameras

@@ -7,7 +7,7 @@ At its core, RCS provides a C++ interface that defines all functions needed to c
 The C++ layer handles:
 - **Real-time Control**: Communication with robot hardware drivers.
 - **Simulation Stepping**: Interfacing with MuJoCo.
-- **Kinematics**: Fast IK/FK calculations using Pinocchio.
+- **Kinematics**: Fast IK/FK calculations using frankik (analytical and Pinocchio based solvers).
 
 ## Python Bindings
 

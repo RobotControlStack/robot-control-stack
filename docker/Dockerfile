@@ -12,6 +12,7 @@ WORKDIR /opt/rcs-src
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
+    libboost-dev \
     cmake \
     curl \
     git \
@@ -49,7 +50,6 @@ RUN chmod +x /usr/local/bin/link-editable-source \
     cmake \
     ninja \
     "mujoco==3.2.6" \
-    "pin==3.7.0" \
     && uv pip install /opt/rcs-src \
     && uv pip install --no-build-isolation /opt/rcs-src/extensions/rcs_fr3 \
     && uv pip install /opt/rcs-src/extensions/rcs_realsense \

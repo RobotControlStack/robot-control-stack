@@ -28,7 +28,6 @@ __all__: list[str] = [
     "LATERAL_GRASP",
     "POWER_GRASP",
     "PRECISION_GRASP",
-    "Pin",
     "Pose",
     "RPY",
     "Robot",
@@ -241,6 +240,7 @@ class Robot:
 
 class RobotConfig(typing.Generic[M]):
     attachment_site: str
+    base_frame: str | None
     dof: int
     joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]]
     kinematic_model_path: str
@@ -258,6 +258,7 @@ class RobotConfig(typing.Generic[M]):
         attachment_site: str = "attachment_site",
         kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
         q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None = None,
+        base_frame: str | None = None,
     ) -> None: ...
 
 class RobotPlatform:
@@ -313,9 +314,6 @@ class RotVec:
     def rotation_matrix(
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
-
-class Pin(Kinematics):
-    def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = False) -> None: ...
 
 def FrankaHandTCPOffset() -> numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]: ...
 def IdentityRotMatrix() -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...

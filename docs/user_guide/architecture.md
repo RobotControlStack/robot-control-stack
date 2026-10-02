@@ -43,5 +43,5 @@ RCS leverages the [MuJoCo](https://mujoco.org/) physics simulation. It extends M
 ## Robotics Tool Kit
 
 RCS integrates established tools:
-- **Pinocchio**: For kinematics (IK/FK), using MuJoCo MJCF descriptions.
+- **frankik**: For kinematics (IK/FK), analytical for Franka robots and numerical (Pinocchio) for MuJoCo MJCF descriptions.
 - **OMPL**: For motion planning.

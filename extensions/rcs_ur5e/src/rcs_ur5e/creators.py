@@ -16,9 +16,8 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
+from rcs.kinematics import PinocchioKinematics
 from rcs_ur5e.hw import RobotiQGripper, RobotiQGripperConfig, UR5e, UR5eConfig
-
-import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -106,11 +105,7 @@ class UR5eHardwareEnvCreatorConfig:
 
 class RCSUR5eConfigEnvCreator(RCSEnvCreator[UR5eHardwareEnvCreatorConfig]):
     def create_env(self, cfg: UR5eHardwareEnvCreatorConfig) -> gym.Env:
-        ik = rcs.common.Pin(
-            cfg.robot_cfg.kinematic_model_path,
-            cfg.robot_cfg.attachment_site,
-            urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
+        ik = PinocchioKinematics.from_robot_config(cfg.robot_cfg)
         robot = UR5e(cfg.robot_cfg, ik)
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)

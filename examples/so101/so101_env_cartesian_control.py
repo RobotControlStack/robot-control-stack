@@ -13,6 +13,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.configs import EmptyWorldSO101
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs.kinematics import PinocchioKinematics
 
 import rcs
 from rcs import sim
@@ -36,11 +37,8 @@ def main():
     mjmodel = scene.create_model(cfg)
     simulation = sim.Sim(mjmodel, sim_cfg)
 
-    kinematic_model_path, attachment_site = scene.kinematics_cfg(cfg)[so101]
-    ik = rcs.common.Pin(
-        kinematic_model_path,
-        attachment_site,
-    )
+    ik_robot_cfg = scene.kinematics_cfg(cfg)[so101]
+    ik = PinocchioKinematics.from_robot_config(ik_robot_cfg)
 
     robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
     env_rel: gym.Env = SimEnv(simulation)

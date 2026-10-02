@@ -20,6 +20,7 @@ from rcs.envs.base import (
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
 from rcs.hand.tilburg_hand import TilburgHand
+from rcs.kinematics import PinocchioKinematics
 from rcs_panda._core import hw
 from rcs_panda.envs import PandaHW
 
@@ -140,11 +141,7 @@ class PandaMultiHardwareEnvCreatorConfig:
 
 class RCSPandaConfigEnvCreator(RCSEnvCreator[PandaHardwareEnvCreatorConfig]):
     def create_env(self, cfg: PandaHardwareEnvCreatorConfig) -> gym.Env:
-        ik = rcs.common.Pin(
-            cfg.robot_cfg.kinematic_model_path,
-            cfg.robot_cfg.attachment_site,
-            urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
-        )
+        ik = PinocchioKinematics.from_robot_config(cfg.robot_cfg)
         robot = hw.Franka(cfg.robot_cfg, ik)
 
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)

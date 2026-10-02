@@ -6,6 +6,7 @@ Run with the CAN bus up, see the extension README. Keep the workspace clear, the
 import time
 
 import numpy as np
+from rcs.kinematics import PinocchioKinematics
 from rcs_yam.hw import Yam, YamConfig, YamGripper
 
 import rcs
@@ -26,11 +27,7 @@ robot_config = YamConfig(
     q_home=rcs.ROBOTS[robot_type].q_home,
     tcp_offset=rcs.GRIPPER_TCP_OFFSETS[gripper_type],
 )
-ik = rcs.common.Pin(
-    robot_config.kinematic_model_path,
-    robot_config.attachment_site,
-    urdf=robot_config.kinematic_model_path.endswith(".urdf"),
-)
+ik = PinocchioKinematics.from_robot_config(robot_config)
 robot = Yam(robot_config, ik)
 gripper = YamGripper(common.GripperConfig(gripper_type=gripper_type), robot)
 

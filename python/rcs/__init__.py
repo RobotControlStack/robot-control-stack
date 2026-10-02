@@ -101,6 +101,8 @@ class RobotMetaConfig:
     """hard joint limits of this robot, shape (2, N)"""
     attachment_site: str = "attachment_site"
     """mjcf site to use for IK"""
+    base_frame: str | None = None
+    """mjcf body the IK poses are expressed in, None for the world frame"""
 
 
 ROBOTS: dict[common.RobotType, RobotMetaConfig] = {

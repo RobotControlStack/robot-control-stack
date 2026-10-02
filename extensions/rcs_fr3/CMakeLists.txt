@@ -41,7 +41,6 @@ set(BUILD_DOCUMENTATION OFF)
 include(FetchContent)
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
-find_package(pinocchio REQUIRED)
 find_package(rcs REQUIRED)
 
 FetchContent_Declare(

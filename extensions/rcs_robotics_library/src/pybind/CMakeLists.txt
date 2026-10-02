@@ -1,9 +1,9 @@
 pybind11_add_module(_core MODULE rcs.cpp)
-target_link_libraries(_core PRIVATE rcs mdl pinocchio::all)
+target_link_libraries(_core PRIVATE rcs mdl)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs;$ORIGIN/../cmeel.prefix/lib"
+    INSTALL_RPATH "$ORIGIN;$ORIGIN/../rcs"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 

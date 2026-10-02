@@ -46,6 +46,9 @@ struct SimRobotConfig : common::RobotConfig {
       s = id + s;
     }
     this->attachment_site = id + this->attachment_site;
+    if (this->base_frame) {
+      *this->base_frame = id + *this->base_frame;
+    }
     this->base = id + this->base;
   }
 };

@@ -2,17 +2,12 @@
 
 import time
 
+from rcs.kinematics import PinocchioKinematics
 from rcs_ur5e.hw import UR5e, UR5eConfig
-
-import rcs
 
 ROBOT_IP = "192.168.25.201"
 robot_config = UR5eConfig(ip=ROBOT_IP)
-ik = rcs.common.Pin(
-    robot_config.kinematic_model_path,
-    robot_config.attachment_site,
-    urdf=robot_config.kinematic_model_path.endswith(".urdf"),
-)
+ik = PinocchioKinematics.from_robot_config(robot_config)
 robot = UR5e(robot_config, ik)
 print(f"Robot joint positions: {robot.get_joint_position()}")
 print(f"Robot cartesian position: {robot.get_cartesian_position()}")

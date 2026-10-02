@@ -55,6 +55,7 @@ struct RobotConfig {
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
   rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
   std::string attachment_site = "attachment_site";
+  std::optional<std::string> base_frame = std::nullopt;
   std::string kinematic_model_path = "assets/scenes/fr3_empty_world/robot.xml";
   std::optional<VectorXd> q_home = std::nullopt;
   size_t dof = 7;

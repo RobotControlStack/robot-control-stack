@@ -1,4 +1,5 @@
 build-essential
 gcc
 libglfw3-dev
+libboost-dev
 liburdfdom-dev

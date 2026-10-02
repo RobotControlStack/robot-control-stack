@@ -35,7 +35,7 @@ include(FetchContent)
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(MuJoCo REQUIRED)
-find_package(pinocchio REQUIRED)
+find_package(Boost REQUIRED)
 
 
 FetchContent_Declare(pybind11

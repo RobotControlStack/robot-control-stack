@@ -9,7 +9,7 @@ target_link_libraries(_core PRIVATE sim rcs)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 set_target_properties(_core PROPERTIES
-    INSTALL_RPATH "${_rpath_origin};${_rpath_origin}/../mujoco;${_rpath_origin}/../cmeel.prefix/lib"
+    INSTALL_RPATH "${_rpath_origin};${_rpath_origin}/../mujoco"
     INTERPROCEDURAL_OPTIMIZATION TRUE
 )
 

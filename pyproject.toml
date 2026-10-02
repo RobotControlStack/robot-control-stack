@@ -8,7 +8,6 @@ requires = [
   "cmake",
   "ninja",
   "mujoco==3.10.0",
-  "pin==3.7.0",
 ]
 build-backend = "scikit_build_core.build"
 
@@ -37,10 +36,7 @@ dependencies = [
   "pyarrow",
   "simplejpeg",
   "mujoco==3.10.0",
-  "pin==3.7.0",
-  # pin 3.7.0 currently resolves against older urdfdom/tinyxml SONAMEs at runtime
-  "cmeel-urdfdom<5",
-  "cmeel-tinyxml2<11",
+  "frankik[pinocchio] @ git+https://github.com/juelg/frankik.git@feat/pinocchio-numerical-solver",
   "greenlet",
   "duckdb",
   "pandas",
@@ -75,18 +71,15 @@ dev = [
 ]
 build_deps = [
   "mujoco==3.10.0",
-  "pin==3.7.0",
-  "cmeel-urdfdom<5",
-  "cmeel-tinyxml2<11",
   "scikit-build-core>=0.3.3",
 ]
 
 [tool.cibuildwheel]
 skip = ["cp314*", "*-musllinux*"]
-# Install X11 headers needed to compile GLFW
-before-all = "yum install -y libXi-devel libXcursor-devel libXinerama-devel libXrandr-devel glfw-devel"
-# Exclude MuJoCo AND Pinocchio from being bundled.
-repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.* --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
+# X11 headers to compile GLFW, Boost headers for the shared memory GUI
+before-all = "yum install -y libXi-devel libXcursor-devel libXinerama-devel libXrandr-devel glfw-devel boost-devel"
+# Exclude MuJoCo from being bundled.
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.*"
 
 [tool.scikit-build]
 build.verbose = true

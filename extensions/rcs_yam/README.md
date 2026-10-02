@@ -91,7 +91,7 @@ from rcs import common
 from rcs_yam.hw import Yam, YamConfig, YamGripper
 
 cfg = YamConfig(channel="can0", async_control=False, dof=6, ...)
-ik = common.Pin(cfg.kinematic_model_path, cfg.attachment_site)
+ik = PinocchioKinematics.from_robot_config(cfg)
 robot = Yam(cfg, ik)
 gripper = YamGripper(common.GripperConfig(gripper_type=common.GripperType("Yam")), robot)
 
