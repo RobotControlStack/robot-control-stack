@@ -1,9 +1,8 @@
+import rcs
 from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs_xarm7.creators import RCSXArm7ConfigEnvCreator, XArm7HardwareEnvCreatorConfig
 from rcs_xarm7.hw import XArm7Config
-
-import rcs
 
 
 class DefaultXArm7HardwareEnv(RCSXArm7ConfigEnvCreator):
@@ -20,6 +19,7 @@ class DefaultXArm7HardwareEnv(RCSXArm7ConfigEnvCreator):
             robot_type=robot_type,
             kinematic_model_path=rcs.ROBOTS[robot_type].mjcf_model_path,
             attachment_site=rcs.ROBOTS[robot_type].attachment_site,
+            base_frame=rcs.ROBOTS[robot_type].base_frame,
             dof=rcs.ROBOTS[robot_type].dof,
             joint_limits=rcs.ROBOTS[robot_type].joint_limits,
             q_home=rcs.ROBOTS[robot_type].q_home,

@@ -1,0 +1,18 @@
+<mujoco model="lineup_xarm7_scene">
+  <include file="xarm7.xml"/>
+  <visual>
+    <global offwidth="1920" offheight="1080"/>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.5 0.5 0.5" specular="0.1 0.1 0.1"/>
+    <quality shadowsize="2048"/>
+  </visual>
+  <asset>
+    <texture type="skybox" builtin="flat" rgb1="0.09 0.1 0.12" rgb2="0.09 0.1 0.12" width="32" height="32"/>
+    <texture name="floor_tex" type="2d" builtin="checker" rgb1="0.18 0.19 0.22" rgb2="0.14 0.15 0.17" width="512" height="512"/>
+    <material name="floor_mat" texture="floor_tex" texrepeat="6 6" reflectance="0.04"/>
+  </asset>
+  <worldbody>
+    <light pos="1.5 -1.5 3" dir="-0.4 0.4 -1" diffuse="0.7 0.7 0.7" castshadow="true"/>
+    <light pos="-1 1 2.5" dir="0.4 -0.4 -1" diffuse="0.35 0.35 0.35" castshadow="false"/>
+    <geom name="floor" type="plane" size="4 4 0.1" material="floor_mat" pos="0 0 0.0"/>
+  </worldbody>
+</mujoco>

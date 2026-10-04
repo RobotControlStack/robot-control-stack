@@ -4,6 +4,15 @@ from typing import Literal
 
 import gymnasium as gym
 import numpy as np
+import rcs
+from rcs import (
+    CAMERA_PATHS,
+    DEFAULT_TRANSFORMS,
+    GRIPPER_MOUNT_OFFSETS,
+    GRIPPER_TCP_OFFSETS,
+    OBJECT_PATHS,
+    SCENE_PATHS,
+)
 from rcs._core.common import GripperType, RobotType
 from rcs._core.sim import (
     CameraType,
@@ -20,16 +29,6 @@ from rcs.envs.scenes import (
     WrapperConfig,
 )
 
-import rcs
-from rcs import (
-    CAMERA_PATHS,
-    DEFAULT_TRANSFORMS,
-    GRIPPER_MOUNT_OFFSETS,
-    GRIPPER_TCP_OFFSETS,
-    OBJECT_PATHS,
-    SCENE_PATHS,
-)
-
 
 class EmptyWorldFR3(SimEnvCreator):
     robot_prefix_template = "right"
@@ -42,6 +41,7 @@ class EmptyWorldFR3(SimEnvCreator):
             robot_type=RobotType.FR3,
             tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.FrankaHand],
             attachment_site=rcs.ROBOTS[RobotType.FR3].attachment_site,
+            base_frame=rcs.ROBOTS[RobotType.FR3].base_frame,
             kinematic_model_path=rcs.ROBOTS[RobotType.FR3].mjcf_model_path,
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,
@@ -289,6 +289,7 @@ class EmptyWorldFR3Duo(SimEnvCreator):
             tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")],
             robot_type=RobotType.FR3,
             attachment_site=rcs.ROBOTS[RobotType.FR3].attachment_site,
+            base_frame=rcs.ROBOTS[RobotType.FR3].base_frame,
             kinematic_model_path=rcs.ROBOTS[RobotType.FR3].mjcf_model_path,
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,

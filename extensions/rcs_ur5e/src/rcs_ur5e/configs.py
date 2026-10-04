@@ -1,9 +1,8 @@
+import rcs
 from rcs._core.common import GripperType, RobotType
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs_ur5e.creators import RCSUR5eConfigEnvCreator, UR5eHardwareEnvCreatorConfig
 from rcs_ur5e.hw import RobotiQGripperConfig, UR5eConfig
-
-import rcs
 
 
 class DefaultUR5eHardwareEnv(RCSUR5eConfigEnvCreator):
@@ -23,6 +22,7 @@ class DefaultUR5eHardwareEnv(RCSUR5eConfigEnvCreator):
             robot_type=robot_type,
             kinematic_model_path=rcs.ROBOTS[robot_type].mjcf_model_path,
             attachment_site=rcs.ROBOTS[robot_type].attachment_site,
+            base_frame=rcs.ROBOTS[robot_type].base_frame,
             dof=rcs.ROBOTS[robot_type].dof,
             joint_limits=rcs.ROBOTS[robot_type].joint_limits,
             q_home=rcs.ROBOTS[robot_type].q_home,

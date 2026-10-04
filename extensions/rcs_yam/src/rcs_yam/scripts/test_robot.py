@@ -6,11 +6,10 @@ Run with the CAN bus up, see the extension README. Keep the workspace clear, the
 import time
 
 import numpy as np
-from rcs.kinematics import PinocchioKinematics
-from rcs_yam.hw import Yam, YamConfig, YamGripper
-
 import rcs
 from rcs import common
+from rcs.kinematics import PinocchioKinematics
+from rcs_yam.hw import Yam, YamConfig, YamGripper
 
 CHANNEL = "can0"
 
@@ -22,6 +21,7 @@ robot_config = YamConfig(
     robot_type=robot_type,
     kinematic_model_path=rcs.ROBOTS[robot_type].mjcf_model_path,
     attachment_site=rcs.ROBOTS[robot_type].attachment_site,
+    base_frame=rcs.ROBOTS[robot_type].base_frame,
     dof=rcs.ROBOTS[robot_type].dof,
     joint_limits=rcs.ROBOTS[robot_type].joint_limits,
     q_home=rcs.ROBOTS[robot_type].q_home,

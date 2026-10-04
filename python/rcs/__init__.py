@@ -10,9 +10,8 @@ from typing import Any
 
 import numpy as np
 import requests
-from rcs._core import __version__, common
-
 from rcs import camera, envs, hand, sim
+from rcs._core import __version__, common
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
 REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
@@ -102,12 +101,14 @@ class RobotMetaConfig:
     attachment_site: str = "attachment_site"
     """mjcf site to use for IK"""
     base_frame: str | None = None
-    """mjcf body the IK poses are expressed in, None for the world frame"""
+    """mjcf body the IK poses are expressed in, None for the world frame. Pinocchio ignores the pose of the root body
+    of an MJCF, so robots whose root body is placed or rotated (UR5e, xArm7, SO101) need their root body here."""
 
 
 ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     common.RobotType.FR3: RobotMetaConfig(
         mjcf_model_path="assets/robots/fr3/fr3.xml",
+        base_frame="base",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
         joint_limits=np.array(
@@ -119,6 +120,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     ),
     common.RobotType.Panda: RobotMetaConfig(
         mjcf_model_path="assets/robots/panda/panda.xml",
+        base_frame="link0",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
         joint_limits=np.array(
@@ -146,6 +148,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     ),
     common.RobotType("XArm7"): RobotMetaConfig(
         mjcf_model_path="assets/robots/xarm7/xarm7.xml",
+        base_frame="base",
         dof=7,
         q_home=np.array([0, -45.0 / 180.0 * np.pi, 0, 15.0 / 180.0 * np.pi, 0, -25.0 / 180.0 * np.pi, 0]),
         joint_limits=np.array(
@@ -157,6 +160,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     ),
     common.RobotType("UR5e"): RobotMetaConfig(
         mjcf_model_path="assets/robots/ur5e/ur5e.xml",
+        base_frame="base",
         dof=6,
         q_home=np.array([0.0, -2.02711196, 1.64630026, -1.18999615, -1.57079762, 0.0]),
         joint_limits=np.array(
@@ -168,6 +172,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     ),
     common.RobotType("SO101"): RobotMetaConfig(
         mjcf_model_path="assets/robots/so101/so101.xml",
+        base_frame="base",
         dof=5,
         q_home=np.array([-0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926]),
         joint_limits=np.array(
@@ -186,6 +191,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     ),
     common.RobotType("Yam"): RobotMetaConfig(
         mjcf_model_path="assets/robots/yam/yam.xml",
+        base_frame="arm",
         dof=6,
         q_home=np.array([0.0, 1.047, 1.047, 0.0, 0.0, 0.0]),
         joint_limits=np.array(
