@@ -62,10 +62,33 @@ mypy:
 pytest:
 	pytest -vv
 
+# PyPI wheels
+WHEEL_DIR = dist/wheels
+CIBW_BUILD ?= cp311-* cp312-* cp313-*
+CIBW_ARCHS_LINUX ?= x86_64
+CPP_EXTENSIONS = rcs_fr3 rcs_panda rcs_robotics_library rcs_so101
+PY_EXTENSIONS = rcs_realsense rcs_robotiq2f85 rcs_tacto rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_zed
+PYPI_REPOSITORY ?= pypi
+
+wheels:
+	rm -rf ${WHEEL_DIR}
+	CIBW_BUILD="${CIBW_BUILD}" CIBW_ARCHS_LINUX=${CIBW_ARCHS_LINUX} cibuildwheel --output-dir ${WHEEL_DIR} .
+	for ext in ${CPP_EXTENSIONS}; do \
+		CIBW_BUILD="${CIBW_BUILD}" CIBW_ARCHS_LINUX=${CIBW_ARCHS_LINUX} PIP_FIND_LINKS=/project/${WHEEL_DIR} \
+			cibuildwheel --output-dir ${WHEEL_DIR} extensions/$$ext || exit 1; \
+	done
+	for ext in ${PY_EXTENSIONS}; do \
+		PIP_FIND_LINKS=$(CURDIR)/${WHEEL_DIR} python -m build --wheel --outdir ${WHEEL_DIR} extensions/$$ext || exit 1; \
+	done
+
+pypi-upload:
+	twine check ${WHEEL_DIR}/*.whl
+	twine upload --repository ${PYPI_REPOSITORY} ${WHEEL_DIR}/*.whl
+
 bump:
 	cz bump
 
 commit:
 	cz commit
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest wheels pypi-upload bump commit

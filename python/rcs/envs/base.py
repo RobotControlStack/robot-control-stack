@@ -219,7 +219,12 @@ class HardwareEnv(BaseEnv):
                 None disables rate limiting.
         """
         super().__init__()
-        assert frequency is not None and frequency > 0, "frequency must be set to a positive value"
+        if frequency is None or frequency <= 0:
+            _logger.warning(
+                "HardwareEnv frequency is %s, rate limiting is disabled. Set it to a positive value to enable it.",
+                frequency,
+            )
+            frequency = None
         self.frame_rate = SimpleFrameRate(frequency, "Hardware Loop")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
