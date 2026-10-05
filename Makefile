@@ -1,6 +1,9 @@
 PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
+WHEELHOUSE = wheelhouse
+# set to pypi to publish to the real index
+PYPI_REPOSITORY ?= testpypi
 LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher
 LINT_EXCLUDE_MYPY = 'build|examples/teleop/SimPublisher|examples/inference/franka.py'
 
@@ -68,4 +71,12 @@ bump:
 commit:
 	cz commit
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
+buildcorewheels:
+	rm -rf ${WHEELHOUSE}
+	cibuildwheel --platform auto --output-dir ${WHEELHOUSE} .
+	twine check ${WHEELHOUSE}/*.whl
+
+uploadcorewheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${WHEELHOUSE}/*.whl
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit buildcorewheels uploadcorewheels
