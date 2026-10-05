@@ -2,6 +2,11 @@ PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
 WHEELHOUSE = wheelhouse
+CORE_WHEELHOUSE = ${WHEELHOUSE}/core
+PY_EXT_WHEELHOUSE = ${WHEELHOUSE}/py_extensions
+CPP_EXT_WHEELHOUSE = ${WHEELHOUSE}/cpp_extensions
+PY_EXTENSIONS ?= rcs_realsense rcs_robotiq2f85 rcs_tacto rcs_taxim rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_yam rcs_zed
+CPP_EXTENSIONS ?= rcs_fr3 rcs_panda rcs_robotics_library rcs_so101
 # set to pypi to publish to the real index
 PYPI_REPOSITORY ?= testpypi
 LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher
@@ -72,11 +77,33 @@ commit:
 	cz commit
 
 buildcorewheels:
-	rm -rf ${WHEELHOUSE}
-	cibuildwheel --platform auto --output-dir ${WHEELHOUSE} .
-	twine check ${WHEELHOUSE}/*.whl
+	rm -rf ${CORE_WHEELHOUSE}
+	cibuildwheel --platform auto --output-dir ${CORE_WHEELHOUSE} .
+	twine check ${CORE_WHEELHOUSE}/*.whl
 
 uploadcorewheels:
-	twine upload --repository ${PYPI_REPOSITORY} ${WHEELHOUSE}/*.whl
+	twine upload --repository ${PYPI_REPOSITORY} ${CORE_WHEELHOUSE}/*.whl
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit buildcorewheels uploadcorewheels
+buildpyextensionwheels:
+	rm -rf ${PY_EXT_WHEELHOUSE}
+	for ext in ${PY_EXTENSIONS}; do \
+		uv build --wheel --out-dir ${PY_EXT_WHEELHOUSE} extensions/$$ext || exit 1; \
+	done
+	twine check ${PY_EXT_WHEELHOUSE}/*.whl
+
+uploadpyextensionwheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${PY_EXT_WHEELHOUSE}/*.whl
+
+buildcppextensionwheels:
+	rm -rf ${CPP_EXT_WHEELHOUSE}
+	rm -rf dist/core && mkdir -p dist/core
+	cp ${CORE_WHEELHOUSE}/*.whl dist/core/
+	for ext in ${CPP_EXTENSIONS}; do \
+		cibuildwheel --platform auto --output-dir ${CPP_EXT_WHEELHOUSE} extensions/$$ext || exit 1; \
+	done
+	twine check ${CPP_EXT_WHEELHOUSE}/*.whl
+
+uploadcppextensionwheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${CPP_EXT_WHEELHOUSE}/*.whl
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit buildcorewheels uploadcorewheels buildpyextensionwheels uploadpyextensionwheels buildcppextensionwheels uploadcppextensionwheels
