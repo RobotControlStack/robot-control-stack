@@ -206,12 +206,6 @@ version_files = [
   "extensions/rcs_panda/pyproject.toml:version",
   "extensions/rcs_panda/pyproject.toml:\"rcs-core>=(.*)\"",
 
-  # --- Robotics Library ---
-  "extensions/rcs_robotics_library/CMakeLists.txt:VERSION",
-  "extensions/rcs_robotics_library/src/rcs_robotics_library/_core/__init__.pyi:__version__",
-  "extensions/rcs_robotics_library/pyproject.toml:version",
-  "extensions/rcs_robotics_library/pyproject.toml:\"rcs-core>=(.*)\"",
-
   # --- SO101 ---
   "extensions/rcs_so101/CMakeLists.txt:VERSION",
   "extensions/rcs_so101/src/rcs_so101/_core/__init__.pyi:__version__",

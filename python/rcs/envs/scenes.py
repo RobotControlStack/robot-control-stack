@@ -354,7 +354,6 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                 kinematic_model_path,
                 attachment_site,
             )
-            # ik = rcs_robotics_library._core.rl.RoboticsLibraryIK(cfg.robot_cfgs[lead_robot_name].kinematic_model_path)
 
             env = self.add_robot_env(prefixed_cfg, robot_name, env, simulation, ik)
             if prefixed_cfg.gripper_cfgs is not None:

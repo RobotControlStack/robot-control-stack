@@ -6,7 +6,7 @@ CORE_WHEELHOUSE = ${WHEELHOUSE}/core
 PY_EXT_WHEELHOUSE = ${WHEELHOUSE}/py_extensions
 CPP_EXT_WHEELHOUSE = ${WHEELHOUSE}/cpp_extensions
 PY_EXTENSIONS ?= rcs_realsense rcs_robotiq2f85 rcs_tacto rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_yam rcs_zed
-CPP_EXTENSIONS ?= rcs_fr3 rcs_panda rcs_robotics_library rcs_so101
+CPP_EXTENSIONS ?= rcs_fr3 rcs_panda rcs_so101
 # set to pypi to publish to the real index
 PYPI_REPOSITORY ?= testpypi
 LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher

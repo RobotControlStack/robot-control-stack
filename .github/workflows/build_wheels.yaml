@@ -36,7 +36,6 @@ jobs:
         extension:
           - rcs_fr3
           - rcs_panda
-          - rcs_robotics_library
           - rcs_so101
 
     steps:
