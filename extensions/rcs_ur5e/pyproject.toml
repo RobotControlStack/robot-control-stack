@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_ur5e"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS UR5e module"
-dependencies = ["rcs-core>=0.7.2", "ur_rtde==1.6.1"]
+dependencies = ["rcs-core>=0.7.3", "ur_rtde==1.6.1"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 maintainers = [

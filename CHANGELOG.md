@@ -1,3 +1,72 @@
+## v0.7.3 (2026-10-04)
+
+### Feat
+
+- **sim**: current gl context for mac
+- mac os compilation support
+- **wrappers**: gripper prev action obs and threshold
+- **scenes**: add zed cameras to droid setup
+- new droid camera mount
+- added droid zed wrist mount
+- added zed2i
+- **scenes**: add empty world droid
+- add single fr3 mount mesh
+- **sim**: adds configureable kp and kv gains for sim robots
+- **extensions**: robotiq cli for serials
+- **extensions**: robotiq bump
+- **franka**: approach before controller start
+- **franka**: add policy_rate config option
+- add tquat_flange to robot observation
+- add flange in sim
+- **interface**: add get_cartesian_flange_position
+- **franka**: add get_cartesian_flange_position method
+- **franka**: tcp offset defaults to desk
+- **zed**: added intrinsics cli command
+- **fr3/panda**: config for collision values
+- **fr3/panda**: add max torque values to config
+- **cli**: camera episode video export
+- **yaml**: teleop example with cameras
+- **yam**: dual arm support
+- **yam**: add quest teleop
+- yam example
+- **extension**: initial yam implementation
+- **sim**: yam integration
+- **franka**: pd coefficients in controllers
+- **franka**: torque safety limit per joint
+- **extension**: taxim integration (#319)
+- **franka**: added droid setup config
+
+### Fix
+
+- **wrappers**: always send arm commands instead of skipping near-identical ones
+- allow only positive frame rate
+- **hw**: move rate limit to bottom of stack
+- viewer process as deamon to avoid open gui on program close
+- **wrappers**: binary prev action obs wrong location
+- reset in storage wrapper to pass seed and options
+- **sim**: added solref and solimp for cubes
+- **assets**: zed2i fovy
+- **scenes**: robot frame objects automatically get grav comp prefix
+- **sim**: zed2i camera rotation
+- **ik**: tcp offset applied correctly in pin forward
+- **scenes**: mutation of q_home in empty world fr3
+- **examples**: added policy rate to for low level pd controller in franka examples
+- pybind pure override
+- virtual get_cartesian_flange_position
+- **franka**: reset also returns franka state
+- **franka**: desk ignore realtime control
+- **teleop**: increase quest reqd frequency to avoid alias effect
+- **yam**: ruckig version
+- **yam**: async
+- **franka cli**: untangle home and gripper
+- **zed**: remove hidden realsense dependency
+- **example**: remove thread for sim inference
+- **config**: single arm robot compatible with teleop
+
+### Refactor
+
+- **franka**: use thread safe value class
+
 ## v0.7.2 (2026-06-24)
 
 ### Fix

@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_realsense"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS realsense module"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 dependencies = [
-  "rcs-core>=0.7.2",
+  "rcs-core>=0.7.3",
   "pyrealsense2~=2.55.1",
   "pupil_apriltags",
   "diskcache",
