@@ -7,7 +7,7 @@ name = "rcs_taxim"
 version = "0.7.2"
 description = "RCS integration of mujoco-taxim"
 dependencies = [
-  "rcs>=0.7.2",
+  "rcs-core>=0.7.3",
   "omegaconf",
   "mujoco-taxim@git+https://github.com/utn-air/mujoco-taxim.git@norm2tex",
 ]

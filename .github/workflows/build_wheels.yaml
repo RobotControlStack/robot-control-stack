@@ -89,6 +89,7 @@ jobs:
           - rcs_ur5e
           - rcs_usb_cam
           - rcs_xarm7
+          - rcs_yam
           - rcs_zed
 
     steps:
