@@ -80,10 +80,10 @@ struct FrankaConfig : common::RobotConfig {
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
       (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
            // low 7‐tuple
-           -2.3093,
-       -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895,
+           -2.3476,
+       -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045,
        // high 7‐tuple
-       2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895)
+       2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045)
           .finished();
 };
 
