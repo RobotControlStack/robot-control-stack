@@ -18,10 +18,11 @@ class SimpleFrameRate:
         It allows you to call it in a loop, and it will sleep the necessary time to maintain the desired frame rate.
 
         Args:
-            frame_rate (float): The desired frame rate in frames per second.
+            frame_rate (float): The desired frame rate in frames per second (Hz).
         """
         self.t: float | None = None
         self._last_print: float | None = None
+        assert frame_rate is None or frame_rate > 0, "frame_rate must be set to a positive value representing frames per second (Hz)"
         self.frame_rate = frame_rate
         self.loop_name = loop_name
 
