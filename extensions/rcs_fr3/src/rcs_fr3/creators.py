@@ -7,7 +7,12 @@ import numpy as np
 import rcs.hand.tilburg_hand
 from frankik import FrankaKinematics
 from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig, Kinematics, Pose
-from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    DummyCalibrationStrategy,
+    HardwareCamera,
+    HardwareCameraSet,
+)
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,

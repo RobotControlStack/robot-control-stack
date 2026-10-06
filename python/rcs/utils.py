@@ -22,7 +22,9 @@ class SimpleFrameRate:
         """
         self.t: float | None = None
         self._last_print: float | None = None
-        assert frame_rate is None or frame_rate > 0, "frame_rate must be set to a positive value representing frames per second (Hz)"
+        assert (
+            frame_rate is None or frame_rate > 0
+        ), "frame_rate must be set to a positive value representing frames per second (Hz)"
         self.frame_rate = frame_rate
         self.loop_name = loop_name
 

@@ -4,7 +4,12 @@ from dataclasses import dataclass, field
 
 import gymnasium as gym
 from rcs._core.common import BaseCameraConfig, GripperConfig
-from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    DummyCalibrationStrategy,
+    HardwareCamera,
+    HardwareCameraSet,
+)
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
