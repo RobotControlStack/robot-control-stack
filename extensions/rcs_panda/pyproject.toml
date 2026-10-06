@@ -23,6 +23,9 @@ authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
 
+[project.entry-points."rcs.grippers"]
+PandaHand = "rcs_panda.creators:create_panda_gripper"
+
 [dependency-groups]
 build_deps = [
   "pin==3.7.0",

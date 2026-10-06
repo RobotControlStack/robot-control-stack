@@ -385,7 +385,11 @@ PYBIND11_MODULE(_core, m) {
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)
-      .def_readonly_static("Panda", &rcs::common::RobotType::Panda);
+      .def_readonly_static("Panda", &rcs::common::RobotType::Panda)
+      .def_readonly_static("XArm7", &rcs::common::RobotType::XArm7)
+      .def_readonly_static("UR5e", &rcs::common::RobotType::UR5e)
+      .def_readonly_static("SO101", &rcs::common::RobotType::SO101)
+      .def_readonly_static("Yam", &rcs::common::RobotType::Yam);
 
   py::enum_<rcs::common::RobotPlatform>(common, "RobotPlatform")
       .value("HARDWARE", rcs::common::RobotPlatform::HARDWARE)
@@ -436,7 +440,14 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::RobotState>(common, "RobotState").def(py::init<>());
 
   bind_type_class<rcs::common::GripperType>(common, "GripperType")
-      .def_readonly_static("FrankaHand", &rcs::common::GripperType::FrankaHand);
+      .def_readonly_static("FrankaHand", &rcs::common::GripperType::FrankaHand)
+      .def_readonly_static("PandaHand", &rcs::common::GripperType::PandaHand)
+      .def_readonly_static("Robotiq2F85",
+                           &rcs::common::GripperType::Robotiq2F85)
+      .def_readonly_static("Robotiq2F85Digit",
+                           &rcs::common::GripperType::Robotiq2F85Digit)
+      .def_readonly_static("SO101", &rcs::common::GripperType::SO101)
+      .def_readonly_static("Yam", &rcs::common::GripperType::Yam);
 
   rcs::common::GripperConfig default_gripper_config;
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig")
@@ -455,7 +466,18 @@ PYBIND11_MODULE(_core, m) {
       .value("LATERAL_GRASP", rcs::common::GraspType::LATERAL_GRASP)
       .value("TRIPOD_GRASP", rcs::common::GraspType::TRIPOD_GRASP)
       .export_values();
-  py::class_<rcs::common::HandConfig>(common, "HandConfig").def(py::init<>());
+  bind_type_class<rcs::common::HandType>(common, "HandType")
+      .def_readonly_static("TilburgHand", &rcs::common::HandType::TilburgHand);
+
+  rcs::common::HandConfig default_hand_config;
+  py::class_<rcs::common::HandConfig>(common, "HandConfig")
+      .def(py::init([](rcs::common::HandType hand_type) {
+             rcs::common::HandConfig config;
+             config.hand_type = hand_type;
+             return config;
+           }),
+           py::arg("hand_type") = default_hand_config.hand_type)
+      .def_readwrite("hand_type", &rcs::common::HandConfig::hand_type);
   py::class_<rcs::common::HandState>(common, "HandState").def(py::init<>());
 
   // holder type should be smart pointer as we deal with smart pointer

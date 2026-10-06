@@ -36,7 +36,22 @@ rcs_myext/
 
 2.  **Implement the Interface**: Create your device class in `src/rcs_myext/my_device.py`. You should inherit from the appropriate RCS base class (e.g., `Camera`, `Gripper`) if applicable, or implement the required methods.
 
-3.  **Register the Extension**: If your extension needs to be discoverable by RCS (e.g., for CLI tools or automatic loading), ensure it's installed in the same environment.
+3.  **Register the Backend**: If your extension provides a camera, gripper or hand, declare a factory
+    as an entry point so the robot extensions can create it from a config. The entry point name is
+    the type id the config carries (`camera_type_id`, `GripperType.id` or `HandType.id`), and the
+    group is one of `rcs.cameras`, `rcs.grippers` or `rcs.hands`:
+
+    ```toml
+    [project.entry-points."rcs.cameras"]
+    mycam = "rcs_myext.creators:create_camera_set"
+    ```
+
+    The factory takes the config and returns the device, for a camera
+    `(HardwareCameraCreatorConfig) -> HardwareCamera`. Nothing else has to know about your
+    extension: `rcs.registry` lists installed backends from package metadata without importing
+    them, and imports yours only when its id is requested. Reinstall the extension after changing
+    entry points, they are read from the installed metadata. For code that is not installed as a
+    package, `rcs.registry.CAMERAS.register("mycam", create_camera_set)` does the same at runtime.
 
 ## Example: USB Camera
 

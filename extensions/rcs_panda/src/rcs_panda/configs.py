@@ -29,6 +29,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
         robot_cfg.async_control = False
 
         gripper_cfg = hw.FHConfig(ip=self.ip)
+        gripper_cfg.gripper_type = common.GripperType.PandaHand
         gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
         gripper_cfg.speed = 0.1
         gripper_cfg.force = 30
@@ -60,7 +61,7 @@ class DROIDEnv(RCSPandaMultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType("Robotiq2F85")]
+        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
         cfg.robot_cfg.q_home = rcs.ROBOTS[RobotType.Panda].q_home
 
         return PandaMultiHardwareEnvCreatorConfig(

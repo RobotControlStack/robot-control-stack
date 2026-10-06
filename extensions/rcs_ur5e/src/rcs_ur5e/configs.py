@@ -10,7 +10,7 @@ class DefaultUR5eHardwareEnv(RCSUR5eConfigEnvCreator):
     ip = "192.168.1.15"
 
     def config(self) -> UR5eHardwareEnvCreatorConfig:
-        robot_type = RobotType("UR5e")
+        robot_type = RobotType.UR5e
         robot_cfg = UR5eConfig(
             ip=self.ip,
             max_velocity=1.0,
@@ -31,7 +31,7 @@ class DefaultUR5eHardwareEnv(RCSUR5eConfigEnvCreator):
 
         gripper_cfg = RobotiQGripperConfig(
             ip=self.ip,
-            gripper_type=GripperType("Robotiq2F85"),
+            gripper_type=GripperType.Robotiq2F85,
         )
 
         return UR5eHardwareEnvCreatorConfig(

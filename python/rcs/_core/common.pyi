@@ -20,6 +20,7 @@ __all__: list[str] = [
     "HARDWARE",
     "Hand",
     "HandConfig",
+    "HandType",
     "HandState",
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
@@ -108,6 +109,11 @@ class GripperState:
 
 class GripperType:
     FrankaHand: typing.ClassVar[GripperType]  # value = <GripperType: FrankaHand>
+    PandaHand: typing.ClassVar[GripperType]  # value = <GripperType: PandaHand>
+    Robotiq2F85: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85>
+    Robotiq2F85Digit: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85Digit>
+    SO101: typing.ClassVar[GripperType]  # value = <GripperType: SO101>
+    Yam: typing.ClassVar[GripperType]  # value = <GripperType: Yam>
     @staticmethod
     def get_all() -> list[GripperType]: ...
     def __eq__(self, arg0: typing.Any) -> bool: ...
@@ -130,8 +136,20 @@ class Hand:
     def set_normalized_joint_poses(self, q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
     def shut(self) -> None: ...
 
+class HandType:
+    TilburgHand: typing.ClassVar[HandType]  # value = <HandType: TilburgHand>
+    @staticmethod
+    def get_all() -> list[HandType]: ...
+    def __eq__(self, arg0: typing.Any) -> bool: ...
+    def __hash__(self) -> int: ...
+    def __init__(self, arg0: str) -> None: ...
+    def __repr__(self) -> str: ...
+    @property
+    def id(self) -> str: ...
+
 class HandConfig:
-    def __init__(self) -> None: ...
+    hand_type: HandType
+    def __init__(self, hand_type: HandType = ...) -> None: ...
 
 class HandState:
     def __init__(self) -> None: ...
@@ -295,6 +313,10 @@ class RobotState:
 class RobotType:
     FR3: typing.ClassVar[RobotType]  # value = <RobotType: FR3>
     Panda: typing.ClassVar[RobotType]  # value = <RobotType: Panda>
+    SO101: typing.ClassVar[RobotType]  # value = <RobotType: SO101>
+    UR5e: typing.ClassVar[RobotType]  # value = <RobotType: UR5e>
+    XArm7: typing.ClassVar[RobotType]  # value = <RobotType: XArm7>
+    Yam: typing.ClassVar[RobotType]  # value = <RobotType: Yam>
     @staticmethod
     def get_all() -> list[RobotType]: ...
     def __eq__(self, arg0: typing.Any) -> bool: ...

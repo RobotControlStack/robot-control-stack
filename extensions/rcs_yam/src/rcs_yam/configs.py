@@ -18,8 +18,8 @@ class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
     gripper_force = 50.0
 
     def config(self) -> YamHardwareEnvCreatorConfig:
-        robot_type = RobotType("Yam")
-        gripper_type = GripperType("Yam")
+        robot_type = RobotType.Yam
+        gripper_type = GripperType.Yam
         robot_cfg = YamConfig(
             channel=self.channel,
             gripper_type_id="linear_4310",
