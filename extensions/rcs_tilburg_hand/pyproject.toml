@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_tilburg_hand"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS Tilburg Hand module"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-dependencies = ["rcs-core>=0.7.2", "tilburg-hand"]
+dependencies = ["rcs-core>=0.7.3", "tilburg-hand"]
 maintainers = [
   { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
 ]
