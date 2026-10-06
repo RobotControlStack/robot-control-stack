@@ -84,11 +84,9 @@ jobs:
         extension:
           - rcs_realsense
           - rcs_robotiq2f85
-          - rcs_tacto
           - rcs_ur5e
           - rcs_usb_cam
           - rcs_xarm7
-          - rcs_yam
           - rcs_zed
 
     steps:
