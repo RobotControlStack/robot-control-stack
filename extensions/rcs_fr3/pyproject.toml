@@ -8,15 +8,15 @@ requires = [
   "cmake",
   "ninja",
   "pin==3.7.0",
-  "rcs-core>=0.7.2",
+  "rcs-core>=0.7.3",
 ]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_fr3"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS libfranka integration"
-dependencies = ["rcs-core>=0.7.2", "frankik"]
+dependencies = ["rcs-core>=0.7.3", "frankik"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
