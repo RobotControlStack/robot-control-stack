@@ -15,6 +15,9 @@ maintainers = [
 authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
+[project.entry-points."rcs.hands"]
+TilburgHand = "rcs_tilburg_hand.creators:create_hand"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]

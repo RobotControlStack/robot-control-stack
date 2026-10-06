@@ -15,7 +15,7 @@ import numpy as np
 import requests
 from rcs._core import __version__, common
 
-from rcs import camera, envs, sim
+from rcs import camera, envs, registry, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
 # written into the assets directory after a complete download, holds the version the assets belong to
@@ -246,12 +246,14 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
 
 GRIPPER_PATHS: dict[common.GripperType, str] = {
     common.GripperType.FrankaHand: "assets/grippers/franka_hand/franka_hand.xml",
+    common.GripperType.PandaHand: "assets/grippers/franka_hand/franka_hand.xml",
     common.GripperType.Robotiq2F85: "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
     common.GripperType("FlexivGrav"): "assets/grippers/flexiv_grav/flexiv_grav.xml",
 }
 
 GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
+    common.GripperType.PandaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
     common.GripperType.Robotiq2F85: common.Pose(translation=np.array([0, 0.0, 0.1493])),
     # The yam gripper is part of the robot mjcf, hence it needs no entry in GRIPPER_PATHS
     # and no mount offset, only the offset from the flange to the point between the fingers.
@@ -263,6 +265,9 @@ GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(
+        rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
+    ),
+    common.GripperType.PandaHand: common.Pose(
         rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
     ),
     common.GripperType.Robotiq2F85: common.Pose(
@@ -408,6 +413,7 @@ __all__ = [
     "sim",
     "camera",
     "envs",
+    "registry",
     "ROBOTS",
     "GRIPPER_PATHS",
     "SCENE_PATHS",

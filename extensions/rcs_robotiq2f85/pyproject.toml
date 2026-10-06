@@ -20,3 +20,6 @@ authors = [
 ]
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
+
+[project.entry-points."rcs.grippers"]
+Robotiq2F85 = "rcs_robotiq2f85.creators:create_gripper"
