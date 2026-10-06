@@ -14,7 +14,7 @@ def default_zed(
         name2id: Mapping from logical camera names to ZED serial numbers.
         calibration_strategy: Optional calibration strategy for each logical
             camera. When omitted, ``ZEDCameraSet`` uses
-            ``DummyCalibrationStrategy``.
+            ``IdentityCalibrationStrategy``.
     """
     if name2id is None:
         return None
@@ -25,6 +25,6 @@ def default_zed(
     return ZEDCameraSet(cameras=cameras, calibration_strategy=calibration_strategy)
 
 
-def default_zed_dummy_calibration(name2id: dict[str, str] | None) -> ZEDCameraSet | None:
-    """Create the default ZED camera set with dummy calibration."""
+def default_zed_identity_calibration(name2id: dict[str, str] | None) -> ZEDCameraSet | None:
+    """Create the default ZED camera set with identity calibration."""
     return default_zed(name2id)

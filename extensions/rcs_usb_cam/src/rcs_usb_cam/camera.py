@@ -6,7 +6,11 @@ import typing
 
 import cv2
 import numpy as np
-from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    HardwareCamera,
+    IdentityCalibrationStrategy,
+)
 from rcs.camera.interface import CameraFrame, DataFrame, Frame
 
 from rcs import common
@@ -33,7 +37,7 @@ class USBCameraSet(HardwareCamera):
         self.cameras = cameras
         self.CALIBRATION_FRAME_SIZE = 30
         if calibration_strategy is None:
-            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
+            calibration_strategy = {camera_name: IdentityCalibrationStrategy() for camera_name in cameras}
         for cam in self.cameras.values():
             if cam.color_intrinsics is None:
                 cam.color_intrinsics = np.zeros((3, 4), dtype=np.float64)  # type: ignore

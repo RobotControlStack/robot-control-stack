@@ -35,7 +35,7 @@ pip install -ve extensions/rcs_zed
 ## Calibration
 
 `default_zed(...)` is standalone and uses RCS's identity
-`DummyCalibrationStrategy` by default. To use measured extrinsics, pass one
+`IdentityCalibrationStrategy` by default. To use measured extrinsics, pass one
 calibration strategy per logical camera:
 
 ```python

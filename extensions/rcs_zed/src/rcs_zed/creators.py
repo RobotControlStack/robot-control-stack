@@ -2,23 +2,13 @@
 
 import typing
 
-from rcs.camera.hw import (
-    CalibrationStrategy,
-    DummyCalibrationStrategy,
-    HardwareCamera,
-    HardwareCameraCreatorConfig,
-)
+from rcs.camera.hw import HardwareCamera, HardwareCameraCreatorConfig
 from rcs_zed.camera import ZEDCameraSet
 
 
 def create_camera_set(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
-    if cfg.calibration != "dummy":
-        msg = f"The zed backend supports only the 'dummy' calibration, got {cfg.calibration!r}"
-        raise ValueError(msg)
-    calibration_strategy = {
-        name: typing.cast(CalibrationStrategy, DummyCalibrationStrategy()) for name in cfg.camera_cfgs
-    }
+    # calibration=None leaves the set to build identity strategies for every camera.
     return typing.cast(
         HardwareCamera,
-        ZEDCameraSet(cameras=cfg.camera_cfgs, calibration_strategy=calibration_strategy, **cfg.kwargs),
+        ZEDCameraSet(cameras=cfg.camera_cfgs, calibration_strategy=cfg.calibration, **cfg.kwargs),
     )
