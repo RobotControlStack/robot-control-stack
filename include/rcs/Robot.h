@@ -46,9 +46,17 @@ struct RobotType : public TypeBase<RobotType> {
 
   static const RobotType FR3;
   static const RobotType Panda;
+  static const RobotType XArm7;
+  static const RobotType UR5e;
+  static const RobotType SO101;
+  static const RobotType Yam;
 };
 inline const RobotType RobotType::FR3{"FR3"};
 inline const RobotType RobotType::Panda{"Panda"};
+inline const RobotType RobotType::XArm7{"XArm7"};
+inline const RobotType RobotType::UR5e{"UR5e"};
+inline const RobotType RobotType::SO101{"SO101"};
+inline const RobotType RobotType::Yam{"Yam"};
 
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
@@ -76,8 +84,16 @@ struct GripperType : public TypeBase<GripperType> {
   using TypeBase::TypeBase;
 
   static const GripperType FrankaHand;
+  static const GripperType Robotiq2F85;
+  static const GripperType Robotiq2F85Digit;
+  static const GripperType SO101;
+  static const GripperType Yam;
 };
 inline const GripperType GripperType::FrankaHand{"FrankaHand"};
+inline const GripperType GripperType::Robotiq2F85{"Robotiq2F85"};
+inline const GripperType GripperType::Robotiq2F85Digit{"Robotiq2F85Digit"};
+inline const GripperType GripperType::SO101{"SO101"};
+inline const GripperType GripperType::Yam{"Yam"};
 
 struct GripperConfig {
   GripperType gripper_type = GripperType::FrankaHand;

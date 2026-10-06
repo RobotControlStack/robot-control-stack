@@ -158,7 +158,7 @@ def _create_robotiq_gripper(cfg: GripperConfig) -> Gripper:
 
 HARDWARE_GRIPPER_CREATORS: dict[str, typing.Callable[[GripperConfig], Gripper]] = {
     rcs.common.GripperType.FrankaHand.id: _create_franka_gripper,
-    rcs.common.GripperType("Robotiq2F85").id: _create_robotiq_gripper,
+    rcs.common.GripperType.Robotiq2F85.id: _create_robotiq_gripper,
 }
 
 

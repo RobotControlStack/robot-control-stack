@@ -33,7 +33,7 @@ class UR5eConfig(common.RobotConfig):
     ):
         super().__init__(**kwargs)
         self.robot_platform = common.RobotPlatform.HARDWARE
-        self.robot_type = common.RobotType("UR5e")
+        self.robot_type = common.RobotType.UR5e
         self.ip = ip
         # Robot movement parameters
         self.max_velocity = max_velocity
@@ -194,7 +194,7 @@ class UR5e(common.Robot):
         super().__init__()
         self.ik = ik
         self._config = cfg
-        self._config.robot_type = common.RobotType("UR5e")
+        self._config.robot_type = common.RobotType.UR5e
         self._ip = cfg.ip
 
         # Delete shared memory if it exists

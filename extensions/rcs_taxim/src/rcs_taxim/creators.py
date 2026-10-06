@@ -13,7 +13,7 @@ from rcs_taxim.taxim_wrapper import TaximSimWrapper, _robotiq2f85_digit_model_pa
 
 import rcs
 
-_TAXIM_GRIPPER_TYPE = GripperType("Robotiq2F85Digit")
+_TAXIM_GRIPPER_TYPE = GripperType.Robotiq2F85Digit
 
 
 def _prefixed(name: str) -> str:
@@ -84,7 +84,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
 
         scene = EmptyWorldFR3()
         cfg = scene.config()
-        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         cfg.control_mode = control_mode
         cfg.headless = render_mode != "human"
         cfg.sim_cfg.realtime = render_mode == "human"
@@ -99,7 +99,7 @@ class FR3TaximSimplePickUpSimEnvCreator:
         if not delta_actions:
             cfg.max_relative_movement = None
         cfg.gripper_cfgs = {"right": _taxim_gripper_cfg()}
-        cfg.gripper_offsets = {"right": rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
+        cfg.gripper_offsets = {"right": rcs.GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType.Robotiq2F85]}
         cfg.root_frame_objects = {
             "": (
                 rcs.OBJECT_PATHS["green_cuboid"],

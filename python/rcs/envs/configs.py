@@ -179,7 +179,7 @@ class EmptyWorldDroid(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         robot_cfg.q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
 
         assert cfg.gripper_cfgs is not None
@@ -192,9 +192,9 @@ class EmptyWorldDroid(EmptyWorldFR3):
         gripper_cfg.min_actuator_width = 255
         gripper_cfg.max_joint_width = 0.005
         gripper_cfg.min_joint_width = 1.0
-        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+        gripper_cfg.gripper_type = GripperType.Robotiq2F85
 
-        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]}
+        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType.Robotiq2F85]}
 
         cfg.robot_frame_objects = {
             "right": {
@@ -274,7 +274,7 @@ class EmptyWorldFR3Duo(SimEnvCreator):
 
     def config(self) -> SimEnvCreatorConfig:
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
-            tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")],
+            tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85],
             robot_type=RobotType.FR3,
             attachment_site=rcs.ROBOTS[RobotType.FR3].attachment_site,
             kinematic_model_path=rcs.ROBOTS[RobotType.FR3].mjcf_model_path,
@@ -336,7 +336,7 @@ class EmptyWorldFR3Duo(SimEnvCreator):
             actuator="fingers_actuator",
             max_actuator_width=0,
             min_actuator_width=255,
-            gripper_type=GripperType("Robotiq2F85"),
+            gripper_type=GripperType.Robotiq2F85,
         )
 
         gripper_cfg_right = copy.deepcopy(gripper_cfg)
@@ -411,7 +411,7 @@ class EmptyWorldFR3Duo(SimEnvCreator):
                 robot_name="right",
             ),
         }
-        gripper_offset = GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        gripper_offset = GRIPPER_MOUNT_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         return SimEnvCreatorConfig(
             robot_cfgs=robot_cfgs,
             sim_cfg=sim_cfg,
@@ -440,12 +440,12 @@ class EmptyWorldFR3Duo(SimEnvCreator):
 class EmptyWorldUR5e(EmptyWorldFR3):
 
     def config(self) -> SimEnvCreatorConfig:
-        rt = RobotType("UR5e")
+        rt = RobotType.UR5e
         cfg = super().config()
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType("Robotiq2F85")]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
         robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
@@ -474,7 +474,7 @@ class EmptyWorldUR5e(EmptyWorldFR3):
         gripper_cfg.min_actuator_width = 255
         gripper_cfg.max_joint_width = 0.005
         gripper_cfg.min_joint_width = 1.0
-        gripper_cfg.gripper_type = GripperType("Robotiq2F85")
+        gripper_cfg.gripper_type = GripperType.Robotiq2F85
 
         cfg.camera_cfgs = None
         cfg.camera_adds = None
@@ -486,7 +486,7 @@ class EmptyWorldUR5e(EmptyWorldFR3):
 class EmptyWorldXArm7(EmptyWorldFR3):
 
     def config(self) -> SimEnvCreatorConfig:
-        rt = RobotType("XArm7")
+        rt = RobotType.XArm7
         cfg = super().config()
         lead_robot_name = self.lead_robot_name(cfg)
 
@@ -532,7 +532,7 @@ class EmptyWorldSO101(EmptyWorldFR3):
     gripper_prefix_template = EmptyWorldFR3.robot_prefix_template
 
     def config(self) -> SimEnvCreatorConfig:
-        rt = RobotType("SO101")
+        rt = RobotType.SO101
         cfg = super().config()
         lead_robot_name = self.lead_robot_name(cfg)
 
@@ -559,7 +559,7 @@ class EmptyWorldSO101(EmptyWorldFR3):
         gripper_cfg.joints = ["6"]
         gripper_cfg.collision_geoms = []
         gripper_cfg.collision_geoms_fingers = []
-        gripper_cfg.gripper_type = GripperType("SO101")
+        gripper_cfg.gripper_type = GripperType.SO101
 
         cfg.camera_cfgs = None
         cfg.camera_adds = None
@@ -573,13 +573,13 @@ class EmptyWorldYam(EmptyWorldFR3):
     gripper_prefix_template = EmptyWorldFR3.robot_prefix_template
 
     def config(self) -> SimEnvCreatorConfig:
-        rt = RobotType("Yam")
+        rt = RobotType.Yam
         cfg = super().config()
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         robot_cfg.robot_type = rt
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType("Yam")]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.Yam]
         robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
         robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
@@ -592,7 +592,7 @@ class EmptyWorldYam(EmptyWorldFR3):
 
         assert cfg.gripper_cfgs is not None
         gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
-        gripper_cfg.gripper_type = GripperType("Yam")
+        gripper_cfg.gripper_type = GripperType.Yam
         gripper_cfg.actuator = "gripper"
         # right_finger is driven by an equality constraint, so only the actuated finger is listed
         gripper_cfg.joints = ["left_finger"]
