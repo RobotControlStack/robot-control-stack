@@ -142,7 +142,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
             ]
         ),
     ),
-    common.RobotType("XArm7"): RobotMetaConfig(
+    common.RobotType.XArm7: RobotMetaConfig(
         mjcf_model_path="assets/robots/xarm7/xarm7.xml",
         dof=7,
         q_home=np.array([0, -45.0 / 180.0 * np.pi, 0, 15.0 / 180.0 * np.pi, 0, -25.0 / 180.0 * np.pi, 0]),
@@ -153,7 +153,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
             ]
         ),
     ),
-    common.RobotType("UR5e"): RobotMetaConfig(
+    common.RobotType.UR5e: RobotMetaConfig(
         mjcf_model_path="assets/robots/ur5e/ur5e.xml",
         dof=6,
         q_home=np.array([0.0, -2.02711196, 1.64630026, -1.18999615, -1.57079762, 0.0]),
@@ -164,7 +164,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
             ]
         ),
     ),
-    common.RobotType("SO101"): RobotMetaConfig(
+    common.RobotType.SO101: RobotMetaConfig(
         mjcf_model_path="assets/robots/so101/so101.xml",
         dof=5,
         q_home=np.array([-0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926]),
@@ -182,7 +182,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
         attachment_site="gripper",
     ),
-    common.RobotType("Yam"): RobotMetaConfig(
+    common.RobotType.Yam: RobotMetaConfig(
         mjcf_model_path="assets/robots/yam/yam.xml",
         dof=6,
         q_home=np.array([0.0, 1.047, 1.047, 0.0, 0.0, 0.0]),
@@ -199,22 +199,22 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
 
 GRIPPER_PATHS: dict[common.GripperType, str] = {
     common.GripperType.FrankaHand: "assets/grippers/franka_hand/franka_hand.xml",
-    common.GripperType("Robotiq2F85"): "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
+    common.GripperType.Robotiq2F85: "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
 }
 
 GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(pose_matrix=common.FrankaHandTCPOffset()),
-    common.GripperType("Robotiq2F85"): common.Pose(translation=np.array([0, 0.0, 0.1493])),
+    common.GripperType.Robotiq2F85: common.Pose(translation=np.array([0, 0.0, 0.1493])),
     # The yam gripper is part of the robot mjcf, hence it needs no entry in GRIPPER_PATHS
     # and no mount offset, only the offset from the flange to the point between the fingers.
-    common.GripperType("Yam"): common.Pose(translation=np.array([0.0, 0.0, 0.1347])),
+    common.GripperType.Yam: common.Pose(translation=np.array([0.0, 0.0, 0.1347])),
 }
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType.FrankaHand: common.Pose(
         rotation=common.FrankaHandTCPOffset()[:3, :3], translation=np.array([0.0, 0.0, 0.0])
     ),
-    common.GripperType("Robotiq2F85"): common.Pose(
+    common.GripperType.Robotiq2F85: common.Pose(
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
 }

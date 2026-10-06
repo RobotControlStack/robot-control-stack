@@ -8,10 +8,10 @@ from rcs import common
 # Panda currently segfaults in the native binding here, and SO101 uses a dedicated IK implementation.
 PIN_SUPPORTED_ROBOTS = [
     common.RobotType.FR3,
-    common.RobotType("XArm7"),
-    common.RobotType("UR5e"),
-    common.RobotType("SO101"),
-    common.RobotType("Yam"),
+    common.RobotType.XArm7,
+    common.RobotType.UR5e,
+    common.RobotType.SO101,
+    common.RobotType.Yam,
 ]
 
 
