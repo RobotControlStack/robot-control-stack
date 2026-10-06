@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_digit"
+version = "0.7.2"
+description = "RCS DIGIT tactile sensor module"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+dependencies = ["rcs-core>=0.7.2", "digit-interface"]
+maintainers = [
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
+]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"

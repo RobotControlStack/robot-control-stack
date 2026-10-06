@@ -82,6 +82,7 @@ jobs:
       fail-fast: false
       matrix:
         extension:
+          - rcs_digit
           - rcs_realsense
           - rcs_robotiq2f85
           - rcs_ur5e

@@ -30,7 +30,6 @@ dependencies = [
   "python-dotenv>=1.0.1",
   "opencv-python~=4.10.0.84",
   "tilburg-hand",
-  "digit-interface",
   "pyopengl>=3.1.9",
   "ompl>=1.7.0; sys_platform == 'linux'",
   "rpyc~=6.0.2",
@@ -213,6 +212,10 @@ version_files = [
   "extensions/rcs_so101/pyproject.toml:\"rcs-core>=(.*)\"",
 
   # --- Other Extensions ---
+  "extensions/rcs_digit/pyproject.toml:version",
+  "extensions/rcs_digit/src/rcs_digit/__init__.py:__version__",
+  "extensions/rcs_digit/pyproject.toml:\"rcs-core>=(.*)\"",
+
   "extensions/rcs_realsense/pyproject.toml:version",
   "extensions/rcs_realsense/src/rcs_realsense/__init__.py:__version__",
   "extensions/rcs_realsense/pyproject.toml:\"rcs-core>=(.*)\"",

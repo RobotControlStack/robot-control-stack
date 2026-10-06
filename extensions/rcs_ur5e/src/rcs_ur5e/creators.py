@@ -50,9 +50,9 @@ def _create_realsense_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera
 
 def _create_digit_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
     try:
-        from rcs.camera.digit_cam import DigitCam
+        from rcs_digit.camera import DigitCam
     except ImportError as e:
-        msg = "DIGIT camera support requires the `digit_interface` package to be installed."
+        msg = "DIGIT camera support requires the `rcs_digit` extension to be installed."
         raise ImportError(msg) from e
 
     return typing.cast(HardwareCamera, DigitCam(cameras=cfg.camera_cfgs))
