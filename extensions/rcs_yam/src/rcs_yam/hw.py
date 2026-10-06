@@ -20,6 +20,10 @@ from rcs import common
 # adds no grip force, but a cap below it leaves the fingers unable to move at all.
 I2RT_FRICTION_COMPENSATION = 0.3
 
+I2RT_DEFAULT_GRIPPER_FORCE = 50.0
+
+SHUT_FORCE = 1.0
+
 
 class YamGripperForceLimiter(GripperForceLimiter):
     def __init__(
@@ -181,8 +185,7 @@ class Yam(common.Robot):
         self._command(gripper=float(np.clip(width, 0.0, 1.0)))
 
     def set_gripper_force(self, force: float, friction_compensation: float | None = None) -> None:
-        """Set the force in newtons the fingers close and hold with, <= 0 disables limiting.
-        """
+        """Set the force in newtons the fingers close and hold with, <= 0 disables limiting."""
         self._assert_gripper()
         if friction_compensation is None:
             friction_compensation = self._config.gripper_friction_compensation
@@ -273,11 +276,7 @@ class YamGripper(common.Gripper):
         return self._robot.get_gripper_width()
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
-        """Move the fingers to `width`, 0 is closed and 1 is open.
-
-        `force` is in newtons and 0 keeps the force the arm is configured with (default at the start is 50N).
-        The i2rt limiter is state on the motor chain rather than part of a single
-        command, so a force passed here stays in effect until the next one.
+        """Move the fingers to `width`, 0 is closed and 1 is open, force in newtons.
         """
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
@@ -285,7 +284,9 @@ class YamGripper(common.Gripper):
         if force < 0:
             msg = f"Force must be positive, got {force}. Turn limiting off with `Yam.set_gripper_force`."
             raise ValueError(msg)
-        if force > 0:
+        if force == 0:
+            self._robot.set_gripper_force(I2RT_DEFAULT_GRIPPER_FORCE)
+        else:
             self._robot.set_gripper_force(force)
         self._robot.set_gripper_width(width)
 
@@ -293,10 +294,14 @@ class YamGripper(common.Gripper):
         self.set_normalized_width(1.0)
 
     def grasp(self) -> None:
+        """Close the fingers at the force the arm is configured with."""
+        force = self._robot.get_config().gripper_force
+        self._robot.set_gripper_force(I2RT_DEFAULT_GRIPPER_FORCE if force is None else force)
         self.set_normalized_width(0.0)
 
     def shut(self) -> None:
-        self.set_normalized_width(0.0)
+        """Close the fingers without gripping."""
+        self.set_normalized_width(0.0, force=SHUT_FORCE)
 
     def reset(self) -> None:
         self.open()
