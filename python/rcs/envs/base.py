@@ -219,7 +219,11 @@ class HardwareEnv(BaseEnv):
                 None disables rate limiting.
         """
         super().__init__()
-        assert frequency is not None and frequency > 0, "frequency must be set to a positive value"
+        if frequency is None:
+            _logger.warning(
+                "No control frequency set: steps are not rate limited and may command the robot "
+                "faster than it can handle, which can damage the hardware."
+            )
         self.frame_rate = SimpleFrameRate(frequency, "Hardware Loop")
 
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
@@ -350,7 +354,6 @@ class RobotWrapper(ActObsInfoWrapper):
         self.joints_key = get_space_keys(JointsDictType)[0]
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquat_key = get_space_keys(TQuatDictType)[0]
-        self.prev_action: dict | None = None
 
     def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
         """Returns the unwrapped control mode at a certain index. 0 is the base control mode, -1 the last."""
@@ -395,29 +398,17 @@ class RobotWrapper(ActObsInfoWrapper):
         ):
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
-        last_action = self.prev_action
-        self.prev_action = copy.deepcopy(action)
-
         # shallow copy
         action = dict(action)
-        if self.get_base_control_mode() == ControlMode.JOINTS and (
-            last_action is None
-            or not np.allclose(action[self.joints_key], last_action[self.joints_key], atol=1e-03, rtol=0)
-        ):
+        if self.get_base_control_mode() == ControlMode.JOINTS:
             self.robot.set_joint_position(action[self.joints_key])
             action.pop(self.joints_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
-            last_action is None
-            or not np.allclose(action[self.trpy_key], last_action[self.trpy_key], atol=1e-03, rtol=0)
-        ):
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY:
             self.robot.set_cartesian_position(
                 common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
             )
             action.pop(self.trpy_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat and (
-            last_action is None
-            or not np.allclose(action[self.tquat_key], last_action[self.tquat_key], atol=1e-03, rtol=0)
-        ):
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat:
             self.robot.set_cartesian_position(
                 common.Pose(translation=action[self.tquat_key][:3], quaternion=action[self.tquat_key][3:])
             )
@@ -432,7 +423,6 @@ class RobotWrapper(ActObsInfoWrapper):
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        self.prev_action = None
         self.robot.reset()
         if self.home_on_reset:
             exception = True

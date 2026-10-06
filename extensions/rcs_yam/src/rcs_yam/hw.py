@@ -10,9 +10,39 @@ import time
 import typing
 
 import numpy as np
+from i2rt.robots.get_robot import get_yam_robot
+from i2rt.robots.utils import ArmType, GripperForceLimiter, GripperType
 from rcs.common_typing import RobotConfigKwargs
 
 from rcs import common
+
+# Torque in Nm i2rt feeds forward to break the stiction of the gripper screw (utils.py:648). It
+# adds no grip force, but a cap below it leaves the fingers unable to move at all.
+I2RT_FRICTION_COMPENSATION = 0.3
+
+I2RT_DEFAULT_GRIPPER_FORCE = 50.0
+
+SHUT_FORCE = 1.0
+
+GRASP_WIDTH_TOLERANCE = 0.02
+GRASP_EFFORT_THRESHOLD = 0.5
+
+
+class YamGripperForceLimiter(GripperForceLimiter):
+    def __init__(
+        self,
+        *args: typing.Any,
+        friction_compensation: float = I2RT_FRICTION_COMPENSATION,
+        **kwargs: typing.Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self.friction_compensation = friction_compensation
+
+    def update(self, gripper_state: dict[str, float]) -> float:  # type: ignore[override]
+        cap = float(self.gripper_force_torque_map(current_angle=gripper_state["current_qpos"]))
+        slack = (cap + self.friction_compensation) / self._kp
+        measured = gripper_state["current_qpos"]
+        return float(np.clip(gripper_state["target_qpos"], measured - slack, measured + slack))
 
 
 class YamConfig(common.RobotConfig):
@@ -33,6 +63,8 @@ class YamConfig(common.RobotConfig):
         max_joint_velocity: float = 0.5,
         move_home_duration: float = 2.0,
         gripper_limits_override: np.ndarray | None = None,
+        gripper_force: float | None = None,
+        gripper_friction_compensation: float = I2RT_FRICTION_COMPENSATION,
         **kwargs: typing.Unpack[RobotConfigKwargs],
     ):
         super().__init__(**kwargs)
@@ -56,6 +88,12 @@ class YamConfig(common.RobotConfig):
         self.move_home_duration = move_home_duration
         # If set, skips the calibration run that would otherwise drive the fingers to both stops.
         self.gripper_limits_override = gripper_limits_override
+        # Force in newtons the fingers close and hold with. None keeps the i2rt default of 50 N, a
+        # value <= 0 disables limiting and the gripper squeezes at full kp.
+        self.gripper_force = gripper_force
+        # To measure it for an arm, command a close at a negligible `gripper_force` and raise this
+        # until the fingers just start to move.
+        self.gripper_friction_compensation = gripper_friction_compensation
 
 
 class Yam(common.Robot):
@@ -65,21 +103,22 @@ class Yam(common.Robot):
 
     def __init__(self, cfg: YamConfig, ik: common.Kinematics):
         super().__init__()
-        from i2rt.robots.get_robot import get_yam_robot
-        from i2rt.robots.utils import ArmType, GripperType
-
         self._closed = True
         self.ik = ik
         self._config = cfg
         self._dof = int(cfg.dof)
+        self._arm_type = ArmType.from_string_name(cfg.arm_type_id)
+        self._gripper_type = GripperType.from_string_name(cfg.gripper_type_id)
         self._robot = get_yam_robot(
             channel=cfg.channel,
-            arm_type=ArmType.from_string_name(cfg.arm_type_id),
-            gripper_type=GripperType.from_string_name(cfg.gripper_type_id),
+            arm_type=self._arm_type,
+            gripper_type=self._gripper_type,
             gripper_limits_override=cfg.gripper_limits_override,
         )
         self._closed = False
         self._has_gripper = self._robot.num_dofs() > self._dof
+        if cfg.gripper_force is not None:
+            self.set_gripper_force(cfg.gripper_force)
         self._lock = threading.Lock()
         # Seeding the target from the measured state avoids a jump on the first partial command.
         self._target = np.asarray(self._robot.get_joint_pos(), dtype=np.float64).copy()
@@ -120,6 +159,17 @@ class Yam(common.Robot):
         self._assert_gripper()
         return float(np.asarray(self._robot.get_joint_pos(), dtype=np.float64)[self._dof])
 
+    def get_gripper_effort(self) -> float:
+        """Torque in Nm the gripper motor currently applies, useful to watch a grasp stall."""
+        self._assert_gripper()
+        return float(self._robot.get_observations()["gripper_eff"][0])
+
+    def get_commanded_gripper_width(self) -> float:
+        """Normalized width the fingers are travelling towards, as last written to the target."""
+        self._assert_gripper()
+        with self._lock:
+            return float(self._target[self._dof])
+
     def get_cartesian_position(self) -> common.Pose:
         # `Kinematics.forward` applies the inverse of the offset it is handed, so the TCP is composed
         # here instead, to match the pose `SimRobot::get_cartesian_position` reports in simulation.
@@ -142,6 +192,24 @@ class Yam(common.Robot):
     def set_gripper_width(self, width: float) -> None:
         self._assert_gripper()
         self._command(gripper=float(np.clip(width, 0.0, 1.0)))
+
+    def set_gripper_force(self, force: float, friction_compensation: float | None = None) -> None:
+        """Set the force in newtons the fingers close and hold with, <= 0 disables limiting."""
+        self._assert_gripper()
+        if friction_compensation is None:
+            friction_compensation = self._config.gripper_friction_compensation
+        if force > 0:
+            gripper_index = self._robot._gripper_index
+            self._robot._gripper_force_limiter = YamGripperForceLimiter(
+                max_force=force,
+                gripper_type=self._gripper_type,
+                arm_type=self._arm_type,
+                kp=float(self._robot._kp[gripper_index]),
+                friction_compensation=friction_compensation,
+            )
+        self._robot._limit_gripper_force = force
+        self._config.gripper_force = force
+        self._config.gripper_friction_compensation = friction_compensation
 
     def move_home(self) -> None:
         if self._config.q_home is None:
@@ -209,27 +277,50 @@ class YamGripper(common.Gripper):
         super().__init__()
         self._cfg = cfg
         self._robot = robot
+        self._state = common.GripperState()
 
     def get_config(self) -> common.GripperConfig:
         return self._cfg
+
+    def get_state(self) -> common.GripperState:
+        return self._state
+
+    def is_grasped(self) -> bool:
+        """True while an object holds the fingers short of the width they are closing to."""
+        short_of_target = self.get_normalized_width() - self._robot.get_commanded_gripper_width()
+        if short_of_target <= GRASP_WIDTH_TOLERANCE:
+            return False
+        return abs(self._robot.get_gripper_effort()) > GRASP_EFFORT_THRESHOLD
 
     def get_normalized_width(self) -> float:
         return self._robot.get_gripper_width()
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
+        """Move the fingers to `width`, 0 is closed and 1 is open, force in newtons."""
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
+        if force < 0:
+            msg = f"Force must be positive, got {force}. Turn limiting off with `Yam.set_gripper_force`."
+            raise ValueError(msg)
+        if force == 0:
+            self._robot.set_gripper_force(I2RT_DEFAULT_GRIPPER_FORCE)
+        else:
+            self._robot.set_gripper_force(force)
         self._robot.set_gripper_width(width)
 
     def open(self) -> None:
         self.set_normalized_width(1.0)
 
     def grasp(self) -> None:
+        """Close the fingers at the force the arm is configured with."""
+        force = self._robot.get_config().gripper_force
+        self._robot.set_gripper_force(I2RT_DEFAULT_GRIPPER_FORCE if force is None else force)
         self.set_normalized_width(0.0)
 
     def shut(self) -> None:
-        self.set_normalized_width(0.0)
+        """Close the fingers without gripping."""
+        self.set_normalized_width(0.0, force=SHUT_FORCE)
 
     def reset(self) -> None:
         self.open()

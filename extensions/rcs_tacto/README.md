@@ -7,13 +7,9 @@ Documentation: <https://robotcontrolstack.org/extensions/rcs_tacto>
 
 ## Installation
 
-Install from PyPI:
-
-```shell
-pip install rcs-tacto
-```
-
-Warning: plain `pip install rcs-tacto` will install the published `rcs-core` dependency from PyPI.
+`mujoco-tacto` is not published on PyPI, so it is pinned as a direct git reference in
+`pyproject.toml`. As a consequence this extension is installable from a checkout but cannot be
+published to PyPI, and it is not part of the wheel build workflow.
 
 Install from a local checkout:
 

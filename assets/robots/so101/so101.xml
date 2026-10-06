@@ -82,7 +82,7 @@
                     <!-- Link upper_arm -->
                     <body name="upper_arm" pos="-0.0303992 -0.0182778 -0.0542" quat="0.5 -0.5 -0.5 -0.5">
                         <!-- Joint from shoulder to upper_arm -->
-                        <joint axis="0 0 1" name="2" type="hinge" range="-1.7453292519943269 1.7453292519943322" class="sts3215" />
+                        <joint axis="0 0 1" name="2" type="hinge" range="-1.9198621771937634 1.9198621771937634" class="sts3215" />
                         <inertial pos="-0.0898471 -0.00838224 0.0184089" mass="0.103" fullinertia="4.08002e-05 0.000147318 0.000142487 -1.97819e-05 -4.03016e-08 8.97326e-09" />
                         <!-- Part sts3215_03a_v1_3 -->
                         <geom type="mesh" class="visual" pos="-0.11257 -0.0155 0.0187" quat="4.31775e-16 -0.707107 0.707107 -2.94392e-16" mesh="sts3215_03a_v1" material="sts3215_03a_v1_material" />
@@ -147,7 +147,7 @@
     </worldbody>
     <actuator>
         <position class="sts3215" name="1" joint="1" forcerange="-3.35 3.35" ctrlrange="-1.91986 1.91986"/>
-        <position class="sts3215" name="2" joint="2" forcerange="-3.35 3.35" ctrlrange="-1.74533 1.74533"/>
+        <position class="sts3215" name="2" joint="2" forcerange="-3.35 3.35" ctrlrange="-1.91986 1.91986"/>
         <position class="sts3215" name="3" joint="3" forcerange="-3.35 3.35" ctrlrange="-1.69 1.69"/>
         <position class="sts3215" name="4" joint="4" forcerange="-3.35 3.35" ctrlrange="-1.65806 1.65806"/>
         <position class="sts3215" name="5" joint="5" forcerange="-3.35 3.35" ctrlrange="-2.74385 2.84121"/>

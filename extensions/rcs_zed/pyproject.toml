@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_zed"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS ZED camera module"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 dependencies = [
-  "rcs-core>=0.7.2",
+  "rcs-core>=0.7.3",
   "opencv-python~=4.10.0",
   "typer~=0.9",
 ]
