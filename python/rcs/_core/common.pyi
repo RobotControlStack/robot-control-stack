@@ -109,6 +109,7 @@ class GripperState:
 
 class GripperType:
     FrankaHand: typing.ClassVar[GripperType]  # value = <GripperType: FrankaHand>
+    PandaHand: typing.ClassVar[GripperType]  # value = <GripperType: PandaHand>
     Robotiq2F85: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85>
     Robotiq2F85Digit: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85Digit>
     SO101: typing.ClassVar[GripperType]  # value = <GripperType: SO101>

@@ -84,12 +84,14 @@ struct GripperType : public TypeBase<GripperType> {
   using TypeBase::TypeBase;
 
   static const GripperType FrankaHand;
+  static const GripperType PandaHand;
   static const GripperType Robotiq2F85;
   static const GripperType Robotiq2F85Digit;
   static const GripperType SO101;
   static const GripperType Yam;
 };
 inline const GripperType GripperType::FrankaHand{"FrankaHand"};
+inline const GripperType GripperType::PandaHand{"PandaHand"};
 inline const GripperType GripperType::Robotiq2F85{"Robotiq2F85"};
 inline const GripperType GripperType::Robotiq2F85Digit{"Robotiq2F85Digit"};
 inline const GripperType GripperType::SO101{"SO101"};

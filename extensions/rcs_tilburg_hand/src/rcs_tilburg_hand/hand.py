@@ -24,6 +24,7 @@ class THConfig(common.HandConfig):
         control_unit: Unit = Unit.NORMALIZED,
         hand_orientation: str = "right",
         grasp_type: common.GraspType = common.GraspType.POWER_GRASP,
+        verbose: bool = False,
     ) -> None:
         super().__init__(hand_type=common.HandType.TilburgHand)
         self.calibration_file = calibration_file
@@ -31,6 +32,7 @@ class THConfig(common.HandConfig):
         self.control_unit = control_unit
         self.hand_orientation = hand_orientation
         self.grasp_type = grasp_type
+        self.verbose = verbose
 
 
 class TilburgHandState(common.HandState):

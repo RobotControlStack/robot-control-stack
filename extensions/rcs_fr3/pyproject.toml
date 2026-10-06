@@ -16,13 +16,16 @@ build-backend = "scikit_build_core.build"
 name = "rcs_fr3"
 version = "0.7.3"
 description = "RCS libfranka integration"
-dependencies = ["rcs-core>=0.7.3", "rcs-tilburg-hand>=0.7.2", "frankik"]
+dependencies = ["rcs-core>=0.7.3", "frankik"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
 
+
+[project.entry-points."rcs.grippers"]
+FrankaHand = "rcs_fr3.creators:create_franka_gripper"
 
 [dependency-groups]
 build_deps = [

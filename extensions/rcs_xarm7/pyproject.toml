@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "rcs_xarm7"
 version = "0.7.3"
 description = "RCS xArm7 module"
-dependencies = ["rcs-core>=0.7.3", "rcs-tilburg-hand>=0.7.2", "xarm-python-sdk==1.17.0"]
+dependencies = ["rcs-core>=0.7.3", "xarm-python-sdk==1.17.0"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 maintainers = [

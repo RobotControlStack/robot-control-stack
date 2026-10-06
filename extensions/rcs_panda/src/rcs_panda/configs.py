@@ -29,6 +29,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
         robot_cfg.async_control = False
 
         gripper_cfg = hw.FHConfig(ip=self.ip)
+        gripper_cfg.gripper_type = common.GripperType.PandaHand
         gripper_cfg.epsilon_inner = gripper_cfg.epsilon_outer = 0.1
         gripper_cfg.speed = 0.1
         gripper_cfg.force = 30
