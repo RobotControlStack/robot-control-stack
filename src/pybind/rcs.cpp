@@ -442,8 +442,10 @@ PYBIND11_MODULE(_core, m) {
   bind_type_class<rcs::common::GripperType>(common, "GripperType")
       .def_readonly_static("FrankaHand", &rcs::common::GripperType::FrankaHand)
       .def_readonly_static("PandaHand", &rcs::common::GripperType::PandaHand)
-      .def_readonly_static("Robotiq2F85", &rcs::common::GripperType::Robotiq2F85)
-      .def_readonly_static("Robotiq2F85Digit", &rcs::common::GripperType::Robotiq2F85Digit)
+      .def_readonly_static("Robotiq2F85",
+                           &rcs::common::GripperType::Robotiq2F85)
+      .def_readonly_static("Robotiq2F85Digit",
+                           &rcs::common::GripperType::Robotiq2F85Digit)
       .def_readonly_static("SO101", &rcs::common::GripperType::SO101)
       .def_readonly_static("Yam", &rcs::common::GripperType::Yam);
 
