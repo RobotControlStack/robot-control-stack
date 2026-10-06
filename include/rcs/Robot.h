@@ -93,7 +93,15 @@ enum GraspType {
   LATERAL_GRASP,
   TRIPOD_GRASP
 };
+struct HandType : public TypeBase<HandType> {
+  using TypeBase::TypeBase;
+
+  static const HandType TilburgHand;
+};
+inline const HandType HandType::TilburgHand{"TilburgHand"};
+
 struct HandConfig {
+  HandType hand_type = HandType::TilburgHand;
   virtual ~HandConfig() {};
 };
 struct HandState {

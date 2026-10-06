@@ -5,7 +5,7 @@ from os import PathLike
 from pathlib import Path
 
 import gymnasium as gym
-from rcs._core.common import BaseCameraConfig
+from rcs._core.common import BaseCameraConfig, Hand, HandConfig
 from rcs.camera.hw import CalibrationStrategy, HardwareCamera, HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -25,6 +25,18 @@ import rcs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def _create_tilburg_hand(cfg: HandConfig) -> Hand:
+    if not isinstance(cfg, THConfig):
+        msg = f"Expected THConfig for tilburg hand, got {type(cfg).__name__}"
+        raise TypeError(msg)
+    return TilburgHand(cfg=cfg, verbose=True)
+
+
+HARDWARE_HAND_CREATORS: dict[str, typing.Callable[[HandConfig], Hand]] = {
+    rcs.common.HandType.TilburgHand.id: _create_tilburg_hand,
+}
 
 
 @dataclass(kw_only=True)
@@ -87,7 +99,7 @@ class XArm7HardwareEnvCreatorConfig:
     control_mode: ControlMode
     calibration_dir: PathLike | str | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
-    hand_cfg: THConfig | None = None
+    hand_cfg: HandConfig | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     frequency: float | None = None
@@ -116,7 +128,11 @@ class RCSXArm7ConfigEnvCreator(RCSEnvCreator[XArm7HardwareEnvCreatorConfig]):
             logger.info("CameraSet started")
             env = CameraSetWrapper(env, camera_set, include_depth=True)
         if cfg.hand_cfg is not None:
-            hand = TilburgHand(cfg=cfg.hand_cfg, verbose=True)
+            hand_type_id = cfg.hand_cfg.hand_type.id
+            if hand_type_id not in HARDWARE_HAND_CREATORS:
+                msg = f"Unknown hardware hand type id: {hand_type_id}"
+                raise ValueError(msg)
+            hand = HARDWARE_HAND_CREATORS[hand_type_id](cfg.hand_cfg)
             env = HandWrapper(env, hand, cfg.wrapper_cfg.binary_gripper)
 
         if cfg.relative_to != RelativeTo.NONE:

@@ -455,7 +455,18 @@ PYBIND11_MODULE(_core, m) {
       .value("LATERAL_GRASP", rcs::common::GraspType::LATERAL_GRASP)
       .value("TRIPOD_GRASP", rcs::common::GraspType::TRIPOD_GRASP)
       .export_values();
-  py::class_<rcs::common::HandConfig>(common, "HandConfig").def(py::init<>());
+  bind_type_class<rcs::common::HandType>(common, "HandType")
+      .def_readonly_static("TilburgHand", &rcs::common::HandType::TilburgHand);
+
+  rcs::common::HandConfig default_hand_config;
+  py::class_<rcs::common::HandConfig>(common, "HandConfig")
+      .def(py::init([](rcs::common::HandType hand_type) {
+             rcs::common::HandConfig config;
+             config.hand_type = hand_type;
+             return config;
+           }),
+           py::arg("hand_type") = default_hand_config.hand_type)
+      .def_readwrite("hand_type", &rcs::common::HandConfig::hand_type);
   py::class_<rcs::common::HandState>(common, "HandState").def(py::init<>());
 
   // holder type should be smart pointer as we deal with smart pointer

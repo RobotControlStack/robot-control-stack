@@ -4,7 +4,15 @@ from dataclasses import dataclass, field
 
 import gymnasium as gym
 import numpy as np
-from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig, Kinematics, Pose
+from rcs._core.common import (
+    BaseCameraConfig,
+    Gripper,
+    GripperConfig,
+    Hand,
+    HandConfig,
+    Kinematics,
+    Pose,
+)
 from rcs.camera.hw import (
     CalibrationStrategy,
     DummyCalibrationStrategy,
@@ -154,11 +162,24 @@ HARDWARE_GRIPPER_CREATORS: dict[str, typing.Callable[[GripperConfig], Gripper]] 
 }
 
 
+def _create_tilburg_hand(cfg: HandConfig) -> Hand:
+    if not isinstance(cfg, THConfig):
+        msg = f"Expected THConfig for tilburg hand, got {type(cfg).__name__}"
+        raise TypeError(msg)
+    return TilburgHand(cfg)
+
+
+HARDWARE_HAND_CREATORS: dict[str, typing.Callable[[HandConfig], Hand]] = {
+    rcs.common.HandType.TilburgHand.id: _create_tilburg_hand,
+}
+
+
 @dataclass(kw_only=True)
 class FR3HardwareEnvCreatorConfig:
     robot_cfg: hw.FR3Config
     control_mode: ControlMode
-    gripper_cfg: GripperConfig | THConfig | None = None
+    gripper_cfg: GripperConfig | None = None
+    hand_cfg: HandConfig | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
@@ -171,7 +192,8 @@ class FR3HardwareEnvCreatorConfig:
 class FR3MultiHardwareEnvCreatorConfig:
     robot_cfgs: dict[str, hw.FR3Config]
     control_mode: ControlMode
-    gripper_cfgs: dict[str, GripperConfig | THConfig | None] | None = None
+    gripper_cfgs: dict[str, GripperConfig | None] | None = None
+    hand_cfgs: dict[str, HandConfig | None] | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
@@ -193,8 +215,12 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
         env = FR3HW(env)
-        if isinstance(cfg.gripper_cfg, THConfig):
-            hand = TilburgHand(cfg.gripper_cfg)
+        if cfg.hand_cfg is not None:
+            hand_type_id = cfg.hand_cfg.hand_type.id
+            if hand_type_id not in HARDWARE_HAND_CREATORS:
+                msg = f"Unknown hardware hand type id: {hand_type_id}"
+                raise ValueError(msg)
+            hand = HARDWARE_HAND_CREATORS[hand_type_id](cfg.hand_cfg)
             env = HandWrapper(env, hand, binary=cfg.wrapper_cfg.binary_gripper)
         elif cfg.gripper_cfg is not None:
             gripper_type_id = cfg.gripper_cfg.gripper_type.id
@@ -231,6 +257,7 @@ class RCSFR3MultiConfigEnvCreator(RCSEnvCreator[FR3MultiHardwareEnvCreatorConfig
                     robot_cfg=robot_cfg,
                     control_mode=cfg.control_mode,
                     gripper_cfg=cfg.gripper_cfgs[robot_name] if cfg.gripper_cfgs is not None else None,
+                    hand_cfg=cfg.hand_cfgs[robot_name] if cfg.hand_cfgs is not None else None,
                     camera_cfgs=None,
                     max_relative_movement=cfg.max_relative_movement,
                     relative_to=cfg.relative_to,
