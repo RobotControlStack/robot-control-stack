@@ -12,7 +12,7 @@ import numpy as np
 import requests
 from rcs._core import __version__, common
 
-from rcs import camera, envs, hand, sim
+from rcs import camera, envs, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
 REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
@@ -303,7 +303,6 @@ __all__ = [
     "sim",
     "camera",
     "envs",
-    "hand",
     "ROBOTS",
     "GRIPPER_PATHS",
     "SCENE_PATHS",

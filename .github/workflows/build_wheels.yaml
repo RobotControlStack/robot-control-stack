@@ -85,6 +85,7 @@ jobs:
           - rcs_digit
           - rcs_realsense
           - rcs_robotiq2f85
+          - rcs_tilburg_hand
           - rcs_ur5e
           - rcs_usb_cam
           - rcs_xarm7

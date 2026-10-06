@@ -4,8 +4,6 @@ from dataclasses import dataclass, field
 
 import gymnasium as gym
 import numpy as np
-import rcs.hand.tilburg_hand
-from frankik import FrankaKinematics
 from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig, Kinematics, Pose
 from rcs.camera.hw import (
     CalibrationStrategy,
@@ -27,11 +25,12 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
-from rcs.hand.tilburg_hand import TilburgHand
 from rcs_fr3._core import hw
 from rcs_fr3.envs import FR3HW
+from rcs_tilburg_hand.hand import THConfig, TilburgHand
 
 import rcs
+from frankik import FrankaKinematics
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -159,7 +158,7 @@ HARDWARE_GRIPPER_CREATORS: dict[str, typing.Callable[[GripperConfig], Gripper]] 
 class FR3HardwareEnvCreatorConfig:
     robot_cfg: hw.FR3Config
     control_mode: ControlMode
-    gripper_cfg: GripperConfig | rcs.hand.tilburg_hand.THConfig | None = None
+    gripper_cfg: GripperConfig | THConfig | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
@@ -172,7 +171,7 @@ class FR3HardwareEnvCreatorConfig:
 class FR3MultiHardwareEnvCreatorConfig:
     robot_cfgs: dict[str, hw.FR3Config]
     control_mode: ControlMode
-    gripper_cfgs: dict[str, GripperConfig | rcs.hand.tilburg_hand.THConfig | None] | None = None
+    gripper_cfgs: dict[str, GripperConfig | THConfig | None] | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
@@ -194,7 +193,7 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
         env = FR3HW(env)
-        if isinstance(cfg.gripper_cfg, rcs.hand.tilburg_hand.THConfig):
+        if isinstance(cfg.gripper_cfg, THConfig):
             hand = TilburgHand(cfg.gripper_cfg)
             env = HandWrapper(env, hand, binary=cfg.wrapper_cfg.binary_gripper)
         elif cfg.gripper_cfg is not None:

@@ -88,6 +88,7 @@ jobs:
           # Python extensions
           - rcs_xarm7
           - rcs_digit
+          - rcs_tilburg_hand
           - rcs_realsense
           - rcs_robotiq2f85
           - rcs_tacto

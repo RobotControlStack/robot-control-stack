@@ -43,6 +43,7 @@ RCS comes with several supported extensions:
 - **rcs_realsense**: Support for Intel RealSense cameras.
 - **rcs_usb_cam**: Support for generic USB webcams.
 - **rcs_digit**: Support for DIGIT tactile sensors.
+- **rcs_tilburg_hand**: Support for the Tilburg Hand (hardware; the simulated hand is in `rcs-core`).
 - **rcs_tacto**: Integration with the Tacto tactile sensor simulator.
 - **rcs_robotiq2f85**: Integration with the Robotiq 2F-85 Gripper.
 

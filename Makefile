@@ -5,7 +5,7 @@ WHEELHOUSE = wheelhouse
 CORE_WHEELHOUSE = ${WHEELHOUSE}/core
 PY_EXT_WHEELHOUSE = ${WHEELHOUSE}/py_extensions
 CPP_EXT_WHEELHOUSE = ${WHEELHOUSE}/cpp_extensions
-PY_EXTENSIONS ?= rcs_digit rcs_realsense rcs_robotiq2f85 rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_zed
+PY_EXTENSIONS ?= rcs_digit rcs_realsense rcs_robotiq2f85 rcs_tilburg_hand rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_zed
 CPP_EXTENSIONS ?= rcs_fr3 rcs_panda rcs_so101
 # set to pypi to publish to the real index
 PYPI_REPOSITORY ?= testpypi
