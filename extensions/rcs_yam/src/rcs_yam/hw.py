@@ -24,6 +24,9 @@ I2RT_DEFAULT_GRIPPER_FORCE = 50.0
 
 SHUT_FORCE = 1.0
 
+GRASP_WIDTH_TOLERANCE = 0.02
+GRASP_EFFORT_THRESHOLD = 0.5
+
 
 class YamGripperForceLimiter(GripperForceLimiter):
     def __init__(
@@ -161,6 +164,12 @@ class Yam(common.Robot):
         self._assert_gripper()
         return float(self._robot.get_observations()["gripper_eff"][0])
 
+    def get_commanded_gripper_width(self) -> float:
+        """Normalized width the fingers are travelling towards, as last written to the target."""
+        self._assert_gripper()
+        with self._lock:
+            return float(self._target[self._dof])
+
     def get_cartesian_position(self) -> common.Pose:
         # `Kinematics.forward` applies the inverse of the offset it is handed, so the TCP is composed
         # here instead, to match the pose `SimRobot::get_cartesian_position` reports in simulation.
@@ -268,16 +277,26 @@ class YamGripper(common.Gripper):
         super().__init__()
         self._cfg = cfg
         self._robot = robot
+        self._state = common.GripperState()
 
     def get_config(self) -> common.GripperConfig:
         return self._cfg
+
+    def get_state(self) -> common.GripperState:
+        return self._state
+
+    def is_grasped(self) -> bool:
+        """True while an object holds the fingers short of the width they are closing to."""
+        short_of_target = self.get_normalized_width() - self._robot.get_commanded_gripper_width()
+        if short_of_target <= GRASP_WIDTH_TOLERANCE:
+            return False
+        return abs(self._robot.get_gripper_effort()) > GRASP_EFFORT_THRESHOLD
 
     def get_normalized_width(self) -> float:
         return self._robot.get_gripper_width()
 
     def set_normalized_width(self, width: float, force: float = 0) -> None:
-        """Move the fingers to `width`, 0 is closed and 1 is open, force in newtons.
-        """
+        """Move the fingers to `width`, 0 is closed and 1 is open, force in newtons."""
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
