@@ -15,7 +15,7 @@ import numpy as np
 import requests
 from rcs._core import __version__, common
 
-from rcs import camera, envs, hand, sim
+from rcs import camera, envs, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
 # written into the assets directory after a complete download, holds the version the assets belong to
@@ -408,7 +408,6 @@ __all__ = [
     "sim",
     "camera",
     "envs",
-    "hand",
     "ROBOTS",
     "GRIPPER_PATHS",
     "SCENE_PATHS",

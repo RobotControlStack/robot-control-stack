@@ -18,7 +18,7 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
-from rcs.hand.tilburg_hand import THConfig, TilburgHand
+from rcs_tilburg_hand.hand import THConfig, TilburgHand
 from rcs_xarm7.hw import XArm7, XArm7Config
 
 import rcs

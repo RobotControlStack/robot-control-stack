@@ -29,7 +29,6 @@ dependencies = [
   "pillow>=10.3",
   "python-dotenv>=1.0.1",
   "opencv-python~=4.10.0.84",
-  "tilburg-hand",
   "pyopengl>=3.1.9",
   "ompl>=1.7.0; sys_platform == 'linux'",
   "rpyc~=6.0.2",
@@ -198,12 +197,14 @@ version_files = [
   "extensions/rcs_fr3/src/rcs_fr3/_core/__init__.pyi:__version__",
   "extensions/rcs_fr3/pyproject.toml:version",
   "extensions/rcs_fr3/pyproject.toml:\"rcs-core>=(.*)\"",
+  "extensions/rcs_fr3/pyproject.toml:\"rcs-tilburg-hand>=(.*)\"",
 
   # --- Panda Extension ---
   "extensions/rcs_panda/CMakeLists.txt:VERSION",
   "extensions/rcs_panda/src/rcs_panda/_core/__init__.pyi:__version__",
   "extensions/rcs_panda/pyproject.toml:version",
   "extensions/rcs_panda/pyproject.toml:\"rcs-core>=(.*)\"",
+  "extensions/rcs_panda/pyproject.toml:\"rcs-tilburg-hand>=(.*)\"",
 
   # --- SO101 ---
   "extensions/rcs_so101/CMakeLists.txt:VERSION",
@@ -223,6 +224,11 @@ version_files = [
   "extensions/rcs_xarm7/pyproject.toml:version",
   "extensions/rcs_xarm7/src/rcs_xarm7/__init__.py:__version__",
   "extensions/rcs_xarm7/pyproject.toml:\"rcs-core>=(.*)\"",
+  "extensions/rcs_xarm7/pyproject.toml:\"rcs-tilburg-hand>=(.*)\"",
+
+  "extensions/rcs_tilburg_hand/pyproject.toml:version",
+  "extensions/rcs_tilburg_hand/src/rcs_tilburg_hand/__init__.py:__version__",
+  "extensions/rcs_tilburg_hand/pyproject.toml:\"rcs-core>=(.*)\"",
 
   "extensions/rcs_ur5e/pyproject.toml:version",
   "extensions/rcs_ur5e/src/rcs_ur5e/__init__.py:__version__",
