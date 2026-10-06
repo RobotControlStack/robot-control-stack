@@ -234,8 +234,9 @@ GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
     common.GripperType("Robotiq2F85"): common.Pose(
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
-    # The Grav bolts directly onto the Rizon flange, its fingers open along the flange y axis.
-    common.GripperType("FlexivGrav"): common.Pose(),
+    common.GripperType("FlexivGrav"): common.Pose(
+        translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 1.0, 0.0])
+    ),
 }
 
 SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.xml"}
@@ -245,6 +246,8 @@ OBJECT_PATHS: dict[str, str] = {
     "fr3_single_mount": "assets/objects/fr3_single_mount/fr3_single_mount.xml",
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
     "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
+    "rizon_grav_d405_plate_mount": "assets/objects/rizon_grav_d405_plate_mount/rizon_grav_d405_plate_mount.xml",
+    "rizon_d405_wrist_mount": "assets/objects/rizon_d405_wrist_mount/rizon_d405_wrist_mount.xml",
     "green_cuboid": "assets/objects/green_cuboid/green_cuboid.xml",
     "green_cube": "assets/objects/green_cube/green_cube.xml",
     "red_cube": "assets/objects/red_cube/red_cube.xml",
@@ -276,9 +279,35 @@ DEFAULT_TRANSFORMS = {
     "FR3_DUOMOUNT_RIGHT_ROBOT": common.Pose(
         translation=np.array([0.0, -0.05018, 0.0]), quaternion=np.array([0.436978, 0.0225312, 0.243326, 0.865641])
     ),
+    # Rizon 4s duo: bases 0.3 m apart in y, each tilted 45 degrees about x away from the other arm (the right arm
+    # by +45 degrees, the left one by -45 degrees, like the FR3 duo), and the shared frame lifted above the floor so
+    # that the tilted bases clear the ground plane.
+    "RIZON4S_DUO_LEFT_ROBOT": common.Pose(
+        translation=np.array([0.0, 0.15, 0.0]), rpy_vector=np.array([np.deg2rad(-45), 0.0, 0.0])
+    ),
+    "RIZON4S_DUO_RIGHT_ROBOT": common.Pose(
+        translation=np.array([0.0, -0.15, 0.0]), rpy_vector=np.array([np.deg2rad(45), 0.0, 0.0])
+    ),
+    "RIZON4S_DUO_HEIGHT_OFFSET": common.Pose(translation=np.array([0.0, 0.0, 0.3])),
     "FR3_DUOMOUNT_ZEDMINI_CAMERA": common.Pose(
         translation=np.array([0.0113, -0.0245, 0.695]),
         rpy_vector=np.array([0.0, np.pi * 41 / 180, 0.0]),
+    ),
+    # Rizon 4s D405 wrist camera (assets/objects/rizon_d405_wrist_mount): a rail screwed to the accessory pocket on
+    # the front of the wrist link carries the camera on the -x side of the gripper (facing away from the robot in the
+    # home pose), optical axis tilted 20 deg towards the fingers, image up pointing away from the gripper so that the
+    # fingers show at the bottom of the image, stereo baseline (and USB port) along flange y. Both poses are in the
+    # flange (attachment-site) frame; gripper and TCP are unaffected.
+    "RIZON_D405_WRIST_MOUNT": common.Pose(),
+    "RIZON_D405_WRIST_CAMERA": common.Pose(
+        translation=np.array([-0.065, 0.0, 0.052]), rpy_vector=np.array([np.pi / 2, -np.pi * 70 / 180, 0.0])
+    ),
+    # Alternative spacer plate variant (assets/objects/rizon_grav_d405_plate_mount) that sits between flange and
+    # Grav, so the gripper and its TCP have to move out by the plate thickness.
+    "RIZON_GRAV_D405_PLATE_MOUNT": common.Pose(),
+    "RIZON_GRAV_D405_PLATE_MOUNT_GRIPPER_OFFSET": common.Pose(translation=np.array([0.0, 0.0, 0.008])),
+    "RIZON_GRAV_D405_PLATE_MOUNT_CAMERA": common.Pose(
+        translation=np.array([-0.065, 0.0, 0.060]), rpy_vector=np.array([np.pi / 2, -np.pi * 70 / 180, 0.0])
     ),
 }
 
@@ -289,6 +318,9 @@ HOME_POSITIONS = {
     "FR3_DUO_LEFT": np.array([0.48797692, -0.57224476, -0.58536988, -2.57958827, 0.86400183, 2.0530809, -0.85965005]),
     "FR3_DUO_RIGHT": np.array([-0.48797676, -0.57224472, 0.58536959, -2.57958788, -0.86400148, 2.05308196, 0.85965057]),
     "FR3_DROID": np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
+    # IK solutions for the Rizon 4s duo with the TCP at [0.40, +-0.20, 0.10] in the shared base frame, pointing down
+    "RIZON4S_DUO_LEFT": np.array([-0.355, -0.444, 0.072, 2.063, 0.834, 0.485, -0.862]),
+    "RIZON4S_DUO_RIGHT": np.array([0.476, -0.44, 0.168, 2.35, -0.785, 0.498, 1.29]),
 }
 
 # Append RCS package prefix to all asset paths

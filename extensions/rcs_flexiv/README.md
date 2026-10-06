@@ -50,8 +50,11 @@ robot needs an RDK license. Before running RCS:
   definition, check the tool list in Elements for its name.
 - The gripper device name is listed in Flexiv Elements -> Settings -> Device, `Flexiv-GN01` for the
   Grav.
-- RCS reports poses in the robot's world frame, which coincides with the base frame unless a
-  different world frame was configured in Flexiv Elements.
+- Mounting angles and custom world frames configured in Flexiv Elements only affect the robot's own
+  gravity compensation and the frame of the poses the RDK reports. RCS computes poses from the
+  measured joints with its own model, so everything is in the base frame like in simulation. The
+  transform between the two frames is estimated at connect (`Flexiv.world_from_base`) and used
+  when commanding the robot's Cartesian controller.
 
 ## Control modes
 
@@ -170,8 +173,9 @@ env = creator.create_env(creator.config())
   of the base. Verify it fits the setup before the first `reset`.
 - Lowering the stiffness makes the arm sag under payload and follow targets less accurately.
   Changing the damping ratio away from the default can cause instabilities, as the RDK documents.
-- The Grav GN-01 with 48 V supply does not initialize on power-on, set `manual_init=True` in
-  `FlexivGripperConfig` to trigger it. The fingers move to both stops during initialization.
+- The Grav GN-01 with 48 V supply does not initialize on power-on and ignores commands until it has
+  been initialized. `FlexivGripperConfig(manual_init=True)`, the default of the env creators, triggers
+  the initialization on startup, during which the fingers move to both stops.
 
 ## Simulation
 

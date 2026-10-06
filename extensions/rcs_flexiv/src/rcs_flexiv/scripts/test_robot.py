@@ -47,8 +47,8 @@ def main() -> None:
     robot = Flexiv(robot_config, ik)
 
     print(f"Joint positions: {robot.get_joint_position()}")
-    print(f"Flange pose (robot): {robot.get_cartesian_flange_position()}")
-    print(f"Flange pose (rcs model): {ik.forward(robot.get_joint_position(), common.Pose())}")
+    print(f"Flange pose in the base frame: {robot.get_cartesian_flange_position()}")
+    print(f"Robot world frame relative to the base frame: {robot.world_from_base}")
     print(f"Nominal joint stiffness: {robot.nominal_joint_stiffness}")
     print(f"Nominal cartesian stiffness: {robot.nominal_cartesian_stiffness}")
 
@@ -96,8 +96,14 @@ def main() -> None:
     robot.set_config(cfg)
 
     if gripper_device is not None:
+        answer = input(
+            "Trigger the gripper initialization (needed for the 48 V Grav, fingers move to both stops)? [y/N] "
+        )
+        manual_init = answer.strip().lower() in ("y", "yes")
         input("Press Enter to cycle the gripper...")
-        gripper = FlexivGripper(FlexivGripperConfig(device_name=gripper_device, async_control=False), robot)
+        gripper = FlexivGripper(
+            FlexivGripperConfig(device_name=gripper_device, manual_init=manual_init, async_control=False), robot
+        )
         for width in (0.0, 1.0):
             gripper.set_normalized_width(width)
             print(f"commanded {width:.1f}, measured {gripper.get_normalized_width():.3f}")

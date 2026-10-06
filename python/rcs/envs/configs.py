@@ -660,11 +660,107 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         gripper_cfg.collision_geoms = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
         gripper_cfg.collision_geoms_fingers = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
 
-        cfg.camera_cfgs = None
-        cfg.camera_adds = None
-        cfg.gripper_offsets = None
+        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[GripperType("FlexivGrav")]}
+        # D405 wrist camera on a bracket clamped to the wrist link, see assets/objects/rizon_d405_wrist_mount
+        cfg.robot_frame_objects = {
+            lead_robot_name: {
+                "d405_mount": (
+                    OBJECT_PATHS["rizon_d405_wrist_mount"],
+                    DEFAULT_TRANSFORMS["RIZON_D405_WRIST_MOUNT"],
+                )
+            },
+        }
+        cfg.camera_cfgs = {
+            "wrist": SimCameraConfig(
+                identifier="wrist",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            ),
+        }
+        cfg.camera_adds = {
+            "wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["d405"],
+                offset=DEFAULT_TRANSFORMS["RIZON_D405_WRIST_CAMERA"],
+                robot_name=lead_robot_name,
+            ),
+        }
 
         return cfg
+
+
+class EmptyWorldRizon4SDuo(SimEnvCreator):
+    """Two Flexiv Rizon 4s with Grav grippers, 0.3 m apart in y and each tilted 45 degrees about x away from the other
+    (right arm +45 degrees, left arm -45 degrees).
+
+    The shared base frame sits between the two bases, actions and observations are expressed in it.
+    """
+
+    def config(self) -> SimEnvCreatorConfig:
+        single = EmptyWorldRizon4S()
+        single_cfg = single.config()
+        base_robot_cfg = single_cfg.robot_cfgs[single.lead_robot_name(single_cfg)]
+        assert single_cfg.gripper_cfgs is not None
+        base_gripper_cfg = single_cfg.gripper_cfgs[single.lead_robot_name(single_cfg)]
+
+        robot_cfgs: dict[str, SimRobotConfig] = {}
+        gripper_cfgs: dict[str, SimGripperConfig] = {}
+        for name in ("left", "right"):
+            robot_cfg = copy.deepcopy(base_robot_cfg)
+            robot_cfg.q_home = rcs.HOME_POSITIONS[f"RIZON4S_DUO_{name.upper()}"]
+            robot_cfgs[name] = robot_cfg
+            gripper_cfgs[name] = copy.deepcopy(base_gripper_cfg)
+
+        grav_offset = GRIPPER_MOUNT_OFFSETS[GripperType("FlexivGrav")]
+        # D405 wrist camera on its mount on each arm, see EmptyWorldRizon4S
+        robot_frame_objects = {
+            name: {
+                f"{name}_d405_mount": (
+                    OBJECT_PATHS["rizon_d405_wrist_mount"],
+                    DEFAULT_TRANSFORMS["RIZON_D405_WRIST_MOUNT"],
+                )
+            }
+            for name in ("left", "right")
+        }
+        camera_cfgs = {
+            f"{name}_wrist": SimCameraConfig(
+                identifier=f"{name}_wrist",
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            )
+            for name in ("left", "right")
+        }
+        camera_adds = {
+            f"{name}_wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["d405"],
+                offset=DEFAULT_TRANSFORMS["RIZON_D405_WRIST_CAMERA"],
+                robot_name=name,
+            )
+            for name in ("left", "right")
+        }
+        return SimEnvCreatorConfig(
+            robot_cfgs=robot_cfgs,
+            gripper_cfgs=gripper_cfgs,
+            gripper_offsets={"left": grav_offset, "right": grav_offset},
+            sim_cfg=SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=500),
+            control_mode=ControlMode.CARTESIAN_TQuat,
+            scene=SCENE_PATHS["empty_world"],
+            robot_frame_objects=robot_frame_objects,
+            camera_cfgs=camera_cfgs,
+            camera_adds=camera_adds,
+            relative_to=RelativeTo.LAST_STEP,
+            robot_to_shared_base_frame={
+                "left": DEFAULT_TRANSFORMS["RIZON4S_DUO_LEFT_ROBOT"],
+                "right": DEFAULT_TRANSFORMS["RIZON4S_DUO_RIGHT_ROBOT"],
+            },
+            shared_base_frame_to_root_frame=DEFAULT_TRANSFORMS["RIZON4S_DUO_HEIGHT_OFFSET"],
+            wrapper_cfg=WrapperConfig(binary_gripper=False, home_on_reset=True),
+            # the tilted arms sag under gravity with the mjcf's position gains, like the FR3 duo they are compensated
+            add_gravcomp=True,
+        )
 
 
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
@@ -675,10 +771,11 @@ gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
 gym.register(id="rcs/yam", entry_point=EmptyWorldYam())
 gym.register(id="rcs/rizon4s", entry_point=EmptyWorldRizon4S())
+gym.register(id="rcs/rizon4s_duo", entry_point=EmptyWorldRizon4SDuo())
 
 
 if __name__ == "__main__":
-    env = gym.make("rcs/yam")
+    env = gym.make("rcs/duo")
     obs, info = env.reset()
     print(obs)
     # Duo

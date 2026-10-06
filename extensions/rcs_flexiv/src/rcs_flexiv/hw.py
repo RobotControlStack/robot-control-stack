@@ -137,9 +137,9 @@ class FlexivRobotState(common.RobotState):
         self.tau = np.asarray(states.tau, dtype=np.float64)
         self.tau_ext = np.asarray(states.tau_ext, dtype=np.float64)
         self.tcp_wrench = np.asarray(states.ext_wrench_in_world, dtype=np.float64)
-        """External wrench at the TCP in the world frame [f_x, f_y, f_z, m_x, m_y, m_z]."""
+        """External wrench at the TCP in the RDK's world frame [f_x, f_y, f_z, m_x, m_y, m_z]."""
         self.flange_pose = np.asarray(states.flange_pose, dtype=np.float64)
-        """[x, y, z, q_w, q_x, q_y, q_z] as reported by the RDK."""
+        """[x, y, z, q_w, q_x, q_y, q_z] in the RDK's world frame, as reported by the RDK."""
         self.mode = mode
         self.operational = operational
         self.fault = fault
@@ -187,6 +187,7 @@ class Flexiv(common.Robot):
         if cfg.tool_name is not None:
             self._tool.Switch(cfg.tool_name)
         self._tool_tcp = self._read_tool_tcp()
+        self._world_from_base = self._estimate_world_from_base()
 
         self._ensure_mode(cfg.control_mode)
         logger.info(
@@ -197,6 +198,16 @@ class Flexiv(common.Robot):
             self._tool.name(),
             cfg.control_mode.value,
         )
+
+    @property
+    def world_from_base(self) -> common.Pose:
+        """Pose of the robot base in the RDK's world frame, estimated at connect.
+
+        The RDK reports and accepts Cartesian poses in the robot's world frame, which differs from the base frame
+        when a mounting angle or a custom world frame was configured in Flexiv Elements. RCS works in the base
+        frame like in simulation and uses this transform to talk to the RDK's Cartesian controller.
+        """
+        return self._world_from_base
 
     def __del__(self):
         self.close()
@@ -249,9 +260,9 @@ class Flexiv(common.Robot):
         return np.asarray(self._states().q, dtype=np.float64)
 
     def get_cartesian_flange_position(self) -> common.Pose:
-        # The RDK reports poses in the robot's world frame, which coincides with the base frame unless a
-        # different world frame was configured in Flexiv Elements.
-        return _pose_from_rdk(self._states().flange_pose)
+        # Computed from the measured joints with the RCS model, so that the pose is in the base frame regardless
+        # of the world frame configured on the robot, and matches what the simulation reports.
+        return self.ik.forward(self.get_joint_position(), common.Pose())
 
     def get_cartesian_position(self) -> common.Pose:
         return self.get_cartesian_flange_position() * self._config.tcp_offset
@@ -275,8 +286,9 @@ class Flexiv(common.Robot):
             return
 
         self._ensure_mode(FlexivControlMode.CARTESIAN_IMPEDANCE)
-        # The RDK tracks the pose of the active tool's TCP, RCS commands the pose of its own TCP offset.
-        rdk_target = pose * self._config.tcp_offset.inverse() * self._tool_tcp
+        # The RDK tracks the pose of the active tool's TCP in its world frame, RCS commands the pose of its own
+        # TCP offset in the base frame.
+        rdk_target = self._world_from_base * pose * self._config.tcp_offset.inverse() * self._tool_tcp
         self._robot.SendCartesianMotionForce(
             _pose_to_rdk(rdk_target),
             [0.0] * 6,
@@ -384,6 +396,29 @@ class Flexiv(common.Robot):
                     raise RuntimeError(msg)
                 time.sleep(0.5)
         logger.info("Robot is operational.")
+
+    def _estimate_world_from_base(self) -> common.Pose:
+        """Compares the RDK's flange pose with the model's FK at the same joints to find the world frame."""
+        states = self._states()
+        flange_in_world = _pose_from_rdk(states.flange_pose)
+        flange_in_base = self.ik.forward(np.asarray(states.q, dtype=np.float64), common.Pose())
+        world_from_base = flange_in_world * flange_in_base.inverse()
+        angle = np.rad2deg(world_from_base.total_angle())
+        offset = np.linalg.norm(world_from_base.translation())
+        if angle > 0.5 or offset > 0.005:
+            logger.info(
+                "The robot's world frame is rotated by %.1f deg and offset by %.3f m from its base frame, e.g. due to "
+                "a configured mounting angle. RCS keeps working in the base frame.",
+                angle,
+                offset,
+            )
+        elif angle > 0.1 or offset > 0.001:
+            logger.warning(
+                "The RDK flange pose and the RCS model disagree by %.2f deg / %.4f m, check the robot model.",
+                angle,
+                offset,
+            )
+        return world_from_base
 
     def _read_tool_tcp(self) -> common.Pose:
         """Pose of the active tool's TCP in the flange frame, identity if it cannot be read."""
