@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import gymnasium as gym
 from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig
-from rcs.camera.hw import HardwareCamera, HardwareCameraSet
+from rcs.camera.hw import CalibrationStrategy, HardwareCamera, HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
@@ -33,7 +33,6 @@ class HardwareCameraCreatorConfig:
 
 def _create_realsense_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
     try:
-        from rcs.camera.hw import CalibrationStrategy
         from rcs_realsense.calibration import FR3BaseArucoCalibration
         from rcs_realsense.camera import RealSenseCameraSet
     except ImportError as e:

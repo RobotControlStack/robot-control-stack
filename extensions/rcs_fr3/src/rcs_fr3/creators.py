@@ -7,7 +7,7 @@ import numpy as np
 import rcs.hand.tilburg_hand
 from frankik import FrankaKinematics
 from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig, Kinematics, Pose
-from rcs.camera.hw import DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
+from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
@@ -62,8 +62,6 @@ class HardwareCameraCreatorConfig:
 
 def _create_realsense_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
     try:
-        from rcs.camera.hw import CalibrationStrategy
-
         # from rcs_realsense.calibration import FR3BaseArucoCalibration
         from rcs_realsense.camera import RealSenseCameraSet
     except ImportError as e:
@@ -81,7 +79,6 @@ def _create_realsense_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera
 
 def _create_zed_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
     try:
-        from rcs.camera.hw import CalibrationStrategy
         from rcs_zed.camera import ZEDCameraSet
     except ImportError as e:
         msg = "ZED camera support requires the `rcs_zed` extension to be installed."
