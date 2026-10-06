@@ -74,7 +74,7 @@ class CalibrationStrategy(typing.Protocol):
         """
 
 
-class DummyCalibrationStrategy(CalibrationStrategy):
+class IdentityCalibrationStrategy(CalibrationStrategy):
     """Always returns identity extrinsics."""
 
     def calibrate(
@@ -299,9 +299,9 @@ class HardwareCameraCreatorConfig:
 
     camera_type_id: str
     camera_cfgs: dict[str, BaseCameraConfig]
-    # How each camera is calibrated, by name; "dummy" is the identity. Backends resolve the ids
-    # they support and reject the rest, so an unsupported choice fails at creation, not silently.
-    calibration: str = "dummy"
+    # Calibration strategy per camera name, passed to the camera set as is. None leaves every
+    # camera at identity extrinsics, which is what the sets default to themselves.
+    calibration: dict[str, CalibrationStrategy] | None = None
     kwargs: dict[str, typing.Any] = field(default_factory=dict)
 
 
