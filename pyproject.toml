@@ -7,7 +7,7 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
-  "mujoco==3.10.0",
+  "mujoco==3.15.0",
   "pin==3.7.0",
 ]
 build-backend = "scikit_build_core.build"
@@ -36,7 +36,7 @@ dependencies = [
   "rpyc~=6.0.2",
   "pyarrow",
   "simplejpeg",
-  "mujoco==3.10.0",
+  "mujoco==3.15.0",
   "pin==3.7.0",
   # pin 3.7.0 currently resolves against older urdfdom/tinyxml SONAMEs at runtime
   "cmeel-urdfdom<5",
@@ -76,7 +76,7 @@ dev = [
   "twine~=6.0",
 ]
 build_deps = [
-  "mujoco==3.10.0",
+  "mujoco==3.15.0",
   "pin==3.7.0",
   "cmeel-urdfdom<5",
   "cmeel-tinyxml2<11",
@@ -93,7 +93,7 @@ environment = { SKBUILD_BUILD_DIR = "/tmp/rcs-build/{wheel_tag}" }
 archs = ["x86_64"]
 manylinux-x86_64-image = "manylinux_2_28"
 before-all = "yum install -y epel-release && yum install -y libXi-devel libXcursor-devel libXinerama-devel libXrandr-devel glfw-devel"
-repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.3.10.0 --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmujoco.so.3.15.0 --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.cibuildwheel.macos]
 archs = ["arm64"]
