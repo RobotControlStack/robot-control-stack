@@ -316,7 +316,9 @@ With this flag
 - `SimCameraSet(...)` returns a `FilamentSimCameraSet`: color images are rendered with Filament in
   Python (frames are rendered when requested, a fixed camera frame rate is not supported). Filament does
   not expose a metric depth buffer through MuJoCo's Python API, so depth images are still rendered with
-  the classic renderer and always use the metric units described above.
+  the classic renderer and always use the metric units described above. The depth pass costs about as
+  much as the whole classic renderer, so it is skipped when `CameraSetWrapper(include_depth=False)`
+  (or `FilamentSimCameraSet(render_depth=False)`) is used.
 - `open_gui()` launches MuJoCo Studio instead of the passive `mujoco.viewer`. Studio runs in the GUI
   subprocess under a regular `python` interpreter (not `mjpython`, also on macOS).
 

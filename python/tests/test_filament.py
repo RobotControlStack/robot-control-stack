@@ -1,6 +1,8 @@
+import gymnasium as gym
 import numpy as np
 import pytest
 from rcs.camera.sim import FilamentSimCameraSet, SimCameraSet
+from rcs.envs.base import CameraSetWrapper
 from rcs.envs.configs import EmptyWorldFR3
 from rcs.sim import RendererBackend, SimConfig, filament
 
@@ -56,5 +58,35 @@ def test_filament_camera_set_renders_rgb_and_metric_depth(fr3_sim):
         simulation.step(1)
         assert camera_set.get_latest_frames() is not frameset
         assert camera_set.buffer_size() == 2
+    finally:
+        camera_set.close()
+
+
+def test_filament_camera_set_skips_depth_when_not_requested(fr3_sim):
+    simulation, cfg = fr3_sim
+    camera_set = FilamentSimCameraSet(simulation, cfg.camera_cfgs, render_depth=False)
+    try:
+        simulation.step(1)
+        frameset = camera_set.get_latest_frames()
+        assert frameset is not None
+        assert all(frame.camera.depth is None for frame in frameset.frames.values())
+        assert all(frame.camera.color.data.dtype == np.uint8 for frame in frameset.frames.values())
+    finally:
+        camera_set.close()
+
+
+class _EmptyObsEnv(gym.Env):
+    observation_space = gym.spaces.Dict({})
+    action_space = gym.spaces.Dict({})
+
+
+def test_camera_set_wrapper_configures_depth_rendering(fr3_sim):
+    simulation, cfg = fr3_sim
+    camera_set = FilamentSimCameraSet(simulation, cfg.camera_cfgs)
+    try:
+        CameraSetWrapper(_EmptyObsEnv(), camera_set, include_depth=False)
+        assert camera_set.render_depth is False
+        CameraSetWrapper(_EmptyObsEnv(), camera_set, include_depth=True)
+        assert camera_set.render_depth is True
     finally:
         camera_set.close()

@@ -212,11 +212,15 @@ class FilamentSimCameraSet:
 
     Color images come from Filament. Filament does not expose a metric depth buffer through
     MuJoCo's Python API, so depth images are rendered with the classic renderer; they are always
-    metric (scaled by ``BaseCameraSet.DEPTH_SCALE``), regardless of ``physical_units``.
+    metric (scaled by ``BaseCameraSet.DEPTH_SCALE``), regardless of ``physical_units``. The depth
+    pass costs about as much as the classic renderer, set ``render_depth=False`` (done automatically
+    by ``CameraSetWrapper(include_depth=False)``) to skip it; frames then have ``depth=None``.
 
     Rendering happens in Python when frames are requested, i.e. always "on demand"; rendering at a
     fixed camera frame rate while the simulation steps is not supported with this backend.
     """
+
+    DEPTH_SCALE: int = BaseCameraSet.DEPTH_SCALE
 
     def __init__(
         self,
@@ -225,6 +229,7 @@ class FilamentSimCameraSet:
         physical_units: bool = True,
         render_on_demand: bool = True,
         max_buffer_frames: int = 100,
+        render_depth: bool = True,
     ):
         filament.require("FilamentSimCameraSet")
         if not physical_units:
@@ -238,6 +243,7 @@ class FilamentSimCameraSet:
         self.cameras = cameras
         self.physical_units = physical_units
         self.render_on_demand = True
+        self.render_depth = render_depth
         self._buffer: list[FrameSet] = []
         self._max_buffer_frames = max_buffer_frames
 
@@ -267,18 +273,21 @@ class FilamentSimCameraSet:
         frames: dict[str, Frame] = {}
         for name, cfg in self.cameras.items():
             color = self._renderer.render(data, self._mj_cameras[name], cfg.resolution_width, cfg.resolution_height)
-            depth = self._depth_renderer(cfg).render(data, self._mj_cameras[name])[..., np.newaxis]
             intrinsics = _intrinsics(model, cfg)
             extrinsics = _extrinsics(model, data, cfg)
+            depth_frame = None
+            if self.render_depth:
+                depth = self._depth_renderer(cfg).render(data, self._mj_cameras[name])[..., np.newaxis]
+                depth_frame = DataFrame(
+                    data=(depth * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
+                    timestamp=timestamp,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics,
+                )
             frames[name] = Frame(
                 camera=CameraFrame(
                     color=DataFrame(data=color, timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics),
-                    depth=DataFrame(
-                        data=(depth * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
-                        timestamp=timestamp,
-                        intrinsics=intrinsics,
-                        extrinsics=extrinsics,
-                    ),
+                    depth=depth_frame,
                 ),
                 avg_timestamp=timestamp,
             )
