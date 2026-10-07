@@ -4,13 +4,8 @@ from typing import Literal
 
 import mujoco
 import numpy as np
-
-# from rcs._core.common import BaseCameraConfig
 from rcs._core import common
-from rcs._core.sim import CameraType
-from rcs._core.sim import FrameSet as _FrameSet
-from rcs._core.sim import RendererBackend, SimCameraConfig
-from rcs._core.sim import SimCameraSet as _SimCameraSet
+from rcs._core.sim import CameraType, RendererBackend, SimCameraConfig
 from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, FrameSet
 from rcs.sim import filament, render_context_bootstrap
 
@@ -52,172 +47,75 @@ def _extrinsics(
     return cam.inverse().pose_matrix()
 
 
-class SimCameraSet(_SimCameraSet):
-    """Represents a set of cameras in a mujoco simulation.
-    Implements BaseCameraSet
+class _ClassicRenderer:
+    """Offscreen RGB and depth rendering with MuJoCo's classic OpenGL renderer.
 
-    Rendering happens in C++ with MuJoCo's classic OpenGL renderer. If the simulation was configured with
-    ``SimConfig(renderer=RendererBackend.FILAMENT)``, constructing this class returns a
-    :class:`FilamentSimCameraSet` instead.
+    Uses one ``MjrContext`` per resolution, resized with ``mjr_resizeOffscreen`` so the images are
+    not limited by the model's ``offwidth``/``offheight``.
     """
 
-    def __new__(
-        cls,
-        simulation: sim.Sim,
-        cameras: dict[str, SimCameraConfig],
-        physical_units: bool = False,
-        render_on_demand: bool = True,
-    ):
-        if simulation.get_config().renderer == RendererBackend.FILAMENT:
-            return FilamentSimCameraSet(simulation, cameras, physical_units, render_on_demand)
-        return super().__new__(cls)
-
-    def __init__(
-        self,
-        simulation: sim.Sim,
-        cameras: dict[str, SimCameraConfig],
-        physical_units: bool = False,
-        render_on_demand: bool = True,
-    ):
-        self._logger = logging.getLogger(__name__)
-        self.cameras = cameras
-        self.physical_units = physical_units
-
+    def __init__(self, model: mujoco.MjModel):
         render_context_bootstrap.require("simulation camera rendering")
-        super().__init__(simulation, cameras, render_on_demand=render_on_demand)
-        self._sim: sim.Sim
-
-    def get_latest_frames(self) -> FrameSet | None:
-        """Should return the latest frame from the camera with the given name."""
-        return self._cpp_to_python_frames(super().get_latest_frameset())
-
-    def get_timestamp_frames(self, ts: datetime) -> FrameSet | None:
-        """Should return the frame from the camera with the given name and closest to the given timestamp."""
-        return self._cpp_to_python_frames(super().get_timestamp_frameset(ts.timestamp()))
-
-    def _cpp_to_python_frames(self, cpp_frameset: _FrameSet | None) -> FrameSet | None:
-        if cpp_frameset is None:
-            return None
-        frames: dict[str, Frame] = {}
-        c_frames_iter = cpp_frameset.color_frames.items()
-        d_frames_iter = cpp_frameset.depth_frames.items()
-        for (color_name, color_frame), (depth_name, depth_frame) in zip(c_frames_iter, d_frames_iter, strict=True):
-            assert color_name == depth_name
-            color_np_frame = np.copy(color_frame).reshape(
-                self.cameras[color_name].resolution_height, self.cameras[color_name].resolution_width, 3
-            )[
-                # convert from column-major (c++ eigen) to row-major (python numpy)
-                ::-1
-            ]
-            depth_np_frame = np.copy(depth_frame).reshape(
-                self.cameras[depth_name].resolution_height, self.cameras[depth_name].resolution_width, 1
-            )[
-                # convert from column-major (c++ eigen) to row-major (python numpy)
-                ::-1
-            ]
-            if self.physical_units:
-                # Convert from [0 1] to depth in meters, see links below:
-                # http://stackoverflow.com/a/6657284/1461210
-                # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
-                # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
-                extent = self._sim.model.stat.extent
-                near = self._sim.model.vis.map.znear * extent
-                far = self._sim.model.vis.map.zfar * extent
-                depth_np_frame = near / (1 - depth_np_frame * (1 - near / far))
-
-            cameraframe = CameraFrame(
-                color=DataFrame(
-                    data=color_np_frame,
-                    timestamp=cpp_frameset.timestamp,
-                    intrinsics=self._intrinsics(color_name),
-                    extrinsics=self._extrinsics(color_name),
-                ),
-                depth=DataFrame(
-                    data=(depth_np_frame * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
-                    timestamp=cpp_frameset.timestamp,
-                    intrinsics=self._intrinsics(depth_name),
-                    extrinsics=self._extrinsics(depth_name),
-                ),
-            )
-            frame = Frame(camera=cameraframe, avg_timestamp=cpp_frameset.timestamp)
-            frames[color_name] = frame
-        return FrameSet(frames=frames, avg_timestamp=cpp_frameset.timestamp)
-
-    def _intrinsics(self, camera_name) -> np.ndarray[tuple[Literal[3], Literal[4]], np.dtype[np.float64]]:
-        return _intrinsics(self._sim.model, self.cameras[camera_name])
-
-    def _extrinsics(self, camera_name) -> np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]:
-        return _extrinsics(self._sim.model, self._sim.data, self.cameras[camera_name])
-
-    def calibrate(self) -> bool:
-        return True
-
-    def config(self, camera_name: str) -> SimCameraConfig:
-        """Should return the configuration of the camera with the given name."""
-        return self.cameras[camera_name]
-
-    def close(self):
-        # TODO: this could deregister camera callbacks in simulation
-        pass
-
-    @property
-    def camera_names(self) -> list[str]:
-        """Should return a list of the activated human readable names of the cameras."""
-        return list(self.cameras.keys())
-
-    @property
-    def name_to_identifier(self) -> dict[str, str]:
-        return {name: cfg.identifier for name, cfg in self.cameras.items()}
-
-
-class _ClassicDepthRenderer:
-    """Renders metric depth with MuJoCo's classic renderer from Python.
-
-    Unlike ``mujoco.Renderer`` this is not limited by the model's ``offwidth``/``offheight``.
-    """
-
-    def __init__(self, model: mujoco.MjModel, width: int, height: int):
-        render_context_bootstrap.require("simulation depth rendering")
         render_context_bootstrap.make_current()
         self._model = model
         self._scene = mujoco.MjvScene(model, maxgeom=2000)
         self._opt = mujoco.MjvOption()
-        self._ctx = mujoco.MjrContext(model, mujoco.mjtFontScale.mjFONTSCALE_150)
-        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._ctx)
-        mujoco.mjr_resizeOffscreen(width, height, self._ctx)
-        self._viewport = mujoco.MjrRect(0, 0, width, height)
-        self._depth = np.empty((height, width), dtype=np.float32)
-        extent = model.stat.extent
-        self._near = model.vis.map.znear * extent
-        self._far = model.vis.map.zfar * extent
+        self._ctxs: dict[tuple[int, int], mujoco.MjrContext] = {}
 
-    def render(self, data: mujoco.MjData, camera: mujoco.MjvCamera) -> np.ndarray:
-        """Returns metric depth in meters as (H, W) float32, top row first."""
+    def _context(self, width: int, height: int) -> mujoco.MjrContext:
+        key = (width, height)
+        if key not in self._ctxs:
+            ctx = mujoco.MjrContext(self._model, mujoco.mjtFontScale.mjFONTSCALE_150)
+            mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, ctx)
+            mujoco.mjr_resizeOffscreen(width, height, ctx)
+            self._ctxs[key] = ctx
+        return self._ctxs[key]
+
+    def render(
+        self,
+        data: mujoco.MjData,
+        camera: mujoco.MjvCamera,
+        width: int,
+        height: int,
+        color: bool = True,
+        depth: bool = True,
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Returns ``(rgb, depth)`` with top row first; rgb is (H, W, 3) uint8, depth is the raw
+        OpenGL depth buffer in [0, 1] as (H, W) float32. Each is None if not requested."""
         render_context_bootstrap.make_current()
+        ctx = self._context(width, height)
+        viewport = mujoco.MjrRect(0, 0, width, height)
         mujoco.mjv_updateScene(self._model, data, self._opt, None, camera, mujoco.mjtCatBit.mjCAT_ALL, self._scene)
-        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._ctx)
-        mujoco.mjr_render(self._viewport, self._scene, self._ctx)
-        mujoco.mjr_readPixels(None, self._depth, self._viewport, self._ctx)
-        # OpenGL reads bottom-up; convert the [0, 1] depth buffer to meters (see SimCameraSet)
-        depth = self._depth[::-1]
-        return self._near / (1 - depth * (1 - self._near / self._far))
+        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, ctx)
+        mujoco.mjr_render(viewport, self._scene, ctx)
+        rgb = np.empty((height, width, 3), dtype=np.uint8) if color else None
+        depth_buffer = np.empty((height, width), dtype=np.float32) if depth else None
+        mujoco.mjr_readPixels(rgb, depth_buffer, viewport, ctx)
+        # OpenGL reads bottom-up
+        return (
+            rgb[::-1].copy() if rgb is not None else None,
+            depth_buffer[::-1].copy() if depth_buffer is not None else None,
+        )
 
     def close(self):
-        self._ctx.free()
+        for ctx in self._ctxs.values():
+            ctx.free()
+        self._ctxs.clear()
 
 
-class FilamentSimCameraSet:
-    """Set of simulation cameras rendered with MuJoCo's Filament renderer (MuJoCo >= 3.15).
+class SimCameraSet:
+    """Represents a set of cameras in a mujoco simulation.
     Implements BaseCameraSet
 
-    Color images come from Filament. Filament does not expose a metric depth buffer through
-    MuJoCo's Python API, so depth images are rendered with the classic renderer; they are always
-    metric (scaled by ``BaseCameraSet.DEPTH_SCALE``), regardless of ``physical_units``. The depth
-    pass costs about as much as the classic renderer, set ``render_depth=False`` (done automatically
-    by ``CameraSetWrapper(include_depth=False)``) to skip it; frames then have ``depth=None``.
+    Color images are rendered with MuJoCo's classic OpenGL renderer or, if the simulation is configured
+    with ``SimConfig(renderer=RendererBackend.FILAMENT)``, with Filament (MuJoCo >= 3.15). Filament
+    does not expose a metric depth buffer through MuJoCo's Python API, so depth is always rendered
+    with the classic renderer. The depth pass is skipped with ``render_depth=False`` (set automatically
+    by ``CameraSetWrapper(include_depth=False)``); frames then have ``depth=None``.
 
-    Rendering happens in Python when frames are requested, i.e. always "on demand"; rendering at a
-    fixed camera frame rate while the simulation steps is not supported with this backend.
+    Frames are rendered when they are requested (``get_latest_frames``). Rendering at the cameras'
+    frame rate while the simulation steps (``render_on_demand=False``) is currently not supported,
+    see ``docs/development/camera_snapshot_rendering.md``.
     """
 
     DEPTH_SCALE: int = BaseCameraSet.DEPTH_SCALE
@@ -226,16 +124,13 @@ class FilamentSimCameraSet:
         self,
         simulation: sim.Sim,
         cameras: dict[str, SimCameraConfig],
-        physical_units: bool = True,
+        physical_units: bool = False,
         render_on_demand: bool = True,
         max_buffer_frames: int = 100,
         render_depth: bool = True,
     ):
-        filament.require("FilamentSimCameraSet")
-        if not physical_units:
-            logger.warning("FilamentSimCameraSet always returns metric depth; physical_units=False is ignored.")
         if not render_on_demand:
-            logger.warning("FilamentSimCameraSet always renders on demand; render_on_demand=False is ignored.")
+            logger.warning("Rendering at the camera frame rate is not supported, rendering on demand instead.")
         if max_buffer_frames <= 0:
             msg = "max_buffer_frames must be positive"
             raise ValueError(msg)
@@ -244,45 +139,70 @@ class FilamentSimCameraSet:
         self.physical_units = physical_units
         self.render_on_demand = True
         self.render_depth = render_depth
+        self.renderer: RendererBackend = simulation.get_config().renderer
         self._buffer: list[FrameSet] = []
         self._max_buffer_frames = max_buffer_frames
 
-        self._renderer = filament.FilamentRenderer(self._sim.model)
+        model = self._sim.model
+        self._filament: filament.FilamentRenderer | None = None
+        # also renders depth for the Filament backend, created lazily as it needs a GL context
+        self._classic: _ClassicRenderer | None = None
+        if self.renderer == RendererBackend.FILAMENT:
+            self._filament = filament.FilamentRenderer(model)
+        else:
+            self._classic = _ClassicRenderer(model)
+
         self._mj_cameras: dict[str, mujoco.MjvCamera] = {}
         for name, cfg in cameras.items():
             cam = mujoco.MjvCamera()
             if cfg.type == CameraType.default_free:
-                mujoco.mjv_defaultFreeCamera(self._sim.model, cam)
+                mujoco.mjv_defaultFreeCamera(model, cam)
             else:
                 cam.type = int(cfg.type)
-                cam.fixedcamid = _camera_id(self._sim.model, cfg)
+                cam.fixedcamid = _camera_id(model, cfg)
             self._mj_cameras[name] = cam
-        # classic renderers for metric depth, one per resolution
-        self._depth_renderers: dict[tuple[int, int], _ClassicDepthRenderer] = {}
 
-    def _depth_renderer(self, cfg: SimCameraConfig) -> _ClassicDepthRenderer:
-        key = (cfg.resolution_width, cfg.resolution_height)
-        if key not in self._depth_renderers:
-            self._depth_renderers[key] = _ClassicDepthRenderer(self._sim.model, *key)
-        return self._depth_renderers[key]
+    def _classic_renderer(self) -> _ClassicRenderer:
+        if self._classic is None:
+            self._classic = _ClassicRenderer(self._sim.model)
+        return self._classic
+
+    def _depth_to_output(self, depth: np.ndarray) -> np.ndarray:
+        if self.physical_units:
+            # Convert from [0 1] to depth in meters, see links below:
+            # http://stackoverflow.com/a/6657284/1461210
+            # https://www.khronos.org/opengl/wiki/Depth_Buffer_Precision
+            # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
+            extent = self._sim.model.stat.extent
+            near = self._sim.model.vis.map.znear * extent
+            far = self._sim.model.vis.map.zfar * extent
+            depth = near / (1 - depth * (1 - near / far))
+        return (depth[..., np.newaxis] * self.DEPTH_SCALE).astype(np.uint16)
 
     def _render(self) -> FrameSet:
         model, data = self._sim.model, self._sim.data
         timestamp = data.time
-        self._renderer.update(data)
+        if self._filament is not None:
+            self._filament.update(data)
         frames: dict[str, Frame] = {}
         for name, cfg in self.cameras.items():
-            color = self._renderer.render(data, self._mj_cameras[name], cfg.resolution_width, cfg.resolution_height)
+            cam = self._mj_cameras[name]
+            width, height = cfg.resolution_width, cfg.resolution_height
+            color: np.ndarray | None
+            depth: np.ndarray | None = None
+            if self._filament is not None:
+                color = self._filament.render(data, cam, width, height)
+                if self.render_depth:
+                    _, depth = self._classic_renderer().render(data, cam, width, height, color=False, depth=True)
+            else:
+                color, depth = self._classic_renderer().render(data, cam, width, height, depth=self.render_depth)
+            assert color is not None
             intrinsics = _intrinsics(model, cfg)
             extrinsics = _extrinsics(model, data, cfg)
             depth_frame = None
-            if self.render_depth:
-                depth = self._depth_renderer(cfg).render(data, self._mj_cameras[name])[..., np.newaxis]
+            if depth is not None:
                 depth_frame = DataFrame(
-                    data=(depth * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
-                    timestamp=timestamp,
-                    intrinsics=intrinsics,
-                    extrinsics=extrinsics,
+                    data=self._depth_to_output(depth), timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics
                 )
             frames[name] = Frame(
                 camera=CameraFrame(
@@ -319,16 +239,20 @@ class FilamentSimCameraSet:
         return True
 
     def config(self, camera_name: str) -> SimCameraConfig:
+        """Should return the configuration of the camera with the given name."""
         return self.cameras[camera_name]
 
     def close(self):
-        for renderer in self._depth_renderers.values():
-            renderer.close()
-        self._depth_renderers.clear()
-        self._renderer.close()
+        if self._classic is not None:
+            self._classic.close()
+            self._classic = None
+        if self._filament is not None:
+            self._filament.close()
+            self._filament = None
 
     @property
     def camera_names(self) -> list[str]:
+        """Should return a list of the activated human readable names of the cameras."""
         return list(self.cameras.keys())
 
     @property

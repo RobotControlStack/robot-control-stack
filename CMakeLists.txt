@@ -50,15 +50,6 @@ FetchContent_Declare(Eigen3
     GIT_PROGRESS TRUE
     EXCLUDE_FROM_ALL
 )
-FetchContent_Declare(
-    egl_headers
-    GIT_REPOSITORY https://github.com/KhronosGroup/EGL-Registry.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_MakeAvailable(pybind11 Eigen3 egl_headers)
-# egl headers
-include_directories(${egl_headers_SOURCE_DIR}/api)
+FetchContent_MakeAvailable(pybind11 Eigen3)
 
 add_subdirectory(src)

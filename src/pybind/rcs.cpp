@@ -256,9 +256,6 @@ PYBIND11_MODULE(_core, m) {
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
 
-  common.def("_bootstrap_egl_context", &rcs::common::bootstrap_egl_context,
-             py::arg("fn_addr"), py::arg("display"), py::arg("context"));
-  common.def("_bootstrap_gl_context", &rcs::common::bootstrap_gl_context);
   common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
   common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
@@ -928,37 +925,6 @@ PYBIND11_MODULE(_core, m) {
       .def("__deepcopy__", [](const rcs::sim::SimCameraConfig& self, py::dict) {
         return rcs::sim::SimCameraConfig(self);
       });
-  py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
-      .def(py::init(
-               [](const std::unordered_map<std::string, rcs::sim::ColorFrame>&
-                      color_frames,
-                  const std::unordered_map<std::string, rcs::sim::DepthFrame>&
-                      depth_frames,
-                  double timestamp) {
-                 rcs::sim::FrameSet fs;
-                 fs.color_frames = color_frames;
-                 fs.depth_frames = depth_frames;
-                 fs.timestamp = timestamp;
-                 return fs;
-               }),
-           py::arg("color_frames"), py::arg("depth_frames"),
-           py::arg("timestamp"))
-      .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
-      .def_readonly("depth_frames", &rcs::sim::FrameSet::depth_frames)
-      .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
-  py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    std::unordered_map<std::string, rcs::sim::SimCameraConfig>,
-                    bool, int>(),
-           py::arg("sim"), py::arg("cameras"),
-           py::arg("render_on_demand") = true,
-           py::arg("max_buffer_frames") = 100)
-      .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
-      .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
-      .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
-      .def_property_readonly("_sim", &rcs::sim::SimCameraSet::get_sim)
-      .def("get_timestamp_frameset",
-           &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
   py::class_<rcs::sim::GuiClient>(sim, "GuiClient")
       .def(py::init<const std::string&>(), py::arg("id"))
       .def("get_model_bytes",

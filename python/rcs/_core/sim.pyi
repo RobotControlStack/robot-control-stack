@@ -13,12 +13,10 @@ __all__: list[str] = [
     "CameraType",
     "DynamicJointSchema",
     "DynamicJointState",
-    "FrameSet",
     "GuiClient",
     "RendererBackend",
     "Sim",
     "SimCameraConfig",
-    "SimCameraSet",
     "SimConfig",
     "SimGripper",
     "SimGripperConfig",
@@ -85,20 +83,6 @@ class DynamicJointState(typing.Generic[M]):
     qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     def __init__(self) -> None: ...
 
-class FrameSet:
-    def __init__(
-        self,
-        color_frames: dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.uint8]]],
-        depth_frames: dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.float32]]],
-        timestamp: float,
-    ) -> None: ...
-    @property
-    def color_frames(self) -> dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.uint8]]]: ...
-    @property
-    def depth_frames(self) -> dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.float32]]]: ...
-    @property
-    def timestamp(self) -> float: ...
-
 class GuiClient:
     def __init__(self, id: str) -> None: ...
     def get_model_bytes(self) -> bytes: ...
@@ -156,17 +140,6 @@ class SimCameraConfig(rcs._core.common.BaseCameraConfig):
     def __init__(
         self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int, type: CameraType = ...
     ) -> None: ...
-
-class SimCameraSet:
-    def __init__(
-        self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True, max_buffer_frames: int = 100
-    ) -> None: ...
-    def buffer_size(self) -> int: ...
-    def clear_buffer(self) -> None: ...
-    def get_latest_frameset(self) -> FrameSet | None: ...
-    def get_timestamp_frameset(self, ts: float) -> FrameSet | None: ...
-    @property
-    def _sim(self) -> Sim: ...
 
 class SimConfig:
     async_control: bool

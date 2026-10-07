@@ -1,36 +1,42 @@
 import gymnasium as gym
 import numpy as np
 import pytest
-from rcs.camera.sim import FilamentSimCameraSet, SimCameraSet
+from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import CameraSetWrapper
 from rcs.envs.configs import EmptyWorldFR3
 from rcs.sim import RendererBackend, SimConfig, filament
 
 from rcs import sim
 
-pytestmark = pytest.mark.skipif(not filament.is_available(), reason="Filament renderer requires mujoco >= 3.15")
+BACKENDS = [
+    pytest.param(RendererBackend.CLASSIC, id="classic"),
+    pytest.param(
+        RendererBackend.FILAMENT,
+        id="filament",
+        marks=pytest.mark.skipif(not filament.is_available(), reason="Filament renderer requires mujoco >= 3.15"),
+    ),
+]
 
 
-@pytest.fixture()
-def fr3_sim():
+@pytest.fixture(params=BACKENDS)
+def fr3_sim(request):
     scene = EmptyWorldFR3()
     cfg = scene.prefixed_cfg(scene.config())
-    simulation = sim.Sim(scene.create_model(cfg), SimConfig(renderer=RendererBackend.FILAMENT))
+    simulation = sim.Sim(scene.create_model(cfg), SimConfig(renderer=request.param))
     return simulation, cfg
 
 
-def test_sim_camera_set_dispatches_to_filament(fr3_sim):
+class _EmptyObsEnv(gym.Env):
+    observation_space = gym.spaces.Dict({})
+    action_space = gym.spaces.Dict({})
+
+
+def test_camera_set_renders_rgb_and_metric_depth(fr3_sim):
     simulation, cfg = fr3_sim
     camera_set = SimCameraSet(simulation, cfg.camera_cfgs, physical_units=True)
-    assert isinstance(camera_set, FilamentSimCameraSet)
-    assert camera_set.camera_names == list(cfg.camera_cfgs.keys())
-    camera_set.close()
-
-
-def test_filament_camera_set_renders_rgb_and_metric_depth(fr3_sim):
-    simulation, cfg = fr3_sim
-    camera_set = FilamentSimCameraSet(simulation, cfg.camera_cfgs)
     try:
+        assert camera_set.renderer == simulation.get_config().renderer
+        assert camera_set.camera_names == list(cfg.camera_cfgs.keys())
         simulation.step(1)
         frameset = camera_set.get_latest_frames()
         assert frameset is not None
@@ -62,9 +68,9 @@ def test_filament_camera_set_renders_rgb_and_metric_depth(fr3_sim):
         camera_set.close()
 
 
-def test_filament_camera_set_skips_depth_when_not_requested(fr3_sim):
+def test_camera_set_skips_depth_when_not_requested(fr3_sim):
     simulation, cfg = fr3_sim
-    camera_set = FilamentSimCameraSet(simulation, cfg.camera_cfgs, render_depth=False)
+    camera_set = SimCameraSet(simulation, cfg.camera_cfgs, render_depth=False)
     try:
         simulation.step(1)
         frameset = camera_set.get_latest_frames()
@@ -75,18 +81,45 @@ def test_filament_camera_set_skips_depth_when_not_requested(fr3_sim):
         camera_set.close()
 
 
-class _EmptyObsEnv(gym.Env):
-    observation_space = gym.spaces.Dict({})
-    action_space = gym.spaces.Dict({})
-
-
 def test_camera_set_wrapper_configures_depth_rendering(fr3_sim):
     simulation, cfg = fr3_sim
-    camera_set = FilamentSimCameraSet(simulation, cfg.camera_cfgs)
+    camera_set = SimCameraSet(simulation, cfg.camera_cfgs)
     try:
         CameraSetWrapper(_EmptyObsEnv(), camera_set, include_depth=False)
         assert camera_set.render_depth is False
         CameraSetWrapper(_EmptyObsEnv(), camera_set, include_depth=True)
         assert camera_set.render_depth is True
+    finally:
+        camera_set.close()
+
+
+def test_classic_depth_matches_mujoco_renderer():
+    """The raw depth buffer converted to meters must match mujoco.Renderer's metric depth."""
+    scene = EmptyWorldFR3()
+    cfg = scene.prefixed_cfg(scene.config())
+    assert cfg.camera_cfgs is not None
+    simulation = sim.Sim(scene.create_model(cfg), SimConfig())
+    camera_set = SimCameraSet(simulation, cfg.camera_cfgs, physical_units=True)
+    try:
+        simulation.step(1)
+        frameset = camera_set.get_latest_frames()
+        assert frameset is not None
+        import mujoco
+
+        for name, cam_cfg in cfg.camera_cfgs.items():
+            # mujoco.Renderer is limited by the model's offscreen buffer size, so compare at a small
+            # resolution: downsample ours by the integer factor
+            w, h = cam_cfg.resolution_width // 4, cam_cfg.resolution_height // 4
+            renderer = mujoco.Renderer(simulation.model, height=h, width=w)
+            renderer.enable_depth_rendering()
+            renderer.update_scene(simulation.data, camera=cam_cfg.identifier)
+            reference = renderer.render()
+            renderer.close()
+            depth_frame = frameset.frames[name].camera.depth
+            assert depth_frame is not None
+            ours = depth_frame.data[::4, ::4, 0] / SimCameraSet.DEPTH_SCALE
+            assert ours.shape == reference.shape
+            # different resolutions sample slightly different rays; compare the bulk of the image
+            assert np.median(np.abs(ours - reference)) < 0.01
     finally:
         camera_set.close()

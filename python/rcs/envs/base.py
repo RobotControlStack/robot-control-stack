@@ -961,7 +961,7 @@ class CameraSetWrapper(ActObsInfoWrapper):
         super().__init__(env)
         self.camera_set = camera_set
         self.include_depth = include_depth
-        # camera sets that render depth separately (e.g. FilamentSimCameraSet) can skip it if not requested
+        # camera sets that render depth separately (e.g. the simulation) can skip it if not requested
         if hasattr(camera_set, "render_depth"):
             camera_set.render_depth = include_depth
 

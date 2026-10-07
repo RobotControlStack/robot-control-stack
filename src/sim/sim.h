@@ -1,7 +1,5 @@
 #ifndef RCS_SIM_H
 #define RCS_SIM_H
-#include <mujoco/mjvisualize.h>
-
 #include <functional>
 #include <optional>
 #include <string>
@@ -15,21 +13,8 @@
 
 namespace rcs {
 namespace sim {
-class Renderer {
- public:
-  Renderer(mjModel* m);
-  ~Renderer();
-  void register_context(const std::string& id, size_t width, size_t height);
-  mjrContext* get_context(const std::string& id);
-  mjvScene scene;
-  mjvOption opt;
-
- private:
-  mjModel* m;
-  std::unordered_map<std::string, mjrContext*> ctxs;
-};
-
-// Filament renderer is implemented in python
+// Cameras are rendered on the Python side (rcs.camera.sim) with either
+// MuJoCo's classic OpenGL renderer or Filament.
 enum class RendererBackend { CLASSIC, FILAMENT };
 
 struct SimConfig {
@@ -51,15 +36,6 @@ struct ConditionCallback {
   mjtNum seconds_between_calls;  // in seconds
   mjtNum last_call_timestamp;    // in seconds
   bool last_return_value;
-};
-
-struct RenderingCallback {
-  const std::function<void(const std::string&, mjrContext&, mjvScene&,
-                           mjvOption&)>
-      cb;
-  const std::string id;          // rendering context id in renderer class
-  mjtNum seconds_between_calls;  // in seconds
-  mjtNum last_call_timestamp;    // in seconds
 };
 
 struct DynamicJointSchema {
@@ -89,12 +65,10 @@ class Sim {
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
-  std::vector<RenderingCallback> rendering_callbacks;
   std::vector<DynamicJointSpec> dynamic_joint_specs;
   std::unordered_map<std::string, size_t> dynamic_joint_name_to_index;
   void invoke_callbacks();
   bool invoke_condition_callbacks();
-  void invoke_rendering_callbacks();
   void init_dynamic_joint_specs();
   static int get_joint_qpos_size(int joint_type);
   static int get_joint_qvel_size(int joint_type);
@@ -105,7 +79,6 @@ class Sim {
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)
-  rcs::sim::Renderer renderer;
   mjModel* m;
   mjData* d;
   Sim(mjModel* m, mjData* d);
@@ -132,11 +105,6 @@ class Sim {
                        mjtNum seconds_between_calls);
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
-  void register_rendering_callback(
-      std::function<void(const std::string& id, mjrContext&, mjvScene&,
-                         mjvOption&)>
-          cb,
-      const std::string& id, int frame_rate, size_t width, size_t height);
   void start_gui_server(const std::string& id);
   void stop_gui_server();
   void sync_gui();
