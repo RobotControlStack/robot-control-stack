@@ -72,7 +72,7 @@ def main():
         env_rel = GripperWrapperSim(env_rel)
 
         if camera_cfgs is not None:
-            camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)
+            camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True)
             env_rel = CameraSetWrapper(env_rel, camera_set, include_depth=True)  # type: ignore[arg-type]
 
         env_rel = RelativeActionSpace(

@@ -1,6 +1,9 @@
 #ifndef RCS_SIM_H
 #define RCS_SIM_H
 #include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -38,6 +41,30 @@ struct ConditionCallback {
   bool last_return_value;
 };
 
+struct StateSnapshot {
+  mjtNum time;
+  rcs::common::VectorXd state;  // mj_getState with mjSTATE_INTEGRATION
+};
+
+// Records the simulation state at a fixed rate while stepping. Cameras render
+// lazily from the latest snapshot of their frame rate, which gives realistic
+// camera timing without rendering frames nobody reads (see
+// docs/development/camera_snapshot_rendering.md).
+class StateSnapshotter {
+ public:
+  explicit StateSnapshotter(mjtNum seconds_between_snapshots);
+  // takes a snapshot if a period has been crossed since the last one
+  void update(const mjModel* m, const mjData* d);
+  std::optional<StateSnapshot> latest() const;
+  void reset();
+
+ private:
+  mjtNum seconds_between_snapshots;
+  mjtNum last_snapshot_time;
+  std::optional<StateSnapshot> snapshot;
+  mutable std::mutex mutex;
+};
+
 struct DynamicJointSchema {
   std::vector<std::string> joint_names;
   std::vector<int> joint_types;
@@ -65,10 +92,13 @@ class Sim {
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
+  // keyed by frame rate in Hz
+  std::map<int, std::unique_ptr<StateSnapshotter>> state_snapshotters;
   std::vector<DynamicJointSpec> dynamic_joint_specs;
   std::unordered_map<std::string, size_t> dynamic_joint_name_to_index;
   void invoke_callbacks();
   bool invoke_condition_callbacks();
+  void update_state_snapshots();
   void init_dynamic_joint_specs();
   static int get_joint_qpos_size(int joint_type);
   static int get_joint_qvel_size(int joint_type);
@@ -105,6 +135,10 @@ class Sim {
                        mjtNum seconds_between_calls);
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
+  // Records the state at the given frame rate while stepping; registering the
+  // same rate twice is a no-op. Snapshots are cleared by reset().
+  void register_state_snapshots(int frame_rate);
+  std::optional<StateSnapshot> get_latest_state_snapshot(int frame_rate) const;
   void start_gui_server(const std::string& id);
   void stop_gui_server();
   void sync_gui();

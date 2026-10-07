@@ -73,7 +73,7 @@ def main():
         env_rel = RobotSimWrapper(env_rel)
         env_rel = GripperWrapperSim(env_rel)
 
-        camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)  # type: ignore
+        camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True)  # type: ignore
         env_rel = CameraSetWrapper(env_rel, camera_set, include_depth=True)  # type: ignore[arg-type]
 
         env_rel = RelativeActionSpace(

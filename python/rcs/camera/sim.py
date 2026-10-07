@@ -1,4 +1,5 @@
 import logging
+import warnings
 from datetime import datetime
 from typing import Literal
 
@@ -113,9 +114,11 @@ class SimCameraSet:
     with the classic renderer. The depth pass is skipped with ``render_depth=False`` (set automatically
     by ``CameraSetWrapper(include_depth=False)``); frames then have ``depth=None``.
 
-    Frames are rendered when they are requested (``get_latest_frames``). Rendering at the cameras'
-    frame rate while the simulation steps (``render_on_demand=False``) is currently not supported,
-    see ``docs/development/camera_snapshot_rendering.md``.
+    Timing: by default the simulation records its state at each camera's frame rate while stepping
+    and the frames returned by ``get_latest_frames`` are rendered from the latest such snapshot, i.e.
+    like a real camera they lag behind the current simulation state by up to one camera period, but
+    only frames that are actually requested get rendered. With ``render_current=True`` (or a camera
+    frame rate of 0) the current simulation state is rendered instead.
     """
 
     DEPTH_SCALE: int = BaseCameraSet.DEPTH_SCALE
@@ -125,23 +128,31 @@ class SimCameraSet:
         simulation: sim.Sim,
         cameras: dict[str, SimCameraConfig],
         physical_units: bool = False,
-        render_on_demand: bool = True,
+        render_current: bool = False,
         max_buffer_frames: int = 100,
         render_depth: bool = True,
+        render_on_demand: bool | None = None,
     ):
-        if not render_on_demand:
-            logger.warning("Rendering at the camera frame rate is not supported, rendering on demand instead.")
+        if render_on_demand is not None:
+            warnings.warn(
+                "render_on_demand is deprecated, use render_current instead", DeprecationWarning, stacklevel=2
+            )
+            render_current = render_on_demand
         if max_buffer_frames <= 0:
             msg = "max_buffer_frames must be positive"
             raise ValueError(msg)
         self._sim = simulation
         self.cameras = cameras
         self.physical_units = physical_units
-        self.render_on_demand = True
+        self.render_current = render_current
         self.render_depth = render_depth
         self.renderer: RendererBackend = simulation.get_config().renderer
         self._buffer: list[FrameSet] = []
         self._max_buffer_frames = max_buffer_frames
+        # latest rendered frame per camera, reused as long as its source state is unchanged
+        self._latest: dict[str, Frame] = {}
+        # scratch data to restore state snapshots into for rendering
+        self._scratch: mujoco.MjData | None = None
 
         model = self._sim.model
         self._filament: filament.FilamentRenderer | None = None
@@ -161,6 +172,8 @@ class SimCameraSet:
                 cam.type = int(cfg.type)
                 cam.fixedcamid = _camera_id(model, cfg)
             self._mj_cameras[name] = cam
+            if not render_current and cfg.frame_rate > 0:
+                self._sim.register_state_snapshots(cfg.frame_rate)
 
     def _classic_renderer(self) -> _ClassicRenderer:
         if self._classic is None:
@@ -179,39 +192,85 @@ class SimCameraSet:
             depth = near / (1 - depth * (1 - near / far))
         return (depth[..., np.newaxis] * self.DEPTH_SCALE).astype(np.uint16)
 
-    def _render(self) -> FrameSet:
-        model, data = self._sim.model, self._sim.data
-        timestamp = data.time
+    def _update_kinematics(self, data: mujoco.MjData):
+        """Computes the positions rendering needs from qpos (no collision detection or dynamics).
+
+        Also used for the live data: after a step, mj_step2 has integrated qpos without recomputing
+        positions, so without this the image would lag one physics step behind the state.
+        """
+        model = self._sim.model
+        mujoco.mj_kinematics(model, data)
+        mujoco.mj_camlight(model, data)
+        if model.ntendon > 0:
+            mujoco.mj_tendon(model, data)
+        if model.nflex > 0:
+            mujoco.mj_flex(model, data)
+
+    def _restore_snapshot(self, state: np.ndarray) -> mujoco.MjData:
+        """Restores a state snapshot into the scratch data."""
+        model = self._sim.model
+        if self._scratch is None:
+            self._scratch = mujoco.MjData(model)
+        mujoco.mj_setState(
+            model, self._scratch, np.asarray(state, dtype=np.float64).ravel(), mujoco.mjtState.mjSTATE_INTEGRATION
+        )
+        return self._scratch
+
+    def _render_frame(self, name: str, data: mujoco.MjData, timestamp: float) -> Frame:
+        model = self._sim.model
+        cfg = self.cameras[name]
+        cam = self._mj_cameras[name]
+        width, height = cfg.resolution_width, cfg.resolution_height
+        color: np.ndarray | None
+        depth: np.ndarray | None = None
         if self._filament is not None:
-            self._filament.update(data)
-        frames: dict[str, Frame] = {}
-        for name, cfg in self.cameras.items():
-            cam = self._mj_cameras[name]
-            width, height = cfg.resolution_width, cfg.resolution_height
-            color: np.ndarray | None
-            depth: np.ndarray | None = None
-            if self._filament is not None:
-                color = self._filament.render(data, cam, width, height)
-                if self.render_depth:
-                    _, depth = self._classic_renderer().render(data, cam, width, height, color=False, depth=True)
-            else:
-                color, depth = self._classic_renderer().render(data, cam, width, height, depth=self.render_depth)
-            assert color is not None
-            intrinsics = _intrinsics(model, cfg)
-            extrinsics = _extrinsics(model, data, cfg)
-            depth_frame = None
-            if depth is not None:
-                depth_frame = DataFrame(
-                    data=self._depth_to_output(depth), timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics
-                )
-            frames[name] = Frame(
-                camera=CameraFrame(
-                    color=DataFrame(data=color, timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics),
-                    depth=depth_frame,
-                ),
-                avg_timestamp=timestamp,
+            color = self._filament.render(data, cam, width, height)
+            if self.render_depth:
+                _, depth = self._classic_renderer().render(data, cam, width, height, color=False, depth=True)
+        else:
+            color, depth = self._classic_renderer().render(data, cam, width, height, depth=self.render_depth)
+        assert color is not None
+        intrinsics = _intrinsics(model, cfg)
+        extrinsics = _extrinsics(model, data, cfg)
+        depth_frame = None
+        if depth is not None:
+            depth_frame = DataFrame(
+                data=self._depth_to_output(depth), timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics
             )
-        return FrameSet(frames=frames, avg_timestamp=timestamp)
+        return Frame(
+            camera=CameraFrame(
+                color=DataFrame(data=color, timestamp=timestamp, intrinsics=intrinsics, extrinsics=extrinsics),
+                depth=depth_frame,
+            ),
+            avg_timestamp=timestamp,
+        )
+
+    def _update_frames(self) -> bool:
+        """Renders all cameras whose source state changed, returns whether anything was rendered."""
+        live = self._sim.data
+        # cameras grouped by the state they render from: the latest snapshot of their frame rate,
+        # or the current state
+        groups: dict[int, list[str]] = {}
+        for name, cfg in self.cameras.items():
+            rate = cfg.frame_rate if not self.render_current else 0
+            groups.setdefault(rate, []).append(name)
+
+        rendered = False
+        for rate, names in groups.items():
+            snapshot: tuple[float, np.ndarray] | None = self._sim.get_latest_state_snapshot(rate) if rate > 0 else None
+            # before the first snapshot (e.g. right after a reset) the current state is rendered
+            timestamp = snapshot[0] if snapshot is not None else live.time
+            stale = [n for n in names if n not in self._latest or self._latest[n].avg_timestamp != timestamp]
+            if not stale:
+                continue
+            data = self._restore_snapshot(snapshot[1]) if snapshot is not None else live
+            self._update_kinematics(data)
+            if self._filament is not None:
+                self._filament.update(data)
+            for name in stale:
+                self._latest[name] = self._render_frame(name, data, timestamp)
+            rendered = True
+        return rendered
 
     def buffer_size(self) -> int:
         return len(self._buffer)
@@ -220,10 +279,12 @@ class SimCameraSet:
         self._buffer.clear()
 
     def get_latest_frames(self) -> FrameSet | None:
-        """Renders all cameras for the current simulation state and returns the frames."""
-        if self._buffer and self._buffer[-1].avg_timestamp == self._sim.data.time:
+        """Returns the latest frames of all cameras, rendering them if their source state changed."""
+        if not self._update_frames() and self._buffer:
             return self._buffer[-1]
-        frameset = self._render()
+        frames = {name: self._latest[name] for name in self.cameras}
+        timestamps = [frame.avg_timestamp for frame in frames.values() if frame.avg_timestamp is not None]
+        frameset = FrameSet(frames=frames, avg_timestamp=float(np.mean(timestamps)) if timestamps else None)
         self._buffer.append(frameset)
         del self._buffer[: -self._max_buffer_frames]
         return frameset

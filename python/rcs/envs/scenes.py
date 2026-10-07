@@ -371,7 +371,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
         if prefixed_cfg.camera_cfgs is not None:
             camera_set = typing.cast(
                 BaseCameraSet,
-                SimCameraSet(simulation, prefixed_cfg.camera_cfgs, physical_units=True, render_on_demand=True),
+                SimCameraSet(simulation, prefixed_cfg.camera_cfgs, physical_units=True),
             )
             env = CameraSetWrapper(env, camera_set, include_depth=cfg.wrapper_cfg.include_depth)
         env = self.add_task_env(prefixed_cfg.task_cfg, env, simulation, cfg)

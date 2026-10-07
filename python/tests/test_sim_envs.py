@@ -71,7 +71,7 @@ def build_single_robot_env(
         env = GripperWrapperSim(env)
 
     if prefixed_cfg.camera_cfgs is not None:
-        camera_set = SimCameraSet(simulation, prefixed_cfg.camera_cfgs, physical_units=True, render_on_demand=True)
+        camera_set = SimCameraSet(simulation, prefixed_cfg.camera_cfgs, physical_units=True)
         env = CameraSetWrapper(env, camera_set, include_depth=True)  # type: ignore[arg-type]
 
     if max_relative_movement is not None:

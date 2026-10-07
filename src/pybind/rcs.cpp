@@ -779,6 +779,19 @@ PYBIND11_MODULE(_core, m) {
       .def("get_config", &rcs::sim::Sim::get_config)
       .def("step", &rcs::sim::Sim::step, py::arg("k"))
       .def("reset", &rcs::sim::Sim::reset)
+      .def("register_state_snapshots", &rcs::sim::Sim::register_state_snapshots,
+           py::arg("frame_rate"))
+      .def(
+          "get_latest_state_snapshot",
+          [](const rcs::sim::Sim& self, int frame_rate)
+              -> std::optional<std::pair<mjtNum, rcs::common::VectorXd>> {
+            auto snapshot = self.get_latest_state_snapshot(frame_rate);
+            if (!snapshot.has_value()) {
+              return std::nullopt;
+            }
+            return std::make_pair(snapshot->time, snapshot->state);
+          },
+          py::arg("frame_rate"))
       .def("sync_gui", &rcs::sim::Sim::sync_gui)
       .def("get_dynamic_joint_schema", &rcs::sim::Sim::get_dynamic_joint_schema)
       .def("get_dynamic_joint_state", &rcs::sim::Sim::get_dynamic_joint_state)

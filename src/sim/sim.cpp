@@ -5,6 +5,7 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
@@ -150,12 +151,75 @@ void Sim::step(size_t k) {
     mj_step1(this->m, this->d);
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
+    this->update_state_snapshots();
   }
 }
 
 void Sim::reset() {
   mj_resetData(this->m, this->d);
   this->reset_callbacks();
+  for (auto& [rate, snapshotter] : this->state_snapshotters) {
+    snapshotter->reset();
+  }
+}
+
+StateSnapshotter::StateSnapshotter(mjtNum seconds_between_snapshots)
+    : seconds_between_snapshots(seconds_between_snapshots) {
+  this->reset();
+}
+
+void StateSnapshotter::update(const mjModel* m, const mjData* d) {
+  // round to the nearest step so that periods which are a multiple of the
+  // timestep do not slip by one step due to floating point accumulation
+  mjtNum elapsed = d->time - this->last_snapshot_time + 0.5 * m->opt.timestep;
+  if (elapsed < this->seconds_between_snapshots) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(this->mutex);
+  if (!this->snapshot.has_value()) {
+    this->snapshot.emplace();
+    this->snapshot->state.resize(mj_stateSize(m, mjSTATE_INTEGRATION));
+  }
+  mj_getState(m, d, this->snapshot->state.data(), mjSTATE_INTEGRATION);
+  this->snapshot->time = d->time;
+  this->last_snapshot_time = d->time;
+}
+
+std::optional<StateSnapshot> StateSnapshotter::latest() const {
+  std::lock_guard<std::mutex> lock(this->mutex);
+  return this->snapshot;
+}
+
+void StateSnapshotter::reset() {
+  std::lock_guard<std::mutex> lock(this->mutex);
+  // snapshot right away in the first step
+  this->last_snapshot_time = -std::numeric_limits<mjtNum>::infinity();
+  this->snapshot.reset();
+}
+
+void Sim::update_state_snapshots() {
+  for (auto& [rate, snapshotter] : this->state_snapshotters) {
+    snapshotter->update(this->m, this->d);
+  }
+}
+
+void Sim::register_state_snapshots(int frame_rate) {
+  if (frame_rate <= 0) {
+    throw std::invalid_argument("frame_rate must be positive");
+  }
+  if (this->state_snapshotters.count(frame_rate) == 0) {
+    this->state_snapshotters[frame_rate] =
+        std::make_unique<StateSnapshotter>(1.0 / frame_rate);
+  }
+}
+
+std::optional<StateSnapshot> Sim::get_latest_state_snapshot(
+    int frame_rate) const {
+  auto it = this->state_snapshotters.find(frame_rate);
+  if (it == this->state_snapshotters.end()) {
+    return std::nullopt;
+  }
+  return it->second->latest();
 }
 
 DynamicJointSchema Sim::get_dynamic_joint_schema() const {

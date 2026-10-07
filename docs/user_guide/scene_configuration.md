@@ -299,6 +299,15 @@ Example:
 
 - `depth[y, x] == 1500` means the point is about **1.5 m** away from the camera
 
+## Camera timing
+
+While the simulation steps, it records its state at each camera's `frame_rate`. When camera frames
+are requested (once per environment step), they are rendered from the latest such snapshot, so like
+a real camera the image lags behind the current simulation state by up to one camera period, but
+only frames that are actually requested get rendered. `SimCameraSet(..., render_current=True)` (or a
+camera `frame_rate` of 0) renders the current simulation state instead. See
+`docs/development/camera_snapshot_rendering.md` for the details.
+
 ## Rendering backend (Filament)
 
 By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 3.15 also

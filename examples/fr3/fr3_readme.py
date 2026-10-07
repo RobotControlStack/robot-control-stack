@@ -56,7 +56,7 @@ if __name__ == "__main__":
     env = GripperWrapperSim(env)
 
     # camera
-    camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)  # type: ignore
+    camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True)  # type: ignore
     env = CameraSetWrapper(env, camera_set, include_depth=True)  # type: ignore
 
     # relative actions bounded by 10cm translation and 10 degree rotation

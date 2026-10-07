@@ -97,7 +97,7 @@ if __name__ == "__main__":
     env = GripperWrapperSim(env)
 
     # camera
-    camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=True)  # type: ignore
+    camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True)  # type: ignore
     env = CameraSetWrapper(env, camera_set, include_depth=True)  # type: ignore
 
     # relative actions bounded by 10cm translation and 10 degree rotation
@@ -188,7 +188,7 @@ For a full list of extensions and detailed documentation, visit **[robotcontrols
 ## ⚠️ Troubleshooting & FAQ
 * **License error or group argument not found during installation?** Make sure you are using a pip version `>=25.1` and setuptools version `>=45`.
 * **Dependency error during installation?** Make sure you are using Python 3.11. RCS extensions currently do not support 3.12+ due to OMPL and RealSense dependencies.
-* **Simulation is running too slow?** Check that you have enable on-demand rendering: `SimCameraSet(..., render_on_demand=True)` to render camera frames only once per step. Resolution and number of cameras in the scene has a large impact on simulation speed. Make sure to use a decent GPU when rendering is enabled.
+* **Simulation is running too slow?** Camera frames are only rendered when they are requested (once per environment step), so resolution and number of cameras in the scene have a large impact on simulation speed. Skip depth images if you do not need them (`CameraSetWrapper(..., include_depth=False)`) and make sure to use a decent GPU when rendering is enabled.
 
 
 ## 📚 Documentation
