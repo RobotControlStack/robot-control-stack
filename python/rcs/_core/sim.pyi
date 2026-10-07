@@ -15,6 +15,7 @@ __all__: list[str] = [
     "DynamicJointState",
     "FrameSet",
     "GuiClient",
+    "RendererBackend",
     "Sim",
     "SimCameraConfig",
     "SimCameraSet",
@@ -28,6 +29,8 @@ __all__: list[str] = [
     "SimTilburgHand",
     "SimTilburgHandConfig",
     "SimTilburgHandState",
+    "CLASSIC",
+    "FILAMENT",
     "default_free",
     "fixed",
     "free",
@@ -102,6 +105,35 @@ class GuiClient:
     def set_model_and_data(self, arg0: int, arg1: int) -> None: ...
     def sync(self) -> None: ...
 
+class RendererBackend:
+    """
+    Members:
+
+      CLASSIC
+
+      FILAMENT
+    """
+
+    CLASSIC: typing.ClassVar[RendererBackend]  # value = <RendererBackend.CLASSIC: 0>
+    FILAMENT: typing.ClassVar[RendererBackend]  # value = <RendererBackend.FILAMENT: 1>
+    __members__: typing.ClassVar[
+        dict[str, RendererBackend]
+    ]  # value = {'CLASSIC': <RendererBackend.CLASSIC: 0>, 'FILAMENT': <RendererBackend.FILAMENT: 1>}
+    def __eq__(self, other: typing.Any) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: typing.Any) -> bool: ...
+    def __repr__(self) -> str: ...
+    def __setstate__(self, state: int) -> None: ...
+    def __str__(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def value(self) -> int: ...
+
 class Sim:
     def __init__(self, mjmdl: int, mjdata: int) -> None: ...
     def _start_gui_server(self, id: str) -> None: ...
@@ -141,6 +173,7 @@ class SimConfig:
     frequency: float
     max_convergence_steps: int
     realtime: bool
+    renderer: RendererBackend
     def __copy__(self) -> SimConfig: ...
     def __deepcopy__(self, arg0: dict) -> SimConfig: ...
     def __init__(
@@ -149,6 +182,7 @@ class SimConfig:
         realtime: bool = False,
         frequency: float = 30.0,
         max_convergence_steps: int = 500,
+        renderer: RendererBackend = ...,
     ) -> None: ...
 
 class SimGripper(rcs._core.common.Gripper):
@@ -385,3 +419,5 @@ default_free: CameraType  # value = <CameraType.default_free: 3>
 fixed: CameraType  # value = <CameraType.fixed: 2>
 free: CameraType  # value = <CameraType.free: 0>
 tracking: CameraType  # value = <CameraType.tracking: 1>
+CLASSIC: RendererBackend  # value = <RendererBackend.CLASSIC: 0>
+FILAMENT: RendererBackend  # value = <RendererBackend.FILAMENT: 1>
