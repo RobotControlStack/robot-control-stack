@@ -95,6 +95,13 @@ def require(feature: str = "offscreen rendering"):
     raise RuntimeError(message)
 
 
+def make_current():
+    """Makes the bootstrapped GL context current on the calling thread (for rendering from Python)."""
+    require()
+    assert _state.gl_context is not None
+    _state.gl_context.make_current()
+
+
 def bootstrap():
     if not _state.available:
         return

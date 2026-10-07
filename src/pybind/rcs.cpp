@@ -720,27 +720,36 @@ PYBIND11_MODULE(_core, m) {
       .def_readonly("last_width", &rcs::sim::SimGripperState::last_width)
       .def_readonly("collision", &rcs::sim::SimGripperState::collision);
 
+  py::enum_<rcs::sim::RendererBackend>(sim, "RendererBackend")
+      .value("CLASSIC", rcs::sim::RendererBackend::CLASSIC)
+      .value("FILAMENT", rcs::sim::RendererBackend::FILAMENT)
+      .export_values();
+
   rcs::sim::SimConfig default_sim_cfg = rcs::sim::SimConfig();
   py::class_<rcs::sim::SimConfig>(sim, "SimConfig")
       .def(py::init([](bool async_control, bool realtime, double frequency,
-                       int max_convergence_steps) {
+                       int max_convergence_steps,
+                       rcs::sim::RendererBackend renderer) {
              rcs::sim::SimConfig config;
              config.async_control = async_control;
              config.realtime = realtime;
              config.frequency = frequency;
              config.max_convergence_steps = max_convergence_steps;
+             config.renderer = renderer;
              return config;
            }),
            py::arg("async_control") = default_sim_cfg.async_control,
            py::arg("realtime") = default_sim_cfg.realtime,
            py::arg("frequency") = default_sim_cfg.frequency,
            py::arg("max_convergence_steps") =
-               default_sim_cfg.max_convergence_steps)
+               default_sim_cfg.max_convergence_steps,
+           py::arg("renderer") = default_sim_cfg.renderer)
       .def_readwrite("async_control", &rcs::sim::SimConfig::async_control)
       .def_readwrite("realtime", &rcs::sim::SimConfig::realtime)
       .def_readwrite("frequency", &rcs::sim::SimConfig::frequency)
       .def_readwrite("max_convergence_steps",
                      &rcs::sim::SimConfig::max_convergence_steps)
+      .def_readwrite("renderer", &rcs::sim::SimConfig::renderer)
       .def("__copy__",
            [](const rcs::sim::SimConfig& self) {
              return rcs::sim::SimConfig(self);

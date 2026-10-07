@@ -299,6 +299,34 @@ Example:
 
 - `depth[y, x] == 1500` means the point is about **1.5 m** away from the camera
 
+## Rendering backend (Filament)
+
+By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 3.15 also
+ships the physically based [Filament](https://github.com/google/filament) renderer and the new
+MuJoCo Studio viewer. Switch to them with the `renderer` flag of `SimConfig`:
+
+```python
+from rcs.sim import RendererBackend, SimConfig
+
+sim_cfg = SimConfig(async_control=False, realtime=False, renderer=RendererBackend.FILAMENT)
+```
+
+With this flag
+
+- `SimCameraSet(...)` returns a `FilamentSimCameraSet`: color images are rendered with Filament in
+  Python (frames are rendered when requested, a fixed camera frame rate is not supported). Filament does
+  not expose a metric depth buffer through MuJoCo's Python API, so depth images are still rendered with
+  the classic renderer and always use the metric units described above.
+- `open_gui()` launches MuJoCo Studio instead of the passive `mujoco.viewer`. Studio runs in the GUI
+  subprocess under a regular `python` interpreter (not `mjpython`, also on macOS).
+
+Environment variables for fine tuning:
+
+- `RCS_FILAMENT_GRAPHICS_API=opengl|vulkan` graphics API of the camera renderer (default `opengl`)
+- `RCS_FILAMENT_SOFTWARE_RENDERING=1` force software rendering for the cameras
+- `RCS_FILAMENT_GFX=opengl|vulkan|web|...` Studio graphics mode; `web` serves the viewer over http instead
+  of opening a window
+
 ### Camera placement
 
 #### Fixed scene camera
