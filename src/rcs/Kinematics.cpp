@@ -9,13 +9,17 @@
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/parsers/mjcf.hpp>
 #include <pinocchio/parsers/urdf.hpp>
+#include <stdexcept>
+#include <string>
 
 namespace rcs {
 namespace common {
 
-Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
-         const VectorXd& nullspace_q, double nullspace_gain,
-         bool enforce_limits, const std::optional<std::string>& base_frame)
+Pin::Pin(
+    const std::string& path, const std::string& frame_id, bool urdf,
+    const VectorXd& nullspace_q, double nullspace_gain, bool enforce_limits,
+    const std::optional<std::string>& base_frame,
+    const std::optional<Eigen::Matrix<double, 2, Eigen::Dynamic>>& joint_limits)
     : model() {
   if (urdf) {
     pinocchio::urdf::buildModel(path, this->model);
@@ -45,6 +49,16 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
 
   this->q_lower = this->model.lowerPositionLimit;
   this->q_upper = this->model.upperPositionLimit;
+  if (joint_limits) {
+    const Eigen::Index n = joint_limits->cols();
+    if (n > this->model.nq) {
+      throw std::invalid_argument("joint_limits has " + std::to_string(n) +
+                                  " columns but the model only has " +
+                                  std::to_string(this->model.nq) + " joints");
+    }
+    this->q_lower.head(n) = joint_limits->row(0).transpose();
+    this->q_upper.head(n) = joint_limits->row(1).transpose();
+  }
   const double inf = std::numeric_limits<double>::infinity();
   for (Eigen::Index i = 0; i < this->q_lower.size(); i++) {
     if (!std::isfinite(this->q_lower[i]) || !std::isfinite(this->q_upper[i]) ||

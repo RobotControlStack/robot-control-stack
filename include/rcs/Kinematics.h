@@ -52,7 +52,9 @@ class Pin : public Kinematics {
   Pin(const std::string& path, const std::string& frame_id, bool urdf,
       const VectorXd& nullspace_q = VectorXd(), double nullspace_gain = 0.0,
       bool enforce_limits = true,
-      const std::optional<std::string>& base_frame = std::nullopt);
+      const std::optional<std::string>& base_frame = std::nullopt,
+      const std::optional<Eigen::Matrix<double, 2, Eigen::Dynamic>>&
+          joint_limits = std::nullopt);
   std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;

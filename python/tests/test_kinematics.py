@@ -219,3 +219,31 @@ def test_kinematics_base_frame_moved_by_joint_raises(tmp_path):
     path.write_text(MOUNTED_ARM_MJCF)
     with pytest.raises(RuntimeError, match="link2"):
         common.Pin(str(path), "tip", False, base_frame="link2")
+
+
+def test_kinematics_joint_limits_from_config():
+    """Configured limits replace the model limits, so solutions stay inside the narrower config range."""
+    robot = rcs.ROBOTS[common.RobotType.FR3]
+    pin_model_limits = common.Pin(robot.mjcf_model_path, robot.attachment_site, False)
+    pin_config_limits = common.Pin(robot.mjcf_model_path, robot.attachment_site, False, joint_limits=robot.joint_limits)
+    lower, upper = robot.joint_limits
+    q_target = robot.q_home.copy()
+    q_target[0] = upper[0] + 0.3
+    pose = pin_model_limits.forward(q_target, NO_TCP_OFFSET)
+    q_seed = robot.q_home.copy()
+    q_seed[0] = upper[0]
+
+    q_model: np.ndarray | None = pin_model_limits.inverse(pose, q_target, NO_TCP_OFFSET)
+    q_config: np.ndarray | None = pin_config_limits.inverse(pose, q_seed, NO_TCP_OFFSET)
+
+    assert q_model is not None and q_model[0] > upper[0]
+    assert q_config is not None
+    assert np.all((q_config >= lower) & (q_config <= upper))
+    assert pin_config_limits.forward(q_config, NO_TCP_OFFSET).is_close(pose, eps_r=1e-3, eps_t=1e-3)
+
+
+def test_kinematics_joint_limits_more_joints_than_model_raises():
+    robot = rcs.ROBOTS[common.RobotType("UR5e")]
+    too_many = np.vstack([-np.ones(robot.dof + 1), np.ones(robot.dof + 1)])
+    with pytest.raises(ValueError, match="joint_limits"):
+        common.Pin(robot.mjcf_model_path, robot.attachment_site, False, joint_limits=too_many)
