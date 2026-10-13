@@ -87,7 +87,7 @@ def config(tmp_path: Path) -> VisualRandomizerConfig:
             scenes=[
                 BackgroundScene(
                     xml_path=str(background_xml),
-                    scene_to_world=rcs.common.Pose(translation=np.array([1.0, 0.0, 0.0])),
+                    scene_to_world=rcs.common.Pose(translation=np.array([1.0, 0.0, 0.0])),  # type: ignore
                     name="room",
                 )
             ]
