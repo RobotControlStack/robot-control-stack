@@ -92,8 +92,8 @@ def main():
     cfg.sim_cfg.async_control = True
     cfg.max_relative_movement = None
     cfg.root_frame_objects = {
-        "green_cube": (
-            rcs.OBJECT_PATHS["green_cube"],
+        "green_cuboid": (
+            rcs.OBJECT_PATHS["green_cuboid"],
             Pose(translation=np.array([0.5, 0.0, 0.05]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])),
         )
     }

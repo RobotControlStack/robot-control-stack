@@ -329,7 +329,7 @@ class StorageWrapper(gym.Wrapper):
         self._success = False
         self._prev_action = None
         self._prev_absolute_action = None
-        obs, info = self.env.reset()
+        obs, info = self.env.reset(seed=seed, options=options)
         self.step_cnt = 0
         self.uuid = uuid4()
         return obs, info

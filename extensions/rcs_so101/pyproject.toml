@@ -7,20 +7,28 @@ requires = [
   "pybind11",
   "cmake",
   "ninja",
-  "rcs-core>=0.7.2",
+  "rcs-core>=0.7.3",
 ]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_so101"
-version = "0.7.2"
+version = "0.7.3"
 description = "RCS SO101 module"
-dependencies = ["rcs-core>=0.7.2", "lerobot==0.3.3"]
+dependencies = ["rcs-core>=0.7.3", "lerobot==0.3.3"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 maintainers = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
 requires-python = ">=3.11"
+
+[dependency-groups]
+build_deps = [
+  "pin==3.7.0",
+  "cmeel-urdfdom<5",
+  "cmeel-tinyxml2<11",
+  "scikit-build-core>=0.3.3",
+]
 
 [tool.scikit-build]
 build.verbose = true
@@ -31,7 +39,15 @@ wheel.packages = ["src/rcs_so101"]
 install.components = ["python_package"]
 
 [tool.cibuildwheel]
-skip = ["cp314*", "*-musllinux*"]
+build = ["cp311-*", "cp312-*", "cp313-*"]
+skip = ["*-musllinux*"]
+before-build = "pip install --upgrade pip && pip install --group {package}/pyproject.toml:build_deps cmake ninja && pip install --no-index --no-deps --find-links {project}/dist/core rcs-core"
+build-frontend = { name = "pip", args = ["--no-build-isolation"] }
+environment = { SKBUILD_BUILD_DIR = "/tmp/rcs-build/{wheel_tag}" }
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+manylinux-x86_64-image = "manylinux_2_28"
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude librcs.so --exclude libpinocchio_default.so.3.7.0 --exclude libpinocchio_parsers.so.3.7.0"
 
 [tool.black]

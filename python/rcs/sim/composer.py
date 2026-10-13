@@ -105,6 +105,7 @@ class ModelComposer:
             camera_mount = mujoco.MjSpec().worldbody.add_body()
             camera_mount.name = "mount"
             camera_mount = attachment_site.attach_body(camera_mount, f"{name}_", "")
+            self._gravcomp_prefixes.add(f"{name}_")
 
         self._apply_pose(camera_mount, pose)
 
@@ -163,6 +164,8 @@ class ModelComposer:
                 raise ValueError(msg)
 
             attached_root = attachment_site.attach_body(root_body, prefix=prefix, suffix="")
+            if prefix:
+                self._gravcomp_prefixes.add(prefix)
 
         self._apply_pose(attached_root, pose)
 
@@ -264,6 +267,8 @@ class ModelComposer:
         object_root = object_spec.worldbody.first_body()
         object_root = attachment_site.attach_body(object_root, prefix=object_prefix, suffix="")
         self._apply_pose(object_root, pose)
+        if object_prefix:
+            self._gravcomp_prefixes.add(object_prefix)
         return object_root
 
     def add_object_world_frame(

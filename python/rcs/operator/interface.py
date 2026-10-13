@@ -11,7 +11,6 @@ import gymnasium as gym
 from rcs._core.common import RobotPlatform
 from rcs.envs.base import ArmWithGripper, ControlMode, RelativeTo
 from rcs.sim.sim import Sim
-from rcs.utils import SimpleFrameRate
 
 logger = logging.getLogger(__name__)
 
@@ -121,9 +120,6 @@ class TeleopLoop:
         return translated
 
     def environment_step_loop(self):
-        rate_limiter = SimpleFrameRate(
-            self.env_frequency if self.robot_platform == RobotPlatform.HARDWARE else None, "env loop"
-        )
 
         # 0. Initial Reset to get current positions for untracked robots
         self._last_obs, _ = self.env.reset()
@@ -180,7 +176,6 @@ class TeleopLoop:
 
                 self._last_obs, _, _, _, _ = self.env.step(hold_actions)
                 self.operator.set_camera(self._last_obs)
-                rate_limiter()
                 continue
 
             for controller in cmds.reset_origin_to_current:
@@ -202,11 +197,8 @@ class TeleopLoop:
             self._last_obs, _, _, _, _ = self.env.step(actions)
             self.operator.set_camera(self._last_obs)
 
-            rate_limiter()
-
     def sync_robot_to_operator(self, duration: float = 3.0):
         print(f"Command: Syncing robot to operator (duration: {duration}s)...")
-        rate_limiter = SimpleFrameRate(self.env_frequency, "sync loop")
         num_steps = int(duration * self.env_frequency)
 
         # 1. Capture the initial state for interpolation
@@ -239,6 +231,5 @@ class TeleopLoop:
 
             self._last_obs, _, _, _, _ = self.env.step(interp_actions)
             self.operator.set_camera(self._last_obs)
-            rate_limiter()
 
         print("Sync Complete.")

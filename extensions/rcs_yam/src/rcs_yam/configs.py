@@ -13,6 +13,9 @@ import rcs
 
 class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
     channel = "can0"
+    # in N, <=0 turns off the limit
+    # 50 N is the default from YAM
+    gripper_force = 50.0
 
     def config(self) -> YamHardwareEnvCreatorConfig:
         robot_type = RobotType("Yam")
@@ -20,6 +23,7 @@ class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
         robot_cfg = YamConfig(
             channel=self.channel,
             gripper_type_id="linear_4310",
+            gripper_force=self.gripper_force,
             async_control=False,
             robot_type=robot_type,
             kinematic_model_path=rcs.ROBOTS[robot_type].mjcf_model_path,
@@ -45,9 +49,12 @@ class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
 class DefaultYamDualMultiHardwareEnv(RCSYamMultiConfigEnvCreator):
     left_channel = "can0"
     right_channel = "can1"
+    # in N, <=0 turns off the limit
+    gripper_force = 50
 
     def config(self) -> YamMultiHardwareEnvCreatorConfig:
         base = DefaultYamHardwareEnv()
+        base.gripper_force = self.gripper_force
 
         base.channel = self.left_channel
         left_cfg = base.config()

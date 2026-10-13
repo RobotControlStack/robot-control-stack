@@ -5,7 +5,12 @@ from dataclasses import dataclass, field
 import gymnasium as gym
 import rcs.hand.tilburg_hand
 from rcs._core.common import BaseCameraConfig, Gripper, GripperConfig, GripperType
-from rcs.camera.hw import DummyCalibrationStrategy, HardwareCamera, HardwareCameraSet
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    DummyCalibrationStrategy,
+    HardwareCamera,
+    HardwareCameraSet,
+)
 from rcs.envs.base import (
     CameraSetWrapper,
     ControlMode,
@@ -38,7 +43,6 @@ class HardwareCameraCreatorConfig:
 
 def _create_realsense_camera(cfg: HardwareCameraCreatorConfig) -> HardwareCamera:
     try:
-        from rcs.camera.hw import CalibrationStrategy
 
         # from rcs_realsense.calibration import FR3BaseArucoCalibration
         from rcs_realsense.camera import RealSenseCameraSet
@@ -119,6 +123,8 @@ class PandaHardwareEnvCreatorConfig:
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -131,6 +137,8 @@ class PandaMultiHardwareEnvCreatorConfig:
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
+    frequency: float | None = None
+    """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
 
 
@@ -143,7 +151,7 @@ class RCSPandaConfigEnvCreator(RCSEnvCreator[PandaHardwareEnvCreatorConfig]):
         )
         robot = hw.Franka(cfg.robot_cfg, ik)
 
-        env: gym.Env = HardwareEnv()
+        env: gym.Env = HardwareEnv(frequency=cfg.frequency)
         env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
         env = PandaHW(env)
         if isinstance(cfg.gripper_cfg, rcs.hand.tilburg_hand.THConfig):
@@ -185,6 +193,7 @@ class RCSPandaMultiConfigEnvCreator(RCSEnvCreator[PandaMultiHardwareEnvCreatorCo
                     camera_cfgs=None,
                     max_relative_movement=cfg.max_relative_movement,
                     relative_to=cfg.relative_to,
+                    frequency=cfg.frequency,
                     wrapper_cfg=cfg.wrapper_cfg,
                 )
             )

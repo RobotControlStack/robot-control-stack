@@ -211,6 +211,32 @@ class BaseEnv(gym.Env):
 class HardwareEnv(BaseEnv):
     PLATFORM = RobotPlatform.HARDWARE
 
+    def __init__(self, frequency: float | None = None) -> None:
+        """
+        Args:
+            frequency: Control frequency in Hz. Each env step is rate limited such that
+                the loop runs at this frequency, analogous to `SimConfig.frequency` in realtime sim.
+                None disables rate limiting.
+        """
+        super().__init__()
+        if frequency is None:
+            _logger.warning(
+                "No control frequency set: steps are not rate limited and may command the robot "
+                "faster than it can handle, which can damage the hardware."
+            )
+        self.frame_rate = SimpleFrameRate(frequency, "Hardware Loop")
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool, bool, dict]:
+        ret = super().step(action)
+        self.frame_rate()
+        return ret
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.frame_rate.reset()
+        return super().reset(seed=seed, options=options)
+
 
 class SimEnv(BaseEnv):
     PLATFORM = RobotPlatform.SIMULATION
@@ -328,7 +354,6 @@ class RobotWrapper(ActObsInfoWrapper):
         self.joints_key = get_space_keys(JointsDictType)[0]
         self.trpy_key = get_space_keys(TRPYDictType)[0]
         self.tquat_key = get_space_keys(TQuatDictType)[0]
-        self.prev_action: dict | None = None
 
     def get_unwrapped_control_mode(self, idx: int) -> ControlMode:
         """Returns the unwrapped control mode at a certain index. 0 is the base control mode, -1 the last."""
@@ -373,29 +398,17 @@ class RobotWrapper(ActObsInfoWrapper):
         ):
             msg = "Given type is not matching control mode!"
             raise RuntimeError(msg)
-        last_action = self.prev_action
-        self.prev_action = copy.deepcopy(action)
-
         # shallow copy
         action = dict(action)
-        if self.get_base_control_mode() == ControlMode.JOINTS and (
-            last_action is None
-            or not np.allclose(action[self.joints_key], last_action[self.joints_key], atol=1e-03, rtol=0)
-        ):
+        if self.get_base_control_mode() == ControlMode.JOINTS:
             self.robot.set_joint_position(action[self.joints_key])
             action.pop(self.joints_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY and (
-            last_action is None
-            or not np.allclose(action[self.trpy_key], last_action[self.trpy_key], atol=1e-03, rtol=0)
-        ):
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TRPY:
             self.robot.set_cartesian_position(
                 common.Pose(translation=action[self.trpy_key][:3], rpy_vector=action[self.trpy_key][3:])
             )
             action.pop(self.trpy_key)
-        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat and (
-            last_action is None
-            or not np.allclose(action[self.tquat_key], last_action[self.tquat_key], atol=1e-03, rtol=0)
-        ):
+        elif self.get_base_control_mode() == ControlMode.CARTESIAN_TQuat:
             self.robot.set_cartesian_position(
                 common.Pose(translation=action[self.tquat_key][:3], quaternion=action[self.tquat_key][3:])
             )
@@ -410,7 +423,6 @@ class RobotWrapper(ActObsInfoWrapper):
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        self.prev_action = None
         self.robot.reset()
         if self.home_on_reset:
             exception = True
@@ -1042,10 +1054,11 @@ class CameraSetWrapper(ActObsInfoWrapper):
 class GripperWrapper(ActObsInfoWrapper):
     # TODO: sticky gripper, like in aloha
 
+    GRIPPER_THRESHOLD = 0.5
     BINARY_GRIPPER_CLOSED: ClassVar[list[float]] = [0]
     BINARY_GRIPPER_OPEN: ClassVar[list[float]] = [1]
 
-    def __init__(self, env, gripper: common.Gripper, binary: bool = True):
+    def __init__(self, env, gripper: common.Gripper, binary: bool = True, prev_action_obs: bool = False):
         super().__init__(env)
         self.binary = binary
         self.observation_space: gym.spaces.Dict
@@ -1055,6 +1068,7 @@ class GripperWrapper(ActObsInfoWrapper):
         self.gripper_key = get_space_keys(GripperDictType)[0]
         self.gripper = gripper
         self._last_gripper_cmd = None
+        self.prev_action_obs = prev_action_obs
 
     def _command_changed(self, gripper_action: np.ndarray) -> bool:
         if self._last_gripper_cmd is None:
@@ -1075,7 +1089,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
     def observation(self, observation: dict[str, Any], info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         observation = copy.deepcopy(observation)
-        if self.binary:
+        if self.prev_action_obs:
             observation[self.gripper_key] = (
                 self._last_gripper_cmd if self._last_gripper_cmd is not None else self.BINARY_GRIPPER_OPEN
             )
@@ -1099,7 +1113,7 @@ class GripperWrapper(ActObsInfoWrapper):
 
         if self._command_changed(gripper_action):
             if self.binary:
-                self.gripper.grasp() if gripper_action[0] < 0.5 else self.gripper.open()
+                self.gripper.grasp() if gripper_action[0] < self.GRIPPER_THRESHOLD else self.gripper.open()
             else:
                 self.gripper.set_normalized_width(float(gripper_action[0]))
             self._last_gripper_cmd = gripper_action.tolist()

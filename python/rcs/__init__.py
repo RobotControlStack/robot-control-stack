@@ -110,8 +110,8 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
         joint_limits=np.array(
             [
-                [-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895],
-                [2.3093, 1.5133, 2.4937, -0.4461, 2.4800, 4.2094, 2.6895],
+                [-2.3476, -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045],
+                [2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045],
             ]
         ),
     ),
@@ -148,8 +148,8 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         q_home=np.array([0, -45.0 / 180.0 * np.pi, 0, 15.0 / 180.0 * np.pi, 0, -25.0 / 180.0 * np.pi, 0]),
         joint_limits=np.array(
             [
-                [-2 * np.pi, -2.094395, -2 * np.pi, -3.92699, -2 * np.pi, -np.pi, -2 * np.pi],
-                [2 * np.pi, 2.059488, 2 * np.pi, 0.191986, 2 * np.pi, 1.692969, 2 * np.pi],
+                [-2 * np.pi, -2.059488, -2 * np.pi, -0.191986, -2 * np.pi, -1.692969, -2 * np.pi],
+                [2 * np.pi, 2.094395, 2 * np.pi, 3.92699, 2 * np.pi, np.pi, 2 * np.pi],
             ]
         ),
     ),
@@ -223,13 +223,18 @@ SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.x
 
 OBJECT_PATHS: dict[str, str] = {
     "fr3_duo_mount": "assets/objects/fr3_duo_mount/fr3_duo_mount.xml",
+    "fr3_single_mount": "assets/objects/fr3_single_mount/fr3_single_mount.xml",
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
+    "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
+    "green_cuboid": "assets/objects/green_cuboid/green_cuboid.xml",
     "green_cube": "assets/objects/green_cube/green_cube.xml",
+    "red_cube": "assets/objects/red_cube/red_cube.xml",
 }
 
 CAMERA_PATHS: dict[str, str] = {
     "d405": "assets/cameras/d405/d405.xml",
     "zed_mini": "assets/cameras/zed_mini/zed_mini.xml",
+    "zed2i": "assets/cameras/zed2i/zed2i.xml",
 }
 
 # we add our task classes here

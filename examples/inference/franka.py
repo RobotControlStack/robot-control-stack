@@ -15,7 +15,6 @@ from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
 from rcs.envs.storage_wrapper import StorageWrapper
-from rcs.utils import SimpleFrameRate
 
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
 from vlagents.client import RemoteAgent
@@ -133,7 +132,6 @@ class ModelInference:
             cfg.jpeg_encoding,
             cfg.image_size,
         )
-        self.frame_rate = SimpleFrameRate(self._cfg.fps)
         self._action_buffer = []
 
     def submit_command(self, command: str) -> None:
@@ -298,9 +296,6 @@ class ModelInference:
 
             obs_dict = self.obs_rcs2agents(obs)
 
-            if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-                self.frame_rate()
-
 
 def command_loop(controller: ModelInference) -> None:
     prompt = "Command [e=start, r=record, s=success/reset, q=stop/reset, o=reload, x=exit]: "
@@ -393,6 +388,7 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         # interpolation window of the controllers must match the rate at which we stream actions
         hw_cfg.robot_cfgs["left"].policy_rate = cfg.fps
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
+        hw_cfg.frequency = cfg.fps
         hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)

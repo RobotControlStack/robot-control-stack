@@ -2,6 +2,12 @@
 
 RCS is designed to be modular. Core functionality is kept minimal, while specific hardware support and additional features are provided through **extensions**.
 
+```{note}
+Extensions are supported on **Linux only**. The core `rcs-core` package (MuJoCo
+simulation + Python API) also runs on macOS (Apple Silicon / arm64), but the
+hardware extensions are not supported there.
+```
+
 ## What is an Extension?
 
 An extension is a separate Python package that integrates with RCS. Extensions can provide:
@@ -37,7 +43,6 @@ RCS comes with several supported extensions:
 - **rcs_realsense**: Support for Intel RealSense cameras.
 - **rcs_usb_cam**: Support for generic USB webcams.
 - **rcs_tacto**: Integration with the Tacto tactile sensor simulator.
-- **rcs_robotics_library**: Integration with the Robotics Library (RL).
 - **rcs_robotiq2f85**: Integration with the Robotiq 2F-85 Gripper.
 
 ## Creating Extensions

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rcs_robotiq2f85"
-version = "0.7.2"
+version = "0.7.3"
 description="RCS RobotiQ module"
 dependencies = [
-    "rcs-core>=0.7.2",
+    "rcs-core>=0.7.3",
     "robotiq2f==0.2.0",
     "typer~=0.9",
 ]

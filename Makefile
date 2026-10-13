@@ -1,6 +1,14 @@
 PYSRC = python
 CPPSRC = src
 COMPILE_MODE = Release
+WHEELHOUSE = wheelhouse
+CORE_WHEELHOUSE = ${WHEELHOUSE}/core
+PY_EXT_WHEELHOUSE = ${WHEELHOUSE}/py_extensions
+CPP_EXT_WHEELHOUSE = ${WHEELHOUSE}/cpp_extensions
+PY_EXTENSIONS ?= rcs_realsense rcs_robotiq2f85 rcs_ur5e rcs_usb_cam rcs_xarm7 rcs_zed
+CPP_EXTENSIONS ?= rcs_fr3 rcs_panda rcs_so101
+# set to pypi to publish to the real index
+PYPI_REPOSITORY ?= testpypi
 LINT_EXCLUDE_RUFF = --exclude examples/teleop/SimPublisher
 LINT_EXCLUDE_MYPY = 'build|examples/teleop/SimPublisher|examples/inference/franka.py'
 
@@ -68,4 +76,34 @@ bump:
 commit:
 	cz commit
 
-.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit
+buildcorewheels:
+	rm -rf ${CORE_WHEELHOUSE}
+	cibuildwheel --platform auto --output-dir ${CORE_WHEELHOUSE} .
+	twine check ${CORE_WHEELHOUSE}/*.whl
+
+uploadcorewheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${CORE_WHEELHOUSE}/*.whl
+
+buildpyextensionwheels:
+	rm -rf ${PY_EXT_WHEELHOUSE}
+	for ext in ${PY_EXTENSIONS}; do \
+		uv build --wheel --out-dir ${PY_EXT_WHEELHOUSE} extensions/$$ext || exit 1; \
+	done
+	twine check ${PY_EXT_WHEELHOUSE}/*.whl
+
+uploadpyextensionwheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${PY_EXT_WHEELHOUSE}/*.whl
+
+buildcppextensionwheels:
+	rm -rf ${CPP_EXT_WHEELHOUSE}
+	rm -rf dist/core && mkdir -p dist/core
+	cp ${CORE_WHEELHOUSE}/*.whl dist/core/
+	for ext in ${CPP_EXTENSIONS}; do \
+		cibuildwheel --platform auto --output-dir ${CPP_EXT_WHEELHOUSE} extensions/$$ext || exit 1; \
+	done
+	twine check ${CPP_EXT_WHEELHOUSE}/*.whl
+
+uploadcppextensionwheels:
+	twine upload --repository ${PYPI_REPOSITORY} ${CPP_EXT_WHEELHOUSE}/*.whl
+
+.PHONY: cppcheckformat cppformat cpplint gcccompile clangcompile stubgen pycheckformat pyformat pylint ruff mypy pytest bump commit buildcorewheels uploadcorewheels buildpyextensionwheels uploadpyextensionwheels buildcppextensionwheels uploadcppextensionwheels

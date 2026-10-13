@@ -55,4 +55,3 @@ rcs_mycppext/
 ## Examples
 
 - **rcs_fr3**: Implements the driver for the Franka Research 3 robot in C++ using `libfranka`.
-- **rcs_robotics_library**: Wraps the Robotics Library (RL) for kinematics and path planning.
