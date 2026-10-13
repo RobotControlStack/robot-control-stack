@@ -214,3 +214,38 @@ def test_box_projected_uv_obj_is_textured(tmp_path: Path):
     )
     model = spec.compile()
     assert model.mesh_texcoordnum[0] == 12
+
+
+def _empty_world_cfg(visual_randomization: VisualRandomizerConfig | None):
+    from rcs.envs.configs import EmptyWorldFR3Duo
+
+    scene = EmptyWorldFR3Duo()
+    cfg = scene.config()
+    cfg.headless = True
+    cfg.camera_cfgs = {}
+    cfg.visual_randomization = visual_randomization
+    return scene, cfg
+
+
+def test_env_creation_applies_enabled_randomizers(config: VisualRandomizerConfig):
+    config.lighting.enabled = True
+    scene, cfg = _empty_world_cfg(config)
+    composer = scene.create_model(cfg)
+    assert composer.visual_randomization_params == {LIGHTING: {"preset": "warm_spot"}}
+    env = scene.create_env_from_model(cfg, composer)
+    try:
+        model = env.get_wrapper_attr("sim").model
+        assert model.nlight == 1
+        assert model.light_type[0] == mujoco.mjtLightType.mjLIGHT_SPOT
+    finally:
+        env.close()
+
+
+def test_env_creation_without_enabled_randomizers_is_unchanged(config: VisualRandomizerConfig):
+    scene, cfg = _empty_world_cfg(None)
+    reference = scene.create_model(cfg).spec.compile()
+    scene, cfg = _empty_world_cfg(config)
+    composer = scene.create_model(cfg)
+    model = composer.spec.compile()
+    assert composer.visual_randomization_params == {}
+    assert (model.ngeom, model.nlight, model.nmat) == (reference.ngeom, reference.nlight, reference.nmat)
