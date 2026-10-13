@@ -380,11 +380,13 @@ PYBIND11_MODULE(_core, m) {
   py::class_<rcs::common::Pin, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
       .def(py::init<const std::string&, const std::string&, bool,
-                    const rcs::common::VectorXd&, double, bool>(),
+                    const rcs::common::VectorXd&, double, bool,
+                    const std::optional<std::string>&>(),
            py::arg("path"), py::arg("frame_id") = "fr3_link8",
            py::arg("urdf") = false,
            py::arg("nullspace_q") = rcs::common::VectorXd(),
-           py::arg("nullspace_gain") = 0.0, py::arg("enforce_limits") = true);
+           py::arg("nullspace_gain") = 0.0, py::arg("enforce_limits") = true,
+           py::arg("base_frame") = std::nullopt);
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)

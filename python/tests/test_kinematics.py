@@ -1,3 +1,4 @@
+import mujoco
 import numpy as np
 import pytest
 
@@ -159,3 +160,62 @@ def test_kinematics_missing_frame_raises():
     robot = rcs.ROBOTS[common.RobotType.FR3]
     with pytest.raises(RuntimeError, match="not_a_frame"):
         common.Pin(robot.mjcf_model_path, "not_a_frame", False)
+
+
+MOUNTED_ARM_MJCF = """
+<mujoco>
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="mount" pos="1 0 0">
+      <body name="robot_base" pos="0.1 0.2 0.3" quat="0.7071068 0 0 0.7071068">
+        <body name="link1">
+          <joint name="joint1" axis="0 0 1" range="-3 3"/>
+          <geom type="capsule" size="0.02" fromto="0 0 0 0 0 0.3"/>
+          <body name="link2" pos="0 0 0.3">
+            <joint name="joint2" axis="0 1 0" range="-2 2"/>
+            <geom type="capsule" size="0.02" fromto="0 0 0 0.3 0 0"/>
+            <body name="link3" pos="0.3 0 0">
+              <joint name="joint3" axis="0 1 0" range="-2 2"/>
+              <geom type="capsule" size="0.02" fromto="0 0 0 0.2 0 0"/>
+              <site name="tip" pos="0.2 0 0"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+
+
+def test_kinematics_base_frame(tmp_path):
+    """Poses are expressed in base_frame, matching MuJoCo's site pose relative to that body."""
+    path = tmp_path / "mounted_arm.xml"
+    path.write_text(MOUNTED_ARM_MJCF)
+    pin = common.Pin(str(path), "tip", False, base_frame="robot_base")
+    q = np.array([0.4, -0.3, 0.5])
+
+    model = mujoco.MjModel.from_xml_path(str(path))
+    data = mujoco.MjData(model)
+    data.qpos[:] = q
+    mujoco.mj_forward(model, data)
+    base = data.body("robot_base")
+    base_pose = common.Pose(base.xmat.reshape(3, 3), base.xpos)
+    site_pose = common.Pose(data.site("tip").xmat.reshape(3, 3), data.site("tip").xpos)
+    expected = base_pose.inverse() * site_pose
+
+    pose = pin.forward(q, NO_TCP_OFFSET)
+    assert pose.is_close(expected, eps_r=1e-9, eps_t=1e-9)
+
+    tcp_offset = common.Pose(translation=np.array([0.0, 0.0, 0.1]))
+    pose_tcp = pin.forward(q, tcp_offset)
+    q_sol: np.ndarray | None = pin.inverse(pose_tcp, q + 0.1, tcp_offset)
+    assert q_sol is not None
+    assert pin.forward(q_sol, tcp_offset).is_close(pose_tcp, eps_r=1e-3, eps_t=1e-3)
+
+
+def test_kinematics_base_frame_moved_by_joint_raises(tmp_path):
+    path = tmp_path / "mounted_arm.xml"
+    path.write_text(MOUNTED_ARM_MJCF)
+    with pytest.raises(RuntimeError, match="link2"):
+        common.Pin(str(path), "tip", False, base_frame="link2")

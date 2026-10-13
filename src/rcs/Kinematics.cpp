@@ -15,7 +15,7 @@ namespace common {
 
 Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
          const VectorXd& nullspace_q, double nullspace_gain,
-         bool enforce_limits)
+         bool enforce_limits, const std::optional<std::string>& base_frame)
     : model() {
   if (urdf) {
     pinocchio::urdf::buildModel(path, this->model);
@@ -29,6 +29,19 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
                              (urdf ? "URDF" : "MJCF"));
   }
   this->FRAME_ID = model.getFrameId(frame_id);
+  if (base_frame) {
+    if (!model.existFrame(*base_frame)) {
+      throw std::runtime_error(*base_frame +
+                               " base frame could not be found in the model");
+    }
+    const pinocchio::Frame& base = model.frames[model.getFrameId(*base_frame)];
+    if (base.parentJoint != 0) {
+      throw std::runtime_error(*base_frame +
+                               " base frame must not be moved by a joint");
+    }
+    this->base_pose =
+        Pose(base.placement.rotation(), base.placement.translation());
+  }
 
   this->q_lower = this->model.lowerPositionLimit;
   this->q_upper = this->model.upperPositionLimit;
@@ -51,7 +64,7 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
 
 std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
                                      const Pose& tcp_offset) {
-  rcs::common::Pose new_pose = pose * tcp_offset.inverse();
+  rcs::common::Pose new_pose = this->base_pose * pose * tcp_offset.inverse();
   const pinocchio::SE3 oMdes(new_pose.rotation_m(), new_pose.translation());
   VectorXd q_seed(model.nq);
   q_seed.setZero();
@@ -128,7 +141,7 @@ Pose Pin::forward(const VectorXd& q0, const Pose& tcp_offset) {
                          data.oMf[this->FRAME_ID].translation());
 
   // apply the tcp offset
-  return pose * tcp_offset;
+  return this->base_pose.inverse() * pose * tcp_offset;
 }
 
 }  // namespace common

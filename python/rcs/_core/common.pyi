@@ -323,6 +323,7 @@ class Pin(Kinematics):
         nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
         nullspace_gain: float = 0.0,
         enforce_limits: bool = True,
+        base_frame: str | None = None,
     ) -> None: ...
 
 def FrankaHandTCPOffset() -> numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]: ...

@@ -34,6 +34,7 @@ class Pin : public Kinematics {
   const double DT = 1e-1;
   const double damp = 1e-6;
   int FRAME_ID;
+  Pose base_pose;
 
   pinocchio::Model model;
   pinocchio::Data data;
@@ -50,7 +51,8 @@ class Pin : public Kinematics {
  public:
   Pin(const std::string& path, const std::string& frame_id, bool urdf,
       const VectorXd& nullspace_q = VectorXd(), double nullspace_gain = 0.0,
-      bool enforce_limits = true);
+      bool enforce_limits = true,
+      const std::optional<std::string>& base_frame = std::nullopt);
   std::optional<VectorXd> inverse(
       const Pose& pose, const VectorXd& q0,
       const Pose& tcp_offset = Pose::Identity()) override;
