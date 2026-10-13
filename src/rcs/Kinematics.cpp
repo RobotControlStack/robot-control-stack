@@ -67,7 +67,8 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
     pinocchio::updateFramePlacements(model, data);
     const pinocchio::SE3 iMd = data.oMf[this->FRAME_ID].actInv(oMdes);
     err = pinocchio::log6(iMd).toVector();
-    if (err.norm() < this->eps) {
+    const bool posture_pending = nullspace_gain > 0.0 && i == 0;
+    if (err.norm() < this->eps && !posture_pending) {
       success = true;
       break;
     }

@@ -117,3 +117,23 @@ def test_kinematics_nullspace_large_gain_converges(gain):
 
     assert q_sol is not None, f"IK failed with null-space gain {gain}"
     assert pin.forward(q_sol, NO_TCP_OFFSET).is_close(pose_home, eps_r=1e-3, eps_t=1e-3)
+
+
+@pytest.mark.parametrize("robot_name", REDUNDANT_ROBOTS)
+def test_kinematics_nullspace_applies_when_seed_reaches_pose(robot_name):
+    """A seed that already reaches the target still moves toward the posture."""
+    robot = rcs.ROBOTS[robot_name]
+    pin_plain = common.Pin(robot.mjcf_model_path, robot.attachment_site, False, np.array([]), 0.0, False)
+    pin_ns = common.Pin(robot.mjcf_model_path, robot.attachment_site, False, robot.q_home, 10.0, False)
+    pose_home = pin_plain.forward(robot.q_home, NO_TCP_OFFSET)
+    q_seed = robot.q_home.copy()
+    q_seed[0] += 0.5
+    q_seed[2] += 0.5
+    q_reached = pin_plain.inverse(pose_home, q_seed, NO_TCP_OFFSET)
+    assert q_reached is not None
+
+    q_ns = pin_ns.inverse(pose_home, q_reached, NO_TCP_OFFSET)
+
+    assert q_ns is not None
+    assert pin_ns.forward(q_ns, NO_TCP_OFFSET).is_close(pose_home, eps_r=1e-3, eps_t=1e-3)
+    assert np.linalg.norm(q_ns - robot.q_home) < np.linalg.norm(q_reached - robot.q_home)
