@@ -27,6 +27,7 @@ DEFAULT_BINARIZE_GRIPPER = False
 DEFAULT_GRIPPER_BINARIZE_THRESHOLD = 0.9
 DEFAULT_BINARIZE_GRIPPER_STATE = True
 DEFAULT_CLIP_JOINT_LIMITS = False
+DEFAULT_ACTION_FROM_FUTURE_STATE = 0
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ class JointDatasetConverter:
         gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
         binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
         clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
+        action_from_future_state: int = DEFAULT_ACTION_FROM_FUTURE_STATE,
         video_encoding: bool = False,
         video_backend: str | None = None,
     ):
@@ -123,6 +125,7 @@ class JointDatasetConverter:
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.binarize_gripper_state = binarize_gripper_state
         self.clip_joint_limits = clip_joint_limits
+        self.action_from_future_state = action_from_future_state
         self.joint_limits = self._load_joint_limits(rcs.ROBOTS[robot_type].mjcf_model_path) if clip_joint_limits else None
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
@@ -344,7 +347,10 @@ class JointDatasetConverter:
                 raise ValueError(msg)
             action_gripper_vec = self._maybe_binarize_gripper(action_gripper_vec)
 
-            if self.joints:
+            if self.action_from_future_state > 0:
+                # relabeled from the observed joints in _prepare_transition_table
+                arm_action_vec = observation_joints_vec.astype(np.float32)
+            elif self.joints:
                 arm_action_vec = absolute_action_vec.astype(np.float32)
             else:
                 target_pose = rcs.common.Pose(
@@ -381,6 +387,17 @@ class JointDatasetConverter:
         df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
         df = df[df["action_vector"].notna()]  # noqa: PD901
+
+        if self.action_from_future_state > 0:
+            # hindsight relabeling: arm joint action = observed joints k steps ahead (gripper action kept)
+            k = self.action_from_future_state
+            states = np.stack(df["observation_state"].to_numpy())
+            actions = np.stack(df["action_vector"].to_numpy()).copy()
+            future = states[np.minimum(np.arange(len(states)) + k, len(states) - 1)]
+            for r in range(len(self.robot_keys)):
+                arm = slice(r * self.per_robot_state_dim, r * self.per_robot_state_dim + self.per_robot_arm_dim)
+                actions[:, arm] = future[:, arm]
+            df["action_vector"] = list(actions)
 
         prev_action: np.ndarray | None = None
         keep_mask = []
@@ -467,11 +484,14 @@ def run_conversion(
     gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
     clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
+    action_from_future_state: int = DEFAULT_ACTION_FROM_FUTURE_STATE,
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
     video_backend: str | None = None,
 ) -> None:
+    # the converter class uses these as module globals
+    global torch, LeRobotDataset, decode_jpeg, v2  # noqa: PLW0603
     import torch  # noqa: F401
     from lerobot.datasets.lerobot_dataset import LeRobotDataset  # noqa: F401
     from torchvision.io import decode_jpeg  # noqa: F401
@@ -495,6 +515,7 @@ def run_conversion(
         gripper_binarize_threshold=gripper_binarize_threshold,
         binarize_gripper_state=binarize_gripper_state,
         clip_joint_limits=clip_joint_limits,
+        action_from_future_state=action_from_future_state,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )

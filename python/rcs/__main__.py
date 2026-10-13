@@ -4,6 +4,7 @@ from typing import Annotated
 import typer
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.lerobot_joint_converter import (
+    DEFAULT_ACTION_FROM_FUTURE_STATE,
     DEFAULT_BINARIZE_GRIPPER,
     DEFAULT_BINARIZE_GRIPPER_STATE,
     DEFAULT_CAMERAS,
@@ -183,6 +184,13 @@ def lerobot_convert(
             "Example: --clip-joint-limits"
         ),
     ] = DEFAULT_CLIP_JOINT_LIMITS,
+    action_from_future_state: Annotated[
+        int,
+        typer.Option(
+            help="If >0, relabel the arm joint actions with the observed joints this many steps ahead "
+            "(for recordings whose target poses were not tracked). Example: --action-from-future-state 3"
+        ),
+    ] = DEFAULT_ACTION_FROM_FUTURE_STATE,
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
@@ -207,6 +215,7 @@ def lerobot_convert(
         gripper_binarize_threshold=gripper_binarize_threshold,
         binarize_gripper_state=binarize_gripper_state,
         clip_joint_limits=clip_joint_limits,
+        action_from_future_state=action_from_future_state,
         success=success,
         n=n,
         video_encoding=video_encoding,
