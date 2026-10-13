@@ -64,6 +64,7 @@ def main():
         ik = rcs.common.Pin(
             kinematic_model_path,
             attachment_site,
+            joint_limits=robot_cfg.joint_limits,
         )
 
         robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
