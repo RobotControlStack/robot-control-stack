@@ -5,7 +5,9 @@ import typer
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.lerobot_joint_converter import (
     DEFAULT_BINARIZE_GRIPPER,
+    DEFAULT_BINARIZE_GRIPPER_STATE,
     DEFAULT_CAMERAS,
+    DEFAULT_CLIP_JOINT_LIMITS,
     DEFAULT_DATASET_PATHS,
     DEFAULT_FPS,
     DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
@@ -167,6 +169,20 @@ def lerobot_convert(
             help="Threshold used when binarizing gripper values; values above this become 1.0. Example: --gripper-binarize-threshold 0.2"
         ),
     ] = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+    binarize_gripper_state: Annotated[
+        bool,
+        typer.Option(
+            help="With --binarize-gripper, also binarize the gripper value in observation.state "
+            "(--no-binarize-gripper-state binarizes the gripper action only). Example: --no-binarize-gripper-state"
+        ),
+    ] = DEFAULT_BINARIZE_GRIPPER_STATE,
+    clip_joint_limits: Annotated[
+        bool,
+        typer.Option(
+            help="Bring joint actions into the robot model's joint ranges (undo 2*pi wraps, then clip). "
+            "Example: --clip-joint-limits"
+        ),
+    ] = DEFAULT_CLIP_JOINT_LIMITS,
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
@@ -189,6 +205,8 @@ def lerobot_convert(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        binarize_gripper_state=binarize_gripper_state,
+        clip_joint_limits=clip_joint_limits,
         success=success,
         n=n,
         video_encoding=video_encoding,

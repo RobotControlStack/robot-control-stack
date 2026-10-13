@@ -25,6 +25,8 @@ DEFAULT_JOINTS = False
 DEFAULT_GRIPPER_TYPE = "Robotiq2F85"
 DEFAULT_BINARIZE_GRIPPER = False
 DEFAULT_GRIPPER_BINARIZE_THRESHOLD = 0.9
+DEFAULT_BINARIZE_GRIPPER_STATE = True
+DEFAULT_CLIP_JOINT_LIMITS = False
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,8 @@ class JointDatasetConverter:
         per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
         binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
         gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+        binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
+        clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
         video_encoding: bool = False,
         video_backend: str | None = None,
     ):
@@ -117,6 +121,9 @@ class JointDatasetConverter:
         self.state_dim = len(self.robot_keys) * self.per_robot_state_dim
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
+        self.binarize_gripper_state = binarize_gripper_state
+        self.clip_joint_limits = clip_joint_limits
+        self.joint_limits = self._load_joint_limits(rcs.ROBOTS[robot_type].mjcf_model_path) if clip_joint_limits else None
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
 
@@ -146,6 +153,29 @@ class JointDatasetConverter:
         if not self.binarize_gripper:
             return gripper.astype(np.float32)
         return (gripper > self.gripper_binarize_threshold).astype(np.float32)
+
+    def _load_joint_limits(self, mjcf_model_path: str) -> np.ndarray:
+        """Arm joint ranges (shape (2, per_robot_arm_dim)) as enforced by the simulation model."""
+        import mujoco
+
+        model = mujoco.MjModel.from_xml_path(str(mjcf_model_path))
+        hinge = [j for j in range(model.njnt) if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_HINGE]
+        ranges = model.jnt_range[hinge[: self.per_robot_arm_dim]]
+        return ranges.T.astype(np.float64)
+
+    def _limit_joints(self, q: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
+        """Bring an IK solution into the joint limits: undo 2*pi wraps (closest to q_ref), then clip."""
+        assert self.joint_limits is not None
+        low, high = self.joint_limits
+        q = q.copy()
+        for i in range(len(q)):
+            if low[i] <= q[i] <= high[i]:
+                continue
+            candidates = q[i] + 2 * np.pi * np.arange(-3, 4)
+            valid = candidates[(candidates >= low[i]) & (candidates <= high[i])]
+            if len(valid) > 0:
+                q[i] = valid[np.argmin(np.abs(valid - q_ref[i]))]
+        return np.clip(q, low, high)
 
     def _build_features(self) -> dict[str, dict[str, Any]]:
         state_names = []
@@ -278,7 +308,8 @@ class JointDatasetConverter:
                     f"joints={joints_vec.shape}, gripper={gripper_vec.shape}"
                 )
                 raise ValueError(msg)
-            gripper_vec = self._maybe_binarize_gripper(gripper_vec)
+            if self.binarize_gripper_state:
+                gripper_vec = self._maybe_binarize_gripper(gripper_vec)
             vectors.append(np.concatenate([joints_vec, gripper_vec]).astype(np.float32))
 
         return np.concatenate(vectors).astype(np.float32)
@@ -328,6 +359,10 @@ class JointDatasetConverter:
                     warnings.warn(msg, stacklevel=1)
                     return None
                 arm_action_vec = np.asarray(ik_joints, dtype=np.float32)
+            if self.clip_joint_limits:
+                arm_action_vec = self._limit_joints(arm_action_vec.astype(np.float64), observation_joints_vec).astype(
+                    np.float32
+                )
 
             actions.append(np.concatenate([arm_action_vec, action_gripper_vec]).astype(np.float32))
 
@@ -456,6 +491,8 @@ def run_conversion(
         per_robot_arm_dim=per_robot_arm_dim,
         binarize_gripper=binarize_gripper,
         gripper_binarize_threshold=gripper_binarize_threshold,
+        binarize_gripper_state=binarize_gripper_state,
+        clip_joint_limits=clip_joint_limits,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )
