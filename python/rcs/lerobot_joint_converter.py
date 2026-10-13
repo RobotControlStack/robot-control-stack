@@ -465,6 +465,8 @@ def run_conversion(
     per_robot_arm_dim: int = DEFAULT_PER_ROBOT_ARM_DIM,
     binarize_gripper: bool = DEFAULT_BINARIZE_GRIPPER,
     gripper_binarize_threshold: float = DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
+    binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
+    clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
