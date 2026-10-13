@@ -104,3 +104,16 @@ def test_kinematics_nullspace_bias(robot_name):
     d_plain = float(np.linalg.norm(q_plain - q_home))
     d_ns = float(np.linalg.norm(q_ns - q_home))
     assert d_ns < d_plain, f"null-space bias did not pull toward home: d_ns={d_ns} vs d_plain={d_plain}"
+
+
+@pytest.mark.parametrize("gain", [1.0, 10.0, 100.0])
+def test_kinematics_nullspace_large_gain_converges(gain):
+    robot = rcs.ROBOTS[common.RobotType.FR3]
+    pin = common.Pin(robot.mjcf_model_path, robot.attachment_site, False, robot.q_home, gain)
+    pose_home = pin.forward(robot.q_home, NO_TCP_OFFSET)
+    q_seed = robot.q_home + np.array([0.5, 0.0, 0.5, 0.3, 0.0, 0.0, 0.0])
+
+    q_sol = pin.inverse(pose_home, q_seed, NO_TCP_OFFSET)
+
+    assert q_sol is not None, f"IK failed with null-space gain {gain}"
+    assert pin.forward(q_sol, NO_TCP_OFFSET).is_close(pose_home, eps_r=1e-3, eps_t=1e-3)

@@ -1,5 +1,6 @@
 #include "rcs/Kinematics.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <pinocchio/algorithm/frames.hpp>
@@ -59,6 +60,8 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
   bool success = false;
   Vector6d err;
   Eigen::VectorXd v(model.nv);
+  // a posture step larger than the remaining distance overshoots
+  const double nullspace_gain = std::min(this->nullspace_gain, 1.0 / this->DT);
   for (int i = 0;; i++) {
     pinocchio::forwardKinematics(model, data, q);
     pinocchio::updateFramePlacements(model, data);
@@ -80,7 +83,7 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
     JJt.noalias() = J * J.transpose();
     JJt.diagonal().array() += this->damp;
 
-    if (this->nullspace_gain > 0.0) {
+    if (nullspace_gain > 0.0) {
       Eigen::MatrixXd Jpinv =
           J.transpose() *
           JJt.ldlt().solve(pinocchio::Data::Matrix6::Identity());
@@ -90,7 +93,7 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
       pinocchio::difference(model, q, this->nullspace_q, dq_ns);
       const Eigen::MatrixXd N =
           Eigen::MatrixXd::Identity(model.nv, model.nv) - Jpinv * J;
-      v.noalias() += N * (this->nullspace_gain * dq_ns);
+      v.noalias() += N * (nullspace_gain * dq_ns);
     } else {
       v.noalias() = -J.transpose() * JJt.ldlt().solve(err);
     }
