@@ -23,11 +23,12 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
     pinocchio::mjcf::buildModel(path, this->model);
   }
   this->data = pinocchio::Data(this->model);
-  this->FRAME_ID = model.getFrameId(frame_id);
-  if (FRAME_ID == -1) {
-    throw std::runtime_error(
-        frame_id + " frame id could not be found in the provided URDF");
+  if (!model.existFrame(frame_id)) {
+    throw std::runtime_error(frame_id +
+                             " frame id could not be found in the provided " +
+                             (urdf ? "URDF" : "MJCF"));
   }
+  this->FRAME_ID = model.getFrameId(frame_id);
 
   this->q_lower = this->model.lowerPositionLimit;
   this->q_upper = this->model.upperPositionLimit;

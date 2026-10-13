@@ -5,7 +5,7 @@ import rcs
 from rcs import common
 
 # Restrict this test to robot models that are expected to work through the generic Pin binding.
-# Panda currently segfaults in the native binding here, and SO101 uses a dedicated IK implementation.
+# Pinocchio drops the Panda attachment site as it sits on a body without a joint.
 PIN_SUPPORTED_ROBOTS = [
     common.RobotType.FR3,
     common.RobotType("XArm7"),
@@ -153,3 +153,9 @@ def test_kinematics_nullspace_never_loses_solutions(robot_name):
         pose = pin_plain.forward(q_target, NO_TCP_OFFSET)
         if pin_plain.inverse(pose, q_seed, NO_TCP_OFFSET) is not None:
             assert pin_ns.inverse(pose, q_seed, NO_TCP_OFFSET) is not None
+
+
+def test_kinematics_missing_frame_raises():
+    robot = rcs.ROBOTS[common.RobotType.FR3]
+    with pytest.raises(RuntimeError, match="not_a_frame"):
+        common.Pin(robot.mjcf_model_path, "not_a_frame", False)
