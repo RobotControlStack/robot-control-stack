@@ -167,18 +167,18 @@ class JointDatasetConverter:
         return ranges.T.astype(np.float64)
 
     def _limit_joints(self, q: np.ndarray, q_ref: np.ndarray) -> np.ndarray:
-        """Bring an IK solution into the joint limits: undo 2*pi wraps (closest to q_ref), then clip."""
+        """Bring an IK solution into the joint limits: among the 2*pi wraps of an out-of-range joint, take the
+        one whose clipped value is closest to q_ref (the observed joint), so a target past a limit is clipped
+        to the near limit instead of the opposite one."""
         assert self.joint_limits is not None
         low, high = self.joint_limits
         q = q.copy()
         for i in range(len(q)):
             if low[i] <= q[i] <= high[i]:
                 continue
-            candidates = q[i] + 2 * np.pi * np.arange(-3, 4)
-            valid = candidates[(candidates >= low[i]) & (candidates <= high[i])]
-            if len(valid) > 0:
-                q[i] = valid[np.argmin(np.abs(valid - q_ref[i]))]
-        return np.clip(q, low, high)
+            clipped = np.clip(q[i] + 2 * np.pi * np.arange(-3, 4), low[i], high[i])
+            q[i] = clipped[np.argmin(np.abs(clipped - q_ref[i]))]
+        return q
 
     def _build_features(self) -> dict[str, dict[str, Any]]:
         state_names = []
