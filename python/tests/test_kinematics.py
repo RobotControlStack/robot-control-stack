@@ -130,10 +130,10 @@ def test_kinematics_nullspace_applies_when_seed_reaches_pose(robot_name):
     q_seed = robot.q_home.copy()
     q_seed[0] += 0.5
     q_seed[2] += 0.5
-    q_reached = pin_plain.inverse(pose_home, q_seed, NO_TCP_OFFSET)
+    q_reached: np.ndarray | None = pin_plain.inverse(pose_home, q_seed, NO_TCP_OFFSET)
     assert q_reached is not None
 
-    q_ns = pin_ns.inverse(pose_home, q_reached, NO_TCP_OFFSET)
+    q_ns: np.ndarray | None = pin_ns.inverse(pose_home, q_reached, NO_TCP_OFFSET)
 
     assert q_ns is not None
     assert pin_ns.forward(q_ns, NO_TCP_OFFSET).is_close(pose_home, eps_r=1e-3, eps_t=1e-3)
