@@ -51,17 +51,30 @@ Pin::Pin(const std::string& path, const std::string& frame_id, bool urdf,
 std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
                                      const Pose& tcp_offset) {
   rcs::common::Pose new_pose = pose * tcp_offset.inverse();
-  VectorXd q(model.nq);
-  q.setZero();
-  q.head(q0.size()) = q0;
   const pinocchio::SE3 oMdes(new_pose.rotation_m(), new_pose.translation());
-  pinocchio::Data::Matrix6x J(6, model.nv);
-  J.setZero();
-  bool success = false;
-  Vector6d err;
-  Eigen::VectorXd v(model.nv);
+  VectorXd q_seed(model.nq);
+  q_seed.setZero();
+  q_seed.head(q0.size()) = q0;
   // a posture step larger than the remaining distance overshoots
   const double nullspace_gain = std::min(this->nullspace_gain, 1.0 / this->DT);
+  if (nullspace_gain > 0.0) {
+    VectorXd q = q_seed;
+    if (this->solve(oMdes, q, nullspace_gain)) {
+      return q;
+    }
+  }
+  if (this->solve(oMdes, q_seed, 0.0)) {
+    return q_seed;
+  }
+  return std::nullopt;
+}
+
+bool Pin::solve(const pinocchio::SE3& oMdes, VectorXd& q,
+                double nullspace_gain) {
+  pinocchio::Data::Matrix6x J(6, model.nv);
+  J.setZero();
+  Vector6d err;
+  Eigen::VectorXd v(model.nv);
   for (int i = 0;; i++) {
     pinocchio::forwardKinematics(model, data, q);
     pinocchio::updateFramePlacements(model, data);
@@ -69,12 +82,10 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
     err = pinocchio::log6(iMd).toVector();
     const bool posture_pending = nullspace_gain > 0.0 && i == 0;
     if (err.norm() < this->eps && !posture_pending) {
-      success = true;
-      break;
+      return true;
     }
     if (i >= this->IT_MAX) {
-      success = false;
-      break;
+      return false;
     }
     pinocchio::computeFrameJacobian(model, data, q, this->FRAME_ID, J);
     pinocchio::Data::Matrix6 Jlog;
@@ -103,11 +114,6 @@ std::optional<VectorXd> Pin::inverse(const Pose& pose, const VectorXd& q0,
     if (this->enforce_limits) {
       q = q.cwiseMax(this->q_lower).cwiseMin(this->q_upper);
     }
-  }
-  if (success) {
-    return q;
-  } else {
-    return std::nullopt;
   }
 }
 

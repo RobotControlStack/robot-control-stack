@@ -137,3 +137,19 @@ def test_kinematics_nullspace_applies_when_seed_reaches_pose(robot_name):
     assert q_ns is not None
     assert pin_ns.forward(q_ns, NO_TCP_OFFSET).is_close(pose_home, eps_r=1e-3, eps_t=1e-3)
     assert np.linalg.norm(q_ns - robot.q_home) < np.linalg.norm(q_reached - robot.q_home)
+
+
+@pytest.mark.parametrize("robot_name", REDUNDANT_ROBOTS)
+def test_kinematics_nullspace_never_loses_solutions(robot_name):
+    """Targets the plain solver reaches stay reachable with the posture task."""
+    robot = rcs.ROBOTS[robot_name]
+    pin_plain = common.Pin(robot.mjcf_model_path, robot.attachment_site, False)
+    pin_ns = common.Pin(robot.mjcf_model_path, robot.attachment_site, False, robot.q_home, 10.0)
+    lower, upper = robot.joint_limits
+    rng = np.random.default_rng(1)
+    for _ in range(50):
+        q_target = rng.uniform(lower, upper)
+        q_seed = np.clip(q_target + rng.uniform(-0.3, 0.3, q_target.shape), lower, upper)
+        pose = pin_plain.forward(q_target, NO_TCP_OFFSET)
+        if pin_plain.inverse(pose, q_seed, NO_TCP_OFFSET) is not None:
+            assert pin_ns.inverse(pose, q_seed, NO_TCP_OFFSET) is not None

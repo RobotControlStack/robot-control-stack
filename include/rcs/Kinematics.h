@@ -45,6 +45,8 @@ class Pin : public Kinematics {
   VectorXd nullspace_q;
   double nullspace_gain;
 
+  bool solve(const pinocchio::SE3& oMdes, VectorXd& q, double nullspace_gain);
+
  public:
   Pin(const std::string& path, const std::string& frame_id, bool urdf,
       const VectorXd& nullspace_q = VectorXd(), double nullspace_gain = 0.0,
