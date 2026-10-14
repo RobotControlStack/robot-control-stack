@@ -45,9 +45,8 @@ FetchContent_Declare(pybind11
     EXCLUDE_FROM_ALL
 )
 FetchContent_Declare(Eigen3
-    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-    GIT_TAG 3.4.1
-    GIT_PROGRESS TRUE
+    # release tarball instead of a git clone: gitlab.com often rejects clones of eigen due to load
+    URL https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.gz
     EXCLUDE_FROM_ALL
 )
 FetchContent_Declare(
