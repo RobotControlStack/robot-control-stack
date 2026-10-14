@@ -2,7 +2,7 @@ import logging
 
 import gymnasium as gym
 from rcs._core.common import RobotPlatform
-from rcs._core.sim import SimConfig
+from rcs._core.sim import RendererBackend, SimConfig
 from rcs.camera.sim import SimCameraSet
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -50,6 +50,7 @@ def main():
         sim_cfg = SimConfig(
             realtime=False,
             async_control=False,
+            renderer=RendererBackend.FILAMENT,
         )
 
         mjmodel = scene.create_model(cfg)

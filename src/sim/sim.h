@@ -29,11 +29,15 @@ class Renderer {
   std::unordered_map<std::string, mjrContext*> ctxs;
 };
 
+// Filament renderer is implemented in python
+enum class RendererBackend { CLASSIC, FILAMENT };
+
 struct SimConfig {
   bool async_control = false;
   bool realtime = false;
   double frequency = 30;  // in Hz
   int max_convergence_steps = 500;
+  RendererBackend renderer = RendererBackend::CLASSIC;
 };
 
 struct Callback {

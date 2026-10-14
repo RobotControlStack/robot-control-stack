@@ -19,7 +19,7 @@ from rcs._core import common
 from rcs._core.sim import DynamicJointSchema, DynamicJointState
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
-from rcs.sim import SimConfig, render_context_bootstrap
+from rcs.sim import RendererBackend, SimConfig, filament, render_context_bootstrap
 from rcs.sim.composer import ModelComposer
 from rcs.utils import SimpleFrameRate
 
@@ -33,9 +33,19 @@ RAW_STATE_ENCODING = "raw"
 ROOT_RELATIVE_FREE_STATE_ENCODING = "root_relative_free"
 
 
-def configure_viewer_mp_context(ctx: "mp.context.SpawnContext") -> None:
-    """On macOS the passive MuJoCo viewer must run under ``mjpython``."""
+def configure_viewer_mp_context(
+    ctx: "mp.context.SpawnContext", renderer: RendererBackend = RendererBackend.CLASSIC
+) -> None:
+    """Selects the interpreter of the GUI subprocess.
+
+    On macOS the passive MuJoCo viewer must run under ``mjpython``, whereas MuJoCo Studio (Filament) must
+    run under a regular ``python`` as it owns the main thread itself.
+    """
+    if renderer == RendererBackend.FILAMENT:
+        ctx.set_executable(filament.gui_executable())
+        return
     if sys.platform != "darwin":
+        ctx.set_executable(sys.executable)
         return
     mjpython = shutil.which("mjpython")
     if mjpython is None:
@@ -79,7 +89,6 @@ class Sim(_Sim):
         self.data = mj.MjData(self.model)
         super().__init__(self.model._address, self.data._address)
         self._mp_context = mp.get_context("spawn")
-        configure_viewer_mp_context(self._mp_context)
         self._gui_uuid: Optional[str] = None
         self._gui_client: Optional[_GuiClient] = None
         self._gui_process: Optional[mp.context.SpawnProcess] = None
@@ -250,13 +259,22 @@ class Sim(_Sim):
             self._gui_atexit_registered = False
 
     def open_gui(self):
+        """Opens the viewer in a subprocess.
+
+        Uses the passive ``mujoco.viewer`` or, with ``SimConfig(renderer=RendererBackend.FILAMENT)``,
+        MuJoCo Studio (Filament).
+        """
+        renderer = self.get_config().renderer
+        if renderer == RendererBackend.FILAMENT:
+            filament.require("The Filament GUI")
         if self._gui_uuid is None:
             self._gui_uuid = "rcs_" + str(uuid.uuid4())
             self._start_gui_server(self._gui_uuid)
         if self._gui_process is None or not self._gui_process.is_alive():
+            configure_viewer_mp_context(self._mp_context, renderer)
             self._stop_event = self._mp_context.Event()
             self._gui_process = self._mp_context.Process(
-                target=gui_loop,
+                target=filament.gui_loop if renderer == RendererBackend.FILAMENT else gui_loop,
                 args=(self._gui_uuid, self._stop_event),
                 daemon=True,
             )

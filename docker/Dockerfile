@@ -48,7 +48,7 @@ RUN chmod +x /usr/local/bin/link-editable-source \
     pybind11 \
     cmake \
     ninja \
-    "mujoco==3.2.6" \
+    "mujoco==3.15.0" \
     "pin==3.7.0" \
     && uv pip install /opt/rcs-src \
     && uv pip install --no-build-isolation /opt/rcs-src/extensions/rcs_fr3 \
