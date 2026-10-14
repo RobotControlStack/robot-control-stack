@@ -2,6 +2,7 @@ import logging
 import threading
 import typing
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -11,6 +12,8 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig
 from rcs.camera.interface import BaseCameraSet, Frame, FrameSet
 from rcs.utils import SimpleFrameRate
+
+from rcs import registry
 
 
 class HardwareCamera(typing.Protocol):
@@ -71,7 +74,7 @@ class CalibrationStrategy(typing.Protocol):
         """
 
 
-class DummyCalibrationStrategy(CalibrationStrategy):
+class IdentityCalibrationStrategy(CalibrationStrategy):
     """Always returns identity extrinsics."""
 
     def calibrate(
@@ -288,3 +291,25 @@ class HardwareCameraSet(BaseCameraSet):
 
     def __exit__(self, *args, **kwargs):
         self.close()
+
+
+@dataclass(kw_only=True)
+class HardwareCameraCreatorConfig:
+    """One camera backend and the cameras it should open, resolved through `rcs.registry.CAMERAS`."""
+
+    camera_type_id: str
+    camera_cfgs: dict[str, BaseCameraConfig]
+    # Calibration strategy per camera name, passed to the camera set as is. None leaves every
+    # camera at identity extrinsics, which is what the sets default to themselves.
+    calibration: dict[str, CalibrationStrategy] | None = None
+    kwargs: dict[str, typing.Any] = field(default_factory=dict)
+
+
+def create_hardware_camera_set(
+    camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None,
+) -> HardwareCameraSet | None:
+    """Build one `HardwareCameraSet` from per-backend configs, or None when there is nothing to open."""
+    if camera_cfgs is None:
+        return None
+    cameras = [registry.CAMERAS.get(cfg.camera_type_id)(cfg) for cfg in camera_cfgs.values()]
+    return HardwareCameraSet(cameras) if cameras else None

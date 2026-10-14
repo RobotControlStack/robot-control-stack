@@ -1,4 +1,10 @@
-from digit_interface.digit import Digit
+"""DIGIT tactile sensor support, built on the `digit-interface` driver.
+
+The sensor is exposed as an RCS `HardwareCamera`, so it is configured and polled like any other
+camera in a camera set. `default_digit` builds the per-sensor configs from a name-to-serial map.
+"""
+
+from digit_interface import Digit
 from rcs._core.common import BaseCameraConfig
 from rcs.camera.hw import HardwareCamera
 from rcs.camera.interface import CameraFrame, DataFrame, Frame
@@ -55,3 +61,20 @@ class DigitCam(HardwareCamera):
     def calibrate(self) -> bool:
         """No calibration needed for DIGIT cameras."""
         return True
+
+
+def default_digit(name2id: dict[str, str] | None, stream_name: str = "QVGA") -> DigitCam | None:
+    """Build a `DigitCam` for `name -> serial`, sized from the named `digit-interface` stream."""
+    if name2id is None:
+        return None
+    stream_dict = Digit.STREAMS[stream_name]
+    cameras = {
+        name: BaseCameraConfig(
+            identifier=identifier,
+            resolution_width=stream_dict["resolution"]["width"],
+            resolution_height=stream_dict["resolution"]["height"],
+            frame_rate=stream_dict["fps"]["30fps"],
+        )
+        for name, identifier in name2id.items()
+    }
+    return DigitCam(cameras=cameras)

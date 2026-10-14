@@ -6,7 +6,11 @@ from dataclasses import dataclass
 
 import numpy as np
 import pyrealsense2 as rs
-from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    HardwareCamera,
+    IdentityCalibrationStrategy,
+)
 from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, IMUFrame
 
 from rcs import common
@@ -50,7 +54,7 @@ class RealSenseCameraSet(HardwareCamera):
         self.cameras = cameras
         self.align_depth_to_color = align_depth_to_color
         if calibration_strategy is None:
-            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
+            calibration_strategy = {camera_name: IdentityCalibrationStrategy() for camera_name in cameras}
         self.calibration_strategy = calibration_strategy
         self._logger = logging.getLogger(__name__)
         assert (

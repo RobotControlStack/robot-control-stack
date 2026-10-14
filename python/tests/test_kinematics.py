@@ -9,10 +9,10 @@ from rcs import common
 # Pinocchio drops the Panda attachment site as it sits on a body without a joint.
 PIN_SUPPORTED_ROBOTS = [
     common.RobotType.FR3,
-    common.RobotType("XArm7"),
-    common.RobotType("UR5e"),
-    common.RobotType("SO101"),
-    common.RobotType("Yam"),
+    common.RobotType.XArm7,
+    common.RobotType.UR5e,
+    common.RobotType.SO101,
+    common.RobotType.Yam,
 ]
 
 # Robots with a genuine redundant DOF (7-DoF arms), where null-space biasing has room to act.

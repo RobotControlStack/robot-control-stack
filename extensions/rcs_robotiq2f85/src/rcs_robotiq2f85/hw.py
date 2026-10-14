@@ -31,7 +31,7 @@ class RobotiQ2F85GripperConfig(GripperConfig):
         self.speed = speed
         self.force = force
         self.async_control = async_control
-        self.gripper_type = rcs.common.GripperType("Robotiq2F85")
+        self.gripper_type = rcs.common.GripperType.Robotiq2F85
 
 
 class RobotiQ2F85GripperState(GripperState):

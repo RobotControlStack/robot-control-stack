@@ -18,7 +18,7 @@ def default_realsense(name2id: dict[str, str] | None) -> RealSenseCameraSet | No
     return RealSenseCameraSet(cameras=cameras, calibration_strategy=calibration_strategy)
 
 
-def default_realsense_dummy_calibration(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
+def default_realsense_identity_calibration(name2id: dict[str, str] | None) -> RealSenseCameraSet | None:
     if name2id is None:
         return None
     cameras = {
