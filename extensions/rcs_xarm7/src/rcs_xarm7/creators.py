@@ -104,6 +104,7 @@ class RCSXArm7ConfigEnvCreator(RCSEnvCreator[XArm7HardwareEnvCreatorConfig]):
             cfg.robot_cfg.kinematic_model_path,
             cfg.robot_cfg.attachment_site,
             urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
+            joint_limits=cfg.robot_cfg.joint_limits,
         )
         robot = XArm7(cfg=cfg.robot_cfg, ik=ik)
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)

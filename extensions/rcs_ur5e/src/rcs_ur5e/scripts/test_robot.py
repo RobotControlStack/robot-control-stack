@@ -12,6 +12,7 @@ ik = rcs.common.Pin(
     robot_config.kinematic_model_path,
     robot_config.attachment_site,
     urdf=robot_config.kinematic_model_path.endswith(".urdf"),
+    joint_limits=robot_config.joint_limits,
 )
 robot = UR5e(robot_config, ik)
 print(f"Robot joint positions: {robot.get_joint_position()}")

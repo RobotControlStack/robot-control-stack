@@ -71,7 +71,7 @@ import numpy as np
 # Load simulation scene
 robot_meta = rcs.ROBOTS[rcs.common.RobotType.FR3]
 simulation = sim.Sim(rcs.SCENE_PATHS["empty_world"])
-ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site)
+ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site, joint_limits=robot_meta.joint_limits)
 
 # Configure robot
 cfg = sim.SimRobotConfig()

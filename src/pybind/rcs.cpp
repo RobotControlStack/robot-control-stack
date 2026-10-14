@@ -379,9 +379,37 @@ PYBIND11_MODULE(_core, m) {
 
   py::class_<rcs::common::Pin, rcs::common::Kinematics,
              std::shared_ptr<rcs::common::Pin>>(common, "Pin")
-      .def(py::init<const std::string&, const std::string&, bool>(),
-           py::arg("path"), py::arg("frame_id") = "fr3_link8",
-           py::arg("urdf") = false);
+      .def(
+          py::init<
+              const std::string&, const std::string&, bool,
+              const rcs::common::VectorXd&, double, bool,
+              const std::optional<std::string>&,
+              const std::optional<Eigen::Matrix<double, 2, Eigen::Dynamic>>&>(),
+          R"doc(Numerical inverse kinematics (damped least squares) on a Pinocchio model.
+
+Args:
+    path: MJCF or URDF file of the robot.
+    frame_id: Frame whose pose forward and inverse refer to, usually the attachment site.
+    urdf: Load ``path`` as URDF instead of MJCF.
+    nullspace_q: Preferred posture of the joints, used as a secondary task in the null space of
+        the pose task. Missing entries are filled with zeros.
+    nullspace_gain: Gain of the posture task, 0 disables it. Gains above 1/dt are capped to 1/dt.
+        If the posture task keeps the solver from reaching the pose, the solve is repeated without it.
+    enforce_limits: Clamp every solver step to the joint limits.
+    base_frame: Frame fixed to the world in which poses are expressed. None uses the root body of
+        the model, whose own pose Pinocchio ignores.
+    joint_limits: Joint limits for the clamping as a 2 x n matrix, lower limits in the first row and
+        upper limits in the second, usually the ``joint_limits`` of the robot config. They replace
+        the limits of the first n joints and must not cover more joints than the model has. None
+        uses the joint ranges of the MJCF or URDF. Joints with an infinite limit or an empty range
+        (lower >= upper) are treated as unlimited. Only used if ``enforce_limits`` is True.
+)doc",
+          py::arg("path"), py::arg("frame_id") = "fr3_link8",
+          py::arg("urdf") = false,
+          py::arg("nullspace_q") = rcs::common::VectorXd(),
+          py::arg("nullspace_gain") = 0.0, py::arg("enforce_limits") = true,
+          py::arg("base_frame") = std::nullopt,
+          py::arg("joint_limits") = std::nullopt);
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)

@@ -79,6 +79,7 @@ def main():
             ik = rcs.common.Pin(
                 kinematic_model_path,
                 attachment_site,
+                joint_limits=robot_cfg.joint_limits,
             )
             robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
 
@@ -115,6 +116,7 @@ def main():
                 fr3_cfg.kinematic_model_path,
                 fr3_cfg.attachment_site,
                 urdf=fr3_cfg.kinematic_model_path.endswith(".urdf"),
+                joint_limits=fr3_cfg.joint_limits,
             )
             robot = hw.Franka(fr3_cfg, ik)
 

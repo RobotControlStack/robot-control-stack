@@ -353,6 +353,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
             ik = rcs.common.Pin(
                 kinematic_model_path,
                 attachment_site,
+                joint_limits=prefixed_cfg.robot_cfgs[robot_name].joint_limits,
             )
 
             env = self.add_robot_env(prefixed_cfg, robot_name, env, simulation, ik)
