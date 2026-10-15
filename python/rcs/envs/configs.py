@@ -214,6 +214,7 @@ class EmptyWorldDroid(EmptyWorldFR3):
                 )
             },
         }
+        cfg.gravcomp_ignore = {"wrist", "zed_mount"}
         cfg.camera_adds = {
             "wrist": CameraAdderConfig(
                 xml_path=CAMERA_PATHS["zed_mini"],

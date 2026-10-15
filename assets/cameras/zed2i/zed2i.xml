@@ -25,14 +25,21 @@
     <body name="zed2i" childclass="zed2i">
       <geom mesh="zed2i" quat="0 0 1 0" material="black" class="visual"/>
       <geom mesh="zed2i_coll" quat="0 0 1 0" material="black" class="collision"/>
-      <!-- from real camera after calibration
+      <!-- from real camera after calibration (720p / 1280x720)
       [786.14367676   0.         723.64068604   0.        ]
       [  0.         786.14367676 406.79891968   0.        ]
       [  0.           0.           1.           0.        ]]
-      >>> np.arctan(720/(2*786.14367676 ))*360/np.pi
-      np.float64(49.209076483949794) -->
+      Full intrinsics (not just fovy) so the sim matches the real off-center principal
+      point (cx=723.64, cy=406.80 vs image centre 640,360 -- a ~84px/47px offset that a
+      fovy-only camera ignores and the extrinsic cannot absorb). MuJoCo intrinsic model:
+      sensorsize (arbitrary 16:9 -> cancels) + resolution + focalpixel(fx,fy) +
+      principalpixel. NOTE MuJoCo's principalpixel is +X-LEFT, +Y-UP, so:
+      principalpixel = [-(cx - W/2), -(cy - H/2)] = [-83.64, -46.80]
+      (verified by rendering: a point on the optical axis lands at (723,407)). -->
 
-      <camera name="camera" pos="0 -0.02 0.005" euler="-1.5707963267948966 0 0" fovy="49"/>
+      <camera name="camera" pos="0 -0.02 0.005" euler="-1.5707963267948966 0 0"
+              resolution="1280 720" sensorsize="0.005325 0.0029953"
+              focalpixel="786.14367676 786.14367676" principalpixel="-83.6406860 -46.7989197"/>
     </body>
   </worldbody>
 
