@@ -1,0 +1,37 @@
+<mujoco model="rizon_grav_d405_plate_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="black" rgba="0.1 0.1 0.1 1"/>
+
+    <mesh name="rizon_grav_d405_plate_mount" file="rizon_grav_d405_plate_mount.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="rizon_grav_d405_plate_mount_collision" file="rizon_grav_d405_plate_mount_collision.stl" scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <default>
+    <default class="rizon_grav_d405_plate_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black" density="1250"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3" density="0"/>
+      </default>
+    </default>
+  </default>
+
+  <!--
+    The mount frame is the Rizon attachment-site (flange) frame: the 8 mm spacer plate sits on the
+    flange, the Grav is bolted on top of it (see DEFAULT_TRANSFORMS in rcs), and the camera bracket
+    is on the -x side. Only the bracket has a collision geom, the plate is enclosed by flange and
+    gripper. The camera itself is a separate object (assets/cameras/d405) placed by rcs.
+  -->
+  <worldbody>
+    <body name="base" childclass="rizon_grav_d405_plate_mount">
+      <geom mesh="rizon_grav_d405_plate_mount" class="visual"/>
+      <geom mesh="rizon_grav_d405_plate_mount_collision" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>

@@ -41,7 +41,7 @@ np.float64(57.9293391321625) -->
  [  0.           0.           1.           0.        ]] -->
  <!-- >>> np.arctan(720/(2*651.50952148))*360/np.pi
 np.float64(57.84682394938774) -->
-      <camera name="camera" pos="0.0038 0.009 0" quat="0.5 0.5 -0.5 -0.5" fovy="58"/> 
+      <camera name="camera" pos="0.0038 0 -0.009" quat="0.7071068 0 -0.7071068 0" fovy="58"/>
     </body>
   </worldbody>
 

@@ -13,6 +13,7 @@ PIN_SUPPORTED_ROBOTS = [
     common.RobotType("UR5e"),
     common.RobotType("SO101"),
     common.RobotType("Yam"),
+    common.RobotType("Rizon4S"),
 ]
 
 # Robots with a genuine redundant DOF (7-DoF arms), where null-space biasing has room to act.

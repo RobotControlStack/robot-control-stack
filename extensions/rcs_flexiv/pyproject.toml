@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_flexiv"
+version = "0.7.2"
+description = "RCS Flexiv module"
+dependencies = [
+  "rcs-core>=0.7.2",
+  # The RDK version must match the robot software: 1.9.2 is for Rizon robots on software v3.11.1.
+  # RDK 2.x only supports the Enlight series and has a different API.
+  "flexivrdk==1.9.2",
+  "numpy",
+]
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+maintainers = [
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
+]
+authors = [
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
+]
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
