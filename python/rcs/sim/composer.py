@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import mujoco
 from rcs._core.common import Pose
@@ -21,6 +21,8 @@ class ModelComposer:
         self.add_gravcomp = add_gravcomp
         self._gravcomp_prefixes: set[str] = set()
         self._root_relative_replay_free_joints: set[str] = set()
+        self.visual_randomization_params: dict[str, Any] = {}
+        """sampled parameters of the visual randomization applied to this scene, if any"""
 
     def _resolve_asset_paths(self, spec: mujoco.MjSpec, xml_path: str):
         """Resolves relative paths to absolute ones."""
