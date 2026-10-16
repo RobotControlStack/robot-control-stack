@@ -334,6 +334,7 @@ def get_env():
 
         scene = EmptyWorldFR3()
         sim_cfg_data = scene.config()
+        sim_cfg_data.robot_cfgs['right'].kinematic_model_path = "/home/bien/Documents/Development/RCS/robot-control-stack/assets/robots/fr3/fr3_rcs.xml"
         sim_cfg_data.gripper_cfgs['right'] = rcs._core.sim.SimGripperConfig(
             epsilon_inner=0.005,
             epsilon_outer=0.005,
