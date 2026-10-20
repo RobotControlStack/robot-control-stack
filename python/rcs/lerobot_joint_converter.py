@@ -28,6 +28,7 @@ DEFAULT_GRIPPER_BINARIZE_THRESHOLD = 0.9
 DEFAULT_BINARIZE_GRIPPER_STATE = True
 DEFAULT_CLIP_JOINT_LIMITS = False
 DEFAULT_ACTION_FROM_FUTURE_STATE = 0
+DEFAULT_GRIPPERS_LAST = False
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,7 @@ class JointDatasetConverter:
         binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
         clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
         action_from_future_state: int = DEFAULT_ACTION_FROM_FUTURE_STATE,
+        grippers_last: bool = DEFAULT_GRIPPERS_LAST,
         video_encoding: bool = False,
         video_backend: str | None = None,
     ):
@@ -126,6 +128,9 @@ class JointDatasetConverter:
         self.binarize_gripper_state = binarize_gripper_state
         self.clip_joint_limits = clip_joint_limits
         self.action_from_future_state = action_from_future_state
+        # exported state/action layout: per robot [joints, gripper] (default), or with grippers_last all arm joints
+        # first, then all grippers, e.g. [left_joint_0..6, right_joint_0..6, left_gripper, right_gripper]
+        self.export_order = self._build_export_order(grippers_last)
         self.joint_limits = self._load_joint_limits(rcs.ROBOTS[robot_type].mjcf_model_path) if clip_joint_limits else None
         self.source_sql = self._build_source_sql(self.dataset_paths)
         self.video_encoding = video_encoding
@@ -180,11 +185,20 @@ class JointDatasetConverter:
             q[i] = clipped[np.argmin(np.abs(clipped - q_ref[i]))]
         return q
 
+    def _build_export_order(self, grippers_last: bool) -> np.ndarray:
+        if not grippers_last:
+            return np.arange(self.state_dim)
+        offsets = [r * self.per_robot_state_dim for r in range(len(self.robot_keys))]
+        arms = [o + i for o in offsets for i in range(self.per_robot_arm_dim)]
+        grippers = [o + self.per_robot_arm_dim for o in offsets]
+        return np.array(arms + grippers)
+
     def _build_features(self) -> dict[str, dict[str, Any]]:
         state_names = []
         for robot_key in self.robot_keys:
             state_names.extend([f"{robot_key}_joint_{i}" for i in range(self.per_robot_arm_dim)])
             state_names.append(f"{robot_key}_gripper")
+        state_names = [state_names[i] for i in self.export_order]
 
         features = {
             camera.dataset_key: {
@@ -435,8 +449,8 @@ class JointDatasetConverter:
             images = frames_by_step[step]
 
             frame: dict[str, Any] = {camera.dataset_key: images[camera.name] for camera in self.cameras}
-            frame["observation.state"] = curr["observation_state"]
-            frame["action"] = curr["action_vector"]
+            frame["observation.state"] = curr["observation_state"][self.export_order]
+            frame["action"] = curr["action_vector"][self.export_order]
             frame["task"] = str(curr["instruction"])
 
             self.lrds.add_frame(frame)
@@ -485,6 +499,7 @@ def run_conversion(
     binarize_gripper_state: bool = DEFAULT_BINARIZE_GRIPPER_STATE,
     clip_joint_limits: bool = DEFAULT_CLIP_JOINT_LIMITS,
     action_from_future_state: int = DEFAULT_ACTION_FROM_FUTURE_STATE,
+    grippers_last: bool = DEFAULT_GRIPPERS_LAST,
     success: bool = True,
     n: int = -1,
     video_encoding: bool = False,
@@ -516,6 +531,7 @@ def run_conversion(
         binarize_gripper_state=binarize_gripper_state,
         clip_joint_limits=clip_joint_limits,
         action_from_future_state=action_from_future_state,
+        grippers_last=grippers_last,
         video_encoding=video_encoding,
         video_backend=video_backend,
     )

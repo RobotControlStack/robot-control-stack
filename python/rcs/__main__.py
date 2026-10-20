@@ -13,6 +13,7 @@ from rcs.lerobot_joint_converter import (
     DEFAULT_FPS,
     DEFAULT_GRIPPER_BINARIZE_THRESHOLD,
     DEFAULT_GRIPPER_TYPE,
+    DEFAULT_GRIPPERS_LAST,
     DEFAULT_HF_DATA_DIR,
     DEFAULT_IMAGE_BATCH_SIZE,
     DEFAULT_JOINTS,
@@ -191,6 +192,14 @@ def lerobot_convert(
             "(for recordings whose target poses were not tracked). Example: --action-from-future-state 3"
         ),
     ] = DEFAULT_ACTION_FROM_FUTURE_STATE,
+    grippers_last: Annotated[
+        bool,
+        typer.Option(
+            help="Export state/action as all arm joints first, then all grippers "
+            "(e.g. [left_joint_0..6, right_joint_0..6, left_gripper, right_gripper]) instead of per robot "
+            "[joints, gripper]. Example: --grippers-last"
+        ),
+    ] = DEFAULT_GRIPPERS_LAST,
     success: Annotated[bool, typer.Option(help="Only include successful episodes. Example: --success")] = True,
     n: Annotated[int, typer.Option(help="Maximum number of episodes to convert. -1 means all. Example: --n 50")] = -1,
     video_encoding: Annotated[bool, typer.Option(help="Should the image data be video encoded")] = False,
@@ -216,6 +225,7 @@ def lerobot_convert(
         binarize_gripper_state=binarize_gripper_state,
         clip_joint_limits=clip_joint_limits,
         action_from_future_state=action_from_future_state,
+        grippers_last=grippers_last,
         success=success,
         n=n,
         video_encoding=video_encoding,
