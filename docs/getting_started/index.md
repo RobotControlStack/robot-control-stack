@@ -46,7 +46,7 @@ For a docker deployment, see the `docker` folder in the repository.
 
 RCS resolves its asset directory from the `RCS_PREFIX` environment variable. If `RCS_PREFIX` is not set, it defaults to `~/.rcs`.
 
-On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+On import, RCS checks whether that path contains the assets of the installed RCS version (recorded in `assets/.version`). If not, it downloads the matching asset archive from GitHub into that location automatically, replacing assets of other versions. An `RCS_PREFIX` with an `assets` directory but without a version file, e.g. a source checkout, is used as it is.
 
 ```shell
 export RCS_PREFIX=/path/to/rcs-assets
