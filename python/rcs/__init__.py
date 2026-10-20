@@ -1,7 +1,10 @@
 """Robot control stack python bindings."""
 
+import contextlib
 import io
 import os
+import shutil
+import tempfile
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,7 +18,8 @@ from rcs._core import __version__, common
 from rcs import camera, envs, hand, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
-REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
+# written into the assets directory after a complete download, holds the version the assets belong to
+ASSETS_VERSION_FILE = ".version"
 
 
 def download_assets(
@@ -28,24 +32,48 @@ def download_assets(
     response = requests.get(github_asset_archive_url.format(tag=tag), timeout=60)
     response.raise_for_status()
 
-    found_assets = False
-    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
-        for member in archive.infolist():
-            parts = PurePosixPath(member.filename).parts
-            if len(parts) < 2 or parts[1] != assets_dirname:
-                continue
+    prefix.mkdir(parents=True, exist_ok=True)
+    # extract next to the final location and move it into place at the end, so that other processes
+    # never see a partially written assets directory
+    staging = Path(tempfile.mkdtemp(prefix=f".{assets_dirname}-", dir=prefix))
+    try:
+        found_assets = False
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            for member in archive.infolist():
+                parts = PurePosixPath(member.filename).parts
+                if len(parts) < 2 or parts[1] != assets_dirname:
+                    continue
 
-            found_assets = True
-            target = prefix.joinpath(*parts[1:])
-            if member.is_dir():
-                target.mkdir(parents=True, exist_ok=True)
-            else:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(archive.read(member))
+                found_assets = True
+                target = staging.joinpath(*parts[1:])
+                if member.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(archive.read(member))
 
-    if not found_assets:
-        msg = f"Could not find {assets_dirname} in the downloaded GitHub archive."
-        raise FileNotFoundError(msg)
+        if not found_assets:
+            msg = f"Could not find {assets_dirname} in the downloaded GitHub archive."
+            raise FileNotFoundError(msg)
+
+        new_assets_dir = staging / assets_dirname
+        (new_assets_dir / ASSETS_VERSION_FILE).write_text(version)
+        assets_dir = prefix / assets_dirname
+        with contextlib.suppress(FileNotFoundError):
+            os.replace(assets_dir, staging / "outdated")
+        try:
+            os.replace(new_assets_dir, assets_dir)
+        except OSError:
+            # another process installed the assets in the meantime
+            if not _has_assets_version(assets_dir, version):
+                raise
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def _has_assets_version(assets_dir: Path, version: str) -> bool:
+    version_file = assets_dir / ASSETS_VERSION_FILE
+    return version_file.is_file() and version_file.read_text() == version
 
 
 def get_prefix(
@@ -58,7 +86,14 @@ def get_prefix(
     download_fn: Callable[[str, Path, str, str], None] = download_assets,
 ) -> str:
     def has_required_assets(prefix: Path) -> bool:
-        return (prefix / REQUIRED_ASSET).is_file()
+        assets_dir = prefix / assets_dirname
+        if not assets_dir.is_dir():
+            return False
+        if (assets_dir / ASSETS_VERSION_FILE).is_file():
+            return _has_assets_version(assets_dir, version)
+        # assets without a version file at a user provided prefix (e.g. a source checkout) are used as they are,
+        # in the default prefix they are from an older or interrupted download
+        return bool(env_prefix)
 
     if env_prefix:
         prefix = Path(env_prefix).expanduser().resolve()
@@ -68,10 +103,9 @@ def get_prefix(
             return str(editable_prefix)
         prefix = default_prefix.resolve()
 
-    assets_dir = prefix / assets_dirname
-    if not assets_dir.is_dir() or not has_required_assets(prefix):
+    if not has_required_assets(prefix):
         prefix.mkdir(parents=True, exist_ok=True)
-        print(f"Assets not found at {assets_dir}, downloading them now.")
+        print(f"Assets for version {version} not found at {prefix / assets_dirname}, downloading them now.")
         download_fn(version, prefix, github_asset_archive_url, assets_dirname)
 
     return str(prefix)
