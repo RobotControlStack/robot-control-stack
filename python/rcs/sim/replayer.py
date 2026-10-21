@@ -325,12 +325,16 @@ def replay(
                         msg = "Visual randomization requires an environment that composes its model with ModelComposer."
                         raise TypeError(msg)
                     params = randomizer.apply(composer.spec, np.random.default_rng(copy_seed), set(variant.randomizers))
-                    env = env_creator.create_env_from_model(base_cfg, composer)
-                    env = _storage_env(VisualRandomizationInfoWrapper(env, variant.name, copy_seed, params), output)
+                    randomized_env = _storage_env(
+                        VisualRandomizationInfoWrapper(
+                            env_creator.create_env_from_model(base_cfg, composer), variant.name, copy_seed, params
+                        ),
+                        output,
+                    )
                     try:
-                        _replay_episode(env, recorded_steps, headless)
+                        _replay_episode(randomized_env, recorded_steps, headless)
                     finally:
-                        env.close()
+                        randomized_env.close()
     finally:
         if original_env is not None:
             original_env.close()
