@@ -34,6 +34,11 @@ struct SimConfig {
   bool realtime = false;
   double frequency = 30;  // in Hz
   int max_convergence_steps = 500;
+  // MuJoCo arena (stack + constraint) size in bytes, applied when a scene is
+  // compiled from a ModelComposer. -1 keeps the model's <size memory> or
+  // MuJoCo's automatic sizing, which can be too small for scenes with many
+  // contacts ("mj_stackAlloc: insufficient memory").
+  long long memory = -1;
 };
 
 struct Callback {
