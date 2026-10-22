@@ -13,8 +13,8 @@ from rcs import common
 
 CHANNEL = "can0"
 
-robot_type = common.RobotType("Yam")
-gripper_type = common.GripperType("Yam")
+robot_type = common.RobotType.Yam
+gripper_type = common.GripperType.Yam
 robot_config = YamConfig(
     channel=CHANNEL,
     async_control=False,

@@ -10,7 +10,7 @@ class DefaultXArm7HardwareEnv(RCSXArm7ConfigEnvCreator):
     ip = "192.168.1.245"
 
     def config(self) -> XArm7HardwareEnvCreatorConfig:
-        robot_type = RobotType("XArm7")
+        robot_type = RobotType.XArm7
         robot_cfg = XArm7Config(
             ip=self.ip,
             payload_weight=0.624,

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcs_tilburg_hand"
+version = "0.7.3"
+description = "RCS Tilburg Hand module"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+dependencies = ["rcs-core>=0.7.3", "tilburg-hand"]
+maintainers = [
+  { name = "Tobias Juelg", email = "tobias.juelg@utn.de" },
+]
+authors = [{ name = "Tobias Juelg", email = "tobias.juelg@utn.de" }]
+requires-python = ">=3.11"
+
+[project.entry-points."rcs.hands"]
+TilburgHand = "rcs_tilburg_hand.creators:create_hand"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"

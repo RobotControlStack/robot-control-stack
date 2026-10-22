@@ -34,7 +34,7 @@ class XArm7(common.Robot):
         self.ik = ik
         self._config = cfg
         self._config.robot_platform = common.RobotPlatform.HARDWARE
-        self._config.robot_type = common.RobotType("XArm7")
+        self._config.robot_type = common.RobotType.XArm7
 
         self._xarm = XArmAPI(cfg.ip)
         self._xarm.set_mode(0)

@@ -16,6 +16,9 @@ maintainers = [
 authors = [{ name = "Seongjin Bien", email = "seongjin.bien@utn.de" }]
 requires-python = ">=3.11"
 
+[project.entry-points."rcs.cameras"]
+usb = "rcs_usb_cam.creators:create_camera_set"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]

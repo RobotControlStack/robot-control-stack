@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from time import time
 
 import numpy as np
-from rcs.camera.hw import CalibrationStrategy, DummyCalibrationStrategy, HardwareCamera
+from rcs.camera.hw import (
+    CalibrationStrategy,
+    HardwareCamera,
+    IdentityCalibrationStrategy,
+)
 from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, IMUFrame
 
 from rcs import common
@@ -255,7 +259,7 @@ class ZEDCameraSet(HardwareCamera):
     ) -> None:
         self.cameras = cameras
         if calibration_strategy is None:
-            calibration_strategy = {camera_name: DummyCalibrationStrategy() for camera_name in cameras}
+            calibration_strategy = {camera_name: IdentityCalibrationStrategy() for camera_name in cameras}
         self.calibration_strategy = calibration_strategy
         self.enable_depth = enable_depth
         self.enable_imu = enable_imu
