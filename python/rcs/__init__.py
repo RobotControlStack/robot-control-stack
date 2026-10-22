@@ -300,6 +300,27 @@ DEFAULT_TRANSFORMS = {
         translation=np.array([0.0113, -0.0245, 0.695]),
         rpy_vector=np.array([0.0, np.pi * 41 / 180, 0.0]),
     ),
+    # yam duo: two yams on a 2060 extrusion clamped to the back edge of a table (MolmoAct2 reference setup),
+    # the root frame is the floor below the extrusion centre, the shared base frame is the extrusion's top face
+    "YAM_DUOMOUNT_HEIGHT_OFFSET": common.Pose(translation=np.array([0.0, 0.0, 0.77])),
+    "YAM_DUOMOUNT_BASE": common.Pose(translation=np.array([0.0, 0.0, 0.75])),
+    "YAM_DUOMOUNT_TABLE": common.Pose(translation=np.array([-0.095, 0.0, 0.0])),
+    "YAM_DUOMOUNT_LEFT_ROBOT": common.Pose(translation=np.array([0.0, 0.22, 0.0])),
+    "YAM_DUOMOUNT_RIGHT_ROBOT": common.Pose(translation=np.array([0.0, -0.22, 0.0])),
+    "YAM_DUOMOUNT_CAMERA_DESK_MOUNT": common.Pose(translation=np.array([-0.07, 0.0, 0.75])),
+    # d435i on the ball head of the desk mount, looking forward and pitched 64deg down,
+    # chosen to match the framing of the top camera in the MolmoAct2 bimanual yam datasets
+    "YAM_DUOMOUNT_D435_CAMERA": common.Pose(translation=np.array([-0.06, 0.0, 1.6]))
+    * common.Pose(rpy_vector=np.array([0.0, np.deg2rad(64), 0.0]), translation=np.array([0.0, 0.0, 0.0]))
+    * common.Pose(rpy_vector=np.array([np.pi / 2, 0.0, np.pi / 2]), translation=np.array([0.0, 0.0, 0.0])),
+    # wrist d405 on i2rt's bracket for the linear_4310 gripper, extrinsics from i2rt's yam station model,
+    # both in the yam's tcp_site frame, the bracket pose is the d405's optical frame
+    "YAM_D405_WRIST_MOUNT": common.Pose(
+        translation=np.array([-0.07043, 0.0, 0.07701]), rpy_vector=np.deg2rad([-25.0, 0.0, -90.0])
+    ),
+    "YAM_D405_WRIST_CAMERA": common.Pose(
+        translation=np.array([-0.07043, -0.009, 0.07701]), rpy_vector=np.deg2rad([90.0, -65.0, 0.0])
+    ),
 }
 
 HOME_POSITIONS = {
@@ -309,6 +330,8 @@ HOME_POSITIONS = {
     "FR3_DUO_LEFT": np.array([0.48797692, -0.57224476, -0.58536988, -2.57958827, 0.86400183, 2.0530809, -0.85965005]),
     "FR3_DUO_RIGHT": np.array([-0.48797676, -0.57224472, 0.58536959, -2.57958788, -0.86400148, 2.05308196, 0.85965057]),
     "FR3_DROID": np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
+    # folded rest pose, grasp point 0.25m in front of and 0.15m above the yam base, gripper pitched 20deg down
+    "YAM_DUO": np.array([0.0, 0.3349, 0.2267, -0.2408, 0.0, 0.0]),
 }
 
 # Append RCS package prefix to all asset paths
