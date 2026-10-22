@@ -29,6 +29,9 @@ The following directories contain third-party assets:
 - `assets/robots/yam/`
   Origin: MuJoCo Menagerie `i2rt_yam/` (`yam.xml` with the gripper of `yam_linear_4310.xml`)
   License: MIT license reproduced below
+- `assets/cameras/d435i/`
+  Origin: MuJoCo Menagerie `realsense_d435i/`
+  License: Apache License 2.0
 
 All other repository contents, including original RCS source code and RCS-authored assets, remain under AGPL-3.0 unless another file explicitly states otherwise.
 
