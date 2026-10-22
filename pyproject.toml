@@ -42,7 +42,7 @@ dependencies = [
   "cmeel-urdfdom<5",
   "cmeel-tinyxml2<11",
   "greenlet",
-  "duckdb",
+  "duckdb<2",
   "pandas",
 ]
 readme = "README.md"

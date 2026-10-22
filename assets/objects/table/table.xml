@@ -1,0 +1,42 @@
+<!-- Simple desk modelled after an IKEA IDASEN (160 x 80 cm, top at 0.75 m).
+     The origin is on the floor below the centre of the table's back edge (-x side), +x points
+     into the table and the top surface is at z=0.75. -->
+<mujoco model="table">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="wood" rgba="0.55 0.36 0.2 1" specular="0.1" shininess="0.3"/>
+    <material name="frame" rgba="0.15 0.15 0.16 1" specular="0.3" shininess="0.4"/>
+  </asset>
+
+  <default>
+    <default class="table">
+      <default class="visual">
+        <geom type="box" contype="0" conaffinity="0" group="2" material="frame"/>
+      </default>
+      <default class="collision">
+        <geom type="box" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="table">
+      <geom size="0.4 0.8 0.0125" pos="0.4 0 0.7375" material="wood" class="visual"/>
+      <geom size="0.4 0.8 0.0125" pos="0.4 0 0.7375" class="collision"/>
+      <!-- frame: two T-legs with feet, cross beam -->
+      <geom size="0.03 0.04 0.36" pos="0.4 0.7 0.365" class="visual"/>
+      <geom size="0.03 0.04 0.36" pos="0.4 -0.7 0.365" class="visual"/>
+      <geom size="0.35 0.035 0.01" pos="0.4 0.7 0.01" class="visual"/>
+      <geom size="0.35 0.035 0.01" pos="0.4 -0.7 0.01" class="visual"/>
+      <geom size="0.3 0.03 0.01" pos="0.4 0.7 0.715" class="visual"/>
+      <geom size="0.3 0.03 0.01" pos="0.4 -0.7 0.715" class="visual"/>
+      <geom size="0.02 0.67 0.02" pos="0.4 0 0.705" class="visual"/>
+      <geom size="0.03 0.04 0.36" pos="0.4 0.7 0.365" class="collision"/>
+      <geom size="0.03 0.04 0.36" pos="0.4 -0.7 0.365" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>
