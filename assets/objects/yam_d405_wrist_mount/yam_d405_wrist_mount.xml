@@ -1,0 +1,34 @@
+<!-- D405 wrist bracket for the YAM linear_4310 gripper. The mesh is the bracket part of
+     i2rt's d405_wrist_linear_4310.stl (i2rt/robot_models/station/assets, MIT) with the camera
+     body removed, the camera itself is added separately from assets/cameras/d405.
+     The body frame is the D405 optical frame (+z along the optical axis, +y down). -->
+<mujoco model="yam_d405_wrist_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="black_pla" rgba="0.12 0.12 0.12 1"/>
+
+    <mesh name="yam_d405_wrist_mount" file="yam_d405_wrist_mount.stl"/>
+  </asset>
+
+  <default>
+    <default class="yam_d405_wrist_mount">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black_pla"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="yam_d405_wrist_mount">
+      <geom mesh="yam_d405_wrist_mount" class="visual"/>
+      <geom mesh="yam_d405_wrist_mount" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>
