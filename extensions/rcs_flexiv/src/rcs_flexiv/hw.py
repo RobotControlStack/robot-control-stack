@@ -18,8 +18,9 @@ import time
 import typing
 
 import numpy as np
-from rcs import common
 from rcs.common_typing import GripperConfigKwargs, RobotConfigKwargs
+
+from rcs import common
 
 logger = logging.getLogger(__name__)
 

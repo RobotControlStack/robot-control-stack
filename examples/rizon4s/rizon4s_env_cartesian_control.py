@@ -91,7 +91,7 @@ def main():
     )
 
     robot = rcs.sim.SimRobot(simulation, ik, robot_cfg)
-    env_rel = SimEnv(simulation)
+    env_rel: gym.Env = SimEnv(simulation)
     env_rel = RobotWrapper(env_rel, robot, ControlMode.CARTESIAN_TQuat)
 
     gripper = sim.SimGripper(simulation, gripper_cfg)

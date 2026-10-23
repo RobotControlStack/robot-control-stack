@@ -10,9 +10,6 @@ import sys
 import time
 
 import numpy as np
-import rcs
-from rcs import common
-
 from rcs_flexiv.hw import (
     Flexiv,
     FlexivConfig,
@@ -20,6 +17,9 @@ from rcs_flexiv.hw import (
     FlexivGripper,
     FlexivGripperConfig,
 )
+
+import rcs
+from rcs import common
 
 
 def main() -> None:

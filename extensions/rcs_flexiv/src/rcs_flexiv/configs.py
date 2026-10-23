@@ -1,7 +1,5 @@
-import rcs
 from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
-
 from rcs_flexiv.creators import (
     FlexivHardwareEnvCreatorConfig,
     FlexivMultiHardwareEnvCreatorConfig,
@@ -9,6 +7,8 @@ from rcs_flexiv.creators import (
     RCSFlexivMultiConfigEnvCreator,
 )
 from rcs_flexiv.hw import FlexivConfig, FlexivControlMode, FlexivGripperConfig
+
+import rcs
 
 
 class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
