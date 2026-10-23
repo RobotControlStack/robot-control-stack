@@ -23,6 +23,16 @@ The following directories contain third-party assets:
 - `assets/grippers/robotiq_2f85/`
   Origin: MuJoCo Menagerie `robotiq_2f85/`
   License: BSD-style license reproduced below
+- `assets/robots/rizon4s/`
+  Origin: MuJoCo Menagerie `flexiv_rizon4s/`
+  License: Apache License 2.0
+- `assets/robots/yam/`
+  Origin: MuJoCo Menagerie `i2rt_yam/`
+  License: MIT license reproduced below
+- `assets/grippers/flexiv_grav/`
+  Origin: meshes from Flexiv Robotics `flexiv_description` (https://github.com/flexivrobotics/flexiv_description),
+  MJCF generated from its URDF by `assets/grippers/flexiv_grav/convert_from_urdf.py`
+  License: Apache License 2.0
 - `assets/cameras/d405/`
   Origin: Intel RealSense D405 camera assets distributed via MuJoCo Menagerie RealSense assets
   License: Apache License 2.0 notice reproduced below for the upstream Intel RealSense asset family
