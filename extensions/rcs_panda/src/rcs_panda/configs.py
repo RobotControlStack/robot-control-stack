@@ -24,6 +24,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
         robot_cfg.kinematic_model_path = rcs.ROBOTS[RobotType.Panda].mjcf_model_path
         robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
         robot_cfg.attachment_site = rcs.ROBOTS[RobotType.Panda].attachment_site
+        robot_cfg.joint_limits = rcs.ROBOTS[RobotType.Panda].joint_limits
         robot_cfg.speed_factor = 0.1
         robot_cfg.ik_solver = hw.IKSolver.rcs_ik
         robot_cfg.async_control = False

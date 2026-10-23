@@ -1,5 +1,7 @@
 <!-- Kinematics, joint limits and gripper stroke match the i2rt yam v1 arm with the
-     linear_4310 gripper (i2rt/robot_models/arm/yam/v1 and gripper/linear_4310). -->
+     linear_4310 gripper (i2rt/robot_models/arm/yam/v1 and gripper/linear_4310).
+     The gripper (meshes, collision geoms and inertias) is taken from MuJoCo Menagerie's
+     i2rt_yam/yam_linear_4310.xml with its frames folded into the bodies. -->
 <mujoco model="yam">
   <compiler angle="radian" meshdir="assets"/>
 
@@ -22,12 +24,17 @@
       </default>
       <default class="collision">
         <geom group="3" type="capsule"/>
-        <default class="sphere_collision">
-          <geom size="0.0006 0 0" type="sphere" rgba="1 0 0 1"/>
+        <default class="finger_body_collision">
+          <geom type="box" rgba="0.381493 0.492734 0.780446 1"/>
+        </default>
+        <default class="finger_collision">
+          <geom type="box" condim="6" friction="1 5e-3 5e-4" solref=".01 1" priority="1"
+            rgba="0.381493 0.492734 0.780446 1"/>
         </default>
       </default>
       <default class="finger">
-        <joint type="slide" armature="0.1" frictionloss="0.1"/>
+        <!-- 0 is closed, 0.0475 m is open, both fingers slide outwards along their -z -->
+        <joint type="slide" axis="0 0 -1" range="0 0.0475" armature="0.1" frictionloss="0.1"/>
         <position ctrlrange="0.0 0.0475" kp="100" kv="10" inheritrange="0"/>
       </default>
     </default>
@@ -48,18 +55,15 @@
     <mesh file="model2__9.stl"/>
     <mesh file="model2__10.stl"/>
     <mesh file="model2__11.stl"/>
-    <mesh file="model2__12.stl"/>
-    <mesh file="model2__13.stl"/>
-    <mesh file="model2__14.stl"/>
-    <mesh file="model2__15.stl"/>
-    <mesh file="model2__16.stl"/>
-    <mesh file="model2__17.stl"/>
+    <mesh file="linear_4310/gripper.stl"/>
+    <mesh file="linear_4310/tip_left.stl"/>
+    <mesh file="linear_4310/tip_right.stl"/>
   </asset>
 
   <worldbody>
     <light name="spotlight" mode="targetbodycom" target="link_6" pos="0 0 1"/>
     <body name="arm" childclass="yam">
-      <geom class="visual" pos="0 0 -0.0006" quat="1 0 0 1" mesh="model2"/>
+      <geom class="visual" pos="0 0 0.0094" quat="1 0 0 1" mesh="model2"/>
       <geom class="collision" size="0.033 0.01" pos="0.0 0.0 0.026" quat="1 0 0 0"/>
       <body name="link_1" pos="0 0 0.068" quat="1 0 0 1">
         <inertial pos="-0.00192861 -0.00795735 0.0208176" quat="0.297851 0.642634 0.360045 0.607185" mass="0.12415"
@@ -101,77 +105,54 @@
                 <geom class="visual" pos="0 -0.0749971 0.203601" quat="1.32679e-06 1 0 0" mesh="model2__11"/>
                 <geom class="collision" size="0.030 0.015" pos="0 0.025 0.0395" quat="1 1 0 0"/>
                 <body name="link_6" pos="0 0.0353 0.0395" quat="1 -1 0 0" gravcomp="1">
-                  <inertial pos="-0.000217767 7.37059e-05 0.0270545" quat="1 1 0 0" mass="0.367476"
-                    diaginertia="0.000265958 0.000242686 0.000227409"/>
+                  <inertial pos="-0.000249374 3.57092e-05 0.0293138" quat="-0.529232 -0.466094 0.478578 0.523107" mass="0.553219" diaginertia="0.000409686 0.000369758 0.000324415"/>
                   <joint name="joint6" range="-2.0944 2.0944" class="dm4310"/>
-                  <geom class="visual" pos="0 -0.164101 -0.110597" quat="1 -1 0 0" mesh="model2__12"/>
-                  <geom class="visual" pos="0 -0.164101 -0.110597" quat="1 -1 0 0" mesh="model2__13"/>
-                  <geom class="collision" size="0.01 0.035" pos="0 0.039 0.052" quat="1 0 1 0"/>
                   <geom class="collision" size="0.030 0.005" pos="0 0.0 0.03" quat="1 0 0 1"/>
-                  <geom class="collision" size="0.01 0.035" pos="0 -0.039 0.052" quat="1 0 1 0"/>
                   <site name="tcp_site" pos="0 0 0" quat="1 0 0 -1" size="0.005" rgba="1 0 0 1" group="4"/>
                   <site name="grasp_site" pos="0 0 0.1347" quat="1 0 0 -1" size="0.005" rgba="0 1 0 1" group="4"/>
-                  <body name="link_left_finger" pos="-0.037 0.0392 0.0605" quat="1 0 1 0" gravcomp="1">
-                    <inertial pos="-0.0192995 -0.0365902 0.039774" quat="0.757351 0.568898 -0.3199 0.0" mass="0.118"
-                      diaginertia="0.000159084 0.000154909 4.63655e-05"/>
-                    <joint class="finger" name="left_finger" range="0 0.0475"/>
-                    <geom class="visual" pos="0.171097 -0.203301 0.037" quat="1 -1 -1 -1" mesh="model2__14"/>
-                    <geom class="visual" pos="0.171097 -0.203301 0.037" quat="1 -1 -1 -1" mesh="model2__15"/>
-                    <body name="lf_rot" quat="1 -1 -1 1" pos="0.0 -0.0392 0.037" gravcomp="1">
-                      <geom class="collision" size="0.01 0.03" pos="0.0 -0.02 0.012" quat="1 0 1 0"
-                        rgba="0.381493 0.492734 0.780446 1"/>
-                      <geom class="collision" size="0.01 0.02" pos="-0.02 -0.01 0.032" quat="1 0 2.5 0"
-                        rgba="0.381493 0.492734 0.780446 1"/>
-                      <body name="lf_down" quat="1 0 0 0" pos="-0.044 0.0 0.0" gravcomp="1">
-                        <geom class="collision" size="0.01 0.01" pos="0.0 -0.020 0.012" quat="1 -0.1 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" size="0.003 0.022" pos="0.005 -0.014 0.04" quat="1 -0.2 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" size="0.003 0.022" pos="-0.005 -0.014 0.04" quat="1 -0.2 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" type="box" size="0.006 0.002 0.04" pos="0 -0.0024 0.046" quat="1 0 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" type="box" size="0.006 0.002 0.039" pos="0.027 -0.0024 0.053"
-                          quat="1 0 2.5 0" rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.078"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.078"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.07"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.07"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.06"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.06"/>
-                      </body>
+                  <geom class="visual" pos="0.0463995 0.014 -0.0731" mesh="gripper" quat="0 0.707107 -0.707107 0"/>
+                  <geom name="gripper_housing" class="collision" type="box" pos="0 0 0.054" size="0.0325 0.051 0.0095" quat="0 0.707107 -0.707107 0"/>
+                  <body name="left_finger" pos="-0.0450619 0.0238981 0.0545599" quat="0 0.707107 2.82843e-06 -0.707107" gravcomp="1">
+                    <inertial pos="-0.0224716 0.0143408 -0.0426253" quat="0.498899 0.455348 -0.0576406 0.735143" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
+                    <joint class="finger" name="left_finger"/>
+                    <geom class="visual" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" mesh="tip_left"/>
+                    <geom name="left_rail_base" class="finger_body_collision" pos="-0.0066401 9.81612e-05 -0.0215619" size="0.01 0.0247 0.0102" quat="0.499998 0.5 0.5 0.500002"/>
+                    <geom name="left_rail_lip" class="finger_body_collision" pos="-0.00224016 0.0128982 -0.0215618" size="0.0028 0.0247 0.0058" quat="0.499998 0.5 0.5 0.500002"/>
+                    <geom name="left_carriage" class="finger_body_collision" pos="-0.0140402 0.0132983 -0.0576618" size="0.0232 0.0104 0.0032" quat="0.499998 0.5 0.5 0.500002"/>
+                    <geom name="left_base_plate" class="finger_body_collision" pos="-0.0198402 0.0238983 -0.0577618" size="0.0335 0.0101 0.0032" quat="0.499998 0.5 0.5 0.500002"/>
+                    <geom name="left_base_web" class="finger_body_collision" pos="-0.0266402 0.0238982 -0.0527618" size="0.0215 0.0053 0.0038" quat="0.499998 0.5 0.5 0.500002"/>
+                    <geom name="left_strut_top" class="finger_body_collision" pos="-0.0481403 0.0421981 -0.0494617" quat="0.37981 0.414852 0.596443 0.572625" size="0.0052 0.0026 0.0295"/>
+                    <geom name="left_tip_bevel_top" class="finger_body_collision" pos="-0.0694402 0.033598 -0.0505618" quat="0.536435 -0.622892 0.460693 -0.334672" size="0.0052 0.0012 0.0189"/>
+                    <geom name="left_strut_top_back" class="finger_body_collision" pos="-0.0398403 0.0448982 -0.0574617" quat="0.496649 -0.644077 0.503326 -0.291834" size="0.0052 0.0035 0.0227"/>
+                    <geom name="left_strut_bot" class="finger_body_collision" pos="-0.0481401 0.00559811 -0.0494619" quat="0.572621 0.596443 0.414852 0.379814" size="0.0052 0.0026 0.0295"/>
+                    <geom name="left_tip_bevel_bot" class="finger_body_collision" pos="-0.0694402 0.014198 -0.0505618" quat="0.334676 -0.460694 0.622893 -0.536431" size="0.0052 0.0012 0.0189"/>
+                    <geom name="left_strut_bot_back" class="finger_body_collision" pos="-0.0398401 0.00289817 -0.0574619" quat="0.291838 -0.503328 0.644077 -0.496645" size="0.0052 0.0035 0.0227"/>
+                    <body name="left_pad" gravcomp="1" pos="0.0545598 0.0238985 -0.0450618" quat="0.499998 0.5 0.5 0.500002">
+                      <geom name="left_pad" class="finger_collision" pos="0 -0.0017 -0.1362" size="0.0072 0.0017 0.0082"/>
                     </body>
+                    <geom name="left_pad_edge_a" class="finger_body_collision" pos="-0.0794402 0.031698 -0.0467618" quat="0.397684 0.397685 0.584676 0.584678" size="0.003 0.0017 0.0088"/>
+                    <geom name="left_pad_edge_b" class="finger_body_collision" pos="-0.0794402 0.016098 -0.0467618" quat="0.584674 0.584676 0.397686 0.397688" size="0.003 0.0017 0.0088"/>
                   </body>
-                  <body name="link_right_finger" pos="0.037 -0.0392 0.0605" quat="1 0 1 0" gravcomp="1">
-                    <inertial pos="-0.0192995 0.0365902 -0.039774" quat="-0.757351 0.568898 -0.3199 0" mass="0.118"
-                      diaginertia="0.000159084 0.000154909 4.63655e-05"/>
-                    <joint class="finger" name="right_finger" range="-0.0475 0"/>
-                    <geom class="visual" pos="0.171097 -0.124901 -0.037" quat="1 -1 -1 -1" mesh="model2__16"/>
-                    <geom class="visual" pos="0.171097 -0.124901 -0.037" quat="1 -1 -1 -1" mesh="model2__17"/>
-                    <body name="rf_rot" quat="1 1 -1 -1" pos="0.0 0.0392 -0.037" gravcomp="1">
-                      <geom class="collision" size="0.01 0.03" pos="0.0 -0.02 0.012" quat="1 0 1 0"
-                        rgba="0.381493 0.492734 0.780446 1"/>
-                      <geom class="collision" size="0.01 0.02" pos="0.02 -0.01 0.032" quat="1 0 -2.5 0"
-                        rgba="0.381493 0.492734 0.780446 1"/>
-                      <body name="rf_down" quat="1 0 0 0" pos="0.044 0.0 0.0" gravcomp="1">
-                        <geom class="collision" size="0.01 0.01" pos="0.0 -0.020 0.012" quat="1 -0.1 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" size="0.003 0.022" pos="0.005 -0.014 0.04" quat="1 -0.2 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" size="0.003 0.022" pos="-0.005 -0.014 0.04" quat="1 -0.2 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" type="box" size="0.006 0.002 0.04" pos="0 -0.0024 0.046" quat="1 0 0 0"
-                          rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="collision" type="box" size="0.006 0.002 0.039" pos="-0.027 -0.0024 0.053"
-                          quat="1 0 -2.5 0" rgba="0.381493 0.492734 0.780446 1"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.078"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.078"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.07"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.07"/>
-                        <geom class="sphere_collision" pos="0.003 -0.0004 0.06"/>
-                        <geom class="sphere_collision" pos="-0.003 -0.0004 0.06"/>
-                      </body>
+                  <body name="right_finger" pos="0.0450619 -0.0238981 0.0545599" quat="0.500001 -0.499999 0.499999 -0.500001" gravcomp="1">
+                    <inertial pos="-0.0143408 -0.0224716 -0.0426253" quat="0.281222 0.8726 0.16705 -0.362738" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
+                    <joint class="finger" name="right_finger"/>
+                    <geom class="visual" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" mesh="tip_right"/>
+                    <geom name="right_rail_base" class="finger_body_collision" pos="-9.81e-05 -0.0066402 -0.0215618" size="0.01 0.0247 0.0102" quat="0 0 0.707108 0.707105"/>
+                    <geom name="right_rail_lip" class="finger_body_collision" pos="-0.0128981 -0.0022402 -0.0215619" size="0.0028 0.0247 0.0058" quat="0 0 0.707108 0.707105"/>
+                    <geom name="right_carriage" class="finger_body_collision" pos="-0.0132981 -0.0140404 -0.0576618" size="0.0232 0.0104 0.0032" quat="0 0 0.707108 0.707105"/>
+                    <geom name="right_base_plate" class="finger_body_collision" pos="-0.0238981 -0.0198404 -0.0577618" size="0.0335 0.0101 0.0032" quat="0 0 0.707108 0.707105"/>
+                    <geom name="right_base_web" class="finger_body_collision" pos="-0.0238981 -0.0266403 -0.0527618" size="0.0215 0.0053 0.0038" quat="0 0 0.707108 0.707105"/>
+                    <geom name="right_strut_top" class="finger_body_collision" pos="-0.0421981 -0.0481403 -0.0494617" quat="0.136338 0.128404 -0.715095 -0.673471" size="0.0052 0.0026 0.0295"/>
+                    <geom name="right_tip_bevel_top" class="finger_body_collision" pos="-0.0335981 -0.0694403 -0.0505616" quat="0.615963 -0.766212 -0.114692 0.142665" size="0.0052 0.0012 0.0189"/>
+                    <geom name="right_strut_top_back" class="finger_body_collision" pos="-0.0448981 -0.0398404 -0.0574617" quat="0.55754 -0.811339 -0.0995256 0.144823" size="0.0052 0.0035 0.0227"/>
+                    <geom name="right_strut_bot" class="finger_body_collision" pos="-0.0055981 -0.0481403 -0.0494617" quat="0.136338 0.128404 0.715095 0.673471" size="0.0052 0.0026 0.0295"/>
+                    <geom name="right_tip_bevel_bot" class="finger_body_collision" pos="-0.0141981 -0.0694403 -0.0505616" quat="0.615963 -0.766212 0.114692 -0.142665" size="0.0052 0.0012 0.0189"/>
+                    <geom name="right_strut_bot_back" class="finger_body_collision" pos="-0.0028981 -0.0398404 -0.0574617" quat="0.55754 -0.811339 0.0995256 -0.144823" size="0.0052 0.0035 0.0227"/>
+                    <body name="right_pad" gravcomp="1" quat="0 0 0.707108 0.707105" pos="-0.0238981 0.0545597 -0.0450621">
+                      <geom name="right_pad" class="finger_collision" pos="0 -0.0017 -0.1362" size="0.0072 0.0017 0.0082"/>
                     </body>
+                    <geom name="right_pad_edge_a" class="finger_body_collision" pos="-0.0316981 -0.0794403 -0.0467615" quat="0.132222 0.132222 -0.694636 -0.694633" size="0.003 0.0017 0.0088"/>
+                    <geom name="right_pad_edge_b" class="finger_body_collision" pos="-0.0160981 -0.0794403 -0.0467615" quat="0.132222 0.132222 0.694636 0.694633" size="0.003 0.0017 0.0088"/>
                   </body>
                 </body>
               </body>
@@ -182,8 +163,14 @@
     </body>
   </worldbody>
 
+  <contact>
+    <exclude body1="left_finger" body2="right_finger"/>
+    <exclude body1="left_finger" body2="right_pad"/>
+    <exclude body1="right_finger" body2="left_pad"/>
+  </contact>
+
   <equality>
-    <joint joint1="left_finger" joint2="right_finger" polycoef="0 -1 0 0 0"/>
+    <joint joint1="left_finger" joint2="right_finger" polycoef="0 1 0 0 0"/>
   </equality>
 
   <actuator>

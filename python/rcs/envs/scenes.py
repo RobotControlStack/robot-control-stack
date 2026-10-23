@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from os import PathLike
 
 import gymnasium as gym
+import numpy as np
 from gymnasium.envs.registration import EnvCreator
 from rcs._core.sim import SimCameraConfig, SimConfig, SimGripperConfig, SimRobotConfig
 from rcs.camera.interface import BaseCameraSet
@@ -24,6 +25,7 @@ from rcs.envs.base import (
 from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
 from rcs.sim.composer import ModelComposer
 from rcs.sim.sim import Sim
+from rcs.sim.visual_randomization import VisualRandomizer, VisualRandomizerConfig
 
 import rcs
 from rcs import GRIPPER_PATHS, SCENE_PATHS, TASKS
@@ -132,6 +134,8 @@ class SimEnvCreatorConfig(typing.Generic[TaskConfig]):
     """dict of camera_name to CameraAdderConfig, cameras will be added to the scene according to the config, camera_name must be unique across all cameras in the scene"""
     gripper_offsets: dict[str, rcs.common.Pose] | None = None
     """optional offsets for the gripper from the robot's attachment site"""
+    visual_randomization: VisualRandomizerConfig | None = None
+    """optional visual randomization, the enabled randomizers are sampled once when the model is created"""
     _original_cfg: typing.Any = None
     """this will hold the original config in case this config has been prefixed"""
 
@@ -322,6 +326,11 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                     ),
                 )
 
+        if cfg.visual_randomization is not None and cfg.visual_randomization.enabled_randomizers():
+            composer.visual_randomization_params = VisualRandomizer(cfg.visual_randomization).apply(
+                composer.spec, np.random.default_rng(cfg.visual_randomization.seed)
+            )
+
         return composer
 
     def create_env_from_model(self, cfg: SimEnvCreatorConfig, mjmodel: MjModel) -> gym.Env:
@@ -353,6 +362,7 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
             ik = rcs.common.Pin(
                 kinematic_model_path,
                 attachment_site,
+                joint_limits=prefixed_cfg.robot_cfgs[robot_name].joint_limits,
             )
 
             env = self.add_robot_env(prefixed_cfg, robot_name, env, simulation, ik)

@@ -667,6 +667,89 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         return cfg
 
 
+class EmptyWorldYamDuo(SimEnvCreator):
+    """Bimanual yam setup as used by MolmoAct2: two yams on a 2060 aluminium extrusion that is clamped to
+    a table, a d405 on each wrist and a d435 head camera on an extendable desk mount behind the arms."""
+
+    # The gripper is part of the yam mjcf, so its joint and actuator are prefixed with the robot.
+    gripper_prefix_template = SimEnvCreator.robot_prefix_template
+
+    def config(self) -> SimEnvCreatorConfig:
+        yam = EmptyWorldYam()
+        yam_cfg = yam.config()
+        lead_robot_name = yam.lead_robot_name(yam_cfg)
+        assert yam_cfg.gripper_cfgs is not None
+        robot_cfg = yam_cfg.robot_cfgs[lead_robot_name]
+        robot_cfg.q_home = rcs.HOME_POSITIONS["YAM_DUO"]
+        gripper_cfg = yam_cfg.gripper_cfgs[lead_robot_name]
+
+        robot_cfgs: dict[str, SimRobotConfig] = {"left": robot_cfg, "right": copy.deepcopy(robot_cfg)}
+        gripper_cfgs: dict[str, SimGripperConfig] = {"left": gripper_cfg, "right": copy.deepcopy(gripper_cfg)}
+
+        camera_cfgs: dict[str, SimCameraConfig] | None = {
+            name: SimCameraConfig(
+                identifier=name,
+                type=CameraType.fixed,
+                resolution_width=1280,
+                resolution_height=720,
+                frame_rate=30,
+            )
+            for name in ("head", "left_wrist", "right_wrist")
+        }
+        robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = {
+            "left": DEFAULT_TRANSFORMS["YAM_DUOMOUNT_LEFT_ROBOT"],
+            "right": DEFAULT_TRANSFORMS["YAM_DUOMOUNT_RIGHT_ROBOT"],
+        }
+        root_frame_objects: dict[str, tuple[str, rcs.common.Pose]] | None = {
+            "table": (OBJECT_PATHS["table"], DEFAULT_TRANSFORMS["YAM_DUOMOUNT_TABLE"]),
+            "duo_mount": (OBJECT_PATHS["yam_duo_mount"], DEFAULT_TRANSFORMS["YAM_DUOMOUNT_BASE"]),
+            "camera_desk_mount": (
+                OBJECT_PATHS["camera_desk_mount"],
+                DEFAULT_TRANSFORMS["YAM_DUOMOUNT_CAMERA_DESK_MOUNT"],
+            ),
+        }
+        robot_frame_objects: dict[str, dict[str, tuple[str, rcs.common.Pose]]] | None = {
+            robot_name: {
+                f"{robot_name}_d405_mount": (
+                    OBJECT_PATHS["yam_d405_wrist_mount"],
+                    DEFAULT_TRANSFORMS["YAM_D405_WRIST_MOUNT"],
+                )
+            }
+            for robot_name in robot_cfgs
+        }
+        camera_adds: dict[str, CameraAdderConfig] | None = {
+            "head": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["d435i"],
+                offset=rcs.common.Pose(DEFAULT_TRANSFORMS["YAM_DUOMOUNT_D435_CAMERA"]),
+            ),
+            "left_wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["d405"],
+                offset=rcs.common.Pose(DEFAULT_TRANSFORMS["YAM_D405_WRIST_CAMERA"]),
+                robot_name="left",
+            ),
+            "right_wrist": CameraAdderConfig(
+                xml_path=CAMERA_PATHS["d405"],
+                offset=rcs.common.Pose(DEFAULT_TRANSFORMS["YAM_D405_WRIST_CAMERA"]),
+                robot_name="right",
+            ),
+        }
+        return SimEnvCreatorConfig(
+            robot_cfgs=robot_cfgs,
+            sim_cfg=yam_cfg.sim_cfg,
+            control_mode=yam_cfg.control_mode,
+            scene=SCENE_PATHS["empty_world"],
+            gripper_cfgs=gripper_cfgs,
+            camera_cfgs=camera_cfgs,
+            robot_to_shared_base_frame=robot_to_shared_base_frame,
+            wrapper_cfg=WrapperConfig(binary_gripper=False, home_on_reset=True),
+            add_gravcomp=True,
+            shared_base_frame_to_root_frame=DEFAULT_TRANSFORMS["YAM_DUOMOUNT_HEIGHT_OFFSET"],
+            root_frame_objects=root_frame_objects,
+            robot_frame_objects=robot_frame_objects,
+            camera_adds=camera_adds,
+        )
+
+
 gym.register(id="rcs/fr3", entry_point=EmptyWorldFR3())
 gym.register(id="rcs/duo", entry_point=EmptyWorldFR3Duo())
 gym.register(id="rcs/droid", entry_point=EmptyWorldDroid())
@@ -675,6 +758,7 @@ gym.register(id="rcs/xarm7", entry_point=EmptyWorldXArm7())
 gym.register(id="rcs/so101", entry_point=EmptyWorldSO101())
 gym.register(id="rcs/yam", entry_point=EmptyWorldYam())
 gym.register(id="rcs/rizon4s", entry_point=EmptyWorldRizon4S())
+gym.register(id="rcs/yam_duo", entry_point=EmptyWorldYamDuo())
 
 
 if __name__ == "__main__":

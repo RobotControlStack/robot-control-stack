@@ -10,7 +10,7 @@ The buttons are used to start and stop data recording with the [`StorageWrapper`
 
 ### Installation
 [Install RCS](https://robotcontrolstack.org/getting_started/index.html) and the [FR3 extension](https://robotcontrolstack.org/extensions/rcs_fr3.html) (the script is writte for the FR3 as example but can be easily adapted for other robots).
-Install the IRIS APK on your quest following [these instructions](https://github.com/intuitive-robots/IRIS-Meta-Quest3) use the apk released [here](https://github.com/RobotControlStack/IRIS-Meta-Quest3/actions/runs/25190284304) to ensure compatibility.
+Install the IRIS APK on your quest following [these instructions](https://github.com/intuitive-robots/IRIS-Meta-Quest3) but use the APK from our fork released [here](https://github.com/RobotControlStack/IRIS-Meta-Quest3/releases/tag/rcsv0.7.x) to ensure compatibility (the official IRIS APK and our older `rcsv1` release are not compatible).
 Finally, install [SimPub](https://github.com/intuitive-robots/SimPublisher) the IRIS python client by
 
 ```shell

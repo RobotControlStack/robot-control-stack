@@ -20,6 +20,7 @@ from rcs.lerobot_joint_converter import (
     camera_specs_to_configs,
     run_conversion,
 )
+from rcs.sim.replayer import ReplayVariant
 from rcs.sim.replayer import replay as replay_dataset
 from rcs.utils import export_camera_episode_videos, export_episode_videos
 
@@ -92,6 +93,19 @@ def replay(
             help="Python import statement to execute before resolving the environment. Repeat for multiple imports. Example: --import 'from rcs_duobench.tasks import bin_sort'",
         ),
     ] = None,
+    variants: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--variant",
+            help="Visually randomized copies to add, as <randomizer>[+<randomizer>...][:<multiplier>] with randomizers "
+            "background, material and lighting. The multiplier is the number of copies per episode and may be "
+            "fractional. Repeat for multiple variants. Example: --variant background:1 --variant background+material:0.5",
+        ),
+    ] = None,
+    keep_original: Annotated[
+        bool, typer.Option(help="Whether to also replay the original episodes without visual randomization.")
+    ] = True,
+    seed: Annotated[int, typer.Option(help="Seed for the visual randomization.")] = 0,
 ):
     _exec_import_statements(imports)
     replay_dataset(
@@ -101,6 +115,9 @@ def replay(
         frequency=frequency,
         relative_to=relative_to,
         env_id=env_id,
+        variants=[ReplayVariant.parse(variant) for variant in variants or []],
+        keep_original=keep_original,
+        seed=seed,
     )
 
 

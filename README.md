@@ -82,6 +82,7 @@ if __name__ == "__main__":
     ik = rcs.common.Pin(
         kinematic_model_path,
         attachment_site,
+        joint_limits=robot_cfg.joint_limits,
     )
 
     # base env
@@ -160,7 +161,7 @@ pip install -ve . --no-build-isolation
 
 RCS resolves its asset directory from the `RCS_PREFIX` environment variable. When it is unset, RCS defaults to `~/.rcs`.
 
-On import, RCS checks whether that path exists. If it does not, it downloads the matching asset archive from GitHub into that location automatically.
+On import, RCS checks whether that path contains the assets of the installed RCS version (recorded in `assets/.version`). If not, it downloads the matching asset archive from GitHub into that location automatically, replacing assets of other versions. An `RCS_PREFIX` with an `assets` directory but without a version file, e.g. a source checkout, is used as it is.
 
 ```shell
 export RCS_PREFIX=/path/to/rcs-assets

@@ -55,6 +55,7 @@ def build_single_robot_env(
     ik = rcs.common.Pin(
         kinematic_model_path,
         attachment_site,
+        joint_limits=robot_cfg.joint_limits,
     )
 
     env: gym.Env = SimEnv(simulation)
@@ -327,3 +328,17 @@ class TestSimEnvsJoints(TestSimEnvs):
         act.update(GripperDictType(gripper=np.array([1.0])))
         obs, _, _, _, info = env.step(act)
         self.assert_no_pose_change(info, obs_initial, obs)
+
+
+def test_sim_config_memory_sets_arena_size():
+    scene = EmptyWorldFR3()
+    cfg = copy.deepcopy(scene.config())
+    cfg.headless = True
+    prefixed_cfg = scene.prefixed_cfg(cfg)
+    assert prefixed_cfg.sim_cfg.memory == -1
+    default = sim.Sim(scene.create_model(prefixed_cfg), prefixed_cfg.sim_cfg)
+
+    prefixed_cfg.sim_cfg.memory = 64 * 1024 * 1024
+    enlarged = sim.Sim(scene.create_model(prefixed_cfg), prefixed_cfg.sim_cfg)
+    assert enlarged.model.narena == 64 * 1024 * 1024
+    assert default.model.narena < enlarged.model.narena

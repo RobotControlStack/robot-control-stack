@@ -315,7 +315,37 @@ class RotVec:
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
 class Pin(Kinematics):
-    def __init__(self, path: str, frame_id: str = "fr3_link8", urdf: bool = False) -> None: ...
+    def __init__(
+        self,
+        path: str,
+        frame_id: str = "fr3_link8",
+        urdf: bool = False,
+        nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        nullspace_gain: float = 0.0,
+        enforce_limits: bool = True,
+        base_frame: str | None = None,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] | None = None,
+    ) -> None:
+        """
+        Numerical inverse kinematics (damped least squares) on a Pinocchio model.
+
+        Args:
+            path: MJCF or URDF file of the robot.
+            frame_id: Frame whose pose forward and inverse refer to, usually the attachment site.
+            urdf: Load ``path`` as URDF instead of MJCF.
+            nullspace_q: Preferred posture of the joints, used as a secondary task in the null space of
+                the pose task. Missing entries are filled with zeros.
+            nullspace_gain: Gain of the posture task, 0 disables it. Gains above 1/dt are capped to 1/dt.
+                If the posture task keeps the solver from reaching the pose, the solve is repeated without it.
+            enforce_limits: Clamp every solver step to the joint limits.
+            base_frame: Frame fixed to the world in which poses are expressed. None uses the root body of
+                the model, whose own pose Pinocchio ignores.
+            joint_limits: Joint limits for the clamping as a 2 x n matrix, lower limits in the first row and
+                upper limits in the second, usually the ``joint_limits`` of the robot config. They replace
+                the limits of the first n joints and must not cover more joints than the model has. None
+                uses the joint ranges of the MJCF or URDF. Joints with an infinite limit or an empty range
+                (lower >= upper) are treated as unlimited. Only used if ``enforce_limits`` is True.
+        """
 
 def FrankaHandTCPOffset() -> numpy.ndarray[tuple[typing.Literal[4], typing.Literal[4]], numpy.dtype[numpy.float64]]: ...
 def IdentityRotMatrix() -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...

@@ -50,6 +50,7 @@ def build_rpc_env() -> gym.Env:
     ik = rcs.common.Pin(
         kinematic_model_path,
         attachment_site,
+        joint_limits=robot_cfg.joint_limits,
     )
 
     env: gym.Env = SimEnv(simulation)
