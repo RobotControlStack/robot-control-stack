@@ -661,7 +661,7 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         gripper_cfg.collision_geoms_fingers = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
 
         cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[GripperType("FlexivGrav")]}
-        # D405 wrist camera on a bracket clamped to the wrist link, see assets/objects/rizon_d405_wrist_mount
+        # D405 wrist camera on a rail screwed to the accessory pocket of the wrist link, see assets/objects/rizon_d405_wrist_mount
         cfg.robot_frame_objects = {
             lead_robot_name: {
                 "d405_mount": (
