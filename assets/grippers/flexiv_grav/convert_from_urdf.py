@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mujoco>=3.3", "xacro"]
+# dependencies = ["mujoco>=3.3", "xacro", "trimesh", "networkx", "scipy"]
 # ///
 """Generate the Flexiv Grav (GN-01) MJCF from Flexiv's official URDF description.
 
@@ -12,16 +12,20 @@ Pipeline (every step is deterministic, no hand edits of the output):
    (or take them from a local checkout passed via ``--src``).
 2. Copy the meshes into ``<out>/assets``. Collision meshes get a ``_collision``
    suffix because MuJoCo names meshes by file stem and would otherwise merge the
-   visual and collision ``base.stl`` into one mesh.
+   visual and collision ``base.stl`` into one mesh. ``finger_tip.obj`` holds the
+   rubber pad and the aluminum holder as separate OBJ groups, of which MuJoCo only
+   loads the first, so it is split into one single-group file per part.
 3. Expand the xacro macro into a URDF with ``xacro`` and rewrite it: point the
    mesh paths at ``<out>/assets``, drop the flange parent link so the gripper
    base becomes the root, drop the virtual ``finger_width_joint`` (MuJoCo has no
    mimic joints) and turn the massless TCP links into recorded frames.
 4. Import the URDF with ``mujoco.MjSpec`` and post-process it: default classes,
-   realistic link masses, pad boxes on the finger tips, TCP sites, contact
-   excludes, joint equality constraints replacing the URDF mimic joints, a
-   tendon splitting the actuation between both knuckles and a position actuator
-   whose control input is the finger opening width in meters.
+   link masses and inertias derived from the mesh volumes at the density of
+   their material (the URDF only specifies the total mass), pad boxes on the
+   finger tips, TCP sites, contact excludes, joint equality constraints
+   replacing the URDF mimic joints, a tendon splitting the actuation between
+   both knuckles and a position actuator whose control input is the finger
+   opening width in meters.
 5. Write ``<out>/flexiv_grav.xml`` plus ``scene.xml`` and ``LICENSE``.
 
 Usage:
@@ -40,6 +44,7 @@ import xml.etree.ElementTree as ET
 
 import mujoco
 import numpy as np
+import trimesh
 import xacro
 
 UPSTREAM_REPO = "flexivrobotics/flexiv_description"
@@ -72,19 +77,37 @@ KP = 20.0
 KV = 1.0
 FORCERANGE = 5.0
 
-# The URDF assigns 1e-4 kg to the moving links, which is too light for a stable simulation.
-# Masses below are rough estimates that keep the total at the 1.186 kg of the URDF.
-LINK_INERTIALS = {
-    "base": {"mass": 1.05, "ipos": (0, 0, 0.057), "inertia": (3e-3, 3e-3, 1e-3)},
-    "left_outer_bar": {"mass": 0.03, "ipos": (0, 0, 0.029), "inertia": (1e-5, 1e-5, 2e-6)},
-    "left_inner_bar": {"mass": 0.03, "ipos": (0, 0, 0.029), "inertia": (1e-5, 1e-5, 2e-6)},
-    "left_finger_mount": {"mass": 0.01, "ipos": (0, 0.008, 0.01), "inertia": (2e-6, 2e-6, 1e-6)},
-    "left_finger_tip": {"mass": 0.01, "ipos": (0, 0.005, 0.018), "inertia": (2e-6, 2e-6, 1e-6)},
-    "right_outer_bar": {"mass": 0.03, "ipos": (0, 0, 0.029), "inertia": (1e-5, 1e-5, 2e-6)},
-    "right_inner_bar": {"mass": 0.03, "ipos": (0, 0, 0.029), "inertia": (1e-5, 1e-5, 2e-6)},
-    "right_finger_mount": {"mass": 0.01, "ipos": (0, 0.008, 0.01), "inertia": (2e-6, 2e-6, 1e-6)},
-    "right_finger_tip": {"mass": 0.01, "ipos": (0, 0.005, 0.018), "inertia": (2e-6, 2e-6, 1e-6)},
+# The URDF only specifies the total mass (1.186 kg on the base link, 1e-4 kg on the moving links, which
+# is too light for a stable simulation). Flexiv's datasheet lists 0.9 kg for the Grav; the URDF value is
+# kept since Flexiv's own software uses it as tool mass. The moving links get the mass of their visual
+# meshes at the density of their material, the base the remainder.
+TOTAL_MASS = 1.186
+ALUMINUM = 2700.0  # kg/m^3
+RUBBER = 1100.0  # kg/m^3
+# Visual meshes per URDF link (left side, the right side is identical) with their material density.
+LINK_MESHES = {
+    "outer_bar": [("outer_bar.stl", ALUMINUM)],
+    "inner_bar": [("inner_bar.stl", ALUMINUM)],
+    "finger_mount": [("finger_mount.stl", ALUMINUM)],
+    "finger_tip": [("finger_tip_holder.obj", ALUMINUM), ("finger_tip_pad.obj", RUBBER)],
 }
+# The base visual mesh is not watertight, its inertia is taken from the convex collision hull instead.
+BASE_HULL = "base_collision.stl"
+# The URDF rotates every mesh by 90 degrees about z into the link frame (rpy="0 0 pi/2").
+MESH_TO_LINK = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+
+# ``finger_tip.obj`` groups: mesh1 and mesh2 are the rubber pad and its end cap, mesh3 the aluminum
+# holder. MuJoCo only loads the first group of an OBJ file, so each part becomes its own file.
+FINGER_TIP_OBJ = "finger_tip.obj"
+FINGER_TIP_PARTS = {"finger_tip_pad": ["mesh1", "mesh2"], "finger_tip_holder": ["mesh3"]}
+FINGER_TIP_MATERIALS = {"finger_tip_pad": "black", "finger_tip_holder": "aluminum"}
+
+# The upstream ``finger_mount.stl`` is exported rotated by 1.858 degrees about the outer bar pivot
+# (the x axis of the finger mount link) relative to the URDF joint frames: its top face is slanted,
+# the inner bar pin misses the pivot hole and the finger tip holder cuts into its outer face. The
+# URDF kinematics are consistent (the pads meet when closed), so only the visual geom is rotated
+# back; the mount has no collision geom and the finger tip frame stays as in the URDF.
+FINGER_MOUNT_VISUAL_TILT = np.deg2rad(-1.858)
 
 # Massless URDF links that only define frames. They become sites on their parent body.
 TCP_LINKS = ["grav_tcp", "closed_fingers_tcp", "left_finger_tcp", "right_finger_tcp"]
@@ -214,8 +237,100 @@ def copy_meshes(src: pathlib.Path, assets: pathlib.Path) -> None:
         path = pathlib.Path(rel)
         if path.parts[0] != "meshes":
             continue
+        if path.name == FINGER_TIP_OBJ:
+            split_obj(src / rel, assets, FINGER_TIP_PARTS)
+            continue
         name = path.name if path.parts[2] == "visual" else f"{path.stem}_collision{path.suffix}"
         shutil.copyfile(src / rel, assets / name)
+
+
+def split_obj(obj: pathlib.Path, assets: pathlib.Path, parts: dict[str, list[str]]) -> None:
+    """Writes one single-group OBJ per part, each holding the groups listed for it.
+
+    Vertex lines are copied verbatim and re-indexed, normals and texture coordinates are dropped
+    (MuJoCo recomputes the normals).
+    """
+    vertices: list[str] = []
+    faces: dict[str, list[list[int]]] = {}
+    group = None
+    for line in obj.read_text().splitlines():
+        if line.startswith("v "):
+            vertices.append(line)
+        elif line.startswith("g "):
+            group = line[2:].strip()
+            faces[group] = []
+        elif line.startswith("f "):
+            assert group is not None, "face before the first group"
+            faces[group].append([int(corner.split("/")[0]) for corner in line[2:].split()])
+    assert {g for groups in parts.values() for g in groups} == set(faces), f"groups in {obj.name}: {sorted(faces)}"
+
+    for name, groups in parts.items():
+        part_faces = [face for g in groups for face in faces[g]]
+        used = sorted({index for face in part_faces for index in face})
+        remap = {old: new for new, old in enumerate(used, start=1)}
+        lines = [f"# {name}: groups {' '.join(groups)} of {obj.name}", f"g {name}"]
+        lines += [vertices[index - 1] for index in used]
+        lines += ["f " + " ".join(str(remap[index]) for index in face) for face in part_faces]
+        (assets / f"{name}.obj").write_text("\n".join(lines) + "\n")
+
+
+def mesh_mass_properties(path: pathlib.Path, density: float) -> tuple[float, np.ndarray, np.ndarray]:
+    """Mass, center of mass and inertia tensor (about the link origin, in the link frame) of a mesh
+    filled uniformly with the given density."""
+    mesh = trimesh.load(path, force="mesh")  # merges the duplicate STL vertices so parts connect
+    mesh.apply_scale(0.001)  # upstream meshes are in millimeters
+    transform = np.eye(4)
+    transform[:3, :3] = MESH_TO_LINK
+    mesh.apply_transform(transform)
+    mesh.fix_normals()
+    mass = 0.0
+    first_moment = np.zeros(3)
+    inertia = np.zeros((3, 3))
+    # Non-watertight meshes are handled part by part: the volume of a closed part has a consistent
+    # sign after fix_normals, so summing the absolute volumes of all parts is robust to parts that
+    # are oriented inwards.
+    for part in mesh.split(only_watertight=False):
+        if abs(part.volume) < 1e-12:
+            continue  # open surface patches without volume
+        part_mass = density * abs(part.volume)
+        offset = part.center_mass
+        mass += part_mass
+        first_moment += part_mass * offset
+        inertia += density * np.sign(part.volume) * part.moment_inertia + part_mass * (
+            offset @ offset * np.eye(3) - np.outer(offset, offset)
+        )
+    return mass, first_moment / mass, inertia
+
+
+def link_inertials(assets: pathlib.Path) -> dict[str, tuple[float, np.ndarray, np.ndarray]]:
+    """Mass, center of mass and inertia tensor per body, derived from the meshes."""
+    inertials: dict[str, tuple[float, np.ndarray, np.ndarray]] = {}
+    for link, meshes in LINK_MESHES.items():
+        mass = 0.0
+        first_moment = np.zeros(3)
+        inertia = np.zeros((3, 3))
+        for file, density in meshes:
+            m, com, i = mesh_mass_properties(assets / file, density)
+            mass += m
+            first_moment += m * com
+            inertia += i
+        inertials[link] = (mass, first_moment / mass, inertia)
+
+    # The base gets what is left of the total mass, distributed uniformly over its collision hull.
+    moving_mass = 2 * sum(mass for mass, _, _ in inertials.values())
+    base_mass = TOTAL_MASS - moving_mass
+    hull_mass, hull_com, hull_inertia = mesh_mass_properties(assets / BASE_HULL, 1.0)
+    inertials["base"] = (base_mass, hull_com, hull_inertia * base_mass / hull_mass)
+
+    for link in list(LINK_MESHES):
+        for side in ["left", "right"]:
+            inertials[f"{side}_{link}"] = inertials[link]
+        del inertials[link]
+    # MuJoCo wants the inertia about the center of mass.
+    return {
+        name: (mass, com, inertia - mass * (com @ com * np.eye(3) - np.outer(com, com)))
+        for name, (mass, com, inertia) in inertials.items()
+    }
 
 
 def expand_xacro(src: pathlib.Path, work: pathlib.Path) -> str:
@@ -244,6 +359,12 @@ def rewrite_urdf(urdf_xml: str, assets: pathlib.Path) -> tuple[str, dict[str, tu
     root.remove(joints.pop("finger_width_joint"))
     root.remove(links.pop("unused_finger_width_link"))
 
+    # The <mimic> tags become the equality constraints of JOINT_COUPLINGS (newer MuJoCo versions
+    # would otherwise import them as unnamed equalities with default solver parameters).
+    for joint in joints.values():
+        for mimic in joint.findall("mimic"):
+            joint.remove(mimic)
+
     tcps: dict[str, tuple[str, np.ndarray]] = {}
     for joint in list(joints.values()):
         child = joint.find("child").get("link")
@@ -259,7 +380,7 @@ def rewrite_urdf(urdf_xml: str, assets: pathlib.Path) -> tuple[str, dict[str, tu
     return ET.tostring(root, encoding="unicode"), tcps
 
 
-def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]]) -> mujoco.MjSpec:
+def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]], assets: pathlib.Path) -> mujoco.MjSpec:
     spec = mujoco.MjSpec.from_file(str(urdf))
     spec.modelname = MODEL_NAME
     spec.compiler.autolimits = True
@@ -267,6 +388,7 @@ def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]]) -> m
     spec.option.impratio = 10
 
     spec.add_material(name="black", rgba=(0.149, 0.149, 0.149, 1))
+    spec.add_material(name="aluminum", rgba=(0.75, 0.76, 0.78, 1), specular=0.8, shininess=0.6)
 
     # Default classes. Values set on the elements below must match these for the XML writer to
     # omit them, so the same constants are used in both places.
@@ -306,25 +428,39 @@ def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]]) -> m
     pad.geom.solref = (0.004, 1)
     pad.geom.rgba = (0.3, 0.3, 0.3, 1)
 
+    # The URDF references the multi-group finger_tip.obj, which is split into one mesh per part.
+    tip_stem = pathlib.Path(FINGER_TIP_OBJ).stem
+    pad_name, holder_name = FINGER_TIP_PARTS
     for mesh in spec.meshes:
         mesh.file = pathlib.Path(mesh.file).name
+        if mesh.name == tip_stem:
+            mesh.name = pad_name
+            mesh.file = f"{pad_name}.obj"
         mesh.classname = grav
         mesh.scale = mesh_scale
         mesh.refquat = mesh_refquat
+    spec.add_mesh(default=grav, name=holder_name, file=f"{holder_name}.obj", scale=mesh_scale, refquat=mesh_refquat)
 
     base = spec.body("grav_base_link")
     base.name = "base"
     base.childclass = ROOT_CLASS
 
+    inertials = link_inertials(assets)
     for body in spec.bodies:
-        if body.name in LINK_INERTIALS:
-            values = LINK_INERTIALS[body.name]
-            body.explicitinertial = True
-            body.mass = values["mass"]
-            body.ipos = values["ipos"]
-            body.iquat = (1, 0, 0, 0)
-            body.fullinertia = [float("nan")] * 6  # NaN marks unset, the URDF importer filled it
-            body.inertia = values["inertia"]
+        if body.name not in inertials:
+            continue
+        mass, com, inertia = inertials[body.name]
+        principal, axes = np.linalg.eigh(inertia)
+        if np.linalg.det(axes) < 0:
+            axes[:, 0] *= -1  # eigh may return a reflection, MuJoCo wants a rotation
+        iquat = np.zeros(4)
+        mujoco.mju_mat2Quat(iquat, axes.flatten())
+        body.explicitinertial = True
+        body.mass = round(mass, 5)
+        body.ipos = np.round(com, 5)
+        body.iquat = np.round(iquat, 6)
+        body.fullinertia = [float("nan")] * 6  # NaN marks unset, the URDF importer filled it
+        body.inertia = [float(f"{value:.4g}") for value in principal]
 
     for joint in spec.joints:
         joint.classname = knuckle if joint.range[1] > 0.5 else finger
@@ -334,6 +470,8 @@ def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]]) -> m
         joint.solimp_limit = SOLIMP
         joint.solref_limit = SOLREF
 
+    mount_half_angle = FINGER_MOUNT_VISUAL_TILT / 2
+    mount_quat = (np.cos(mount_half_angle), np.sin(mount_half_angle), 0, 0)
     for geom in spec.geoms:
         is_visual = geom.contype == 0 and geom.conaffinity == 0
         cls = visual if is_visual else collision
@@ -342,12 +480,19 @@ def build_spec(urdf: pathlib.Path, tcps: dict[str, tuple[str, np.ndarray]]) -> m
         geom.quat = identity  # the URDF rotation is now part of the mesh
         if is_visual:
             geom.density = 0
-            geom.material = "black"  # the finger tip mesh is the black plastic clip, like the rest
+            geom.material = "black"
+            if geom.meshname == "finger_mount":
+                geom.quat = mount_quat
+            elif geom.meshname == tip_stem:
+                geom.meshname = pad_name
+                geom.material = FINGER_TIP_MATERIALS[pad_name]
         else:
             geom.density = main.geom.density
 
     for side in ["left", "right"]:
         tip = spec.body(f"{side}_finger_tip")
+        holder = tip.add_geom(default=visual, meshname=holder_name, material=FINGER_TIP_MATERIALS[holder_name])
+        holder.type = mujoco.mjtGeom.mjGEOM_MESH
         for suffix, pos, size in PAD_BOXES:
             geom = tip.add_geom(default=pad, name=f"{side}_{suffix}", pos=pos, size=size)
             geom.type = mujoco.mjtGeom.mjGEOM_BOX
@@ -413,7 +558,7 @@ def main() -> None:
     urdf = work / f"{MODEL_NAME}.urdf"
     urdf.write_text(urdf_xml)
 
-    spec = build_spec(urdf, tcps)
+    spec = build_spec(urdf, tcps, assets)
     spec.compile()  # fail early on model errors, mesh paths are still absolute here
     spec.modelfiledir = str(out.resolve())  # to_xml recompiles, so relative mesh paths must resolve
     spec.compiler.meshdir = "assets"

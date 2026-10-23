@@ -17,6 +17,9 @@ class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
     robot_sn = "Rizon4s-063650"
     gripper_device_name = "Flexiv-GN01"
     """Gripper device name from Flexiv Elements -> Settings -> Device."""
+    gripper_manual_init = True
+    """Trigger the gripper's initialization on startup. Needed for grippers that do not initialize on power-on
+    like the 48 V Grav, harmless otherwise. The fingers move to both stops during initialization."""
     tool_name: str | None = None
     """Tool to activate from Flexiv Elements -> Settings -> Tool, e.g. the one created for the Grav. None keeps the
     active tool. The active tool matters for gravity compensation, so it should match the mounted gripper."""
@@ -40,6 +43,7 @@ class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
 
         gripper_cfg = FlexivGripperConfig(
             device_name=self.gripper_device_name,
+            manual_init=self.gripper_manual_init,
             async_control=False,
             gripper_type=gripper_type,
         )
@@ -61,11 +65,13 @@ class DefaultRizon4SDualMultiHardwareEnv(RCSFlexivMultiConfigEnvCreator):
     left_sn = "Rizon4s-063650"
     right_sn = "Rizon4s-654321"
     gripper_device_name = "Flexiv-GN01"
+    gripper_manual_init = True
     tool_name: str | None = None
 
     def config(self) -> FlexivMultiHardwareEnvCreatorConfig:
         base = DefaultRizon4SHardwareEnv()
         base.gripper_device_name = self.gripper_device_name
+        base.gripper_manual_init = self.gripper_manual_init
         base.tool_name = self.tool_name
 
         robot_cfgs = {}

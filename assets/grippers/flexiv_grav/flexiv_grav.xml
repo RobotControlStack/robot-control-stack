@@ -28,6 +28,7 @@
 
   <asset>
     <material name="black" rgba="0.149 0.149 0.149 1"/>
+    <material name="aluminum" specular="0.8" shininess="0.6" rgba="0.75 0.76 0.78 1"/>
     <mesh name="base" class="grav" file="base.stl" refquat="0.707107 0 0 -0.707107"/>
     <mesh name="base_collision" class="grav" file="base_collision.stl" refquat="0.707107 0 0 -0.707107"/>
     <mesh name="outer_bar" class="grav" file="outer_bar.stl" refquat="0.707107 0 0 -0.707107"/>
@@ -35,30 +36,36 @@
     <mesh name="inner_bar" class="grav" file="inner_bar.stl" refquat="0.707107 0 0 -0.707107"/>
     <mesh name="inner_bar_collision" class="grav" file="inner_bar_collision.stl" refquat="0.707107 0 0 -0.707107"/>
     <mesh name="finger_mount" class="grav" file="finger_mount.stl" refquat="0.707107 0 0 -0.707107"/>
-    <mesh name="finger_tip" class="grav" file="finger_tip.obj" refquat="0.707107 0 0 -0.707107"/>
+    <mesh name="finger_tip_pad" class="grav" file="finger_tip_pad.obj" refquat="0.707107 0 0 -0.707107"/>
     <mesh name="finger_tip_collision" class="grav" file="finger_tip_collision.stl" refquat="0.707107 0 0 -0.707107"/>
+    <mesh name="finger_tip_holder" class="grav" file="finger_tip_holder.obj" refquat="0.707107 0 0 -0.707107"/>
   </asset>
 
   <worldbody>
     <body name="base" childclass="grav">
-      <inertial pos="0 0 0.057" mass="1.05" diaginertia="0.003 0.003 0.001"/>
+      <inertial pos="0.0001 8e-05 0.04785" quat="0.706379 0.0112 -0.707735 0.003786" mass="1.01734"
+        diaginertia="0.000888 0.00123 0.00134"/>
       <geom class="visual" mesh="base"/>
       <geom class="collision" mesh="base_collision"/>
       <site name="grav_tcp" pos="0 0 0.15" size="0.002" group="5"/>
       <site name="closed_fingers_tcp" pos="0 0 0.2" size="0.002" group="5"/>
       <body name="left_outer_bar" pos="0 -0.0325 0.0825">
-        <inertial pos="0 0 0.029" mass="0.03" diaginertia="1e-05 1e-05 2e-06"/>
+        <inertial pos="0 0 0.02826" quat="0.500006 0.499997 -0.500002 0.499995" mass="0.03867"
+          diaginertia="5.983e-06 1.076e-05 1.58e-05"/>
         <joint name="left_outer_knuckle_joint" class="knuckle" pos="0 0 0" axis="1 0 0"/>
         <geom class="visual" mesh="outer_bar"/>
         <geom class="collision" mesh="outer_bar_collision"/>
         <body name="left_finger_mount" pos="0 0 0.058">
-          <inertial pos="0 0.008 0.01" mass="0.01" diaginertia="2e-06 2e-06 1e-06"/>
+          <inertial pos="0 0.00751 0.01323" quat="0.647358 0.284544 -0.286354 0.646501" mass="0.01053"
+            diaginertia="3.512e-07 1.049e-06 1.061e-06"/>
           <joint name="left_inner_finger_joint" class="finger" pos="0 0 0" axis="1 0 0"/>
-          <geom class="visual" mesh="finger_mount"/>
+          <geom class="visual" quat="0.999869 -0.01621 0 0" mesh="finger_mount"/>
           <body name="left_finger_tip" pos="0 0.01 0.0235">
-            <inertial pos="0 0.005 0.018" mass="0.01" diaginertia="2e-06 2e-06 1e-06"/>
-            <geom class="visual" mesh="finger_tip"/>
+            <inertial pos="0 0.00533 0.01314" quat="0.574216 0.412645 0.412645 -0.574216" mass="0.01192"
+              diaginertia="4.284e-07 1.498e-06 1.512e-06"/>
+            <geom class="visual" mesh="finger_tip_pad"/>
             <geom class="collision" mesh="finger_tip_collision"/>
+            <geom class="visual" material="aluminum" mesh="finger_tip_holder"/>
             <geom name="left_pad1" class="pad" size="0.007 0.001 0.009" pos="0 0.0125 0.009"/>
             <geom name="left_pad2" class="pad" size="0.007 0.001 0.009" pos="0 0.0125 0.027"/>
             <site name="left_finger_tcp" pos="0 0.0135 0.036" size="0.002" group="5"/>
@@ -66,24 +73,29 @@
         </body>
       </body>
       <body name="left_inner_bar" pos="0 -0.0165 0.0995">
-        <inertial pos="0 0 0.029" mass="0.03" diaginertia="1e-05 1e-05 2e-06"/>
+        <inertial pos="0 0 0.02905" quat="0.499981 0.499971 0.500038 -0.50001" mass="0.0232"
+          diaginertia="3.105e-06 6.653e-06 9.196e-06"/>
         <joint name="left_inner_knuckle_joint" class="knuckle" pos="0 0 0" axis="1 0 0"/>
         <geom class="visual" mesh="inner_bar"/>
         <geom class="collision" mesh="inner_bar_collision"/>
       </body>
       <body name="right_outer_bar" pos="0 0.0325 0.0825" quat="0 0 0 1">
-        <inertial pos="0 0 0.029" mass="0.03" diaginertia="1e-05 1e-05 2e-06"/>
+        <inertial pos="0 0 0.02826" quat="0.500006 0.499997 -0.500002 0.499995" mass="0.03867"
+          diaginertia="5.983e-06 1.076e-05 1.58e-05"/>
         <joint name="right_outer_knuckle_joint" class="knuckle" pos="0 0 0" axis="1 0 0"/>
         <geom class="visual" mesh="outer_bar"/>
         <geom class="collision" mesh="outer_bar_collision"/>
         <body name="right_finger_mount" pos="0 0 0.058">
-          <inertial pos="0 0.008 0.01" mass="0.01" diaginertia="2e-06 2e-06 1e-06"/>
+          <inertial pos="0 0.00751 0.01323" quat="0.647358 0.284544 -0.286354 0.646501" mass="0.01053"
+            diaginertia="3.512e-07 1.049e-06 1.061e-06"/>
           <joint name="right_inner_finger_joint" class="finger" pos="0 0 0" axis="1 0 0"/>
-          <geom class="visual" mesh="finger_mount"/>
+          <geom class="visual" quat="0.999869 -0.01621 0 0" mesh="finger_mount"/>
           <body name="right_finger_tip" pos="0 0.01 0.0235">
-            <inertial pos="0 0.005 0.018" mass="0.01" diaginertia="2e-06 2e-06 1e-06"/>
-            <geom class="visual" mesh="finger_tip"/>
+            <inertial pos="0 0.00533 0.01314" quat="0.574216 0.412645 0.412645 -0.574216" mass="0.01192"
+              diaginertia="4.284e-07 1.498e-06 1.512e-06"/>
+            <geom class="visual" mesh="finger_tip_pad"/>
             <geom class="collision" mesh="finger_tip_collision"/>
+            <geom class="visual" material="aluminum" mesh="finger_tip_holder"/>
             <geom name="right_pad1" class="pad" size="0.007 0.001 0.009" pos="0 0.0125 0.009"/>
             <geom name="right_pad2" class="pad" size="0.007 0.001 0.009" pos="0 0.0125 0.027"/>
             <site name="right_finger_tcp" pos="0 0.0135 0.036" size="0.002" group="5"/>
@@ -91,7 +103,8 @@
         </body>
       </body>
       <body name="right_inner_bar" pos="0 0.0165 0.0995" quat="0 0 0 1">
-        <inertial pos="0 0 0.029" mass="0.03" diaginertia="1e-05 1e-05 2e-06"/>
+        <inertial pos="0 0 0.02905" quat="0.499981 0.499971 0.500038 -0.50001" mass="0.0232"
+          diaginertia="3.105e-06 6.653e-06 9.196e-06"/>
         <joint name="right_inner_knuckle_joint" class="knuckle" pos="0 0 0" axis="1 0 0"/>
         <geom class="visual" mesh="inner_bar"/>
         <geom class="collision" mesh="inner_bar_collision"/>
