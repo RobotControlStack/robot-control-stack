@@ -56,6 +56,31 @@ robot needs an RDK license. Before running RCS:
   transform between the two frames is estimated at connect (`Flexiv.world_from_base`) and used
   when commanding the robot's Cartesian controller.
 
+## State and timing
+
+`Flexiv.get_state()` returns a `FlexivRobotState` with the RDK's joint-space fields and, since the stamped-state
+change, everything a consumer needs to pair the arm with other sensors by time:
+
+| field | what it is |
+| ----- | ---------- |
+| `timestamp`, `timestamp_ns` | the controller's clock, `(sec, nsec)` since epoch as the RDK gives it, and as one integer |
+| `read_time_ns` | the host's `time.monotonic_ns()` when the RDK state was read (gripper states carry it too) |
+| `ft_sensor_raw` | the wrist force/torque sensor as measured, sensor frame, no payload compensation |
+| `tcp_wrench`, `tcp_wrench_raw` | the controller's external wrench estimate in its world frame, filtered and unfiltered |
+| `tcp_wrench_in_tcp`, `tcp_wrench_in_tcp_raw` | the same in the TCP frame |
+| `tcp_pose`, `tcp_vel` | the active tool's TCP pose and velocity as the controller reports them, world frame |
+| `flange_pose` | the flange pose, world frame |
+
+The RDK streams at 1 kHz but hands out one snapshot per call. With `FlexivConfig(state_poll_hz=1000)` one
+background thread reads it at that rate into a buffer of `state_history_s` seconds; `get_state()` then serves the
+newest sample, `get_state_history(n)` the last `n`, and `drain_state_history()` everything since the last drain,
+so a consumer stepping at 100 Hz receives the stream in batches of ten, nothing twice. Without `state_poll_hz` the
+getters read the RDK on every call, as before.
+
+Impedance gains are applied once per mode switch (and on connect, `set_config` and error recovery), not on every
+target: `SetJointImpedance` and `SetCartesianImpedance` are blocking requests, and a target in the current mode
+costs no round trip.
+
 ## Control modes
 
 `FlexivConfig.control_mode` selects which RDK controller tracks the targets RCS sends. All of them

@@ -12,8 +12,10 @@ The gripper (e.g. the Grav GN-01) is controlled through the RDK gripper device i
 robot connection, so `FlexivGripper` is created from a `Flexiv` instance.
 """
 
+import collections
 import enum
 import logging
+import threading
 import time
 import typing
 
@@ -63,6 +65,8 @@ class FlexivConfig(common.RobotConfig):
         cartesian_tolerance: tuple[float, float] = (0.002, 0.02),
         command_timeout: float = 5.0,
         startup_timeout: float = 30.0,
+        state_poll_hz: int | None = None,
+        state_history_s: float = 1.0,
         verbose: bool = False,
         **kwargs: typing.Unpack[RobotConfigKwargs],
     ):
@@ -100,6 +104,11 @@ class FlexivConfig(common.RobotConfig):
             command_timeout: Seconds after which a synchronous command returns even if the target was not reached,
                 e.g. because the arm is blocked by a contact.
             startup_timeout: Seconds to wait for the robot to become operational after servo on.
+            state_poll_hz: If set, a background thread reads the RDK state at this rate into a history buffer
+                (`get_state_history`, `drain_state_history`), and `get_state` serves the newest sample from it, so the
+                RDK is read from one thread. None (default) reads the RDK on every getter call, as before. The RDK's
+                stream runs at 1 kHz; 1000 keeps every sample.
+            state_history_s: Seconds of history the buffer keeps when polling.
             verbose: Enable the info and warning prints of the RDK.
         """
         super().__init__(**kwargs)
@@ -125,22 +134,48 @@ class FlexivConfig(common.RobotConfig):
         self.cartesian_tolerance = cartesian_tolerance
         self.command_timeout = command_timeout
         self.startup_timeout = startup_timeout
+        self.state_poll_hz = state_poll_hz
+        self.state_history_s = state_history_s
         self.verbose = verbose
 
 
 class FlexivRobotState(common.RobotState):
-    """Snapshot of the RDK robot states that are useful on top of the RCS observations."""
+    """Snapshot of the RDK robot states that are useful on top of the RCS observations, with the two clocks a consumer
+    needs to pair it with other sensors: the controller's own `timestamp` and the host's `read_time_ns`."""
 
-    def __init__(self, states: typing.Any, mode: str, operational: bool, fault: bool) -> None:
+    def __init__(
+        self, states: typing.Any, mode: str, operational: bool, fault: bool, read_time_ns: int | None = None
+    ) -> None:
         super().__init__()
+        self.read_time_ns = time.monotonic_ns() if read_time_ns is None else read_time_ns
+        """`time.monotonic_ns()` of the host when the RDK state was read."""
+        sec, nsec = states.timestamp
+        self.timestamp = (sec, nsec)
+        """The controller's clock: (seconds since epoch, nanoseconds since the last full second), as the RDK gives it."""
+        self.timestamp_ns = sec * 1_000_000_000 + nsec
+        """The same as one integer in nanoseconds."""
         self.q = np.asarray(states.q, dtype=np.float64)
         self.dq = np.asarray(states.dq, dtype=np.float64)
         self.tau = np.asarray(states.tau, dtype=np.float64)
         self.tau_ext = np.asarray(states.tau_ext, dtype=np.float64)
         self.tcp_wrench = np.asarray(states.ext_wrench_in_world, dtype=np.float64)
-        """External wrench at the TCP in the RDK's world frame [f_x, f_y, f_z, m_x, m_y, m_z]."""
+        """External wrench at the TCP in the RDK's world frame [f_x, f_y, f_z, m_x, m_y, m_z], the controller's
+        filtered estimate (it carries the active tool's gravity compensation and its errors)."""
+        self.tcp_wrench_raw = np.asarray(states.ext_wrench_in_world_raw, dtype=np.float64)
+        """Unfiltered `tcp_wrench`: noisier, no filter latency."""
+        self.tcp_wrench_in_tcp = np.asarray(states.ext_wrench_in_tcp, dtype=np.float64)
+        """The controller's external wrench estimate expressed in the TCP frame."""
+        self.tcp_wrench_in_tcp_raw = np.asarray(states.ext_wrench_in_tcp_raw, dtype=np.float64)
+        self.ft_sensor_raw = np.asarray(states.ft_sensor_raw, dtype=np.float64)
+        """The wrist force/torque sensor as measured, in the sensor (flange) frame, no payload compensation: the
+        reading to build an own contact estimate on."""
         self.flange_pose = np.asarray(states.flange_pose, dtype=np.float64)
         """[x, y, z, q_w, q_x, q_y, q_z] in the RDK's world frame, as reported by the RDK."""
+        self.tcp_pose = np.asarray(states.tcp_pose, dtype=np.float64)
+        """The active tool's TCP [x, y, z, q_w, q_x, q_y, q_z] in the RDK's world frame, as the controller reports it
+        (RCS's own TCP, `get_cartesian_position`, is in the base frame at `tcp_offset`)."""
+        self.tcp_vel = np.asarray(states.tcp_vel, dtype=np.float64)
+        """TCP velocity [v_x, v_y, v_z, w_x, w_y, w_z] in the RDK's world frame."""
         self.mode = mode
         self.operational = operational
         self.fault = fault
@@ -178,6 +213,13 @@ class Flexiv(common.Robot):
 
         self._robot = flexivrdk.Robot(cfg.robot_sn, [], cfg.verbose)
         self._closed = False
+        self._history: collections.deque[FlexivRobotState] = collections.deque(
+            maxlen=max(1, round((cfg.state_poll_hz or 1) * cfg.state_history_s))
+        )
+        self._history_lock = threading.Lock()
+        self._n_polled = 0  # samples the poller has appended so far; the newest buffered one has this index
+        self._drained_upto = 0  # the index of the last sample `drain_state_history` handed out
+        self._poller: threading.Thread | None = None
         self._make_operational()
         self._info = self._robot.info()
         if int(self._info.DoF) != self._dof:
@@ -190,7 +232,10 @@ class Flexiv(common.Robot):
         self._tool_tcp = self._read_tool_tcp()
         self._world_from_base = self._estimate_world_from_base()
 
-        self._ensure_mode(cfg.control_mode)
+        self._ensure_mode(cfg.control_mode, force=True)
+        if cfg.state_poll_hz:
+            self._poller = threading.Thread(target=self._poll_states, name="flexiv-state-poller", daemon=True)
+            self._poller.start()
         logger.info(
             "Connected to %s (%s, robot software %s) with tool %s in %s.",
             self._info.serial_num,
@@ -226,6 +271,9 @@ class Flexiv(common.Robot):
         if self._closed:
             return
         self._closed = True
+        if self._poller is not None:
+            self._poller.join(timeout=2.0)
+            self._poller = None
         try:
             # Stop() halts any ongoing motion and puts the robot into IDLE.
             self._robot.Stop()
@@ -241,10 +289,58 @@ class Flexiv(common.Robot):
         if robot_cfg.tool_name is not None and robot_cfg.tool_name != self._tool.name():
             self._tool.Switch(robot_cfg.tool_name)
             self._tool_tcp = self._read_tool_tcp()
-        self._ensure_mode(robot_cfg.control_mode)
+        self._ensure_mode(robot_cfg.control_mode, force=True)
 
     def get_state(self) -> FlexivRobotState:
-        return FlexivRobotState(self._states(), self._robot.mode().name, self._robot.operational(), self._robot.fault())
+        """The newest state: read now, or the poller's newest sample when `state_poll_hz` is set."""
+        if self._poller is not None:
+            with self._history_lock:
+                if self._history:
+                    return self._history[-1]
+        return self._read_state()
+
+    def get_state_history(self, n: int | None = None) -> list[FlexivRobotState]:
+        """The last `n` polled states (all buffered when None), oldest first. Empty without `state_poll_hz`."""
+        with self._history_lock:
+            items = list(self._history)
+        return items if n is None else items[-n:]
+
+    def drain_state_history(self) -> list[FlexivRobotState]:
+        """Every polled state since the last drain, oldest first: the 1 kHz stream in batches, nothing twice. A
+        consumer slower than `state_history_s` loses the samples that fell off the front of the buffer."""
+        with self._history_lock:
+            items = list(self._history)
+            new = min(len(items), self._n_polled - self._drained_upto)
+            self._drained_upto = self._n_polled
+        return items[len(items) - new :] if new else []
+
+    def _read_state(self) -> FlexivRobotState:
+        t0 = time.monotonic_ns()
+        states = self._states()
+        read_time_ns = (t0 + time.monotonic_ns()) // 2
+        return FlexivRobotState(
+            states, self._robot.mode().name, self._robot.operational(), self._robot.fault(), read_time_ns
+        )
+
+    def _poll_states(self) -> None:
+        period = 1.0 / float(self._config.state_poll_hz or 1)
+        next_t = time.monotonic()
+        while not self._closed:
+            try:
+                state = self._read_state()
+            except Exception as e:  # noqa: BLE001 - a dropped connection must not end the process
+                logger.warning("Reading the robot state failed: %s", e)
+                time.sleep(period)
+                continue
+            with self._history_lock:
+                self._history.append(state)
+                self._n_polled += 1
+            next_t += period
+            delay = next_t - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            else:
+                next_t = time.monotonic()
 
     def get_ik(self) -> common.Kinematics | None:
         return self.ik
@@ -255,7 +351,7 @@ class Flexiv(common.Robot):
     def automatic_error_recovery(self) -> None:
         """Called by `RobotWrapper.reset` when homing raises: clears faults, enables the robot and restores the mode."""
         self._make_operational()
-        self._ensure_mode(self._config.control_mode)
+        self._ensure_mode(self._config.control_mode, force=True)
 
     def get_joint_position(self) -> np.ndarray[tuple[typing.Any], np.dtype[np.float64]]:
         return np.asarray(self._states().q, dtype=np.float64)
@@ -429,12 +525,17 @@ class Flexiv(common.Robot):
             logger.warning("Could not read the active tool parameters, assuming the TCP is at the flange: %s", e)
             return common.Pose()
 
-    def _ensure_mode(self, mode: FlexivControlMode) -> None:
-        """Switches the robot into the RDK mode of `mode` if needed and applies the matching settings."""
+    def _ensure_mode(self, mode: FlexivControlMode, force: bool = False) -> None:
+        """Switches the robot into the RDK mode of `mode` if needed and applies the matching settings after a switch
+        (or always, with `force`: connect, `set_config`, error recovery). The setters are blocking requests to the
+        controller, so a target sent in the current mode costs no round trip."""
         rdk_mode = self._rdk_modes[mode]
-        if self._robot.mode() != rdk_mode:
+        switched = self._robot.mode() != rdk_mode
+        if switched:
             # SwitchMode stops any ongoing motion and blocks until the transition is done.
             self._robot.SwitchMode(rdk_mode)
+        if not (switched or force):
+            return
         if mode == FlexivControlMode.JOINT_IMPEDANCE:
             self._apply_joint_impedance()
         elif mode == FlexivControlMode.CARTESIAN_IMPEDANCE:
@@ -551,8 +652,10 @@ class FlexivGripperConfig(common.GripperConfig):
 
 
 class FlexivGripperState(common.GripperState):
-    def __init__(self, states: typing.Any) -> None:
+    def __init__(self, states: typing.Any, read_time_ns: int | None = None) -> None:
         super().__init__()
+        self.read_time_ns = time.monotonic_ns() if read_time_ns is None else read_time_ns
+        """`time.monotonic_ns()` of the host when the gripper state was read."""
         self.width = float(states.width)
         """Finger opening in m."""
         self.force = float(states.force)
@@ -597,7 +700,9 @@ class FlexivGripper(common.Gripper):
         return self._cfg
 
     def get_state(self) -> FlexivGripperState:
-        return FlexivGripperState(self._states())
+        t0 = time.monotonic_ns()
+        states = self._states()
+        return FlexivGripperState(states, (t0 + time.monotonic_ns()) // 2)
 
     def get_normalized_width(self) -> float:
         width = (self._states().width - self._min_width) / (self._max_width - self._min_width)
