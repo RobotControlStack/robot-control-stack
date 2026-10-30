@@ -1,3 +1,44 @@
+## v0.7.4 (2026-10-29)
+
+### Feat
+
+- **rizon**: d405 wrist mount, rizon duo scene and hardware fixes
+- **scenes**: add yam duo table-top setup
+- **assets**: add yam duo mount, camera desk mount and table
+- **assets**: add d405 wrist mount for the yam gripper
+- **assets**: add realsense d435i camera
+- **assets**: linear_4310 gripper for the yam
+- **sim**: configurable MuJoCo arena size in SimConfig
+- **cli**: variant, keep-original and seed options for replay
+- **replay**: visually randomized copies of replayed datasets
+- **envs**: optional visual randomization in sim env config
+- **sim**: visual randomization of background, materials and lighting
+- **ik**: clamp to the configured joint limits
+- **ik**: optional joint limits for the clamping
+- **ik**: optional base frame for the kinematics poses
+- **pin ik**: nullspace and joint limits
+- **assets**: rizon d405 wrist camera mount
+- rizon teleop script
+- **hw**: flexiv rizon extension
+- **sim**: flexiv grav GN01 gripper integration
+- **sim**: integrate flexiv rizon4s
+
+### Fix
+
+- **deps**: pin duckdb below 2.0
+- **assets**: yam base mesh height
+- **assets**: d405 camera case orientation
+- **replay**: separate variable for randomized replay env
+- **assets**: version the asset cache and install downloads atomically
+- **panda**: set the joint limits in the default hardware config
+- **ik**: reject frames that do not exist in the model
+- **ik**: retry without the null space task when it blocks convergence
+- **ik**: apply the null space posture when the seed reaches the target
+- **ik**: cap the null space gain at 1/dt
+- **ik**: non existing limits in mjcf are inf'ed
+- **assets**: rizon in group 2
+- **rizon**: flexiv version 1.9.2
+
 ## v0.7.3 (2026-10-06)
 
 ### Feat
