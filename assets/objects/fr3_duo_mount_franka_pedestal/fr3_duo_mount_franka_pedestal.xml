@@ -1,0 +1,55 @@
+<mujoco model="fr3_duo_mount_franka_pedestal">
+  <!-- FR3 duo mount as on the Franka FR3 Duo pedestal (Franka quick installation guide FR3 Duo R04240, chapter 6.2):
+       mounting plate (P2.1), item profile 8 120x80 light pillar of 250 mm (P3, measured), FR3 Duo Mount v0.3
+       block and cover, and the Franka head v0.2 (franka_description accessories/franka_head_v0_2) instead of the
+       3D printed head of fr3_duo_mount. The meshes are shared with fr3_duo_mount (the pillar mesh is scaled from
+       280 mm to 250 mm); the mounting plate (280 x 280 x 12 mm, M8 hole grid) is modeled from photos
+       (build_mounting_plate.py).
+       Body frame: center of the bottom of the mounting plate, below the FR3 Duo origin, which is 50 mm above the
+       top of the pillar (FR3_DUOMOUNT_FRANKA_PEDESTAL_HEIGHT_OFFSET); the pillar axis is at x = -0.0369. -->
+  <compiler angle="radian" meshdir="../fr3_duo_mount/assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="metal" rgba="0.58 0.58 0.58 1"/>
+    <material name="white"/>
+    <material name="aluminium" rgba="0.78 0.79 0.8 1" specular="0.4" shininess="0.3"/>
+
+    <mesh name="fr3_duo_mounting_plate" file="../../fr3_duo_mount_franka_pedestal/assets/fr3_duo_mounting_plate.obj" inertia="shell"/>
+    <mesh name="fr3_duo_pillar" file="fr3_duo_pillar_28cm.obj" scale="1 1 0.892857"/>
+    <mesh name="fr3_duo_mount" file="fr3_duo_mount.obj"/>
+    <mesh name="fr3_duo_cover" file="fr3_duo_cover.obj"/>
+    <mesh name="fr3_duo_head" file="fr3_duo_head.obj"/>
+    <mesh name="fr3_duo_pillar_coll" file="fr3_duo_pillar_28cm.stl" scale="1 1 0.892857"/>
+    <mesh name="fr3_duo_mount_coll" file="fr3_duo_mount.stl"/>
+    <mesh name="fr3_duo_cover_coll" file="fr3_duo_cover.stl"/>
+  </asset>
+
+  <default>
+    <default class="fr3_duo_mount_franka_pedestal">
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="fr3_duo_mount_franka_pedestal">
+      <geom mesh="fr3_duo_mounting_plate" material="aluminium" pos="-0.0369 0 0" class="visual"/>
+      <geom mesh="fr3_duo_pillar" material="metal"  pos="-0.0369 0 0.137" class="visual"/>
+      <geom mesh="fr3_duo_mount" material="metal"   pos="-0.0369 0 0.262" class="visual"/>
+      <geom mesh="fr3_duo_cover" material="white"   pos="-0.0369 0 0.330" class="visual"/>
+      <geom mesh="fr3_duo_head" material="white"    pos="-0.0369 0 0.429" class="visual"/>
+      <geom type="box" size="0.14 0.14 0.006"       pos="-0.0369 0 0.006" class="collision"/>
+      <geom mesh="fr3_duo_pillar_coll"              pos="-0.0369 0 0.137" class="collision"/>
+      <geom mesh="fr3_duo_mount_coll"               pos="-0.0369 0 0.262" class="collision"/>
+      <geom mesh="fr3_duo_cover_coll"               pos="-0.0369 0 0.330" class="collision"/>
+      <geom mesh="fr3_duo_head"                     pos="-0.0369 0 0.429" class="collision"/>
+    </body>
+  </worldbody>
+
+</mujoco>

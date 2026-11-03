@@ -452,6 +452,27 @@ class EmptyWorldFR3Duo(SimEnvCreator):
         )
 
 
+class EmptyWorldFR3DuoFrankaPedestal(EmptyWorldFR3Duo):
+    """FR3 duo on the mount of the Franka FR3 Duo pedestal (mounting plate, 250 mm pillar, Franka head v0.2).
+
+    The root frame is the bottom of the mounting plate, set root_frame_to_world to place it on a pedestal."""
+
+    def config(self) -> SimEnvCreatorConfig:
+        cfg = super().config()
+        cfg.root_frame_objects = {
+            "duo_mount": (OBJECT_PATHS["fr3_duo_mount_franka_pedestal"], DEFAULT_TRANSFORMS["FR3_DUOMOUNT_BASE"]),
+        }
+        cfg.shared_base_frame_to_root_frame = DEFAULT_TRANSFORMS["FR3_DUOMOUNT_FRANKA_PEDESTAL_HEIGHT_OFFSET"]
+        assert cfg.camera_adds is not None
+        cfg.camera_adds["head"].offset = DEFAULT_TRANSFORMS["FR3_DUOMOUNT_FRANKA_PEDESTAL_ZEDMINI_CAMERA"]
+        assert cfg.robot_frame_objects is not None
+        cfg.robot_frame_objects = {
+            robot: {name: (OBJECT_PATHS["robotiq_d405_mount_black"], pose) for name, (_, pose) in objects.items()}
+            for robot, objects in cfg.robot_frame_objects.items()
+        }
+        return cfg
+
+
 class EmptyWorldUR5e(EmptyWorldFR3):
 
     def config(self) -> SimEnvCreatorConfig:

@@ -277,8 +277,10 @@ SCENE_PATHS: dict[str, str] = {"empty_world": "assets/scenes/empty_world/scene.x
 
 OBJECT_PATHS: dict[str, str] = {
     "fr3_duo_mount": "assets/objects/fr3_duo_mount/fr3_duo_mount.xml",
+    "fr3_duo_mount_franka_pedestal": "assets/objects/fr3_duo_mount_franka_pedestal/fr3_duo_mount_franka_pedestal.xml",
     "fr3_single_mount": "assets/objects/fr3_single_mount/fr3_single_mount.xml",
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
+    "robotiq_d405_mount_black": "assets/objects/robotiq_d405_mount/robotiq_d405_mount_black.xml",
     "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
     "yam_duo_mount": "assets/objects/yam_duo_mount/yam_duo_mount.xml",
     "yam_d405_wrist_mount": "assets/objects/yam_d405_wrist_mount/yam_d405_wrist_mount.xml",
@@ -330,6 +332,15 @@ DEFAULT_TRANSFORMS = {
     "FR3_DUOMOUNT_ZEDMINI_CAMERA": common.Pose(
         translation=np.array([0.0113, -0.0245, 0.695]),
         rpy_vector=np.array([0.0, np.pi * 41 / 180, 0.0]),
+    ),
+    # fr3_duo_mount_franka_pedestal: 12 mm mounting plate + 250 mm pillar + 50 mm to the FR3 Duo origin
+    "FR3_DUOMOUNT_FRANKA_PEDESTAL_HEIGHT_OFFSET": common.Pose(
+        translation=np.array([0.0, 0.0, 0.312]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])
+    ),
+    # zed mini screwed onto the Franka head v0.2 bracket (head_camera_mounting_point of franka_description
+    # franka_head_v0_2, camera holes aligned with the bracket holes, left lens at y=0), relative to the mount base
+    "FR3_DUOMOUNT_FRANKA_PEDESTAL_ZEDMINI_CAMERA": common.Pose(
+        translation=np.array([0.00825, -0.02451, 0.66781]), rpy_vector=np.array([0.0, 0.7156, 0.0])
     ),
     # yam duo: two yams on a 2060 extrusion clamped to the back edge of a table (MolmoAct2 reference setup),
     # the root frame is the floor below the extrusion centre, the shared base frame is the extrusion's top face
