@@ -13,7 +13,7 @@ import numpy as np
 from rcs._core.common import BaseCameraConfig, RobotPlatform
 from rcs._core.sim import SimConfig
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.configs import EmptyWorldDroid
 from rcs.envs.storage_wrapper import StorageWrapper
 
 # from rcs_duobench.tasks.bin_sort import BinSortEnvConfig
@@ -26,12 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 ROBOT2IP = {
-    "right": "192.168.102.1",
-    "left": "192.168.101.1",
-}
-ROBOT2ID = {
-    "left": "1",
-    "right": "0",
+    "right": "192.168.1.12",
 }
 
 
@@ -39,21 +34,15 @@ ROBOT2ID = {
 ROBOT_INSTANCE = RobotPlatform.HARDWARE
 
 # set camera dict to none disable cameras
-CAMERA_DICT = {
-    "right_wrist": "230422272017",
-    "left_wrist": "230422271040",
-    # "side": "243522070385",
-    # "bird_eye": "243522070364",
-}
-# CAMERA_DICT = None
+CAMERA_DICT = None
 ZED_CAMERA_DICT = {
-    "head": "19928076",
+    "gripper_rgb": "14943057",
+    "front_rgb": "35115330",
 }
 INCLUDE_DEPTH = False
 
 ROBOTIQ_SERIAL = {
-    "left": "DAAQMPDC",
-    "right": "DAAQMJHX",
+    "right": "DAANTG8W",
 }
 
 # DIGIT_DICT = {
@@ -63,15 +52,17 @@ ROBOTIQ_SERIAL = {
 DIGIT_DICT = None
 
 
-INSTRUCTION = "pick up the black cube with the right arm and place it into the black bowl; pick up the white cube with the left arm and place it into the white bowl"
-FPS = 30
+# blocks_dp server (vlagent/GUIDE.md): the "instruction" is the task variant of the server's task:
+# stack H2 | H3 | H4, flip backward | forward | left | right, rotate ccw | cw
+INSTRUCTION = "H3"
+FPS = 25  # the policy's 24 rows are 40 ms apart
 CONTROL_MODE = ControlMode.JOINTS
 RELATIVETO = RelativeTo.NONE
 # RELATIVETO = RelativeTo.CONFIGURED_ORIGIN
 RECORD_PATH = "inference_recordings"
-MODEL = "lerobot"
+MODEL = "blocks_dp"
 IP = "localhost"
-PORT = 20000
+PORT = 8080
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
@@ -83,12 +74,7 @@ logging.basicConfig(
 
 
 robot2world = {
-    "right": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([0.89360858, -0.17453293, 0.46425758])
-    ),
-    "left": rcs.common.Pose(
-        translation=np.array([0, 0, 0]), rpy_vector=np.array([-0.89360858, -0.17453293, -0.46425758])
-    ),
+    "right": rcs.common.Pose(translation=np.array([0, 0, 0]), rpy_vector=np.array([0, 0, 0])),
 }
 
 
@@ -98,13 +84,14 @@ class InferenceConfig:
     vlagents_port: int = PORT
     vlagents_model: str = MODEL
     instruction: str = INSTRUCTION
-    robot_keys: list[str] = field(default_factory=lambda: ["left", "right"])
-    jpeg_encoding: bool = True
+    robot_keys: list[str] = field(default_factory=lambda: ["right"])
+    jpeg_encoding: bool = False  # closest to evaluation
     on_same_machine: bool = False
-    image_size: tuple[int, int] | None = (224, 224)
+    # 640x360: what the policies were trained on (the server squashes it to 224x224 itself); O2 requires it
+    image_size: tuple[int, int] | None = (640, 360)
     fps: int = FPS
     record_path: str = RECORD_PATH
-    n_action_steps: int | None = None
+    n_action_steps: int | None = 24
     max_rel_mov_joints: float = MAX_REL_MOV_JOINTS
     max_rel_mov_cart: tuple[float, float] = MAX_REL_MOV_CART
 
@@ -133,6 +120,25 @@ class ModelInference:
             cfg.image_size,
         )
         self._action_buffer = []
+        # blocks_dp server: a new episode_index re-seeds the sampler and resets O2; t = s since episode start (O2)
+        self._episode_index = 0
+        self._request_index = 0
+
+    def _start_new_episode(self) -> None:
+        self._action_buffer = []
+        self._episode_index += 1
+        self._request_index = 0
+
+    def _request(self, obs_dict: Obs):
+        steps = self._cfg.n_action_steps or 1
+        for single_obs in obs_dict.obs.values():
+            single_obs.info = {
+                **(single_obs.info or {}),
+                "episode_index": self._episode_index,
+                "t": self._request_index * steps / self._cfg.fps,
+            }
+        self._request_index += 1
+        return self.remote_agent.act(obs_dict)
 
     def submit_command(self, command: str) -> None:
         self._command_queue.put(command)
@@ -184,13 +190,13 @@ class ModelInference:
 
     def act(self, obs_dict: Obs) -> dict[str, SingleAct]:
         if self._cfg.n_action_steps is None:
-            action_chunk = self.remote_agent.act(obs_dict).acts
+            action_chunk = self._request(obs_dict).acts
             if not action_chunk:
                 message = "Received empty action chunk from policy"
                 raise ValueError(message)
             return action_chunk[0]
         if len(self._action_buffer) == 0:
-            action = self.remote_agent.act(obs_dict)
+            action = self._request(obs_dict)
             selected_action = action.acts[: self._cfg.n_action_steps]
             self._action_buffer = list(selected_action)
             if RELATIVETO == RelativeTo.CONFIGURED_ORIGIN:
@@ -245,7 +251,7 @@ class ModelInference:
                     self.env.set_instruction(self._cfg.instruction)
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
+                self._start_new_episode()
                 self._episode_running = False
 
             if success_requested:
@@ -254,7 +260,7 @@ class ModelInference:
                 self.env.get_wrapper_attr("success")()
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
+                self._start_new_episode()
                 self._episode_running = False
 
             if stop_requested:
@@ -262,7 +268,7 @@ class ModelInference:
                     logger.info("stopping episode and resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
+                self._start_new_episode()
                 self._episode_running = False
 
             if not self._episode_running:
@@ -287,7 +293,7 @@ class ModelInference:
                 logger.info("done issued by agent, resetting environment")
                 obs, _ = self.env.reset()
                 obs_dict = self.obs_rcs2agents(obs)
-                self._action_buffer = []
+                self._start_new_episode()
                 self._episode_running = False
                 continue
             a = self.action_agents2rcs(action)
@@ -321,12 +327,12 @@ def command_loop(controller: ModelInference) -> None:
 
 def get_env(cfg: InferenceConfig) -> gym.Env:
     if ROBOT_INSTANCE == RobotPlatform.HARDWARE:
-        from rcs_fr3.configs import FrankaDuoEnv
+        from rcs_fr3.configs import DROIDEnv
         from rcs_fr3.creators import HardwareCameraCreatorConfig
 
-        env_creator = FrankaDuoEnv()
-        env_creator.left_ip = ROBOT2IP["left"]
-        env_creator.right_ip = ROBOT2IP["right"]
+        env_creator = DROIDEnv()
+        env_creator.robot_ip = ROBOT2IP["right"]
+        env_creator.gripper_serial_number = ROBOTIQ_SERIAL["right"]
         hw_cfg = env_creator.config()
         camera_cfgs: dict[str, HardwareCameraCreatorConfig] = {}
         if CAMERA_DICT is not None:
@@ -381,21 +387,17 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         )
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
-        hw_cfg.robot_cfgs["left"].ignore_realtime = True
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["left"].speed_factor = 0.1
         hw_cfg.robot_cfgs["right"].speed_factor = 0.1
         # interpolation window of the controllers must match the rate at which we stream actions
-        hw_cfg.robot_cfgs["left"].policy_rate = cfg.fps
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         hw_cfg.frequency = cfg.fps
-        hw_cfg.gripper_cfgs["left"].serial_number = ROBOTIQ_SERIAL["left"]
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
         env_rel = env_creator.create_env(hw_cfg)
     else:
         # FR3
 
-        scene = EmptyWorldFR3Duo()
+        scene = EmptyWorldDroid()
         sim_cfg_data = scene.config()
         sim_cfg_data.sim_cfg = SimConfig(
             async_control=True, realtime=False, frequency=cfg.fps, max_convergence_steps=500
