@@ -39,6 +39,8 @@ ZED_CAMERA_DICT = {
     "gripper_rgb": "14943057",
     "front_rgb": "35115330",
 }
+# all ZEDs in one set must share resolution + fps (rcs_zed); the client resizes 16:9 frames to 640x360 either way
+ZED_RESOLUTION = (1280, 720)  # same as blocksuite; front FOV matches sim exactly at 720
 INCLUDE_DEPTH = False
 
 ROBOTIQ_SERIAL = {
@@ -66,6 +68,13 @@ PORT = 8080
 CONFIG_PATH = Path(__file__).with_suffix(".json")
 MAX_REL_MOV_JOINTS = np.deg2rad(0.5)
 MAX_REL_MOV_CART = (0.5, np.deg2rad(90))
+
+# joint PD gains, copied from blocksuite serving/sim2real/rollout/env_setup.py (profile "kp300");
+# the FR3Config defaults are kp [100,..] kd [20,..] with a 5 Nm torque limit
+PD_PROFILE = "kp300"
+PD_KP = np.array([300.0, 300.0, 300.0, 300.0, 150.0, 100.0, 50.0])
+PD_KD = np.array([35.0, 35.0, 35.0, 35.0, 20.0, 15.0, 10.0])
+PD_TORQUE_LIMIT = np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0])
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -355,8 +364,8 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
                 camera_cfgs={
                     name: BaseCameraConfig(
                         identifier=identifier,
-                        resolution_width=1280,
-                        resolution_height=720,
+                        resolution_width=ZED_RESOLUTION[0],
+                        resolution_height=ZED_RESOLUTION[1],
                         frame_rate=30,
                     )
                     for name, identifier in ZED_CAMERA_DICT.items()
@@ -389,12 +398,23 @@ def get_env(cfg: InferenceConfig) -> gym.Env:
         hw_cfg.relative_to = RELATIVETO
         hw_cfg.robot_to_shared_base_frame = robot2world
         hw_cfg.robot_cfgs["right"].ignore_realtime = True
-        hw_cfg.robot_cfgs["right"].speed_factor = 0.1
+        # collision thresholds 100 instead of 10 N / 10 Nm: flip pushes the block (as in blocksuite env_setup.py)
+        hw_cfg.robot_cfgs["right"].allow_high_collision = True
+        hw_cfg.robot_cfgs["right"].speed_factor = 0.4  # home move only (motion generator); blocksuite uses 0.4
         # interpolation window of the controllers must match the rate at which we stream actions
         hw_cfg.robot_cfgs["right"].policy_rate = cfg.fps
         hw_cfg.frequency = cfg.fps
         hw_cfg.gripper_cfgs["right"].serial_number = ROBOTIQ_SERIAL["right"]
+        # sync: a grasp/open blocks the step until the gripper has finished moving (as in blocksuite env_setup.py)
+        hw_cfg.gripper_cfgs["right"].async_control = False
         env_rel = env_creator.create_env(hw_cfg)
+        robot = env_rel.get_wrapper_attr("robot")["right"]
+        rcfg = robot.get_config()
+        rcfg.kp = PD_KP.copy()
+        rcfg.kd = PD_KD.copy()
+        rcfg.torque_limit = PD_TORQUE_LIMIT.copy()
+        robot.set_config(rcfg)
+        logger.info("PD gains %s: kp %s kd %s torque_limit %s", PD_PROFILE, rcfg.kp, rcfg.kd, rcfg.torque_limit)
     else:
         # FR3
 
