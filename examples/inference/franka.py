@@ -180,7 +180,8 @@ class ModelInference:
             obs_by_robot[robot] = SingleObs(
                 cameras=copy.deepcopy(cameras),
                 joints=np.asarray(obs[robot]["joints"], dtype=np.float32),
-                gripper=float(obs[robot]["gripper"]),
+                # the RCS gripper wrapper reports [normalized_width] (1 = open, 0 = closed)
+                gripper=float(np.asarray(obs[robot]["gripper"], dtype=np.float32).reshape(-1)[0]),
                 xyzrpy=np.asarray(obs[robot]["xyzrpy"], dtype=np.float32) if "xyzrpy" in obs[robot] else None,
                 tquat=np.asarray(obs[robot]["tquat"], dtype=np.float32) if "tquat" in obs[robot] else None,
                 # info=copy.deepcopy(info) if info is not None else {},
