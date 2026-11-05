@@ -63,6 +63,7 @@ class FlexivConfig(common.RobotConfig):
         cartesian_tolerance: tuple[float, float] = (0.002, 0.02),
         command_timeout: float = 5.0,
         startup_timeout: float = 30.0,
+        zero_ft_sensor: bool = True,
         verbose: bool = False,
         **kwargs: typing.Unpack[RobotConfigKwargs],
     ):
@@ -100,6 +101,12 @@ class FlexivConfig(common.RobotConfig):
             command_timeout: Seconds after which a synchronous command returns even if the target was not reached,
                 e.g. because the arm is blocked by a contact.
             startup_timeout: Seconds to wait for the robot to become operational after servo on.
+            zero_ft_sensor: Zero the force/torque sensor with the RDK ZeroFTSensor primitive on every `reset` and
+                before the first switch into the Cartesian impedance mode. Required on the Rizon 4s: its Cartesian
+                motion-force controller refuses to start until the sensor was zeroed after a power-up (event
+                301004), and the zeroing is lost on every power cycle. The arm stands still for a few seconds and
+                must not touch anything while zeroing, so do not end an episode in contact. Disable for robots
+                without a force/torque sensor.
             verbose: Enable the info and warning prints of the RDK.
         """
         super().__init__(**kwargs)
@@ -125,6 +132,7 @@ class FlexivConfig(common.RobotConfig):
         self.cartesian_tolerance = cartesian_tolerance
         self.command_timeout = command_timeout
         self.startup_timeout = startup_timeout
+        self.zero_ft_sensor = zero_ft_sensor
         self.verbose = verbose
 
 
@@ -160,6 +168,8 @@ class Flexiv(common.Robot):
     """RCS robot backed by `flexivrdk.Robot`."""
 
     POLL_INTERVAL = 0.005
+    ZERO_FT_SENSOR_TIMEOUT = 30.0
+    """Seconds to wait for the ZeroFTSensor primitive, it usually finishes within a few seconds."""
 
     def __init__(self, cfg: FlexivConfig, ik: common.Kinematics):
         super().__init__()
@@ -170,6 +180,7 @@ class Flexiv(common.Robot):
         self.ik = ik
         self._config = cfg
         self._dof = int(cfg.dof)
+        self._ft_sensor_zeroed = False
         self._rdk_modes = {
             FlexivControlMode.JOINT_POSITION: flexivrdk.Mode.NRT_JOINT_POSITION,
             FlexivControlMode.JOINT_IMPEDANCE: flexivrdk.Mode.NRT_JOINT_IMPEDANCE,
@@ -250,7 +261,10 @@ class Flexiv(common.Robot):
         return self.ik
 
     def reset(self) -> None:
-        pass
+        """Zeros the force/torque sensor if configured. `RobotWrapper.reset` homes the arm afterwards."""
+        if self._config.zero_ft_sensor:
+            self._zero_ft_sensor()
+            self._ensure_mode(self._config.control_mode)
 
     def automatic_error_recovery(self) -> None:
         """Called by `RobotWrapper.reset` when homing raises: clears faults, enables the robot and restores the mode."""
@@ -378,6 +392,35 @@ class Flexiv(common.Robot):
             time.sleep(0.1)
         self._ensure_mode(self._config.control_mode)
 
+    def _zero_ft_sensor(self) -> None:
+        """Runs the ZeroFTSensor primitive and leaves the robot in the primitive execution mode.
+
+        The offset of the built-in force/torque sensor is lost on every power cycle, and the Cartesian motion-force
+        controller refuses to start until it was re-zeroed. Zeroing is only accurate when the arm is not in contact.
+        """
+        logger.warning("Zeroing the force/torque sensor, the arm must not touch anything.")
+        self._robot.SwitchMode(self._rdk.Mode.NRT_PRIMITIVE_EXECUTION)
+        self._robot.ExecutePrimitive("ZeroFTSensor", {})
+        deadline = time.time() + self.ZERO_FT_SENSOR_TIMEOUT
+        # busy() stays True once the primitive is done as long as the robot is in the primitive execution mode, so
+        # wait for the terminated flag of the primitive like the RDK's basics5 example does.
+        while True:
+            states = self._robot.primitive_states()
+            if states.get("primitiveName") == "ZeroFTSensor" and states.get("terminated", 0):
+                break
+            if self._robot.fault():
+                msg = "Robot fault while zeroing the force/torque sensor."
+                raise RuntimeError(msg)
+            if time.time() > deadline:
+                msg = (
+                    f"Zeroing the force/torque sensor did not finish within {self.ZERO_FT_SENSOR_TIMEOUT} s, "
+                    f"primitive states: {states}."
+                )
+                raise RuntimeError(msg)
+            time.sleep(0.1)
+        self._ft_sensor_zeroed = True
+        logger.info("Force/torque sensor zeroed.")
+
     def _make_operational(self) -> None:
         if self._robot.fault():
             logger.warning("Robot is in fault state, trying to clear it.")
@@ -433,6 +476,13 @@ class Flexiv(common.Robot):
         """Switches the robot into the RDK mode of `mode` if needed and applies the matching settings."""
         rdk_mode = self._rdk_modes[mode]
         if self._robot.mode() != rdk_mode:
+            if (
+                mode == FlexivControlMode.CARTESIAN_IMPEDANCE
+                and self._config.zero_ft_sensor
+                and not self._ft_sensor_zeroed
+            ):
+                # The robot rejects the switch until the sensor was zeroed after power-up, e.g. at connect.
+                self._zero_ft_sensor()
             # SwitchMode stops any ongoing motion and blocks until the transition is done.
             self._robot.SwitchMode(rdk_mode)
         if mode == FlexivControlMode.JOINT_IMPEDANCE:

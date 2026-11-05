@@ -74,6 +74,13 @@ robot's own Cartesian controller instead; RCS converts its TCP (`tcp_offset`) to
 active tool for that. Joint targets and `move_home` temporarily switch to joint impedance in that
 mode, mode switches stop the arm.
 
+The Rizon 4s refuses to start its Cartesian motion-force controller until its force/torque sensor
+was zeroed after a power-up (event log 301004 "6DoF F/T sensor is not calibrated"). With
+`FlexivConfig.zero_ft_sensor` (default `True`) the wrapper runs the `ZeroFTSensor` primitive on
+every `reset` and before the first switch into `CARTESIAN_IMPEDANCE`. The arm stands still for a
+few seconds and must not touch anything meanwhile, so do not end an episode in contact. Disable it
+for robots without a force/torque sensor.
+
 Stiffness values are absolute: `joint_stiffness` in Nm/rad within `[0, nominal]`,
 `cartesian_stiffness` in N/m and Nm/rad within `[0, nominal]`. `None` means nominal, `0` makes an
 axis free-floating. Damping ratios are within `[0.3, 0.8]`, `None` means the RDK default of 0.7. The
@@ -169,6 +176,8 @@ env = creator.create_env(creator.config())
 
 - `Flexiv` clears minor faults and servos on during construction, and `RobotWrapper.reset` retries
   homing after `automatic_error_recovery`. Keep a hand on the E-stop when bringing the robot up.
+- `reset` zeros the force/torque sensor before homing. Any contact or grasped object during
+  zeroing biases the external wrench readings and the force regulation of `CARTESIAN_IMPEDANCE`.
 - The default `q_home` of the Rizon 4s in RCS points the flange straight down about 0.57 m in front
   of the base. Verify it fits the setup before the first `reset`.
 - Lowering the stiffness makes the arm sag under payload and follow targets less accurately.
