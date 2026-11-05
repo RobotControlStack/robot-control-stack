@@ -97,7 +97,8 @@ class FlexivConfig(common.RobotConfig):
             max_angular_acceleration: TCP angular acceleration limit in rad/s^2 for Cartesian targets.
             joint_tolerance: Joint error in rad below which a synchronous joint command counts as reached.
             cartesian_tolerance: Translation error in m and rotation error in rad below which a synchronous Cartesian
-                command counts as reached.
+                command counts as reached. In the Cartesian impedance mode the error is measured between the TCP pose
+                the robot reports and the target sent to it, so it does not depend on the RCS kinematic model.
             command_timeout: Seconds after which a synchronous command returns even if the target was not reached,
                 e.g. because the arm is blocked by a contact.
             startup_timeout: Seconds to wait for the robot to become operational after servo on.
@@ -314,7 +315,7 @@ class Flexiv(common.Robot):
             self._config.max_angular_acceleration,
         )
         if not self._config.async_control:
-            self._wait_for_pose(pose, self._config.command_timeout)
+            self._wait_for_pose(rdk_target, self._config.command_timeout)
 
     def move_home(self) -> None:
         """Moves to `q_home` with the reduced `move_home_velocity`, or runs the RDK Home primitive if unset.
@@ -538,14 +539,20 @@ class Flexiv(common.Robot):
             time.sleep(self.POLL_INTERVAL)
         logger.warning("Joint target not reached within %.1f s.", timeout)
 
-    def _wait_for_pose(self, pose: common.Pose, timeout: float) -> None:
+    def _wait_for_pose(self, rdk_target: common.Pose, timeout: float) -> None:
+        """Waits until the TCP pose the robot reports matches the target sent to its Cartesian controller.
+
+        Both poses are in the robot's world frame and refer to the active tool's TCP, so the check relies only on the
+        robot's own calibrated kinematics. Comparing against the RCS model instead fails on mismatches of a few
+        millimeters between the two kinematic models, which made synchronous steps run into the timeout.
+        """
         eps_t, eps_r = self._config.cartesian_tolerance
         deadline = time.time() + timeout
         while time.time() < deadline:
             if self._robot.fault():
                 msg = "Robot fault while waiting for a Cartesian target."
                 raise RuntimeError(msg)
-            if self.get_cartesian_position().is_close(pose, eps_r=eps_r, eps_t=eps_t):
+            if _pose_from_rdk(self._states().tcp_pose).is_close(rdk_target, eps_r=eps_r, eps_t=eps_t):
                 return
             time.sleep(self.POLL_INTERVAL)
         logger.warning("Cartesian target not reached within %.1f s.", timeout)
