@@ -5,5 +5,6 @@
 
 python_extension
 cpp_extension
+controller_interface
 ../contributing/index
 ```
