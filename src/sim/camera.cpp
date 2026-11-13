@@ -117,11 +117,13 @@ void SimCameraSet::render_single(const std::string& id, mjrContext& ctx,
   ColorFrame frame = ColorFrame::Zero(3 * W * H);
   DepthFrame depth = DepthFrame::Zero(1 * W * H);
   // update abstract scene
-  // TODO: we might be able to call this once for all cameras
-  // there is also a mjv_updateCamera function
+  // The scene is shared by all cameras and mjv_updateScene positions infinite
+  // planes (e.g. the floor) from scene.camera *before* it updates the camera,
+  // i.e. from the previously rendered camera. Update the camera first so that
+  // images do not depend on the render order of the cameras.
+  mjv_updateCamera(this->sim->m, this->sim->d, &this->cameras[id], &scene);
   mjv_updateScene(this->sim->m, this->sim->d, &opt, NULL, &this->cameras[id],
                   mjCAT_ALL, &scene);
-  // mjv_updateCamera(this->sim->m, this->sim->d, &this->cameras[id], &scene);
 
   // render scene in offscreen buffer
   mjr_render(viewport, &scene, &ctx);
