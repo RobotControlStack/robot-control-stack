@@ -301,7 +301,7 @@ Example:
 
 ## Rendering backend (Filament)
 
-By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 3.15 also
+By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 4.0 also
 ships the physically based [Filament](https://github.com/google/filament) renderer and the new
 MuJoCo Studio viewer. Switch to them with the `renderer` flag of `SimConfig`:
 

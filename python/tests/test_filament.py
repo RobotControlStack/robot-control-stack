@@ -1,4 +1,5 @@
 import gymnasium as gym
+import mujoco
 import numpy as np
 import pytest
 from rcs.camera.sim import FilamentSimCameraSet, SimCameraSet
@@ -8,7 +9,15 @@ from rcs.sim import RendererBackend, SimConfig, filament
 
 from rcs import sim
 
-pytestmark = pytest.mark.skipif(not filament.is_available(), reason="Filament renderer requires mujoco >= 3.15")
+# Filament ships with mujoco >= 4.0 (mujoco-studio). Only skip on older versions: if the import breaks on
+# a supported version (e.g. a moved module), the tests must fail instead of being skipped silently.
+pytestmark = pytest.mark.skipif(
+    int(mujoco.__version__.split(".")[0]) < 4, reason="Filament renderer requires mujoco >= 4.0"
+)
+
+
+def test_filament_is_available():
+    assert filament.is_available(), filament._import_error()
 
 
 @pytest.fixture()

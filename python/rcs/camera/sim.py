@@ -207,7 +207,7 @@ class _ClassicDepthRenderer:
 
 
 class FilamentSimCameraSet:
-    """Set of simulation cameras rendered with MuJoCo's Filament renderer (MuJoCo >= 3.15).
+    """Set of simulation cameras rendered with MuJoCo's Filament renderer (MuJoCo >= 4.0).
     Implements BaseCameraSet
 
     Color images come from Filament. Filament does not expose a metric depth buffer through

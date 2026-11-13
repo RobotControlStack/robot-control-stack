@@ -1,10 +1,9 @@
 """
-Filament rendering backend (MuJoCo >= 3.15).
+Filament rendering backend (MuJoCo >= 4.0).
 
-MuJoCo ships its Filament-based renderer only inside the Python extension modules
-(``mujoco._render_filament`` and ``mujoco.experimental.studio``); ``libmujoco`` does not
-export the ``mjrf_*`` C API. Everything Filament related therefore lives on the Python
-side of RCS:
+MuJoCo ships its Filament-based renderer only inside the ``mujoco-studio`` Python package
+(``mujoco.mjrf`` and ``mujoco.studio``); ``libmujoco`` does not export the ``mjrf_*`` C API.
+Everything Filament related therefore lives on the Python side of RCS:
 
 - :class:`FilamentRenderer` renders RGB images of fixed/free MuJoCo cameras offscreen.
   Filament does not expose a metric depth buffer through the Python API (its depth draw
@@ -41,11 +40,9 @@ FPS = 60
 
 
 def _import_error() -> str | None:
-    # NOTE: do not import mujoco.experimental.studio.window here: it registers Filament resource
-    # providers that MuJoCo Studio registers again, which crashes the GUI process (see gui_loop)
     try:
-        import mujoco._render_filament
-        import mujoco.experimental.studio  # noqa: F401
+        import mujoco.studio  # noqa: F401
+        from mujoco import mjrf  # noqa: F401
     except ImportError as exc:
         return repr(exc)
     return None
@@ -61,7 +58,7 @@ def require(feature: str = "Filament rendering"):
         return
     msg = (
         f"{feature} requires the Filament renderer, which is shipped with the MuJoCo Python package "
-        f"since version 3.15 (installed: {mujoco.__version__}). Import failed with: {error}"
+        f"(mujoco-studio) since version 4.0 (installed: {mujoco.__version__}). Import failed with: {error}"
     )
     raise RuntimeError(msg)
 
@@ -75,18 +72,13 @@ class FilamentRenderer:
 
     def __init__(self, model: mujoco.MjModel):
         require("FilamentRenderer")
-        import mujoco._render_filament as mjrf  # type: ignore[import-not-found]
-
-        # importing the studio window module registers Filament's built-in assets
-        # (materials such as pbr.filamat); without it context creation fails. It must not be
-        # imported in a process that runs MuJoCo Studio (see _import_error)
-        import mujoco.experimental.studio.window  # noqa: F401
+        from mujoco import mjrf
 
         self._mjrf = mjrf
         self.model = model
         self._ctx = mjrf.Context(self._context_config())
         self._ctx.set_clear_color(np.zeros(3, dtype=np.float32))
-        self._objects = mjrf.ModelObjects(self._ctx, model)
+        self._objects = mjrf.ModelResources(self._ctx, model)
         self._scene = self._ctx.create_scene(mjrf.SceneParams())
         self._scene.configure_from_model(model)
         self._lights = mjrf.ModelLights(self._scene, self._objects)
@@ -106,7 +98,7 @@ class FilamentRenderer:
             cfg.graphics_api = mjrf.GraphicsApi.GRAPHICS_API_VULKAN
         elif api not in ("", "opengl"):
             logger.warning("Unknown RCS_FILAMENT_GRAPHICS_API=%r, using OpenGL", api)
-        cfg.force_software_rendering = os.environ.get("RCS_FILAMENT_SOFTWARE_RENDERING", "") == "1"
+        cfg.software_rendering = os.environ.get("RCS_FILAMENT_SOFTWARE_RENDERING", "") == "1"
         return cfg
 
     def set_options(self, opt: mujoco.MjvOption):
@@ -126,8 +118,7 @@ class FilamentRenderer:
             )
             target.resize(width, height)
             buffer = np.empty((height, width, 3), dtype=np.uint8)
-            read = mjrf.ReadPixelsRequest()
-            read.target = target
+            read = mjrf.ReadRequest(target=target)
             read.set_buffer(buffer)
             self._targets[key] = (target, read, buffer)
         return self._targets[key]
@@ -158,7 +149,7 @@ class FilamentRenderer:
         request.viewport.bottom = 0
         request.viewport.width = width
         request.viewport.height = height
-        # the bindings currently support only a single read request per render call
+        # the bindings still support only a single read request per render call (MuJoCo 4.0.1)
         frame = self._ctx.render([request], [read])
         self._ctx.wait_for_frame(frame)
         return buffer.copy()
@@ -186,10 +177,10 @@ def gui_loop(gui_uuid: str, close_event):
     process, stepping/syncing happens on a background thread.
     """
     require("The Filament GUI")
-    from mujoco.experimental.studio import (
+    from mujoco.studio import app as studio_app
+    from mujoco.studio import (
         launch_native,
         launch_thread,
-        viewer_app,
         viewer_handle,
         viewer_protocol,
     )
@@ -225,10 +216,11 @@ def gui_loop(gui_uuid: str, close_event):
     sim_thread.start()
     try:
         config = viewer_protocol.ViewerConfig(title="RCS", gfx=os.environ.get("RCS_FILAMENT_GFX", ""))
-        # ViewerApp provides the interactive Studio GUI (camera selection, visualization options,
+        # App provides the interactive Studio GUI (camera selection, visualization options,
         # dragging bodies, ...); without it only the bare scene is rendered. The camera selection
         # lives in the toolbar, which Studio hides by default ([ and ] cycle cameras regardless).
-        app = viewer_app.ViewerApp(viewer_app.ViewerAppConfig(show_toolbar=True))
+        # Studio's SIM_PLUGINS (step control, history) are not used: sim_loop steps and paces itself.
+        app = studio_app.App(studio_app.Config(show_toolbar=True))
         launch_native.run_native_viewer(config, viewer_endpoint, plugins=[app])
     finally:
         viewer_closed.set()
