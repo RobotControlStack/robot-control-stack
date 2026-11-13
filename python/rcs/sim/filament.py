@@ -30,6 +30,7 @@ import threading
 from logging import getLogger
 from tempfile import NamedTemporaryFile
 
+import cv2
 import mujoco
 import numpy as np
 from rcs._core.sim import GuiClient as _GuiClient
@@ -168,7 +169,10 @@ class FilamentRenderer:
         if key not in self._targets:
             mjrf = self._mjrf
             if kind == "rgb":
-                fmt, buffer = mjrf.PixelFormat.PIXEL_FORMAT_RGB8, np.empty((height, width, 3), dtype=np.uint8)
+                # RGBA8 instead of RGB8: GPUs generally do not support 3 channel 8 bit render targets
+                # (e.g. Vulkan's R8G8B8_UNORM has no image features on NVIDIA), so Filament emulates
+                # RGB8 with a slow readback path (about 2x slower on Vulkan); alpha is dropped in render()
+                fmt, buffer = mjrf.PixelFormat.PIXEL_FORMAT_RGBA8, np.empty((height, width, 4), dtype=np.uint8)
             else:
                 fmt, buffer = mjrf.PixelFormat.PIXEL_FORMAT_R32F, np.empty((height, width), dtype=np.float32)
             target = self._ctx.create_render_target(mjrf.RenderTargetConfig(color_format=fmt))
@@ -183,7 +187,8 @@ class FilamentRenderer:
 
         Call :meth:`update` first whenever ``data`` changed.
         """
-        return self._render(data, camera, width, height, "rgb").copy()
+        # cv2 drops the alpha channel ~100x faster than a numpy slice copy
+        return cv2.cvtColor(self._render(data, camera, width, height, "rgb"), cv2.COLOR_RGBA2RGB)
 
     def render_depth(self, data: mujoco.MjData, camera: mujoco.MjvCamera, width: int, height: int) -> np.ndarray:
         """Renders the given camera and returns metric depth in meters as (H, W) float32 (top row first).
