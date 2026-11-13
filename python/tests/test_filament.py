@@ -1,3 +1,5 @@
+import sys
+
 import gymnasium as gym
 import mujoco
 import numpy as np
@@ -99,3 +101,41 @@ def test_camera_set_wrapper_configures_depth_rendering(fr3_sim):
         assert camera_set.render_depth is True
     finally:
         camera_set.close()
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="X display detection is Linux specific")
+def test_graphics_api_without_x_display(monkeypatch):
+    from mujoco import mjrf
+
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("RCS_FILAMENT_GRAPHICS_API", raising=False)
+    # Filament's OpenGL backend hangs without X, so headless Linux defaults to Vulkan ...
+    assert filament._graphics_api(mjrf) == mjrf.GraphicsApi.GRAPHICS_API_VULKAN
+    # ... and an explicit OpenGL request fails instead of hanging
+    monkeypatch.setenv("RCS_FILAMENT_GRAPHICS_API", "opengl")
+    with pytest.raises(RuntimeError, match="X display"):
+        filament._graphics_api(mjrf)
+
+
+def test_filament_contexts_are_reused(fr3_sim):
+    simulation, _ = fr3_sim
+    first = filament.FilamentRenderer(simulation.model)
+    ctx = first._ctx
+    first.close()
+    second = filament.FilamentRenderer(simulation.model)
+    try:
+        assert second._ctx is ctx
+    finally:
+        second.close()
+
+
+def test_classic_rendering_after_filament_close(fr3_sim):
+    # destroying a Filament (Vulkan) context used to terminate the EGL display of the classic renderer
+    simulation, cfg = fr3_sim
+    FilamentSimCameraSet(simulation, cfg.camera_cfgs).close()
+    classic = sim.Sim(EmptyWorldFR3().create_model(cfg), SimConfig())
+    camera_set = SimCameraSet(classic, cfg.camera_cfgs, physical_units=True)
+    classic.step(1)
+    frameset = camera_set.get_latest_frames()
+    assert frameset is not None
+    assert all(frame.camera.color.data.std() > 1 for frame in frameset.frames.values())

@@ -323,7 +323,8 @@ With this flag
 
 Environment variables for fine tuning:
 
-- `RCS_FILAMENT_GRAPHICS_API=opengl|vulkan` graphics API of the camera renderer (default `opengl`)
+- `RCS_FILAMENT_GRAPHICS_API=opengl|vulkan` graphics API of the camera renderer (default `opengl`, or `vulkan`
+  on Linux without an X display, where Filament's OpenGL backend does not work)
 - `RCS_FILAMENT_SOFTWARE_RENDERING=1` force software rendering for the cameras
 - `RCS_FILAMENT_GFX=opengl|vulkan|web|...` Studio graphics mode; `web` serves the viewer over http instead
   of opening a window

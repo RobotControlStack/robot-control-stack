@@ -15,12 +15,15 @@ Enable it via ``SimConfig(renderer=RendererBackend.FILAMENT)``.
 
 Environment variables:
 
-- ``RCS_FILAMENT_GRAPHICS_API``: ``opengl`` or ``vulkan`` (default: opengl)
+- ``RCS_FILAMENT_GRAPHICS_API``: ``opengl`` or ``vulkan`` (default: opengl, vulkan on Linux without an
+  X display: Filament's OpenGL backend needs X and hangs without it)
 - ``RCS_FILAMENT_SOFTWARE_RENDERING=1``: force software rendering for offscreen cameras
 - ``RCS_FILAMENT_GFX``: Studio graphics mode for the GUI, e.g. ``opengl``, ``vulkan``, ``web``
   (``web`` serves the viewer over http instead of opening a native window)
 """
 
+import atexit
+import ctypes
 import os
 import sys
 import threading
@@ -62,11 +65,75 @@ def require(feature: str = "Filament rendering"):
     raise RuntimeError(msg)
 
 
+def _graphics_api(mjrf):
+    """Graphics API for offscreen Filament contexts, see ``RCS_FILAMENT_GRAPHICS_API``."""
+    api = os.environ.get("RCS_FILAMENT_GRAPHICS_API", "").lower()
+    if api not in ("", "opengl", "vulkan"):
+        logger.warning("Unknown RCS_FILAMENT_GRAPHICS_API=%r, using the default", api)
+        api = ""
+    # Filament's OpenGL backend on Linux uses GLX: without an X display it prints "Failed to open X
+    # display. (exiting)" and then hangs instead of exiting, so headless Linux has to use Vulkan
+    headless_linux = sys.platform.startswith("linux") and not os.environ.get("DISPLAY")
+    if api == "opengl" and headless_linux:
+        msg = (
+            "RCS_FILAMENT_GRAPHICS_API=opengl requires an X display on Linux, but DISPLAY is not set. "
+            "Use RCS_FILAMENT_GRAPHICS_API=vulkan (the default without a display) or run under an X server."
+        )
+        raise RuntimeError(msg)
+    if api == "vulkan" or (api == "" and headless_linux):
+        return mjrf.GraphicsApi.GRAPHICS_API_VULKAN
+    # OpenGL like MuJoCo's own samples; the platform default resolves to Vulkan on some systems
+    # (e.g. macOS) where it is not usable
+    return mjrf.GraphicsApi.GRAPHICS_API_OPENGL
+
+
+# Filament contexts that are not in use, per (thread, graphics API, software rendering).
+# Contexts are reused instead of destroyed: destroying a Vulkan context on NVIDIA drivers calls
+# eglTerminate() on the process' default EGL display (from libGLX_nvidia on Filament's engine thread),
+# which kills the EGL context of the classic renderer (eglMakeCurrent then fails with
+# EGL_NOT_INITIALIZED). They are keyed by thread as Filament requires all calls of a context to come
+# from the thread that created it.
+_free_contexts: dict[tuple[int, object, bool], list] = {}
+_free_contexts_lock = threading.Lock()
+
+
+def _acquire_context(mjrf):
+    software = os.environ.get("RCS_FILAMENT_SOFTWARE_RENDERING", "") == "1"
+    key = (threading.get_ident(), _graphics_api(mjrf), software)
+    with _free_contexts_lock:
+        free = _free_contexts.setdefault(key, [])
+        ctx = free.pop() if free else None
+    if ctx is None:
+        cfg = mjrf.ContextConfig()
+        cfg.graphics_api = key[1]
+        cfg.software_rendering = software
+        ctx = mjrf.Context(cfg)
+    ctx.set_clear_color(np.zeros(3, dtype=np.float32))
+    return key, ctx
+
+
+def _release_context(key, ctx):
+    with _free_contexts_lock:
+        _free_contexts.setdefault(key, []).append(ctx)
+
+
+@atexit.register
+def _leak_free_contexts():
+    # Pooled contexts would otherwise be destroyed during interpreter shutdown on the main thread,
+    # which aborts the process for contexts created by other threads ("Engine::shutdown() called from
+    # the wrong thread!"). Keep them alive instead; the OS frees them when the process exits.
+    with _free_contexts_lock:
+        for contexts in _free_contexts.values():
+            for ctx in contexts:
+                ctypes.pythonapi.Py_IncRef(ctypes.py_object(ctx))
+
+
 class FilamentRenderer:
     """Offscreen RGB renderer for a MuJoCo model based on Filament.
 
     All methods must be called from the thread that created the renderer: Filament asserts
-    thread affinity when its engine is destroyed.
+    thread affinity when its engine is destroyed. The Filament context is borrowed from a per-thread
+    pool and returned on :meth:`close` (a context can only serve one model at a time).
     """
 
     def __init__(self, model: mujoco.MjModel):
@@ -75,8 +142,7 @@ class FilamentRenderer:
 
         self._mjrf = mjrf
         self.model = model
-        self._ctx = mjrf.Context(self._context_config())
-        self._ctx.set_clear_color(np.zeros(3, dtype=np.float32))
+        self._ctx_key, self._ctx = _acquire_context(mjrf)
         self._objects = mjrf.ModelResources(self._ctx, model)
         self._scene = self._ctx.create_scene(mjrf.SceneParams())
         self._scene.configure_from_model(model)
@@ -88,20 +154,6 @@ class FilamentRenderer:
         self._near = model.vis.map.znear * extent
         self._far = model.vis.map.zfar * extent
         self._closed = False
-
-    def _context_config(self):
-        mjrf = self._mjrf
-        cfg = mjrf.ContextConfig()
-        # OpenGL like MuJoCo's own samples; the platform default resolves to Vulkan on some systems
-        # (e.g. macOS) where it is not usable
-        cfg.graphics_api = mjrf.GraphicsApi.GRAPHICS_API_OPENGL
-        api = os.environ.get("RCS_FILAMENT_GRAPHICS_API", "").lower()
-        if api == "vulkan":
-            cfg.graphics_api = mjrf.GraphicsApi.GRAPHICS_API_VULKAN
-        elif api not in ("", "opengl"):
-            logger.warning("Unknown RCS_FILAMENT_GRAPHICS_API=%r, using OpenGL", api)
-        cfg.software_rendering = os.environ.get("RCS_FILAMENT_SOFTWARE_RENDERING", "") == "1"
-        return cfg
 
     def set_options(self, opt: mujoco.MjvOption):
         self._renderables.set_options(opt)
@@ -177,6 +229,8 @@ class FilamentRenderer:
         # destroy in reverse creation order; the context must outlive everything it created
         self._targets.clear()
         del self._renderables, self._lights, self._scene, self._objects
+        # the context is not destroyed but reused, see _free_contexts
+        _release_context(self._ctx_key, self._ctx)
         del self._ctx
 
 
