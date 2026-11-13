@@ -5,9 +5,8 @@ MuJoCo ships its Filament-based renderer only inside the ``mujoco-studio`` Pytho
 (``mujoco.mjrf`` and ``mujoco.studio``); ``libmujoco`` does not export the ``mjrf_*`` C API.
 Everything Filament related therefore lives on the Python side of RCS:
 
-- :class:`FilamentRenderer` renders RGB images of fixed/free MuJoCo cameras offscreen.
-  Filament does not expose a metric depth buffer through the Python API (its depth draw
-  mode is an 8-bit visualization), so depth is still produced by the classic renderer.
+- :class:`FilamentRenderer` renders RGB images and metric depth of fixed/free MuJoCo cameras
+  offscreen. Depth comes from Filament's depth draw mode read back into a float target.
 - :func:`gui_loop` runs MuJoCo Studio (the Filament viewer) in the RCS GUI subprocess.
   Studio must own the main thread of its process and, unlike ``mujoco.viewer``, must *not*
   run under ``mjpython`` on macOS.
@@ -83,8 +82,11 @@ class FilamentRenderer:
         self._scene.configure_from_model(model)
         self._lights = mjrf.ModelLights(self._scene, self._objects)
         self._renderables = mjrf.ModelRenderables(self._scene, self._objects)
-        # one render target per resolution, created lazily
-        self._targets: dict[tuple[int, int], tuple[object, object, np.ndarray]] = {}
+        # one render target per (resolution, kind), created lazily
+        self._targets: dict[tuple[int, int, str], tuple[object, object, np.ndarray]] = {}
+        extent = model.stat.extent
+        self._near = model.vis.map.znear * extent
+        self._far = model.vis.map.zfar * extent
         self._closed = False
 
     def _context_config(self):
@@ -109,15 +111,16 @@ class FilamentRenderer:
         self._lights.update(data)
         self._renderables.update(data)
 
-    def _target(self, width: int, height: int):
-        key = (width, height)
+    def _target(self, width: int, height: int, kind: str = "rgb"):
+        key = (width, height, kind)
         if key not in self._targets:
             mjrf = self._mjrf
-            target = self._ctx.create_render_target(
-                mjrf.RenderTargetConfig(color_format=mjrf.PixelFormat.PIXEL_FORMAT_RGB8)
-            )
+            if kind == "rgb":
+                fmt, buffer = mjrf.PixelFormat.PIXEL_FORMAT_RGB8, np.empty((height, width, 3), dtype=np.uint8)
+            else:
+                fmt, buffer = mjrf.PixelFormat.PIXEL_FORMAT_R32F, np.empty((height, width), dtype=np.float32)
+            target = self._ctx.create_render_target(mjrf.RenderTargetConfig(color_format=fmt))
             target.resize(width, height)
-            buffer = np.empty((height, width, 3), dtype=np.uint8)
             read = mjrf.ReadRequest(target=target)
             read.set_buffer(buffer)
             self._targets[key] = (target, read, buffer)
@@ -128,8 +131,21 @@ class FilamentRenderer:
 
         Call :meth:`update` first whenever ``data`` changed.
         """
+        return self._render(data, camera, width, height, "rgb").copy()
+
+    def render_depth(self, data: mujoco.MjData, camera: mujoco.MjvCamera, width: int, height: int) -> np.ndarray:
+        """Renders the given camera and returns metric depth in meters as (H, W) float32 (top row first).
+
+        Call :meth:`update` first whenever ``data`` changed.
+        """
+        depth = self._render(data, camera, width, height, "depth")
+        # Filament's depth draw mode writes reversed-z (1 at znear, 0 at zfar) without post processing
+        # (MuJoCo >= 4.0); convert like the classic renderer's [0, 1] depth buffer
+        return self._near / (1 - (1 - depth) * (1 - self._near / self._far))
+
+    def _render(self, data: mujoco.MjData, camera: mujoco.MjvCamera, width: int, height: int, kind: str):
         mjrf = self._mjrf
-        target, read, buffer = self._target(width, height)
+        target, read, buffer = self._target(width, height, kind)
         glcam = mujoco.mjv_camera2GLCamera(self.model, data, camera)
         request = mjrf.RenderRequest(
             camera=mjrf.Camera(
@@ -141,7 +157,7 @@ class FilamentRenderer:
                 frustum_near=glcam.frustum_near,
                 frustum_far=glcam.frustum_far,
             ),
-            draw_mode=mjrf.DrawMode.DRAW_MODE_DEFAULT,
+            draw_mode=mjrf.DrawMode.DRAW_MODE_DEFAULT if kind == "rgb" else mjrf.DrawMode.DRAW_MODE_DEPTH,
         )
         request.scene = self._scene
         request.target = target
@@ -152,7 +168,7 @@ class FilamentRenderer:
         # the bindings still support only a single read request per render call (MuJoCo 4.0.1)
         frame = self._ctx.render([request], [read])
         self._ctx.wait_for_frame(frame)
-        return buffer.copy()
+        return buffer
 
     def close(self):
         if self._closed:

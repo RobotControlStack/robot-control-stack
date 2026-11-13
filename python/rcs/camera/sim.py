@@ -170,51 +170,14 @@ class SimCameraSet(_SimCameraSet):
         return {name: cfg.identifier for name, cfg in self.cameras.items()}
 
 
-class _ClassicDepthRenderer:
-    """Renders metric depth with MuJoCo's classic renderer from Python.
-
-    Unlike ``mujoco.Renderer`` this is not limited by the model's ``offwidth``/``offheight``.
-    """
-
-    def __init__(self, model: mujoco.MjModel, width: int, height: int):
-        render_context_bootstrap.require("simulation depth rendering")
-        render_context_bootstrap.make_current()
-        self._model = model
-        self._scene = mujoco.MjvScene(model, maxgeom=2000)
-        self._opt = mujoco.MjvOption()
-        self._ctx = mujoco.MjrContext(model, mujoco.mjtFontScale.mjFONTSCALE_150)
-        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._ctx)
-        mujoco.mjr_resizeOffscreen(width, height, self._ctx)
-        self._viewport = mujoco.MjrRect(0, 0, width, height)
-        self._depth = np.empty((height, width), dtype=np.float32)
-        extent = model.stat.extent
-        self._near = model.vis.map.znear * extent
-        self._far = model.vis.map.zfar * extent
-
-    def render(self, data: mujoco.MjData, camera: mujoco.MjvCamera) -> np.ndarray:
-        """Returns metric depth in meters as (H, W) float32, top row first."""
-        render_context_bootstrap.make_current()
-        mujoco.mjv_updateScene(self._model, data, self._opt, None, camera, mujoco.mjtCatBit.mjCAT_ALL, self._scene)
-        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._ctx)
-        mujoco.mjr_render(self._viewport, self._scene, self._ctx)
-        mujoco.mjr_readPixels(None, self._depth, self._viewport, self._ctx)
-        # OpenGL reads bottom-up; convert the [0, 1] depth buffer to meters (see SimCameraSet)
-        depth = self._depth[::-1]
-        return self._near / (1 - depth * (1 - self._near / self._far))
-
-    def close(self):
-        self._ctx.free()
-
-
 class FilamentSimCameraSet:
     """Set of simulation cameras rendered with MuJoCo's Filament renderer (MuJoCo >= 4.0).
     Implements BaseCameraSet
 
-    Color images come from Filament. Filament does not expose a metric depth buffer through
-    MuJoCo's Python API, so depth images are rendered with the classic renderer; they are always
-    metric (scaled by ``BaseCameraSet.DEPTH_SCALE``), regardless of ``physical_units``. The depth
-    pass costs about as much as the classic renderer, set ``render_depth=False`` (done automatically
-    by ``CameraSetWrapper(include_depth=False)``) to skip it; frames then have ``depth=None``.
+    Color and depth images come from Filament. Depth images are always metric (scaled by
+    ``BaseCameraSet.DEPTH_SCALE``), regardless of ``physical_units``. The depth pass is a second
+    Filament render per camera, set ``render_depth=False`` (done automatically by
+    ``CameraSetWrapper(include_depth=False)``) to skip it; frames then have ``depth=None``.
 
     Rendering happens in Python when frames are requested, i.e. always "on demand"; rendering at a
     fixed camera frame rate while the simulation steps is not supported with this backend.
@@ -257,14 +220,6 @@ class FilamentSimCameraSet:
                 cam.type = int(cfg.type)
                 cam.fixedcamid = _camera_id(self._sim.model, cfg)
             self._mj_cameras[name] = cam
-        # classic renderers for metric depth, one per resolution
-        self._depth_renderers: dict[tuple[int, int], _ClassicDepthRenderer] = {}
-
-    def _depth_renderer(self, cfg: SimCameraConfig) -> _ClassicDepthRenderer:
-        key = (cfg.resolution_width, cfg.resolution_height)
-        if key not in self._depth_renderers:
-            self._depth_renderers[key] = _ClassicDepthRenderer(self._sim.model, *key)
-        return self._depth_renderers[key]
 
     def _render(self) -> FrameSet:
         model, data = self._sim.model, self._sim.data
@@ -277,7 +232,9 @@ class FilamentSimCameraSet:
             extrinsics = _extrinsics(model, data, cfg)
             depth_frame = None
             if self.render_depth:
-                depth = self._depth_renderer(cfg).render(data, self._mj_cameras[name])[..., np.newaxis]
+                depth = self._renderer.render_depth(
+                    data, self._mj_cameras[name], cfg.resolution_width, cfg.resolution_height
+                )[..., np.newaxis]
                 depth_frame = DataFrame(
                     data=(depth * BaseCameraSet.DEPTH_SCALE).astype(np.uint16),
                     timestamp=timestamp,
@@ -322,9 +279,6 @@ class FilamentSimCameraSet:
         return self.cameras[camera_name]
 
     def close(self):
-        for renderer in self._depth_renderers.values():
-            renderer.close()
-        self._depth_renderers.clear()
         self._renderer.close()
 
     @property
