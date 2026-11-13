@@ -10,9 +10,11 @@ import numpy
 import rcs._core.common
 
 __all__: list[str] = [
+    "CLASSIC",
     "CameraType",
     "DynamicJointSchema",
     "DynamicJointState",
+    "FILAMENT",
     "FrameSet",
     "GuiClient",
     "RendererBackend",
@@ -29,8 +31,6 @@ __all__: list[str] = [
     "SimTilburgHand",
     "SimTilburgHandConfig",
     "SimTilburgHandState",
-    "CLASSIC",
-    "FILAMENT",
     "default_free",
     "fixed",
     "free",
@@ -417,9 +417,9 @@ class SimTilburgHandState(rcs._core.common.HandState):
     @property
     def last_qpos(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
 
+CLASSIC: RendererBackend  # value = <RendererBackend.CLASSIC: 0>
+FILAMENT: RendererBackend  # value = <RendererBackend.FILAMENT: 1>
 default_free: CameraType  # value = <CameraType.default_free: 3>
 fixed: CameraType  # value = <CameraType.fixed: 2>
 free: CameraType  # value = <CameraType.free: 0>
 tracking: CameraType  # value = <CameraType.tracking: 1>
-CLASSIC: RendererBackend  # value = <RendererBackend.CLASSIC: 0>
-FILAMENT: RendererBackend  # value = <RendererBackend.FILAMENT: 1>
