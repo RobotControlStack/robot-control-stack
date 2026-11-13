@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -140,6 +141,45 @@ void Sim::invoke_rendering_callbacks() {
   }
 }
 
+void Sim::capture_state(StateCapture& capture) {
+  mj_getState(this->m, this->d,
+              capture.states.data() + capture.next_index * capture.state_size,
+              capture.state_spec);
+  capture.timestamps[capture.next_index] = this->d->time;
+  capture.next_index = (capture.next_index + 1) % capture.capacity;
+  capture.size = std::min(capture.size + 1, capture.capacity);
+}
+
+void Sim::restart_state_capture(StateCapture& capture) {
+  capture.next_index = 0;
+  capture.size = 0;
+  this->capture_state(capture);
+  capture.next_capture_time = this->d->time + capture.period;
+}
+
+void Sim::invoke_state_captures() {
+  // capture at the physics step closest to the scheduled capture time
+  mjtNum half_step = 0.5 * this->m->opt.timestep;
+  for (StateCapture& capture : this->state_captures) {
+    size_t latest =
+        (capture.next_index + capture.capacity - 1) % capture.capacity;
+    if (capture.size > 0 && this->d->time < capture.timestamps[latest]) {
+      // simulation time went backwards (e.g. the state was reset externally)
+      this->restart_state_capture(capture);
+      continue;
+    }
+    if (this->d->time + half_step < capture.next_capture_time) {
+      continue;
+    }
+    this->capture_state(capture);
+    // advance on the fixed schedule, skipping capture times that fell into
+    // this step (frame rates above the physics rate)
+    while (capture.next_capture_time <= this->d->time + half_step) {
+      capture.next_capture_time += capture.period;
+    }
+  }
+}
+
 bool Sim::is_converged() { return this->converged; }
 void Sim::step_until_convergence() {
   this->convergence_steps = 0;
@@ -170,6 +210,7 @@ void Sim::step(size_t k) {
     mj_step1(this->m, this->d);
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
+    this->invoke_state_captures();
     this->invoke_rendering_callbacks();
   }
 }
@@ -323,6 +364,9 @@ void Sim::reset_callbacks() {
     this->rendering_callbacks[i].last_call_timestamp =
         -this->rendering_callbacks[i].seconds_between_calls;
   }
+  for (StateCapture& capture : this->state_captures) {
+    this->restart_state_capture(capture);
+  }
 }
 
 void Sim::register_cb(std::function<void(void)> cb,
@@ -358,6 +402,50 @@ void Sim::register_rendering_callback(
                           // the cameras in the first step
                           .last_call_timestamp = -1.0 / frame_rate});
   }
+}
+
+size_t Sim::register_state_capture(double frame_rate, size_t buffer_size,
+                                   int state_spec) {
+  if (frame_rate <= 0) {
+    throw std::invalid_argument("frame_rate must be positive");
+  }
+  if (buffer_size == 0) {
+    throw std::invalid_argument("buffer_size must be positive");
+  }
+  StateCapture capture;
+  capture.period = 1.0 / frame_rate;
+  capture.state_spec = state_spec;
+  capture.state_size = mj_stateSize(this->m, state_spec);
+  capture.capacity = buffer_size;
+  capture.states.resize(buffer_size * capture.state_size);
+  capture.timestamps.resize(buffer_size);
+  this->restart_state_capture(capture);
+  this->state_captures.push_back(std::move(capture));
+  return this->state_captures.size() - 1;
+}
+
+std::optional<CapturedState> Sim::get_captured_state(
+    size_t id, mjtNum max_timestamp) const {
+  const StateCapture& capture = this->state_captures.at(id);
+  for (size_t i = 0; i < capture.size; ++i) {
+    size_t idx =
+        (capture.next_index + capture.capacity - 1 - i) % capture.capacity;
+    if (capture.timestamps[idx] <= max_timestamp) {
+      return CapturedState{capture.timestamps[idx],
+                           Eigen::Map<const rcs::common::VectorXd>(
+                               capture.states.data() + idx * capture.state_size,
+                               capture.state_size)};
+    }
+  }
+  return std::nullopt;
+}
+
+size_t Sim::captured_state_count(size_t id) const {
+  return this->state_captures.at(id).size;
+}
+
+void Sim::clear_captured_states(size_t id) {
+  this->restart_state_capture(this->state_captures.at(id));
 }
 
 void Sim::start_gui_server(const std::string& id) {

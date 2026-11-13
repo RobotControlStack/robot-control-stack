@@ -67,6 +67,26 @@ struct RenderingCallback {
   mjtNum last_call_timestamp;    // in seconds
 };
 
+/* Simulation states captured at a fixed rate of simulation time, e.g. at the
+ * exposure times of a camera, so that they can be rendered later. Kept in a
+ * ring buffer of the most recent states. */
+struct StateCapture {
+  mjtNum period;             // in seconds
+  mjtNum next_capture_time;  // in seconds of simulation time
+  int state_spec;            // mjtState bit mask passed to mj_getState
+  int state_size;
+  size_t capacity;
+  std::vector<mjtNum> states;      // capacity x state_size, row major
+  std::vector<mjtNum> timestamps;  // capacity
+  size_t next_index = 0;
+  size_t size = 0;
+};
+
+struct CapturedState {
+  mjtNum timestamp;
+  rcs::common::VectorXd state;
+};
+
 struct DynamicJointSchema {
   std::vector<std::string> joint_names;
   std::vector<int> joint_types;
@@ -95,11 +115,15 @@ class Sim {
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
   std::vector<RenderingCallback> rendering_callbacks;
+  std::vector<StateCapture> state_captures;
   std::vector<DynamicJointSpec> dynamic_joint_specs;
   std::unordered_map<std::string, size_t> dynamic_joint_name_to_index;
   void invoke_callbacks();
   bool invoke_condition_callbacks();
   void invoke_rendering_callbacks();
+  void invoke_state_captures();
+  void capture_state(StateCapture& capture);
+  void restart_state_capture(StateCapture& capture);
   void init_dynamic_joint_specs();
   static int get_joint_qpos_size(int joint_type);
   static int get_joint_qvel_size(int joint_type);
@@ -142,6 +166,20 @@ class Sim {
                          mjvOption&)>
           cb,
       const std::string& id, int frame_rate, size_t width, size_t height);
+  /* Captures the simulation state (mj_getState with state_spec) frame_rate
+   * times per second of simulation time and keeps the latest buffer_size
+   * states. The current state is captured right away. Captures follow a fixed
+   * schedule (no drift) and happen at the physics step closest to each capture
+   * time, after integration so that the state is consistent with its time
+   * stamp. Returns the id of the capture. */
+  size_t register_state_capture(double frame_rate, size_t buffer_size,
+                                int state_spec);
+  /* Latest captured state with a time stamp <= max_timestamp */
+  std::optional<CapturedState> get_captured_state(size_t id,
+                                                  mjtNum max_timestamp) const;
+  size_t captured_state_count(size_t id) const;
+  /* Clears the buffer and restarts the capture schedule at the current state */
+  void clear_captured_states(size_t id);
   void start_gui_server(const std::string& id);
   void stop_gui_server();
   void sync_gui();

@@ -10,6 +10,7 @@
 #include <sim/gui.h>
 
 #include <functional>
+#include <limits>
 #include <memory>
 
 #include "rcs/Kinematics.h"
@@ -801,6 +802,9 @@ Args:
       .def_readwrite("qpos", &rcs::sim::DynamicJointState::qpos)
       .def_readwrite("qvel", &rcs::sim::DynamicJointState::qvel);
 
+  py::class_<rcs::sim::CapturedState>(sim, "CapturedState")
+      .def_readonly("timestamp", &rcs::sim::CapturedState::timestamp)
+      .def_readonly("state", &rcs::sim::CapturedState::state);
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
              return std::make_shared<rcs::sim::Sim>((mjModel*)m, (mjData*)d);
@@ -818,6 +822,15 @@ Args:
       .def("get_dynamic_joint_state", &rcs::sim::Sim::get_dynamic_joint_state)
       .def("set_dynamic_joint_state", &rcs::sim::Sim::set_dynamic_joint_state,
            py::arg("schema"), py::arg("state"))
+      .def("register_state_capture", &rcs::sim::Sim::register_state_capture,
+           py::arg("frame_rate"), py::arg("buffer_size"), py::arg("state_spec"))
+      .def("get_captured_state", &rcs::sim::Sim::get_captured_state,
+           py::arg("id"),
+           py::arg("max_timestamp") = std::numeric_limits<mjtNum>::infinity())
+      .def("captured_state_count", &rcs::sim::Sim::captured_state_count,
+           py::arg("id"))
+      .def("clear_captured_states", &rcs::sim::Sim::clear_captured_states,
+           py::arg("id"))
       .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
 
