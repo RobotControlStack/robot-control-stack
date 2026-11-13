@@ -172,6 +172,7 @@ class SimConfig:
     async_control: bool
     frequency: float
     max_convergence_steps: int
+    memory: int
     realtime: bool
     renderer: RendererBackend
     def __copy__(self) -> SimConfig: ...
@@ -182,6 +183,7 @@ class SimConfig:
         realtime: bool = False,
         frequency: float = 30.0,
         max_convergence_steps: int = 500,
+        memory: int = -1,
         renderer: RendererBackend = ...,
     ) -> None: ...
 

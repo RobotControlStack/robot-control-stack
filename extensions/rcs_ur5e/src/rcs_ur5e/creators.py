@@ -109,6 +109,7 @@ class RCSUR5eConfigEnvCreator(RCSEnvCreator[UR5eHardwareEnvCreatorConfig]):
             cfg.robot_cfg.kinematic_model_path,
             cfg.robot_cfg.attachment_site,
             urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
+            joint_limits=cfg.robot_cfg.joint_limits,
         )
         robot = UR5e(cfg.robot_cfg, ik)
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)

@@ -10,7 +10,7 @@ The buttons are used to start and stop data recording with the [`StorageWrapper`
 
 ### Installation
 [Install RCS](https://robotcontrolstack.org/getting_started/index.html) and the [FR3 extension](https://robotcontrolstack.org/extensions/rcs_fr3.html) (the script is writte for the FR3 as example but can be easily adapted for other robots).
-Install the IRIS APK on your quest following [these instructions](https://github.com/intuitive-robots/IRIS-Meta-Quest3) use the apk released [here](https://github.com/RobotControlStack/IRIS-Meta-Quest3/actions/runs/25190284304) to ensure compatibility.
+Install the IRIS APK on your quest following [these instructions](https://github.com/intuitive-robots/IRIS-Meta-Quest3) but use the APK from our fork released [here](https://github.com/RobotControlStack/IRIS-Meta-Quest3/releases/tag/rcsv0.7.x) to ensure compatibility (the official IRIS APK and our older `rcsv1` release are not compatible).
 Finally, install [SimPub](https://github.com/intuitive-robots/SimPublisher) the IRIS python client by
 
 ```shell
@@ -56,6 +56,13 @@ The arm follows the right controller, so keep `ROBOT_NAME = "right"` unless you 
 1. install the [YAM extension](https://robotcontrolstack.org/extensions/rcs_yam) and bring up its CAN interface (`sudo ip link set can0 up type can bitrate 1000000`)
 2. go to [`yam.py`](yam.py), set `ROBOT_INSTANCE = RobotPlatform.HARDWARE` and set `CAN_CHANNEL` to your interface, or keep `RobotPlatform.SIMULATION` to try it in sim first
 3. to record RealSense cameras, install the [RealSense extension](https://robotcontrolstack.org/extensions/rcs_realsense) and put your camera serial numbers (`rs-enumerate-devices -s`) into `CAMERA_DICT`, or set it to `None` to run without cameras
+
+## Teleoperation of a Rizon 4s duo with Meta Quest 3
+[`rizon.py`](rizon.py) teleoperates two [Flexiv Rizon 4s](https://robotcontrolstack.org/extensions/rcs_flexiv) with Grav grippers.
+The arms stand 30 cm apart in y and are each tilted by 45 degrees about x away from the other arm (right +45, left -45 degrees); actions are expressed in the shared frame between the two bases (x front, y left, z up), so align the quest coordinate axis to that frame.
+1. install the [Flexiv extension](https://robotcontrolstack.org/extensions/rcs_flexiv), put both robots into auto mode and release the E-stops
+2. go to [`rizon.py`](rizon.py), set `ROBOT_INSTANCE = RobotPlatform.HARDWARE`, the serial numbers in `ROBOT_SN` and the tool name of the gripper, or keep `RobotPlatform.SIMULATION` to try it in sim first (`rcs/rizon4s_duo`)
+3. if your arms are mounted differently, adapt `ROBOT_TO_SHARED_BASE_FRAME` in the script
 
 ## Teleoperation with Franka GELLO Duo
 Teleoperate your Franka Duo using the [Franka GELLO Duo](https://franka.de/de-de/product-prototypes).

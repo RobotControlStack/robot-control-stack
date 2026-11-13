@@ -40,6 +40,7 @@ RCS comes with several supported extensions:
 - **rcs_ur5e**: Support for the UR5e robot.
 - **rcs_so101**: Support for the SO101 robot.
 - **rcs_yam**: Support for the I2RT YAM arm.
+- **rcs_flexiv**: Support for Flexiv arms (Rizon 4s) and the Flexiv Grav gripper.
 - **rcs_realsense**: Support for Intel RealSense cameras.
 - **rcs_usb_cam**: Support for generic USB webcams.
 - **rcs_tacto**: Integration with the Tacto tactile sensor simulator.

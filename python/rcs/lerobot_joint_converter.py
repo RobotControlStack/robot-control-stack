@@ -124,6 +124,7 @@ class JointDatasetConverter:
         self.ik = rcs.common.Pin(
             rcs.ROBOTS[robot_type].mjcf_model_path,
             rcs.ROBOTS[robot_type].attachment_site,
+            joint_limits=rcs.ROBOTS[robot_type].joint_limits,
         )
         self.camera_resizers = {
             camera.name: v2.Resize(camera.resolution)  # type: ignore[name-defined]  # noqa: F821

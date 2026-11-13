@@ -4,13 +4,14 @@ RCS ships with ready-to-use applications for common operator workflows such as r
 
 ## Teleoperation
 
-Use the Meta Quest 3 teleoperation examples when you want to collect demonstrations or directly control a robot from an operator interface. RCS provides examples for Franka and I2RT YAM arms.
+Use the Meta Quest 3 teleoperation examples when you want to collect demonstrations or directly control a robot from an operator interface. RCS provides examples for Franka, I2RT YAM and Flexiv Rizon 4s arms.
 
 - Example guide: [examples/teleop/README.md](../../examples/teleop/README.md)
 - Franka example: [examples/teleop/franka.py](../../examples/teleop/franka.py)
 - YAM example: [examples/teleop/yam.py](../../examples/teleop/yam.py)
+- Rizon 4s example: [examples/teleop/rizon.py](../../examples/teleop/rizon.py)
 
-The Franka example supports Meta Quest 3 and GELLO-based setups. The YAM example supports dual-arm Meta Quest 3 teleoperation in simulation or on hardware; install the [YAM extension](../extensions/rcs_yam.md) before using real YAM hardware.
+The Franka example supports Meta Quest 3 and GELLO-based setups. The YAM example supports dual-arm Meta Quest 3 teleoperation in simulation or on hardware; install the [YAM extension](../extensions/rcs_yam.md) before using real YAM hardware. The Rizon 4s example teleoperates a dual-arm Rizon 4s setup with Grav grippers via Meta Quest 3, in simulation (`rcs/rizon4s_duo`) or on hardware; install the [Flexiv extension](../extensions/rcs_flexiv.md) before using real Rizon hardware.
 
 ## Inference
 

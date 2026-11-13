@@ -1,0 +1,54 @@
+<!-- Table-top mount of the bimanual YAM setup (MolmoAct2 reference design): an 800 mm 2060
+     aluminium extrusion lying flat along y, held down by a G-clamp at each end.
+     The origin is the centre of the extrusion's bottom face, i.e. it sits on the table top;
+     the arms are bolted onto the top face at z=0.02. -->
+<mujoco model="yam_duo_mount">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option cone="elliptic" impratio="10"/>
+
+  <asset>
+    <material name="anodized_black" rgba="0.08 0.08 0.09 1" specular="0.4" shininess="0.5"/>
+    <material name="steel" rgba="0.55 0.55 0.57 1" specular="0.6" shininess="0.6"/>
+
+    <mesh name="extrusion_2060_800mm" file="extrusion_2060_800mm.obj"/>
+  </asset>
+
+  <default>
+    <default class="yam_duo_mount">
+      <default class="visual">
+        <geom contype="0" conaffinity="0" group="2" material="anodized_black"/>
+      </default>
+      <default class="collision">
+        <geom group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="yam_duo_mount">
+      <geom type="mesh" mesh="extrusion_2060_800mm" class="visual"/>
+      <geom type="box" size="0.03 0.4 0.01" pos="0 0 0.01" class="collision"/>
+      <!-- G-clamps: pad on the extrusion, frame around the table edge, screw from below -->
+      <body name="clamp_left" pos="0 0.37 0">
+        <geom type="box" size="0.012 0.012 0.004" pos="0 0 0.024" material="steel" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 0.034" class="visual"/>
+        <geom type="box" size="0.006 0.008 0.05" pos="-0.102 0 -0.01" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 -0.054" class="visual"/>
+        <geom type="cylinder" size="0.005 0.027" pos="0 0 -0.052" material="steel" class="visual"/>
+        <geom type="cylinder" size="0.004 0.03" pos="0 0 -0.079" quat="1 1 0 0" material="steel" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 0.034" class="collision"/>
+      </body>
+      <body name="clamp_right" pos="0 -0.37 0">
+        <geom type="box" size="0.012 0.012 0.004" pos="0 0 0.024" material="steel" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 0.034" class="visual"/>
+        <geom type="box" size="0.006 0.008 0.05" pos="-0.102 0 -0.01" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 -0.054" class="visual"/>
+        <geom type="cylinder" size="0.005 0.027" pos="0 0 -0.052" material="steel" class="visual"/>
+        <geom type="cylinder" size="0.004 0.03" pos="0 0 -0.079" quat="1 1 0 0" material="steel" class="visual"/>
+        <geom type="box" size="0.057 0.008 0.006" pos="-0.051 0 0.034" class="collision"/>
+      </body>
+    </body>
+  </worldbody>
+
+</mujoco>

@@ -14,7 +14,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "rcs_core"
-version = "0.7.3"
+version = "0.7.4"
 description = "A lean, ROS-free sim-to-real framework for training and deploying Vision-Language-Action (VLA) models and RL agents. Native MuJoCo Gymnasium wrappers with synchronous execution for Franka, UR5e, xArm, and SO101."
 dependencies = [
   "websockets>=11.0",
@@ -42,7 +42,7 @@ dependencies = [
   "cmeel-urdfdom<5",
   "cmeel-tinyxml2<11",
   "greenlet",
-  "duckdb",
+  "duckdb<2",
   "pandas",
 ]
 readme = "README.md"
@@ -97,7 +97,7 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libmuj
 
 [tool.cibuildwheel.macos]
 archs = ["arm64"]
-repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} --exclude libmujoco --exclude libpinocchio"
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} --exclude libmujoco --exclude libpinocchio --ignore-missing-dependencies"
 
 [tool.scikit-build]
 build.verbose = true
@@ -228,6 +228,10 @@ version_files = [
   "extensions/rcs_yam/pyproject.toml:version",
   "extensions/rcs_yam/src/rcs_yam/__init__.py:__version__",
   "extensions/rcs_yam/pyproject.toml:\"rcs-core>=(.*)\"",
+
+  "extensions/rcs_flexiv/pyproject.toml:version",
+  "extensions/rcs_flexiv/src/rcs_flexiv/__init__.py:__version__",
+  "extensions/rcs_flexiv/pyproject.toml:\"rcs-core>=(.*)\"",
 
   "extensions/rcs_tacto/pyproject.toml:version",
   "extensions/rcs_tacto/src/rcs_tacto/__init__.py:__version__",

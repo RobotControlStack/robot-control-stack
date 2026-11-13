@@ -1,21 +1,37 @@
+import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, cast
 
 import duckdb
+import gymnasium as gym
 import numpy as np
+import pytest
 from rcs._core.sim import SimConfig
 from rcs.envs.base import RelativeTo
 from rcs.envs.configs import EmptyWorldFR3Duo
+from rcs.envs.scenes import SimEnvCreatorConfig
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.envs.tasks import PickTaskConfig
 from rcs.sim.replayer import (
+    ReplayVariant,
     load_distinct_uuids,
     load_trajectory,
+    replay,
     replay_trajectory,
     restore_sim_step,
+    variant_copies,
 )
 from rcs.sim.sim import ROOT_RELATIVE_FREE_STATE_ENCODING
+from rcs.sim.visual_randomization import (
+    LightingPreset,
+    LightingRandomizerConfig,
+    LightSpec,
+    MaterialOption,
+    MaterialRandomizerConfig,
+    MaterialTarget,
+    VisualRandomizerConfig,
+)
 
 import rcs
 
@@ -424,3 +440,152 @@ def test_replayer_restores_root_relative_free_joint_state_across_root_frame_chan
             assert np.allclose(actual_joint_qpos, expected_joint_qpos, atol=1e-5, rtol=0)
     finally:
         replay_env.close()
+
+
+class _VisuallyRandomizedDuo(EmptyWorldFR3Duo):
+    def config(self) -> SimEnvCreatorConfig:
+        cfg = super().config()
+        cfg.task_cfg = PickTaskConfig(robot_name="right")
+        cfg.camera_cfgs = {}
+        cfg.visual_randomization = VisualRandomizerConfig(
+            material=MaterialRandomizerConfig(
+                targets=[
+                    MaterialTarget(
+                        name="floor",
+                        materials=["groundplane"],
+                        options=[MaterialOption(rgba=(0.8, 0.1, 0.1, 1.0), name="red")],
+                    )
+                ]
+            ),
+            lighting=LightingRandomizerConfig(
+                presets=[
+                    LightingPreset(name="spot", lights=[LightSpec(type="spot", pos=(1, 0, 2), target=(0.5, 0, 0))])
+                ]
+            ),
+        )
+        return cfg
+
+
+VISUALLY_RANDOMIZED_ENV_ID = "rcs/test_visually_randomized_duo"
+if VISUALLY_RANDOMIZED_ENV_ID not in gym.envs.registry:
+    gym.register(id=VISUALLY_RANDOMIZED_ENV_ID, entry_point=_VisuallyRandomizedDuo())
+
+
+def _visual_randomization_infos(dataset_dir: Path) -> dict[str, dict[str, Any]]:
+    """Visual randomization info per replayed episode uuid, checks that it is constant within an episode."""
+    infos: dict[str, dict[str, Any]] = {}
+    for uuid in load_distinct_uuids(dataset_dir):
+        steps = load_trajectory(dataset_dir, uuid)
+        episode_infos = [step.info["visual_randomization"] for step in steps]
+        assert all(info == episode_infos[0] for info in episode_infos)
+        infos[uuid] = episode_infos[0]
+    return infos
+
+
+def test_replay_variant_parsing():
+    variant = ReplayVariant.parse("material+background:0.5")
+    assert variant.randomizers == frozenset({"background", "material"})
+    assert variant.multiplier == 0.5
+    assert variant.name == "background+material"
+    assert ReplayVariant.parse("lighting").multiplier == 1.0
+    with pytest.raises(ValueError, match="Unknown randomizers"):
+        ReplayVariant.parse("camera:1")
+    with pytest.raises(ValueError, match="at least one randomizer"):
+        ReplayVariant.parse(":1")
+
+
+def test_variant_copies_are_exact_and_deterministic():
+    uuids = [f"episode{i}" for i in range(10)]
+    copies = variant_copies(uuids, ReplayVariant.parse("lighting:1.3"), seed=0)
+    assert sum(copies.values()) == 13
+    assert set(copies.values()) == {1, 2}
+    assert copies == variant_copies(list(reversed(uuids)), ReplayVariant.parse("lighting:1.3"), seed=0)
+    assert sum(variant_copies(uuids, ReplayVariant.parse("lighting:0"), seed=0).values()) == 0
+
+
+def test_replay_with_variants_adds_randomized_copies(tmp_path: Path):
+    source_dir = tmp_path / "source"
+    replay_dir = tmp_path / "replayed"
+    for _ in range(2):
+        _record_source_dataset(source_dir, limit=3, instruction="pick up cube")
+    source_steps = {uuid: load_trajectory(source_dir, uuid) for uuid in load_distinct_uuids(source_dir)}
+
+    replay(
+        source_dir,
+        replay_dir,
+        env_id=VISUALLY_RANDOMIZED_ENV_ID,
+        variants=[ReplayVariant.parse("lighting:1"), ReplayVariant.parse("lighting+material:0.5")],
+    )
+
+    infos = _visual_randomization_infos(replay_dir)
+    variants = sorted(info["variant"] for info in infos.values())
+    assert variants == ["lighting", "lighting", "lighting+material", "original", "original"]
+    for info in infos.values():
+        params = json.loads(info["params"])
+        if info["variant"] == "original":
+            assert params == {}
+        else:
+            assert params["lighting"] == {"preset": "spot"}
+            assert ("material" in params) == ("material" in info["variant"])
+
+    # randomized copies replay the same simulator states as the source episodes
+    reference = next(iter(source_steps.values()))
+    for uuid in load_distinct_uuids(replay_dir):
+        replay_steps = load_trajectory(replay_dir, uuid)
+        assert any(
+            all(
+                np.allclose(r.sim_state, s.sim_state, atol=1e-5, rtol=0) for r, s in zip(replay_steps, src, strict=True)
+            )
+            for src in source_steps.values()
+        )
+        assert len(replay_steps) == len(reference)
+
+
+def test_replay_without_original_and_multiple_copies(tmp_path: Path):
+    source_dir = tmp_path / "source"
+    replay_dir = tmp_path / "replayed"
+    _record_source_dataset(source_dir, limit=2, instruction="pick up cube")
+
+    replay(
+        source_dir,
+        replay_dir,
+        env_id=VISUALLY_RANDOMIZED_ENV_ID,
+        variants=[ReplayVariant.parse("lighting:2")],
+        keep_original=False,
+    )
+
+    infos = list(_visual_randomization_infos(replay_dir).values())
+    assert [info["variant"] for info in infos] == ["lighting", "lighting"]
+    assert infos[0]["seed"] != infos[1]["seed"]
+
+
+def test_replay_without_variants_has_no_randomization_info(tmp_path: Path):
+    source_dir = tmp_path / "source"
+    replay_dir = tmp_path / "replayed"
+    _record_source_dataset(source_dir, limit=2, instruction="pick up cube")
+
+    replay(source_dir, replay_dir, env_id=VISUALLY_RANDOMIZED_ENV_ID)
+
+    for uuid in load_distinct_uuids(replay_dir):
+        assert all("visual_randomization" not in step.info for step in load_trajectory(replay_dir, uuid))
+    with pytest.raises(ValueError, match="Nothing to replay"):
+        replay(source_dir, tmp_path / "empty", env_id=VISUALLY_RANDOMIZED_ENV_ID, keep_original=False)
+
+
+def test_replay_variants_require_configured_randomizers(tmp_path: Path):
+    source_dir = tmp_path / "source"
+    _record_source_dataset(source_dir, limit=2, instruction="pick up cube")
+    with pytest.raises(ValueError, match="background"):
+        replay(
+            source_dir,
+            tmp_path / "replayed",
+            env_id=VISUALLY_RANDOMIZED_ENV_ID,
+            variants=[ReplayVariant.parse("background")],
+        )
+    with pytest.raises(ValueError, match="unique"):
+        replay(
+            source_dir,
+            tmp_path / "replayed",
+            env_id=VISUALLY_RANDOMIZED_ENV_ID,
+            variants=[ReplayVariant.parse("lighting:1"), ReplayVariant.parse("lighting:0.5")],
+        )

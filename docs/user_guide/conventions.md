@@ -61,7 +61,7 @@ Each robot config defines an `attachment_site`. This is the end-effector frame u
 Common examples in the repository are:
 
 - `attachment_site_0` for FR3 / Panda
-- `attachment_site` for UR5e / XArm7
+- `attachment_site` for UR5e / XArm7 / Rizon 4s
 - `gripper` for SO101
 
 If you are unsure which frame a robot uses, check its config or the relevant example scene in `python/rcs/envs/configs.py`.

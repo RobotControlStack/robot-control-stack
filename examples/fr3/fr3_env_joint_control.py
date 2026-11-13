@@ -59,6 +59,7 @@ def main():
         ik = rcs.common.Pin(
             kinematic_model_path,
             attachment_site,
+            joint_limits=robot_cfg.joint_limits,
         )
         mjmodel = scene.create_model(cfg)
         simulation = sim.Sim(mjmodel, sim_cfg)

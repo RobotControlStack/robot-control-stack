@@ -53,6 +53,9 @@ The i2rt driver runs its PD control loop in a background thread. With
   than `max_joint_step` away are ramped rather than sent as a step.
 - The simulated counterpart is registered as `rcs/yam` in core RCS and shares the kinematics, joint
   limits and gripper stroke of the hardware.
+- The bimanual table-top setup (as used by MolmoAct2) is registered as `rcs/yam_duo`: two arms 0.44 m
+  apart on a 2060 aluminium extrusion, a D405 on each wrist and a D435 head camera on an extendable
+  desk mount. The real-world counterpart is `DefaultYamDualMultiHardwareEnv`.
 
 See `extensions/rcs_yam/README.md` for the full extension documentation and
 `extensions/rcs_yam/src/rcs_yam/scripts/test_robot.py` for a bring-up script. For a maintained

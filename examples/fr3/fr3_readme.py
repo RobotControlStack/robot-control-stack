@@ -41,6 +41,7 @@ if __name__ == "__main__":
     ik = rcs.common.Pin(
         kinematic_model_path,
         attachment_site,
+        joint_limits=robot_cfg.joint_limits,
     )
 
     # base env

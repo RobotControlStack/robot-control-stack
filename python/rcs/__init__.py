@@ -1,7 +1,10 @@
 """Robot control stack python bindings."""
 
+import contextlib
 import io
 import os
+import shutil
+import tempfile
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,7 +18,8 @@ from rcs._core import __version__, common
 from rcs import camera, envs, hand, sim
 
 GITHUB_ASSET_ARCHIVE_URL = "https://github.com/RobotControlStack/robot-control-stack/archive/refs/tags/{tag}.zip"
-REQUIRED_ASSET = Path("assets/scenes/empty_world/scene.xml")
+# written into the assets directory after a complete download, holds the version the assets belong to
+ASSETS_VERSION_FILE = ".version"
 
 
 def download_assets(
@@ -28,24 +32,48 @@ def download_assets(
     response = requests.get(github_asset_archive_url.format(tag=tag), timeout=60)
     response.raise_for_status()
 
-    found_assets = False
-    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
-        for member in archive.infolist():
-            parts = PurePosixPath(member.filename).parts
-            if len(parts) < 2 or parts[1] != assets_dirname:
-                continue
+    prefix.mkdir(parents=True, exist_ok=True)
+    # extract next to the final location and move it into place at the end, so that other processes
+    # never see a partially written assets directory
+    staging = Path(tempfile.mkdtemp(prefix=f".{assets_dirname}-", dir=prefix))
+    try:
+        found_assets = False
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            for member in archive.infolist():
+                parts = PurePosixPath(member.filename).parts
+                if len(parts) < 2 or parts[1] != assets_dirname:
+                    continue
 
-            found_assets = True
-            target = prefix.joinpath(*parts[1:])
-            if member.is_dir():
-                target.mkdir(parents=True, exist_ok=True)
-            else:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(archive.read(member))
+                found_assets = True
+                target = staging.joinpath(*parts[1:])
+                if member.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(archive.read(member))
 
-    if not found_assets:
-        msg = f"Could not find {assets_dirname} in the downloaded GitHub archive."
-        raise FileNotFoundError(msg)
+        if not found_assets:
+            msg = f"Could not find {assets_dirname} in the downloaded GitHub archive."
+            raise FileNotFoundError(msg)
+
+        new_assets_dir = staging / assets_dirname
+        (new_assets_dir / ASSETS_VERSION_FILE).write_text(version)
+        assets_dir = prefix / assets_dirname
+        with contextlib.suppress(FileNotFoundError):
+            os.replace(assets_dir, staging / "outdated")
+        try:
+            os.replace(new_assets_dir, assets_dir)
+        except OSError:
+            # another process installed the assets in the meantime
+            if not _has_assets_version(assets_dir, version):
+                raise
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def _has_assets_version(assets_dir: Path, version: str) -> bool:
+    version_file = assets_dir / ASSETS_VERSION_FILE
+    return version_file.is_file() and version_file.read_text() == version
 
 
 def get_prefix(
@@ -58,7 +86,14 @@ def get_prefix(
     download_fn: Callable[[str, Path, str, str], None] = download_assets,
 ) -> str:
     def has_required_assets(prefix: Path) -> bool:
-        return (prefix / REQUIRED_ASSET).is_file()
+        assets_dir = prefix / assets_dirname
+        if not assets_dir.is_dir():
+            return False
+        if (assets_dir / ASSETS_VERSION_FILE).is_file():
+            return _has_assets_version(assets_dir, version)
+        # assets without a version file at a user provided prefix (e.g. a source checkout) are used as they are,
+        # in the default prefix they are from an older or interrupted download
+        return bool(env_prefix)
 
     if env_prefix:
         prefix = Path(env_prefix).expanduser().resolve()
@@ -68,10 +103,9 @@ def get_prefix(
             return str(editable_prefix)
         prefix = default_prefix.resolve()
 
-    assets_dir = prefix / assets_dirname
-    if not assets_dir.is_dir() or not has_required_assets(prefix):
+    if not has_required_assets(prefix):
         prefix.mkdir(parents=True, exist_ok=True)
-        print(f"Assets not found at {assets_dir}, downloading them now.")
+        print(f"Assets for version {version} not found at {prefix / assets_dirname}, downloading them now.")
         download_fn(version, prefix, github_asset_archive_url, assets_dirname)
 
     return str(prefix)
@@ -110,8 +144,8 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
         joint_limits=np.array(
             [
-                [-2.3476, -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045],
-                [2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045],
+                [-2.9007, -1.8361, -2.9007, -3.0770, -2.8763, 0.4398, -3.0508],
+                [2.9007, 1.8361, 2.9007, -0.1169, 2.8763, 4.6216, 3.0508],
             ]
         ),
     ),
@@ -194,12 +228,26 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
         attachment_site="tcp_site",
     ),
+    common.RobotType("Rizon4S"): RobotMetaConfig(
+        mjcf_model_path="assets/robots/rizon4s/rizon4s.xml",
+        dof=7,
+        # flange pointing straight down (joint2 - joint4 + joint6 = -pi/2), about 0.56 m in front of
+        # and 0.46 m above the base
+        q_home=np.array([0.0, -0.2, 0.0, 1.8, 0.0, 2.0 - np.pi / 2, 0.0]),
+        joint_limits=np.array(
+            [
+                [-2.8798, -2.3562, -3.0543, -1.9548, -3.0543, -1.4835, -3.0543],
+                [2.8798, 2.3562, 3.0543, 2.7751, 3.0543, 4.6251, 3.0543],
+            ]
+        ),
+    ),
 }
 
 
 GRIPPER_PATHS: dict[common.GripperType, str] = {
     common.GripperType.FrankaHand: "assets/grippers/franka_hand/franka_hand.xml",
     common.GripperType("Robotiq2F85"): "assets/grippers/robotiq_2f85/robotiq_2f85.xml",
+    common.GripperType("FlexivGrav"): "assets/grippers/flexiv_grav/flexiv_grav.xml",
 }
 
 GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
@@ -208,6 +256,9 @@ GRIPPER_TCP_OFFSETS: dict[common.GripperType, common.Pose] = {
     # The yam gripper is part of the robot mjcf, hence it needs no entry in GRIPPER_PATHS
     # and no mount offset, only the offset from the flange to the point between the fingers.
     common.GripperType("Yam"): common.Pose(translation=np.array([0.0, 0.0, 0.1347])),
+    # The "grav_tcp" frame of Flexiv's URDF, which Flexiv's own software uses as TCP. It sits roughly at the
+    # pad center of the fully open gripper; the closed finger tips ("closed_fingers_tcp") are at 0.2 m.
+    common.GripperType("FlexivGrav"): common.Pose(translation=np.array([0.0, 0.0, 0.15])),
 }
 
 GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
@@ -216,6 +267,9 @@ GRIPPER_MOUNT_OFFSETS: dict[common.GripperType, common.Pose] = {
     ),
     common.GripperType("Robotiq2F85"): common.Pose(
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
+    ),
+    common.GripperType("FlexivGrav"): common.Pose(
+        translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 1.0, 0.0])
     ),
 }
 
@@ -226,6 +280,11 @@ OBJECT_PATHS: dict[str, str] = {
     "fr3_single_mount": "assets/objects/fr3_single_mount/fr3_single_mount.xml",
     "robotiq_d405_mount": "assets/objects/robotiq_d405_mount/robotiq_d405_mount.xml",
     "droid_wrist_mount": "assets/objects/droid_wrist_mount/droid_wrist_mount.xml",
+    "yam_duo_mount": "assets/objects/yam_duo_mount/yam_duo_mount.xml",
+    "yam_d405_wrist_mount": "assets/objects/yam_d405_wrist_mount/yam_d405_wrist_mount.xml",
+    "camera_desk_mount": "assets/objects/camera_desk_mount/camera_desk_mount.xml",
+    "table": "assets/objects/table/table.xml",
+    "rizon_d405_wrist_mount": "assets/objects/rizon_d405_wrist_mount/rizon_d405_wrist_mount.xml",
     "green_cuboid": "assets/objects/green_cuboid/green_cuboid.xml",
     "green_cube": "assets/objects/green_cube/green_cube.xml",
     "red_cube": "assets/objects/red_cube/red_cube.xml",
@@ -233,6 +292,7 @@ OBJECT_PATHS: dict[str, str] = {
 
 CAMERA_PATHS: dict[str, str] = {
     "d405": "assets/cameras/d405/d405.xml",
+    "d435i": "assets/cameras/d435i/d435i.xml",
     "zed_mini": "assets/cameras/zed_mini/zed_mini.xml",
     "zed2i": "assets/cameras/zed2i/zed2i.xml",
 }
@@ -245,7 +305,7 @@ DEFAULT_TRANSFORMS = {
         translation=np.array([0.0, 0.0, 0.0]), quaternion=np.array([0.0, 0.0, 0.7071068, 0.7071068])
     ),
     "FR3_ROBOTIQ_WRIST_D405_CAMERA": common.Pose(
-        translation=np.array([0.060, 0.0, 0.0665]), rpy_vector=np.array([np.pi, -np.pi * 11 / 18, 0])
+        translation=np.array([0.060, 0.0, 0.0665]), rpy_vector=np.array([-np.pi / 2, -np.pi * 11 / 18, 0])
     ),
     "FR3_DUOMOUNT_HEIGHT_OFFSET": common.Pose(
         translation=np.array([0.0, 0.0, 0.342]), quaternion=np.array([0.0, 0.0, 0.0, 1.0])
@@ -257,9 +317,49 @@ DEFAULT_TRANSFORMS = {
     "FR3_DUOMOUNT_RIGHT_ROBOT": common.Pose(
         translation=np.array([0.0, -0.05018, 0.0]), quaternion=np.array([0.436978, 0.0225312, 0.243326, 0.865641])
     ),
+    # Rizon 4s duo: bases 0.3 m apart in y, each tilted 45 degrees about x away from the other arm (the right arm
+    # by +45 degrees, the left one by -45 degrees, like the FR3 duo), and the shared frame lifted above the floor so
+    # that the tilted bases clear the ground plane.
+    "RIZON4S_DUO_LEFT_ROBOT": common.Pose(
+        translation=np.array([0.0, 0.15, 0.0]), rpy_vector=np.array([np.deg2rad(-45), 0.0, 0.0])
+    ),
+    "RIZON4S_DUO_RIGHT_ROBOT": common.Pose(
+        translation=np.array([0.0, -0.15, 0.0]), rpy_vector=np.array([np.deg2rad(45), 0.0, 0.0])
+    ),
+    "RIZON4S_DUO_HEIGHT_OFFSET": common.Pose(translation=np.array([0.0, 0.0, 0.3])),
     "FR3_DUOMOUNT_ZEDMINI_CAMERA": common.Pose(
         translation=np.array([0.0113, -0.0245, 0.695]),
         rpy_vector=np.array([0.0, np.pi * 41 / 180, 0.0]),
+    ),
+    # yam duo: two yams on a 2060 extrusion clamped to the back edge of a table (MolmoAct2 reference setup),
+    # the root frame is the floor below the extrusion centre, the shared base frame is the extrusion's top face
+    "YAM_DUOMOUNT_HEIGHT_OFFSET": common.Pose(translation=np.array([0.0, 0.0, 0.77])),
+    "YAM_DUOMOUNT_BASE": common.Pose(translation=np.array([0.0, 0.0, 0.75])),
+    "YAM_DUOMOUNT_TABLE": common.Pose(translation=np.array([-0.095, 0.0, 0.0])),
+    "YAM_DUOMOUNT_LEFT_ROBOT": common.Pose(translation=np.array([0.0, 0.22, 0.0])),
+    "YAM_DUOMOUNT_RIGHT_ROBOT": common.Pose(translation=np.array([0.0, -0.22, 0.0])),
+    "YAM_DUOMOUNT_CAMERA_DESK_MOUNT": common.Pose(translation=np.array([-0.07, 0.0, 0.75])),
+    # d435i on the ball head of the desk mount, looking forward and pitched 64deg down,
+    # chosen to match the framing of the top camera in the MolmoAct2 bimanual yam datasets
+    "YAM_DUOMOUNT_D435_CAMERA": common.Pose(translation=np.array([-0.06, 0.0, 1.6]))
+    * common.Pose(rpy_vector=np.array([0.0, np.deg2rad(64), 0.0]), translation=np.array([0.0, 0.0, 0.0]))
+    * common.Pose(rpy_vector=np.array([np.pi / 2, 0.0, np.pi / 2]), translation=np.array([0.0, 0.0, 0.0])),
+    # wrist d405 on i2rt's bracket for the linear_4310 gripper, extrinsics from i2rt's yam station model,
+    # both in the yam's tcp_site frame, the bracket pose is the d405's optical frame
+    "YAM_D405_WRIST_MOUNT": common.Pose(
+        translation=np.array([-0.07043, 0.0, 0.07701]), rpy_vector=np.deg2rad([-25.0, 0.0, -90.0])
+    ),
+    "YAM_D405_WRIST_CAMERA": common.Pose(
+        translation=np.array([-0.07043, -0.009, 0.07701]), rpy_vector=np.deg2rad([90.0, -65.0, 0.0])
+    ),
+    # Rizon 4s D405 wrist camera (assets/objects/rizon_d405_wrist_mount): a rail screwed to the accessory pocket on
+    # the front of the wrist link carries the camera on the -x side of the gripper (facing away from the robot in the
+    # home pose), optical axis tilted 20 deg towards the fingers, image up pointing away from the gripper so that the
+    # fingers show at the bottom of the image, stereo baseline (and USB port) along flange y. Both poses are in the
+    # flange (attachment-site) frame; gripper and TCP are unaffected.
+    "RIZON_D405_WRIST_MOUNT": common.Pose(),
+    "RIZON_D405_WRIST_CAMERA": common.Pose(
+        translation=np.array([-0.065, 0.0, 0.052]), rpy_vector=np.array([np.pi / 2, -np.pi * 70 / 180, 0.0])
     ),
 }
 
@@ -270,6 +370,11 @@ HOME_POSITIONS = {
     "FR3_DUO_LEFT": np.array([0.48797692, -0.57224476, -0.58536988, -2.57958827, 0.86400183, 2.0530809, -0.85965005]),
     "FR3_DUO_RIGHT": np.array([-0.48797676, -0.57224472, 0.58536959, -2.57958788, -0.86400148, 2.05308196, 0.85965057]),
     "FR3_DROID": np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
+    # folded rest pose, grasp point 0.25m in front of and 0.15m above the yam base, gripper pitched 20deg down
+    "YAM_DUO": np.array([0.0, 0.3349, 0.2267, -0.2408, 0.0, 0.0]),
+    # IK solutions for the Rizon 4s duo with the TCP at [0.40, +-0.20, 0.10] in the shared base frame, pointing down
+    "RIZON4S_DUO_LEFT": np.array([-0.355, -0.444, 0.072, 2.063, 0.834, 0.485, -0.862]),
+    "RIZON4S_DUO_RIGHT": np.array([0.476, -0.44, 0.168, 2.35, -0.785, 0.498, 1.29]),
 }
 
 # Append RCS package prefix to all asset paths
