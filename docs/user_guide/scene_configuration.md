@@ -299,6 +299,28 @@ Example:
 
 - `depth[y, x] == 1500` means the point is about **1.5 m** away from the camera
 
+## Camera timing
+
+Simulation cameras render in Python (`rcs.camera.sim.SimCameraSet`) and show one of two simulation states:
+
+- `render_on_demand=True` (default): the state at the moment the frames are requested, e.g. after the
+  last env step.
+- `render_on_demand=False`: the state at the last *exposure* of each camera, like a real camera that
+  records at its `frame_rate`. While the simulation steps, it captures its state at each camera frame
+  rate (the state only, no rendering, about a microsecond per capture); frames are rendered from the
+  latest captured state when they are requested. With a 30 Hz camera and a 10 Hz env, an observation
+  therefore shows the scene up to 33 ms before the end of the env step, as a real camera would.
+
+```python
+camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=False)
+```
+
+Captures follow a fixed schedule of simulation time (`k / frame_rate`, no drift) and happen at the
+physics step closest to each capture time. Frame time stamps are the simulation time of the rendered
+state, and `get_timestamp_frames(ts)` renders the latest exposure at or before `ts` (the last
+`max_buffer_frames` captured states are kept). Cameras with different frame rates are captured
+independently.
+
 ## Rendering backend (Filament)
 
 By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 4.0 also
@@ -314,8 +336,8 @@ sim_cfg = SimConfig(async_control=False, realtime=False, renderer=RendererBacken
 With this flag
 
 - `SimCameraSet(...)` returns a `FilamentSimCameraSet`: color and depth images are rendered with Filament
-  in Python (frames are rendered when requested, a fixed camera frame rate is not supported). Depth images
-  always use the metric units described above. The depth pass is a second Filament render per camera, so
+  instead of the classic renderer (both timing modes below are supported). Depth images always use the
+  metric units described above. The depth pass is a second Filament render per camera, so
   it is skipped when `CameraSetWrapper(include_depth=False)` (or `FilamentSimCameraSet(render_depth=False)`)
   is used.
 - `open_gui()` launches MuJoCo Studio instead of the passive `mujoco.viewer`. Studio runs in the GUI

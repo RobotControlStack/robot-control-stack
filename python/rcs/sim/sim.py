@@ -19,11 +19,10 @@ from rcs._core import common
 from rcs._core.sim import DynamicJointSchema, DynamicJointState
 from rcs._core.sim import GuiClient as _GuiClient
 from rcs._core.sim import Sim as _Sim
-from rcs.sim import RendererBackend, SimConfig, filament, render_context_bootstrap
+from rcs.sim import RendererBackend, SimConfig, filament
 from rcs.sim.composer import ModelComposer
 from rcs.utils import SimpleFrameRate
 
-render_context_bootstrap.bootstrap()
 logger = getLogger(__name__)
 
 

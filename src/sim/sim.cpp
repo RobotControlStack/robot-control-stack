@@ -85,7 +85,7 @@ void Sim::init_dynamic_joint_specs() {
   }
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d) {
   this->init_dynamic_joint_specs();
 };
 
@@ -119,26 +119,6 @@ bool Sim::invoke_condition_callbacks() {
     return true;
   }
   return false;
-}
-
-void Sim::invoke_rendering_callbacks() {
-  // bool scene_updated = false;
-  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
-    RenderingCallback& cb = this->rendering_callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      // if (!scene_updated) {
-      //   // update scene once for all cameras
-      //   mjv_updateScene(this->m, this->d, &this->renderer.opt, NULL, NULL,
-      //   mjCAT_ALL,
-      //                   &this->renderer.scene);
-      //   scene_updated = true;
-      // }
-      mjrContext* ctx = this->renderer.get_context(cb.id);
-      cb.cb(cb.id, *ctx, this->renderer.scene, this->renderer.opt);
-      cb.last_call_timestamp = this->d->time;
-    }
-  }
 }
 
 void Sim::capture_state(StateCapture& capture) {
@@ -211,7 +191,6 @@ void Sim::step(size_t k) {
     this->invoke_callbacks();
     mj_step2(this->m, this->d);
     this->invoke_state_captures();
-    this->invoke_rendering_callbacks();
   }
 }
 
@@ -358,12 +337,6 @@ void Sim::reset_callbacks() {
   for (size_t i = 0; i < std::size(this->all_callbacks); ++i) {
     this->all_callbacks[i].last_call_timestamp = 0;
   }
-  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
-    // this is negative so that we will directly render the cameras
-    // in the first step
-    this->rendering_callbacks[i].last_call_timestamp =
-        -this->rendering_callbacks[i].seconds_between_calls;
-  }
   for (StateCapture& capture : this->state_captures) {
     this->restart_state_capture(capture);
   }
@@ -384,24 +357,6 @@ void Sim::register_all_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
   this->all_callbacks.push_back(
       ConditionCallback{cb, seconds_between_calls, 0.0, false});
-}
-
-void Sim::register_rendering_callback(
-    std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
-        cb,
-    const std::string& id, int frame_rate, size_t width, size_t height) {
-  this->renderer.register_context(id, width, height);
-  // in case frame_rate is zero, rendering needs to be triggered
-  // manually
-  if (frame_rate != 0) {
-    this->rendering_callbacks.push_back(
-        RenderingCallback{.cb = cb,
-                          .id = id,
-                          .seconds_between_calls = 1.0 / frame_rate,
-                          // this is negative so that we will directly render
-                          // the cameras in the first step
-                          .last_call_timestamp = -1.0 / frame_rate});
-  }
 }
 
 size_t Sim::register_state_capture(double frame_rate, size_t buffer_size,
