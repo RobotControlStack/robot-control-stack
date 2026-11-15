@@ -98,6 +98,7 @@ class SessionRunner(threading.Thread):
             "session_dir": None,
             "episode_active": False,
             "episode_steps": 0,
+            "episode_uuid": None,
             "episodes": {"successful": 0, "unsuccessful": 0, "truncated": 0},
             "last_event": None,
             "error": None,
@@ -231,7 +232,7 @@ class SessionRunner(threading.Thread):
             self._operator.set_camera(self._last_obs)
             self._operator.reset_operator_state()
         self._episode_active = False
-        self._set_status(episode_active=False, episode_steps=0)
+        self._set_status(episode_active=False, episode_steps=0, episode_uuid=None)
 
     def _hold_action(self) -> dict[str, Any]:
         """Action that keeps every robot where it is."""
@@ -285,7 +286,7 @@ class SessionRunner(threading.Thread):
         self.storage.set_instruction(self.settings.instruction)
         self.storage.start_record()
         self._episode_active = True
-        self._set_status(episode_active=True, episode_steps=0)
+        self._set_status(episode_active=True, episode_steps=0, episode_uuid=self.storage.uuid.hex)
         self._event("episode started")
 
     def _handle_buttons(self, cmds: TeleopCommands) -> bool:

@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import numpy as np
 import simplejpeg
-from rcs_webui import envs, snapshot
+from rcs_webui import data, envs
 from rcs_webui.session import EnvSpec, SessionRunner
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,16 @@ class App:
             raise ApiError(HTTPStatus.CONFLICT, "no env session is running (viewer only mode)")
         return self.runner
 
+    def _session(self, match: re.Match) -> Path:
+        try:
+            return data.session_path(self.data_root, unquote(match["session"]))
+        except data.DataError as e:
+            raise ApiError(HTTPStatus.NOT_FOUND, str(e)) from e
+
+    def _check_not_recording(self, uuid: str):
+        if self.runner is not None and self.runner.status().get("episode_uuid") == uuid:
+            raise ApiError(HTTPStatus.CONFLICT, "the episode is being recorded, end it first")
+
     def _register(self):
         @self.get("/api/status")
         def status(_h, _m, _q):
@@ -71,17 +81,34 @@ class App:
 
         @self.get("/api/sessions")
         def sessions(_h, _m, _q):
-            out = []
-            if self.data_root.exists():
-                for d in sorted(self.data_root.iterdir(), reverse=True):
-                    if (d / snapshot.CONFIG_FILE).exists():
-                        meta = (
-                            json.loads((d / snapshot.SESSION_FILE).read_text())
-                            if (d / snapshot.SESSION_FILE).exists()
-                            else {}
-                        )
-                        out.append({"name": d.name, **meta})
-            return {"sessions": out}
+            return {"sessions": data.list_sessions(self.data_root)}
+
+        @self.get(r"/api/sessions/(?P<session>[^/]+)/episodes")
+        def episodes(_h, m, _q):
+            return {"episodes": data.list_episodes(self._session(m))}
+
+        @self.get(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)")
+        def episode(_h, m, _q):
+            return data.episode_signals(self._session(m), m["uuid"])
+
+        @self.get(
+            r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/frames/(?P<camera>[^/]+)/(?P<step>\d+)\.jpg"
+        )
+        def episode_frame(h, m, _q):
+            jpeg = data.frame(self._session(m), m["uuid"], unquote(m["camera"]), int(m["step"]))
+            h.send_bytes(jpeg, "image/jpeg")
+
+        @self.post(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/label")
+        def label(_h, m, body):
+            self._check_not_recording(m["uuid"])
+            if not isinstance(body.get("success"), bool):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "success must be true or false")
+            return {"files": data.relabel_episode(self._session(m), m["uuid"], body["success"])}
+
+        @self.post(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/delete")
+        def delete(_h, m, _body):
+            self._check_not_recording(m["uuid"])
+            return {"files": data.delete_episode(self._session(m), m["uuid"])}
 
         @self.get(r"/api/live/(?P<camera>[^/]+)\.jpg")
         def live_frame(h, m, _q):
@@ -155,6 +182,9 @@ class Handler(BaseHTTPRequestHandler):
                     result = fn(self, match, body)
                 except ApiError as e:
                     self.send_json({"error": str(e)}, e.status)
+                    return
+                except data.DataError as e:
+                    self.send_json({"error": str(e)}, HTTPStatus.NOT_FOUND)
                     return
                 except Exception as e:
                     logger.exception("request %s failed", path)

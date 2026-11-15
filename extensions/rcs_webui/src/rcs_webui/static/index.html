@@ -64,10 +64,32 @@
 </section>
 
 <section id="tab-data" class="tabpane" hidden>
-  <div class="card"><p class="muted">The data viewer is not part of this build.</p></div>
+  <div class="card">
+    <div class="row">
+      <label style="flex:1">Session <select id="session-select"></select></label>
+      <button id="reload-sessions" class="btn small">reload</button>
+    </div>
+    <p id="session-meta" class="muted"></p>
+    <table id="episodes">
+      <thead><tr><th>#</th><th>episode</th><th>steps</th><th>duration</th><th>label</th><th>instruction</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="card" id="episode-card" hidden>
+    <h2 id="episode-title"></h2>
+    <p id="episode-error" class="error"></p>
+    <div class="row">
+      <button id="play" class="btn small">play</button>
+      <input id="scrub" type="range" min="0" value="0" style="flex:1">
+      <span id="scrub-label" class="muted"></span>
+    </div>
+    <div id="episode-cameras" class="cameras"></div>
+    <div id="plots" class="plots"></div>
+  </div>
 </section>
 </main>
 
 <script src="app.js"></script>
+<script src="viewer.js"></script>
 </body>
 </html>

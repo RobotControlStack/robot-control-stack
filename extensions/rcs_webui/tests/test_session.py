@@ -2,6 +2,7 @@
 
 import json
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -123,3 +124,56 @@ def test_restart_from_recording_uses_stored_config(interface):
     # everything else is taken over
     cfg_first, _ = snapshot.load_session_config(first)
     assert cfg.camera_cfgs["wrist"].resolution_width == cfg_first.camera_cfgs["wrist"].resolution_width == 64
+
+
+def test_viewer_relabel_and_delete(interface):
+    runner, base, _ = interface
+    record_episode(runner, base, "B")
+    record_episode(runner, base, "Y")
+    session = Path(runner.status()["session_dir"]).name
+    # an active episode can not be edited
+    call(base, "/api/button", {"button": "A"})
+    wait_for(lambda: runner.status()["episode_steps"] >= 2)
+    active = runner.status()["episode_uuid"]
+    with pytest.raises(urllib.error.HTTPError) as err:
+        call(base, f"/api/sessions/{session}/episodes/{active}/delete", {})
+    assert err.value.code == 409
+    call(base, "/api/button", {"button": "Y"})
+    wait_for(lambda: not runner.status()["episode_active"])
+    wait_for(lambda: len(call(base, f"/api/sessions/{session}/episodes")["episodes"]) == 3)
+
+    episodes = call(base, f"/api/sessions/{session}/episodes")["episodes"]
+    assert [e["success"] for e in episodes] == [True, False, False]
+    first, second, third = (e["uuid"] for e in episodes)
+
+    ep = call(base, f"/api/sessions/{session}/episodes/{first}")
+    assert ep["steps"] == episodes[0]["steps"]
+    assert ep["cameras"] == ["bird_eye", "wrist"]
+    robot = ep["robots"]["right"]
+    assert len(robot["step"]["joints"]) == ep["steps"]
+    assert len(robot["step"]["joints"][0]) == 7
+    assert "env_action.tquat" in robot["step"]
+    assert robot["control"]["num_samples"] == ep["steps"] * round(1 / 30 / 0.002)
+    assert len(robot["control"]["tau_J"][0]) == 7
+    jpeg = call(base, f"/api/sessions/{session}/episodes/{first}/frames/wrist/3.jpg")
+    assert jpeg[:2] == b"\xff\xd8"
+
+    call(base, f"/api/sessions/{session}/episodes/{first}/label", {"success": False})
+    call(base, f"/api/sessions/{session}/episodes/{second}/label", {"success": True})
+    call(base, f"/api/sessions/{session}/episodes/{third}/delete", {})
+    episodes = call(base, f"/api/sessions/{session}/episodes")["episodes"]
+    assert [(e["uuid"], e["success"]) for e in episodes] == [(first, False), (second, True)]
+    # only the last row carries the label, like the recorder writes it
+    rows = [r for r in read_session(Path(runner.status()["session_dir"])).to_pylist() if r["uuid"] == second]
+    rows.sort(key=lambda r: r["step"])
+    assert [r["success"] for r in rows] == [False] * (len(rows) - 1) + [True]
+
+    # viewer only mode
+    viewer = make_server(App(None, Path(runner.status()["session_dir"]).parent), "127.0.0.1", 0)
+    serve_in_thread(viewer)
+    try:
+        vbase = f"http://127.0.0.1:{viewer.server_address[1]}"
+        assert call(vbase, "/api/status")["state"] == "viewer"
+        assert len(call(vbase, f"/api/sessions/{session}/episodes")["episodes"]) == 2
+    finally:
+        viewer.shutdown()
