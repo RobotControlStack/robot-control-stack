@@ -95,6 +95,8 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
             urdf=cfg.robot_cfg.kinematic_model_path.endswith(".urdf"),
             joint_limits=cfg.robot_cfg.joint_limits,
         )
+        if cfg.wrapper_cfg.record_control_states:
+            cfg.robot_cfg.record_control_states = True
         robot = hw.Franka(cfg.robot_cfg, ik)
 
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
