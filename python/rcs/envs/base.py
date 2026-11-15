@@ -270,7 +270,16 @@ class SimEnv(BaseEnv):
             self.sim.set_state(self._replay_state[0], self._replay_state[1])
             self._replay_state = None
         elif cfg.async_control:
-            self.sim.step(round(1 / cfg.frequency / self.sim.model.opt.timestep))
+            n_substeps = round(1 / cfg.frequency / self.sim.model.opt.timestep)
+            substep_callbacks = getattr(self.sim, "substep_callbacks", None)
+            if substep_callbacks:
+                # identical to sim.step(n_substeps) but lets e.g. SimControlStateWrapper sample every physics step
+                for _ in range(n_substeps):
+                    self.sim.step(1)
+                    for callback in substep_callbacks:
+                        callback()
+            else:
+                self.sim.step(n_substeps)
             if cfg.realtime:
                 self.frame_rate.frame_rate = cfg.frequency
                 self.frame_rate()

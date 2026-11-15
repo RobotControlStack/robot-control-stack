@@ -22,7 +22,7 @@ from rcs.envs.base import (
     RobotWrapper,
     SimEnv,
 )
-from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper
+from rcs.envs.sim import GripperWrapperSim, RobotSimWrapper, SimControlStateWrapper
 from rcs.sim.composer import ModelComposer
 from rcs.sim.sim import Sim
 from rcs.sim.visual_randomization import VisualRandomizer, VisualRandomizerConfig
@@ -53,6 +53,11 @@ class WrapperConfig:
     binary_gripper: bool = True
     home_on_reset: bool = True
     include_depth: bool = False
+    record_control_states: bool = False
+    """Adds all robot states seen by the low level controller since the last step to
+    ``info["control_states"]`` (one array per signal, shape N or N x D). On hardware this is the 1 kHz
+    control loop (if the robot supports it), in simulation every physics step (only with ``async_control``,
+    otherwise one sample per step)."""
 
 
 #### SIM SPECIFIC ####
@@ -489,7 +494,10 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                 )
             )
         env = RobotWrapper(env, robot, prefixed_cfg.control_mode, home_on_reset=prefixed_cfg.wrapper_cfg.home_on_reset)
-        return RobotSimWrapper(env)
+        env = RobotSimWrapper(env)
+        if prefixed_cfg.wrapper_cfg.record_control_states:
+            env = SimControlStateWrapper(env)
+        return env
 
     def add_gripper_mujoco(
         self, cfg: SimEnvCreatorConfig, composer: ModelComposer, robot_name: str, gripper_xml: str, attachment_site: str
