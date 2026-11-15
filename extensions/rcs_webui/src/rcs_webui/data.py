@@ -56,7 +56,7 @@ def _dataset(session_dir: Path) -> ds.Dataset | None:
 
 
 def list_sessions(data_root: Path) -> list[dict[str, Any]]:
-    out = []
+    out: list[dict[str, Any]] = []
     root = Path(data_root)
     if not root.exists():
         return out

@@ -380,6 +380,7 @@ class VLAgentsPolicyClient(PolicyClient):
 
         if self._agent is None:
             self.connect()
+        assert self._agent is not None
         obs = request.observation
         robots = self.options.get("robots") or [k for k in obs if k != "frames"]
         cameras = {name: frame["rgb"]["data"] for name, frame in (obs.get("frames") or {}).items()}
