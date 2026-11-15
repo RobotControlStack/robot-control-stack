@@ -55,3 +55,11 @@ def test_consume_action_swaps_gripper_with_controller():
 
     assert np.allclose(actions["left"]["gripper"], np.array([0.75]))
     assert np.allclose(actions["right"]["gripper"], np.array([0.25]))
+
+
+def test_is_engaged_follows_index_trigger():
+    operator = QuestOperator.__new__(QuestOperator)
+    operator._engaged = {"left": False, "right": False}
+    assert not QuestOperator.is_engaged(operator)
+    operator._engaged["right"] = True
+    assert QuestOperator.is_engaged(operator)

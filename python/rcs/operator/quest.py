@@ -83,6 +83,7 @@ class QuestOperator(BaseOperator):
         self._unsuccessful_btn = "Y"
 
         self._prev_data = None
+        self._engaged = {key: False for key in self.controller_names}
         self._exit_requested = False
         self._grp_pos = {key: 1.0 for key in self.controller_names}  # start with opened gripper
         self._last_controller_pose = {key: Pose() for key in self.controller_names}
@@ -179,6 +180,10 @@ class QuestOperator(BaseOperator):
                 )
         return transforms
 
+    def is_engaged(self) -> bool:
+        # the robot follows a controller only while its index trigger is held
+        return any(self._engaged.values())
+
     def set_camera(self, observation: dict) -> None:
         if not self.config.display_cameras:
             return
@@ -267,6 +272,7 @@ class QuestOperator(BaseOperator):
                 #     )
 
                 trigger_pressed = self._normalize_axis(input_data[controller][self._trg_btn[controller]]) > 0.5
+                self._engaged[controller] = trigger_pressed
                 if prev_data is None:
                     prev_trigger_pressed = False
                 else:

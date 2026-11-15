@@ -53,6 +53,11 @@ class BaseOperator(ABC, threading.Thread):
     def set_camera(self, observation: dict[str, Any]) -> None:
         """Optional hook for operators that want to consume camera observations."""
 
+    def is_engaged(self) -> bool:
+        """True while the human actively commands the robot (e.g. a teleop trigger is held).
+        Used to detect human interventions during policy rollouts. Must be thread-safe."""
+        return False
+
     def close(self):
         pass
 
