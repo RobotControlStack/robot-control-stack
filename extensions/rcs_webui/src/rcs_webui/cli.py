@@ -133,6 +133,22 @@ def collect(
     run_interface(settings, spec, host, port)
 
 
+@app.command()
+def view(
+    data_root: DataRootOpt = Path("rcs_data"),
+    host: Annotated[str, typer.Option(help="address of the web server")] = "0.0.0.0",
+    port: Annotated[int, typer.Option(help="port of the web server")] = 8080,
+):
+    """Only the data viewer (plots, camera playback, relabel, delete), no env is started."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    server = make_server(App(None, data_root), host, port)
+    logger.info("viewer on http://%s:%d for %s", host, port, data_root)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
+
+
 @app.command("envs")
 def list_envs():
     """Lists the envs that can be started."""
