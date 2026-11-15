@@ -2,7 +2,9 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
+import pyarrow as pa
 import pyarrow.dataset as ds
+import pytest
 from rcs.envs.storage_wrapper import StorageWrapper
 
 
@@ -57,3 +59,16 @@ def test_storage_wrapper_stores_control_states_and_truncation(tmp_path):
         assert q.shape == (n, 7)
         assert np.all(q == i + 1)
         assert np.asarray(states["O_T_EE"]).reshape(states["O_T_EE_shape"]).shape == (n, 16)
+
+
+def test_storage_wrapper_raises_when_writer_died(tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("not a directory")
+    env = StorageWrapper(_Env(100), str(blocker / "data"), "test", batch_size=2, always_record=True)
+    batch = pa.RecordBatch.from_pylist([{"a": 1}])
+    env._put(batch)  # the writer fails on this batch because the target can not be created
+    env._writer_future.exception(timeout=10)
+    env.queue.put(batch)
+    env.queue.put(batch)  # queue is full now, the old code would block forever here
+    with pytest.raises(RuntimeError, match="Writer thread failed"):
+        env._put(batch)
