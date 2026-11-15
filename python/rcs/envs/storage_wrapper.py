@@ -53,6 +53,12 @@ class StorageWrapper(gym.Wrapper):
             in-place, and their original shapes are stored alongside as
             ``"<key>_shape"``. Nested dicts are traversed recursively.
         - Lists/tuples of arrays are not supported.
+        - The info dict is stored as well. Numpy arrays with ndim > 1 inside it (e.g. the
+            ``N x D`` control loop states of one step in ``info["control_states"]``) are stored
+            flattened with their shape in ``"<key>_shape"``, the info dict returned to the
+            caller is not modified.
+        - ``terminated`` and ``truncated`` of every step are stored in their own columns, e.g. an
+            episode that was ended by a robot error has ``truncated=True`` in its last row.
         - ``close()`` must be called to flush the final batch and run consolidation.
 
         Parameters
@@ -221,6 +227,20 @@ class StorageWrapper(gym.Wrapper):
                 updates[f"{k}_shape"] = v.shape
         d.update(updates)
 
+    @classmethod
+    def _flattened(cls, d: dict[str, Any]) -> dict[str, Any]:
+        """Like _flatten_arrays but returns a new dict and leaves the input untouched."""
+        out: dict[str, Any] = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                out[k] = cls._flattened(v)
+            elif isinstance(v, np.ndarray) and len(v.shape) > 1:
+                out[k] = v.reshape(-1)
+                out[f"{k}_shape"] = v.shape
+            else:
+                out[k] = v
+        return out
+
     def _encode_images(self, obs: dict[str, Any]):
         # images
         _ = [
@@ -284,8 +304,10 @@ class StorageWrapper(gym.Wrapper):
 
             frame = {
                 "obs": obs,
-                "info": info,
+                "info": self._flattened(info),
                 "reward": reward,
+                "terminated": bool(terminated),
+                "truncated": bool(truncated),
                 "step": self.step_cnt,
                 "uuid": self.uuid.hex,
                 "date": datetime.date.today().isoformat(),
