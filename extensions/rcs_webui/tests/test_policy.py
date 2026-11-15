@@ -111,3 +111,21 @@ def test_rtc_starved_waits():
     # without step time the old chunk runs out before the answer: the loop waits for it
     assert sources[4].chunk_id == 1
     assert sources[4].waited > 0.05
+
+
+def test_rtc_receding_horizon_matches_replan_steps():
+    """execute_steps = r actions per chunk counted from the switch-over index (the SURF replan_steps)."""
+    client = MockPolicyClient(horizon=16)
+    executor = ChunkExecutor(client, execute_steps=8, rtc_delay=3)
+    executor.reset("pick")
+    sources = run(executor, 30, step_time=0.005)
+    # boot chunk: rows 0..7, query at step 5 with prefix rows 5..7
+    assert client.requests[1].episode_step == 5
+    assert client.requests[1].prefix_start == 5
+    # chunk 1 starts at index 3 (step 8) and executes 8 actions (indices 3..10, steps 8..15)
+    chunk1 = [s for s in sources if s.chunk_id == 1]
+    assert [s.chunk_index for s in chunk1] == list(range(3, 11))
+    # next query 3 steps before its end: index 8 of chunk 1 = step 13, prefix rows 8..10
+    assert client.requests[2].episode_step == 13
+    assert client.requests[2].prefix_start == 8
+    assert np.array_equal(np.asarray(client.requests[2].prefix)[:, 1], [8, 9, 10])

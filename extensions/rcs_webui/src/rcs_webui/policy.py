@@ -159,6 +159,8 @@ class _Chunk:
     sent: float
     received: float
     switch_step: int = -1
+    start_index: int = 0
+    """index of the chunk at which its execution started (0 or, with RTC, the switch-over index)"""
 
 
 @dataclass(kw_only=True)
@@ -182,12 +184,14 @@ class StepSource:
 class ChunkExecutor:
     """Turns a policy client into one action per env step.
 
-    Without RTC (default): the first ``execute_steps`` actions of a chunk are executed, then the server is
-    queried synchronously with the newest observation.
+    ``execute_steps`` actions are executed from every chunk (default: all), counted from where its execution
+    starts. Without RTC (default) the server is then queried synchronously with the newest observation.
 
-    With RTC (``rtc_delay > 0``): ``rtc_delay`` steps before the switch-over step (after ``execute_steps``
-    actions of the current chunk) a query with the prefix and the guidance is sent from a worker thread while the
-    loop keeps executing the current chunk, see the module docstring.
+    With RTC (``rtc_delay > 0``): ``rtc_delay`` steps before the switch-over step (the end of the executed part of
+    the current chunk) a query with the prefix and the guidance is sent from a worker thread while the loop keeps
+    executing the current chunk, see the module docstring. A new chunk starts at the index it is switched in
+    (normally ``rtc_delay``), so with ``execute_steps = r`` every chunk contributes ``r`` actions, like a
+    receding horizon with ``r`` replan steps.
     """
 
     def __init__(self, client: PolicyClient, *, execute_steps: int | None = None, rtc_delay: int = 0):
@@ -226,8 +230,15 @@ class ChunkExecutor:
         self._pool.shutdown(wait=False, cancel_futures=True)
 
     def _horizon(self, chunk: _Chunk) -> int:
+        """Index after the last action that is executed from this chunk: ``execute_steps`` actions counted
+        from where its execution started."""
         n = len(chunk.chunk.actions)
-        return n if self.execute_steps is None else min(self.execute_steps, n)
+        return n if self.execute_steps is None else min(chunk.start_index + self.execute_steps, n)
+
+    def _activate(self, chunk: _Chunk, episode_step: int) -> _Chunk:
+        chunk.switch_step = episode_step
+        chunk.start_index = episode_step - chunk.request.episode_step
+        return chunk
 
     def _send(
         self, obs: dict[str, Any], episode_step: int, current: _Chunk | None
@@ -269,23 +280,20 @@ class ChunkExecutor:
                 if self._pending is not None and self._pending[2].done():
                     pending_idx = episode_step - self._pending[0].episode_step
                     if pending_idx >= self._pending[0].delay or idx >= len(current.chunk.actions):
-                        current = self._take(self._pending)
-                        current.switch_step = episode_step
+                        current = self._activate(self._take(self._pending), episode_step)
                         self._pending = None
                 if current is self._current and idx >= len(current.chunk.actions):
                     # starved: the old chunk is used up and the answer is not there yet, wait for it
                     t0 = time.time()
                     pending = self._pending or self._send(obs, episode_step, None)
-                    current = self._take(pending)
-                    current.switch_step = episode_step
+                    current = self._activate(self._take(pending), episode_step)
                     self._pending = None
                     waited = time.time() - t0
             elif idx >= horizon:
                 current = None
         if current is None:
             t0 = time.time()
-            current = self._take(self._send(obs, episode_step, None))
-            current.switch_step = episode_step
+            current = self._activate(self._take(self._send(obs, episode_step, None)), episode_step)
             waited = time.time() - t0
         self._current = current
         idx = episode_step - current.request.episode_step
