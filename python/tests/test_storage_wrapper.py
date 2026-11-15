@@ -61,6 +61,17 @@ def test_storage_wrapper_stores_control_states_and_truncation(tmp_path):
         assert np.asarray(states["O_T_EE"]).reshape(states["O_T_EE_shape"]).shape == (n, 16)
 
 
+def test_storage_wrapper_annotations(tmp_path):
+    env = StorageWrapper(_Env(3), str(tmp_path), "test", batch_size=2, always_record=True)
+    env.reset()
+    for i in range(3):
+        env.annotate_step(source="policy", chunk_id=7, chunk_index=i)
+        env.step({"joints": np.zeros(7)})
+    env.close()
+    rows = ds.dataset(str(tmp_path), format="parquet").to_table().sort_by("step").to_pylist()
+    assert [r["annotations"] for r in rows] == [{"source": "policy", "chunk_id": 7, "chunk_index": i} for i in range(3)]
+
+
 def test_storage_wrapper_raises_when_writer_died(tmp_path):
     blocker = tmp_path / "file"
     blocker.write_text("not a directory")

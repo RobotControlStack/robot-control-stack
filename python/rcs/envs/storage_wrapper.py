@@ -101,6 +101,7 @@ class StorageWrapper(gym.Wrapper):
         self._prev_absolute_action = None
         self.success_from_env = success_from_env
         self.allow_wrapper_instruction = allow_wrapper_instruction
+        self._annotations: dict[str, Any] | None = None
 
         self.thread_pool = ThreadPoolExecutor()
         self.queue: Queue[pa.Table | pa.RecordBatch] = Queue(maxsize=2)
@@ -329,6 +330,8 @@ class StorageWrapper(gym.Wrapper):
                 "instruction": self.instruction,
                 "timestamp": datetime.datetime.now().timestamp(),
             }
+            if self._annotations is not None:
+                frame["annotations"] = self._annotations
 
             self._prev_action = action
 
@@ -340,7 +343,14 @@ class StorageWrapper(gym.Wrapper):
                 # can still mark the episode as successful even if the batch boundary was hit.
                 self._flush(keep_last=True)
 
+        self._annotations = None
         return obs_original, reward, terminated, truncated, info
+
+    def annotate_step(self, **annotations: Any):
+        """Adds fields to the ``annotations`` column of the next recorded step, e.g. where its action came from
+        (policy chunk and index, query times, human intervention). Use the same keys and types in every step
+        of a dataset, the column type is inferred from the first rows."""
+        self._annotations = dict(annotations)
 
     def set_instruction(self, instruction: str):
         self.instruction = instruction
