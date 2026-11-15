@@ -1,0 +1,86 @@
+import json
+import subprocess
+
+import numpy as np
+import pytest
+from rcs.envs.base import ControlMode
+from rcs.envs.configs import EmptyWorldDroid, EmptyWorldFR3, EmptyWorldFR3Duo
+from rcs_webui import snapshot
+
+
+def _assert_close(a, b, path="cfg"):
+    """Compares two serialized configs, poses may differ by float noise."""
+    if isinstance(a, dict):
+        assert isinstance(b, dict), path
+        assert a.keys() == b.keys(), path
+        for k in a:
+            _assert_close(a[k], b[k], f"{path}.{k}")
+    elif isinstance(a, list):
+        assert len(a) == len(b), path
+        for i, (x, y) in enumerate(zip(a, b, strict=True)):
+            _assert_close(x, y, f"{path}[{i}]")
+    elif isinstance(a, float):
+        assert a == pytest.approx(b, abs=1e-9), path
+    else:
+        assert a == b, path
+
+
+@pytest.mark.parametrize("creator", [EmptyWorldFR3(), EmptyWorldFR3Duo(), EmptyWorldDroid()])
+def test_config_round_trip(creator):
+    cfg = creator.config()
+    text = snapshot.config_to_json(cfg)
+    restored = snapshot.config_from_json(text)
+    _assert_close(json.loads(text), json.loads(snapshot.config_to_json(restored)))
+    assert type(restored) is type(cfg)
+    assert restored.control_mode == cfg.control_mode
+    name = next(iter(cfg.robot_cfgs))
+    assert np.allclose(restored.robot_cfgs[name].q_home, cfg.robot_cfgs[name].q_home)
+    assert restored.robot_cfgs[name].tcp_offset.is_close(cfg.robot_cfgs[name].tcp_offset)
+
+
+def test_fr3_hardware_config_round_trip():
+    configs = pytest.importorskip("rcs_fr3.configs")
+    cfg = configs.DefaultFR3HardwareEnv().config()
+    cfg.robot_cfg.record_control_states = True
+    restored = snapshot.config_from_json(snapshot.config_to_json(cfg))
+    assert restored.robot_cfg.ip == cfg.robot_cfg.ip
+    assert restored.robot_cfg.record_control_states is True
+    assert restored.gripper_cfg.force == cfg.gripper_cfg.force
+    assert restored.camera_cfgs["realsense"].camera_cfgs["side"].identifier == "243522070385"
+
+
+def test_overrides():
+    cfg_json = snapshot.to_jsonable(EmptyWorldFR3().config())
+    snapshot.apply_overrides(
+        cfg_json,
+        {
+            "sim_cfg.frequency": 20,
+            "control_mode": "JOINTS",
+            "robot_cfgs.right.q_home": [0.0] * 7,
+            "camera_cfgs.wrist.resolution_width": 64,
+        },
+    )
+    cfg = snapshot.from_jsonable(cfg_json)
+    assert cfg.sim_cfg.frequency == 20
+    assert cfg.control_mode == ControlMode.JOINTS
+    assert np.allclose(cfg.robot_cfgs["right"].q_home, 0)
+    assert cfg.camera_cfgs["wrist"].resolution_width == 64
+    with pytest.raises(KeyError):
+        snapshot.apply_overrides(cfg_json, {"sim_cfg.does_not_exist": 1})
+
+
+def test_git_state_logs_commit_and_diff(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    (repo / "a.txt").write_text("a\n")
+    subprocess.run([*git, "add", "a.txt"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "init"], check=True)
+    (repo / "a.txt").write_text("b\n")
+    (repo / "new.txt").write_text("new\n")
+    state = snapshot.git_state(repo)
+    assert state is not None
+    assert len(state["commit"]) == 40
+    assert "+b" in state["diff"]
+    assert state["untracked"] == ["new.txt"]
