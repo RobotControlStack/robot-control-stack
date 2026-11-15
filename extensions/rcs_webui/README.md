@@ -129,6 +129,44 @@ relabel it with the check / cross buttons or delete it (both rewrite the parquet
 episode that is being recorded can not be changed). `rcs-webui view --data-root ~/rcs_data` starts only the
 viewer, e.g. on another machine.
 
+### 9. Evaluate a policy
+
+```shell
+pip install -ve "extensions/rcs_webui[eval]"     # VLAgents client (only for --policy vlagents)
+rcs-webui eval --config ~/rcs_configs/fr3_joints.json --data-root ~/rcs_eval \
+    --policy vlagents --policy-server gpu-host:20000 --policy-option model='"lerobot"' --instruction "..."
+# try it without robot and server:
+rcs-webui eval --env rcs/fr3 --operator none --policy mock --policy-server mock:0 --data-root ~/rcs_eval
+```
+
+The env config must match the action space of the policy (VLAgents: absolute joints, `control_mode JOINTS`,
+`relative_to NONE`); eval does not adapt default configs to the Quest. `A` starts a rollout, `B` / `Y` label it.
+Holding the Quest trigger takes over (human intervention, only when the env uses the Quest action space); the
+policy continues with a fresh chunk when it is released. In the web page the policy server (client, host, port,
+actions per chunk, RTC delay, client options) can be switched at any time without restarting the interface.
+
+Every step of an episode has an `annotations` column: `source` (`policy`, `intervention`, `teleop`), `chunk_id`,
+`chunk_index`, `request_id`, `request_sent`, `response_received` (host clock s), `switch_step` (episode step at
+which the chunk took over) and `waited` (s the loop waited for the server in that step).
+
+#### Policy server clients
+
+A client implements `rcs_webui.policy.PolicyClient` (`connect`, `reset(instruction)`, `infer(ChunkRequest) ->
+ActionChunk`, `close`, `capabilities`). It is selected with `--policy` by built-in name (`vlagents`, `mock`), by an
+entry point of the group `rcs_webui.policy_clients` of an installed package, or as `my_package.module:MyClient`.
+Clients of other projects live in those projects, RCS only ships the VLAgents client (untested against a running
+VLAgents server, it follows `examples/inference/franka.py`) and the mock.
+
+#### Real-time chunking (off by default)
+
+With `--rtc-delay d` (only for clients with `capabilities.realtime_chunking`) the next chunk is requested `d` steps
+before the switch-over step (after `--execute-steps` actions of the current chunk, default the whole chunk), from a
+worker thread while the robot keeps executing. The request carries the observation, the committed prefix (the `d`
+raw actions executed meanwhile, `prefix`, with `prefix_chunk_id` / `prefix_start`) and the rest of the current
+chunk (`guidance`, the switch-over part to inpaint). The returned chunk is aligned to the query step; the loop
+switches to it at the switch-over step at index `d`, or as soon as it arrives if it is late (at the aligned index),
+and waits only if the current chunk is used up.
+
 ### Troubleshooting
 
 - `simpub is not installed`: install SimPublisher (step 3) or start with `--operator none`.
