@@ -61,6 +61,8 @@ def test_rtc_switches_at_switch_over_step_with_prefix():
     # the first actions of the new chunk are the committed prefix that was executed meanwhile
     assert sources[8].chunk_index == 2
     request = client.requests[1]
+    assert request.prefix is not None
+    assert request.guidance is not None
     assert request.episode_step == 6
     assert request.delay == 2
     assert np.array_equal(request.prefix, [[0, 6], [0, 7]])
@@ -69,7 +71,7 @@ def test_rtc_switches_at_switch_over_step_with_prefix():
     assert request.guidance.shape == (0, 2)
     # next query is 2 steps before the end of chunk 1 (index 6 of it = step 12)
     assert client.requests[2].episode_step == 12
-    assert np.array_equal(client.requests[2].prefix, [[1, 6], [1, 7]])
+    assert np.array_equal(np.asarray(client.requests[2].prefix), [[1, 6], [1, 7]])
     assert all(s.waited == 0.0 for s in sources[1:])
 
 
@@ -79,6 +81,8 @@ def test_rtc_guidance_with_partial_execution():
     executor.reset("pick")
     run(executor, 8, step_time=0.01)
     request = client.requests[1]
+    assert request.prefix is not None
+    assert request.guidance is not None
     assert request.episode_step == 4
     assert np.array_equal(request.prefix, [[0, 4], [0, 5]])
     # the rest of the current chunk after the switch-over step is sent for inpainting

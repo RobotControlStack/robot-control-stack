@@ -183,10 +183,11 @@ class SessionRunner(threading.Thread):
             source["edited_in_interface"] = spec.config_data.get("source", True)
         elif spec.from_recording is not None:
             cfg, meta = snapshot.load_session_config(Path(spec.from_recording))
-            name = meta.get("creator")
-            if name is None:
+            creator = meta.get("creator")
+            if creator is None:
                 msg = f"{spec.from_recording} has no creator in its session.json"
                 raise ValueError(msg)
+            name = str(creator)
             source["from_recording"] = str(spec.from_recording)
         elif spec.config_file is not None:
             name, cfg_json = configs.read_file(Path(spec.config_file), spec.env)
