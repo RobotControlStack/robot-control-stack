@@ -194,8 +194,17 @@ class TeleopLoop:
             # 2. Step the Environment
             actions = self.operator.consume_action()
             actions = self._translate_keys(actions)
-            self._last_obs, _, _, _, _ = self.env.step(actions)
+            self._last_obs, _, terminated, truncated, info = self.env.step(actions)
             self.operator.set_camera(self._last_obs)
+            if terminated or truncated:
+                # e.g. a robot error (reflex): end the episode as unsuccessful instead of continuing silently
+                logger.warning(
+                    "Episode ended by the env (terminated=%s, truncated=%s): %s", terminated, truncated, info
+                )
+                self._last_obs, _ = self.env.reset()
+                self.operator.set_camera(self._last_obs)
+                self.operator.reset_operator_state()
+                self._synced = self.operator.control_mode[1] != RelativeTo.NONE
 
     def sync_robot_to_operator(self, duration: float = 3.0):
         print(f"Command: Syncing robot to operator (duration: {duration}s)...")
