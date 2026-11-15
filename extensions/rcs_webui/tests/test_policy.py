@@ -129,3 +129,21 @@ def test_rtc_receding_horizon_matches_replan_steps():
     assert client.requests[2].episode_step == 13
     assert client.requests[2].prefix_start == 8
     assert np.array_equal(np.asarray(client.requests[2].prefix)[:, 1], [8, 9, 10])
+
+
+def test_action_at_converts_at_execution_time():
+    class RawOnly(MockPolicyClient):
+        def infer(self, request):
+            chunk = super().infer(request)
+            chunk.actions = []
+            return chunk
+
+        def action_at(self, chunk, index, observation):
+            return {"row": chunk.raw[index].tolist(), "obs": observation["right"]["joints"][0]}
+
+    executor = ChunkExecutor(RawOnly(horizon=4), execute_steps=4)
+    executor.reset("pick")
+    for step in range(6):
+        obs = {"right": {"joints": np.full(7, float(step)), "gripper": [1.0]}}
+        action, source, _ = executor.act(obs, step)
+        assert action == {"row": [source.request_id, source.chunk_index], "obs": float(step)}
