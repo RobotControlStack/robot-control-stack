@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import signal
 import threading
 from pathlib import Path
@@ -65,8 +66,17 @@ def run_interface(settings: SessionSettings, spec: EnvSpec, host: str, port: int
     runner = SessionRunner(settings, spec, operator)
     server = make_server(App(runner, settings.data_root), host, port)
     stop = threading.Event()
-    signal.signal(signal.SIGINT, lambda *_: stop.set())
-    signal.signal(signal.SIGTERM, lambda *_: stop.set())
+
+    def _on_signal(*_):
+        # first Ctrl+C: graceful shutdown (flushes the recording); second: hard exit, so a hanging
+        # close can never make the process unkillable from the terminal
+        if stop.is_set():
+            logger.warning("second interrupt, exiting without waiting")
+            os._exit(130)
+        stop.set()
+
+    signal.signal(signal.SIGINT, _on_signal)
+    signal.signal(signal.SIGTERM, _on_signal)
     runner.start()
     serve_in_thread(server)
     logger.info("interface on http://%s:%d , data in %s", host, port, settings.data_root)
