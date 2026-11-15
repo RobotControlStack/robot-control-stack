@@ -76,14 +76,18 @@ class ChunkRequest:
 class ActionChunk:
     """Answer of the policy server."""
 
-    actions: list[dict[str, Any]]
-    """RCS env actions, one per step, aligned to ``ChunkRequest.episode_step``."""
+    actions: list[dict[str, Any]] = field(default_factory=list)
+    """RCS env actions, one per step, aligned to ``ChunkRequest.episode_step``. May be left empty if the client
+    converts the raw actions at execution time (see :meth:`PolicyClient.action_at`)."""
     raw: np.ndarray | None = None
     """The same chunk in the server's action space (``H x A``), needed for RTC."""
     metadata: dict[str, Any] = field(default_factory=dict)
     """Anything the server reports (e.g. inference time), logged but not interpreted."""
     done: bool = False
     """The policy considers the episode finished."""
+
+    def __len__(self) -> int:
+        return len(self.actions) if self.actions else (0 if self.raw is None else len(self.raw))
 
 
 class PolicyClient(abc.ABC):
@@ -106,6 +110,12 @@ class PolicyClient(abc.ABC):
     @abc.abstractmethod
     def infer(self, request: ChunkRequest) -> ActionChunk:
         """Returns the action chunk for the request (blocking)."""
+
+    def action_at(self, chunk: ActionChunk, index: int, observation: dict[str, Any]) -> dict[str, Any]:
+        """RCS env action for row ``index`` of the chunk, called when it is executed with the newest observation.
+        Override it for actions that depend on the state at execution time (e.g. a gripper velocity that is
+        integrated against the measured gripper width). Default: ``chunk.actions[index]``."""
+        return chunk.actions[index]
 
     def close(self) -> None:  # noqa: B027
         """Releases the connection."""
@@ -232,7 +242,7 @@ class ChunkExecutor:
     def _horizon(self, chunk: _Chunk) -> int:
         """Index after the last action that is executed from this chunk: ``execute_steps`` actions counted
         from where its execution started."""
-        n = len(chunk.chunk.actions)
+        n = len(chunk.chunk)
         return n if self.execute_steps is None else min(chunk.start_index + self.execute_steps, n)
 
     def _activate(self, chunk: _Chunk, episode_step: int) -> _Chunk:
@@ -260,7 +270,7 @@ class ChunkExecutor:
     def _take(self, pending: tuple[ChunkRequest, float, Future]) -> _Chunk:
         request, sent, future = pending
         chunk = future.result()
-        if not chunk.actions:
+        if len(chunk) == 0:
             msg = "the policy server returned an empty chunk"
             raise RuntimeError(msg)
         return _Chunk(chunk_id=request.request_id, request=request, chunk=chunk, sent=sent, received=time.time())
@@ -279,10 +289,10 @@ class ChunkExecutor:
                 # switch to the newest answer once its switch-over step is reached
                 if self._pending is not None and self._pending[2].done():
                     pending_idx = episode_step - self._pending[0].episode_step
-                    if pending_idx >= self._pending[0].delay or idx >= len(current.chunk.actions):
+                    if pending_idx >= self._pending[0].delay or idx >= len(current.chunk):
                         current = self._activate(self._take(self._pending), episode_step)
                         self._pending = None
-                if current is self._current and idx >= len(current.chunk.actions):
+                if current is self._current and idx >= len(current.chunk):
                     # starved: the old chunk is used up and the answer is not there yet, wait for it
                     t0 = time.time()
                     pending = self._pending or self._send(obs, episode_step, None)
@@ -297,7 +307,7 @@ class ChunkExecutor:
             waited = time.time() - t0
         self._current = current
         idx = episode_step - current.request.episode_step
-        idx = min(idx, len(current.chunk.actions) - 1)
+        idx = min(idx, len(current.chunk) - 1)
         source = StepSource(
             chunk_id=current.chunk_id,
             chunk_index=idx,
@@ -307,7 +317,7 @@ class ChunkExecutor:
             switch_step=current.switch_step,
             waited=waited,
         )
-        return current.chunk.actions[idx], source, current.chunk.done
+        return self.client.action_at(current.chunk, idx, obs), source, current.chunk.done
 
 
 # ---------------------------------------------------------------------------------------------------- clients
