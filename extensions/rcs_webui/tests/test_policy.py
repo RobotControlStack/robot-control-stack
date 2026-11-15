@@ -64,6 +64,8 @@ def test_rtc_switches_at_switch_over_step_with_prefix():
     assert request.episode_step == 6
     assert request.delay == 2
     assert np.array_equal(request.prefix, [[0, 6], [0, 7]])
+    assert request.prefix_chunk_id == 0
+    assert request.prefix_start == 6
     assert request.guidance.shape == (0, 2)
     # next query is 2 steps before the end of chunk 1 (index 6 of it = step 12)
     assert client.requests[2].episode_step == 12
