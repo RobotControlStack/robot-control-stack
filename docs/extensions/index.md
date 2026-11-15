@@ -17,4 +17,5 @@ rcs_usb_cam
 rcs_tacto
 rcs_robotiq2f85
 rcs_zed
+rcs_webui
 ```
