@@ -13,6 +13,7 @@ import rcs._core.common
 from . import exceptions
 
 __all__: list[str] = [
+    "ControlStateBuffer",
     "FHConfig",
     "FHState",
     "FR3Config",
@@ -25,6 +26,7 @@ __all__: list[str] = [
     "PandaConfig",
     "RobotMode",
     "RobotState",
+    "control_state_error_names",
     "exceptions",
     "franka_ik",
     "kAutomaticErrorRecovery",
@@ -36,6 +38,22 @@ __all__: list[str] = [
     "kUserStopped",
     "rcs_ik",
 ]
+
+class ControlStateBuffer:
+    """
+    Lock-free ring buffer of the states seen by the 1 kHz control loop.
+    """
+
+    def __init__(self, capacity: int = 8192) -> None: ...
+    def capacity(self) -> int: ...
+    def clear(self) -> None: ...
+    def drain(self) -> dict: ...
+    def push(self, state: RobotState) -> bool:
+        """
+        Adds a state as the control loop would do (for tests and mocks).
+        """
+
+    def size(self) -> int: ...
 
 class FHConfig(rcs._core.common.GripperConfig):
     async_control: bool
@@ -76,10 +94,16 @@ class FHState(rcs._core.common.GripperState):
 class Franka(rcs._core.common.Robot):
     def __init__(self, cfg: FrankaConfig, ik: rcs._core.common.Kinematics | None = None) -> None: ...
     def automatic_error_recovery(self) -> None: ...
+    def clear_control_states(self) -> None: ...
     def controller_set_joint_position(
         self, desired_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     ) -> None: ...
     def double_tap_robot_to_continue(self) -> None: ...
+    def drain_control_states(self) -> dict:
+        """
+        Returns and removes all states recorded by the control loop since the last call, see FrankaConfig.record_control_states.
+        """
+
     def get_cartesian_flange_position(self) -> rcs._core.common.Pose: ...
     def get_config(self) -> FrankaConfig: ...
     def get_state(self) -> FrankaState: ...
@@ -119,6 +143,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     kp_r: float
     load_parameters: FrankaLoad | None
     policy_rate: int
+    record_control_states: bool
     speed_factor: float
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
@@ -350,6 +375,11 @@ class FrankaState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...
     @property
     def robot_state(self) -> RobotState: ...
+
+def control_state_error_names() -> list[str]:
+    """
+    Names of the franka error flags, index i is bit i of the current_errors and last_motion_errors masks.
+    """
 
 franka_ik: IKSolver  # value = <IKSolver.franka_ik: 0>
 kAutomaticErrorRecovery: RobotMode  # value = <RobotMode.kAutomaticErrorRecovery: 6>

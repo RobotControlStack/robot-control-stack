@@ -35,6 +35,7 @@ Franka::Franka(const FrankaConfig& cfg,
       m_ik(ik),
       robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
                                         : franka::RealtimeConfig::kEnforce) {
+  this->m_record_control_states.store(cfg.record_control_states);
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -56,6 +57,7 @@ Franka::~Franka() {
 bool Franka::set_config(const FrankaConfig& cfg) {
   this->m_cfg = cfg;
   this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
+  this->m_record_control_states.store(cfg.record_control_states);
 
   if (this->m_cfg.load_parameters.has_value()) {
     auto load_value = &(this->m_cfg.load_parameters.value());
@@ -269,6 +271,13 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   }
 }
 
+void Franka::record_control_state(
+    const franka::RobotState& robot_state) noexcept {
+  if (this->m_record_control_states.load(std::memory_order_relaxed)) {
+    this->m_control_states.push(robot_state);
+  }
+}
+
 void Franka::check_for_background_errors() {
   std::exception_ptr ex = this->background_exception.load_and_clear();
   if (ex) {
@@ -474,6 +483,7 @@ void Franka::osc() {
       int traj_rate = 500;
 
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       this->interpolator_mutex.lock();
       this->controller_time += period.toSec();
@@ -665,6 +675,7 @@ void Franka::joint_controller() {
       common::Vector7d desired_q;
 
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       this->interpolator_mutex.lock();
       this->controller_time += period.toSec();
@@ -747,6 +758,7 @@ void Franka::zero_torque_controller() {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       this->interpolator_mutex.lock();
       this->controller_time += period.toSec();
