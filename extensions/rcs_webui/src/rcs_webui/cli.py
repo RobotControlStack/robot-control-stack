@@ -10,7 +10,7 @@ from typing import Annotated, Any, Optional
 import typer
 from rcs_webui import configs, envs, snapshot
 from rcs_webui.server import App, make_server, serve_in_thread
-from rcs_webui.session import EnvSpec, SessionRunner, SessionSettings
+from rcs_webui.session import EnvSpec, PolicySettings, SessionRunner, SessionSettings
 
 logger = logging.getLogger("rcs_webui")
 
@@ -132,6 +132,67 @@ def collect(
         quest_addr=quest_addr,
         quest_switched_left_right=quest_switch_left_right,
         config_dirs=list(config_dir or []),
+    )
+    spec = EnvSpec(env=env, config_file=config, from_recording=from_recording, overrides=parse_overrides(set_))
+    run_interface(settings, spec, host, port)
+
+
+@app.command("eval")
+def evaluate(
+    env: EnvOpt = None,
+    config: ConfigOpt = None,
+    from_recording: FromRecOpt = None,
+    set_: SetOpt = None,
+    data_root: DataRootOpt = Path("rcs_data"),
+    config_dir: ConfigDirOpt = None,
+    policy: Annotated[
+        str, typer.Option(help="policy client: vlagents, mock, an entry point or module:Class")
+    ] = "vlagents",
+    policy_server: Annotated[str, typer.Option(help="host:port of the policy server")] = "localhost:20000",
+    policy_option: Annotated[
+        Optional[list[str]], typer.Option(help='client option key=json_value, repeatable (e.g. model="lerobot")')
+    ] = None,
+    execute_steps: Annotated[
+        Optional[int], typer.Option(help="actions executed per chunk before the next query (default: whole chunk)")
+    ] = None,
+    rtc_delay: Annotated[
+        int, typer.Option(help="real-time chunking: steps executed while the server computes, 0 = off")
+    ] = 0,
+    instruction: Annotated[str, typer.Option(help="language instruction sent to the policy and stored")] = "",
+    frequency: Annotated[float, typer.Option(help="env step rate in Hz (default configs only)")] = 15.0,
+    operator: Annotated[str, typer.Option(help="quest (labelling and intervention) or none")] = "quest",
+    quest_addr: Annotated[str, typer.Option(help="IP of this PC in the network of the Quest")] = "10.42.0.1",
+    quest_switch_left_right: bool = False,
+    gui: Annotated[bool, typer.Option(help="open the MuJoCo viewer (sim only)")] = False,
+    host: Annotated[str, typer.Option(help="address of the web server")] = "0.0.0.0",
+    port: Annotated[int, typer.Option(help="port of the web server")] = 8080,
+):
+    """Policy evaluation: Quest A starts a rollout, B / Y label it, holding the trigger takes over (intervention)."""
+    if env is None and from_recording is None and config is None:
+        msg = "--env, --config or --from-recording is required"
+        raise typer.BadParameter(msg)
+    server_host, _, server_port = policy_server.rpartition(":")
+    if not server_host or not server_port.isdigit():
+        msg = "--policy-server must be host:port"
+        raise typer.BadParameter(msg)
+    settings = SessionSettings(
+        data_root=data_root,
+        mode="eval",
+        instruction=instruction,
+        frequency=frequency,
+        headless=not gui,
+        operator=operator,
+        quest_addr=quest_addr,
+        quest_switched_left_right=quest_switch_left_right,
+        config_dirs=list(config_dir or []),
+        policy=PolicySettings(
+            client=policy,
+            host=server_host,
+            port=int(server_port),
+            options=parse_overrides(policy_option),
+            execute_steps=execute_steps,
+            rtc_delay=rtc_delay,
+        ),
     )
     spec = EnvSpec(env=env, config_file=config, from_recording=from_recording, overrides=parse_overrides(set_))
     run_interface(settings, spec, host, port)

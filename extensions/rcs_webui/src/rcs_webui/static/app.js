@@ -43,6 +43,7 @@ function renderStatus(s) {
     ["mode", s.mode],
     ["env", s.env],
     ["policy", s.policy ? `${s.policy.client} ${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"}${s.policy.rtc_delay ? `, RTC delay ${s.policy.rtc_delay}` : ""}${s.policy.intervening ? ", HUMAN INTERVENTION" : s.policy.running ? ", running" : ""})` : null],
+    ["policy error", s.policy && s.policy.error ? s.policy.error : null],
     ["data folder", s.session_dir],
     ["step rate", `${s.step_hz} Hz`],
     ["episodes", `${s.episodes.successful} successful, ${s.episodes.unsuccessful} unsuccessful, ${s.episodes.truncated} ended by the robot`],
@@ -51,6 +52,11 @@ function renderStatus(s) {
   $("#status").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
   $("#error").textContent = s.error || "";
   if (!instructionTouched) $("#instruction").value = s.instruction || "";
+  $("#policy-card").hidden = s.mode !== "eval";
+  if (s.mode === "eval" && s.policy && !policyFormFilled) {
+    policyFormFilled = true;
+    fillPolicyForm(s.policy);
+  }
   const cams = (s.cameras || []).join(",");
   if (cams !== knownCameras) {
     knownCameras = cams;
@@ -88,6 +94,41 @@ $("#instruction-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   await api("/api/instruction", { instruction: $("#instruction").value }).catch(alert);
   instructionTouched = false;
+});
+
+let policyFormFilled = false;
+
+async function fillPolicyForm(p) {
+  const { clients } = await api("/api/policy/clients");
+  $("#policy-client").innerHTML = clients.map((c) => `<option>${esc(c)}</option>`).join("");
+  if (!clients.includes(p.client)) $("#policy-client").insertAdjacentHTML("beforeend", `<option>${esc(p.client)}</option>`);
+  $("#policy-client").value = p.client;
+  $("#policy-host").value = p.host;
+  $("#policy-port").value = p.port;
+  $("#policy-exec").value = p.execute_steps ?? "";
+  $("#policy-rtc").value = p.rtc_delay ?? 0;
+}
+
+$("#policy-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  let options = {};
+  const text = $("#policy-options").value.trim();
+  if (text) {
+    try {
+      options = JSON.parse(text);
+    } catch (err) {
+      return alert(`options are not valid JSON: ${err.message}`);
+    }
+  }
+  const body = {
+    client: $("#policy-client").value,
+    host: $("#policy-host").value,
+    port: +$("#policy-port").value,
+    execute_steps: $("#policy-exec").value === "" ? null : +$("#policy-exec").value,
+    rtc_delay: +$("#policy-rtc").value || 0,
+  };
+  if (text) body.options = options;
+  await api("/api/policy", body).catch((err) => alert(err.message));
 });
 
 async function loadConfigCatalog() {

@@ -16,7 +16,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 import numpy as np
 import simplejpeg
 from rcs_webui import configs, data, envs
-from rcs_webui.session import EnvSpec, SessionRunner
+from rcs_webui.policy import available_policy_clients, load_policy_client_class
+from rcs_webui.session import EnvSpec, PolicySettings, SessionRunner
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,34 @@ class App:
             if name not in ("A", "B", "Y"):
                 raise ApiError(HTTPStatus.BAD_REQUEST, "button must be A, B or Y")
             self._need_runner().submit("button", name)
+            return {"ok": True}
+
+        @self.get("/api/policy/clients")
+        def policy_clients(_h, _m, _q):
+            return {"clients": available_policy_clients()}
+
+        @self.post("/api/policy")
+        def policy(_h, _m, body):
+            runner = self._need_runner()
+            if runner.settings.mode != "eval":
+                raise ApiError(HTTPStatus.CONFLICT, "the policy server is only used in eval mode")
+            current = runner.settings.policy or PolicySettings()
+            try:
+                execute_steps = body.get("execute_steps", current.execute_steps)
+                settings = PolicySettings(
+                    client=str(body.get("client", current.client)),
+                    host=str(body.get("host", current.host)),
+                    port=int(body.get("port", current.port)),
+                    options=dict(body.get("options", current.options)),
+                    execute_steps=int(execute_steps) if execute_steps not in (None, "") else None,
+                    rtc_delay=int(body.get("rtc_delay", current.rtc_delay)),
+                )
+                cls = load_policy_client_class(settings.client)
+            except (TypeError, ValueError, ImportError) as e:
+                raise ApiError(HTTPStatus.BAD_REQUEST, str(e)) from e
+            if settings.rtc_delay > 0 and not cls.capabilities.realtime_chunking:
+                raise ApiError(HTTPStatus.BAD_REQUEST, f"{settings.client} does not support real-time chunking")
+            runner.submit("policy", settings)
             return {"ok": True}
 
         @self.post("/api/instruction")
