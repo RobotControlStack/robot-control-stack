@@ -4,6 +4,7 @@
 #include <hw/FrankaHand.h>
 #include <pybind11/cast.h>
 #include <pybind11/eigen.h>
+#include <pybind11/numpy.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -22,6 +23,96 @@
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 namespace py = pybind11;
+
+namespace {
+template <size_t D>
+void CopyRow(const std::array<double, D>& src, double* dst, size_t row) {
+  std::copy(src.begin(), src.end(), dst + row * D);
+}
+
+/**
+ * Drains all samples of the buffer into one contiguous numpy array per signal
+ * (shape N or N x D) plus the sample count and number of dropped samples.
+ */
+py::dict DrainControlStates(rcs::hw::ControlStateBuffer& buffer) {
+  const auto n = static_cast<py::ssize_t>(buffer.size());
+  auto vec = [n]() { return py::array_t<double>(n); };
+  auto mat = [n](py::ssize_t d) {
+    return py::array_t<double>(std::vector<py::ssize_t>{n, d});
+  };
+  auto timestamp = vec();
+  auto robot_time = vec();
+  auto q = mat(7);
+  auto dq = mat(7);
+  auto tau_J = mat(7);
+  auto tau_J_d = mat(7);
+  auto dtau_J = mat(7);
+  auto tau_ext = mat(7);
+  auto O_F_ext = mat(6);
+  auto K_F_ext = mat(6);
+  auto O_T_EE = mat(16);
+  auto success_rate = vec();
+  auto robot_mode = py::array_t<int32_t>(n);
+  auto current_errors = py::array_t<uint64_t>(n);
+  auto last_motion_errors = py::array_t<uint64_t>(n);
+
+  double* p_timestamp = timestamp.mutable_data();
+  double* p_robot_time = robot_time.mutable_data();
+  double* p_q = q.mutable_data();
+  double* p_dq = dq.mutable_data();
+  double* p_tau_J = tau_J.mutable_data();
+  double* p_tau_J_d = tau_J_d.mutable_data();
+  double* p_dtau_J = dtau_J.mutable_data();
+  double* p_tau_ext = tau_ext.mutable_data();
+  double* p_O_F_ext = O_F_ext.mutable_data();
+  double* p_K_F_ext = K_F_ext.mutable_data();
+  double* p_O_T_EE = O_T_EE.mutable_data();
+  double* p_success_rate = success_rate.mutable_data();
+  int32_t* p_robot_mode = robot_mode.mutable_data();
+  uint64_t* p_current_errors = current_errors.mutable_data();
+  uint64_t* p_last_motion_errors = last_motion_errors.mutable_data();
+
+  const size_t drained = buffer.drain(
+      [&](size_t i, const rcs::hw::ControlStateSample& s) {
+        p_timestamp[i] = s.timestamp;
+        p_robot_time[i] = s.robot_time;
+        CopyRow(s.q, p_q, i);
+        CopyRow(s.dq, p_dq, i);
+        CopyRow(s.tau_J, p_tau_J, i);
+        CopyRow(s.tau_J_d, p_tau_J_d, i);
+        CopyRow(s.dtau_J, p_dtau_J, i);
+        CopyRow(s.tau_ext_hat_filtered, p_tau_ext, i);
+        CopyRow(s.O_F_ext_hat_K, p_O_F_ext, i);
+        CopyRow(s.K_F_ext_hat_K, p_K_F_ext, i);
+        CopyRow(s.O_T_EE, p_O_T_EE, i);
+        p_success_rate[i] = s.control_command_success_rate;
+        p_robot_mode[i] = s.robot_mode;
+        p_current_errors[i] = s.current_errors;
+        p_last_motion_errors[i] = s.last_motion_errors;
+      },
+      static_cast<size_t>(n));
+
+  py::dict out;
+  out["num_samples"] = drained;
+  out["dropped"] = buffer.take_dropped();
+  out["timestamp"] = timestamp;
+  out["robot_time"] = robot_time;
+  out["q"] = q;
+  out["dq"] = dq;
+  out["tau_J"] = tau_J;
+  out["tau_J_d"] = tau_J_d;
+  out["dtau_J"] = dtau_J;
+  out["tau_ext_hat_filtered"] = tau_ext;
+  out["O_F_ext_hat_K"] = O_F_ext;
+  out["K_F_ext_hat_K"] = K_F_ext;
+  out["O_T_EE"] = O_T_EE;
+  out["control_command_success_rate"] = success_rate;
+  out["robot_mode"] = robot_mode;
+  out["current_errors"] = current_errors;
+  out["last_motion_errors"] = last_motion_errors;
+  return out;
+}
+}  // namespace
 
 PYBIND11_MODULE(_core, m) {
   m.doc() = R"pbdoc(
@@ -108,6 +199,21 @@ PYBIND11_MODULE(_core, m) {
       //   .def_readonly("time", &franka::RobotState::time)
       .def_readonly("robot_mode", &franka::RobotState::robot_mode);
 
+  py::class_<rcs::hw::ControlStateBuffer>(
+      hw, "ControlStateBuffer",
+      "Lock-free ring buffer of the states seen by the 1 kHz control loop.")
+      .def(py::init<size_t>(),
+           py::arg("capacity") = rcs::hw::ControlStateBuffer::kDefaultCapacity)
+      .def("capacity", &rcs::hw::ControlStateBuffer::capacity)
+      .def("size", &rcs::hw::ControlStateBuffer::size)
+      .def("push", &rcs::hw::ControlStateBuffer::push, py::arg("state"),
+           "Adds a state as the control loop would do (for tests and mocks).")
+      .def("drain", &DrainControlStates)
+      .def("clear", &rcs::hw::ControlStateBuffer::clear);
+  hw.def("control_state_error_names", &rcs::hw::ErrorNames,
+         "Names of the franka error flags, index i is bit i of the "
+         "current_errors and last_motion_errors masks.");
+
   py::object robot_state =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotState");
   py::class_<rcs::hw::FrankaState>(hw, "FrankaState", robot_state)
@@ -148,6 +254,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("approach_rotation_speed",
                      &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
+      .def_readwrite("record_control_states",
+                     &rcs::hw::FrankaConfig::record_control_states)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
 
   py::object gripper_config =
@@ -224,6 +332,15 @@ PYBIND11_MODULE(_core, m) {
            &rcs::hw::Franka::controller_set_joint_position,
            py::arg("desired_q"))
       .def("stop_control_thread", &rcs::hw::Franka::stop_control_thread)
+      .def(
+          "drain_control_states",
+          [](rcs::hw::Franka& self) {
+            return DrainControlStates(self.control_state_buffer());
+          },
+          "Returns and removes all states recorded by the control loop since "
+          "the last call, see FrankaConfig.record_control_states.")
+      .def("clear_control_states",
+           [](rcs::hw::Franka& self) { self.control_state_buffer().clear(); })
       .def("automatic_error_recovery",
            &rcs::hw::Franka::automatic_error_recovery)
       .def("double_tap_robot_to_continue",

@@ -89,6 +89,7 @@ Franka::Franka(const FrankaConfig& cfg,
                                         : franka::RealtimeConfig::kEnforce) {
   check_config(cfg);
   warn_if_desk_differs(cfg, this->robot.readOnce());
+  this->m_record_control_states.store(cfg.record_control_states);
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -111,6 +112,7 @@ bool Franka::set_config(const FrankaConfig& cfg) {
   check_config(cfg);
   this->m_cfg = cfg;
   this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
+  this->m_record_control_states.store(cfg.record_control_states);
 
   if (this->m_cfg.load_parameters.has_value()) {
     auto load_value = &(this->m_cfg.load_parameters.value());
@@ -304,6 +306,13 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
+  }
+}
+
+void Franka::record_control_state(
+    const franka::RobotState& robot_state) noexcept {
+  if (this->m_record_control_states.load(std::memory_order_relaxed)) {
+    this->m_control_states.push(robot_state);
   }
 }
 
@@ -501,6 +510,7 @@ void Franka::osc() {
         return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
@@ -541,6 +551,7 @@ void Franka::joint_controller() {
         return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
@@ -584,6 +595,7 @@ void Franka::zero_torque_controller() {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
       this->curr_state.store(robot_state);
+      this->record_control_state(robot_state);
 
       this->interpolator_mutex.lock();
       this->controller_time += period.toSec();

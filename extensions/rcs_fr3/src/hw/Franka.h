@@ -12,6 +12,7 @@
 #include <string>
 #include <thread>
 
+#include "ControlStateBuffer.h"
 #include "rcs/Controller.h"
 #include "rcs/ControllerConfig.h"
 #include "rcs/FR3Controllers.h"
@@ -72,6 +73,11 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool ignore_realtime = false;
+  // When true, every state seen by the 1 kHz control loop is copied into a
+  // preallocated lock-free ring buffer that can be drained once per env step
+  // with Franka::drain_control_states. Only active while a controller thread
+  // runs (async_control).
+  bool record_control_states = false;
   // robot_type, dof, joint_limits etc. are those of RobotConfig, set them per
   // robot (in Python with rcs.ROBOTS[robot_type].apply(cfg))
 };
@@ -102,6 +108,10 @@ class Franka : public common::Robot {
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
   common::ThreadSafeValue<std::exception_ptr> background_exception;
+  // filled by the control thread, drained by the env step
+  ControlStateBuffer m_control_states;
+  std::atomic<bool> m_record_control_states{false};
+  void record_control_state(const franka::RobotState& robot_state) noexcept;
   void osc();
   void joint_controller();
   void create_dynamics();
@@ -165,6 +175,13 @@ class Franka : public common::Robot {
 
   void reset() override;
   void close() override {};
+
+  /**
+   * @brief Buffer of the states seen by the control loop, see
+   * FrankaConfig::record_control_states. Must only be drained from one
+   * thread.
+   */
+  ControlStateBuffer& control_state_buffer() { return m_control_states; }
 };
 }  // namespace hw
 }  // namespace rcs
