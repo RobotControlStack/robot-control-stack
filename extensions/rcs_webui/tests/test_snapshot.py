@@ -84,3 +84,20 @@ def test_git_state_logs_commit_and_diff(tmp_path):
     assert len(state["commit"]) == 40
     assert "+b" in state["diff"]
     assert state["untracked"] == ["new.txt"]
+
+
+def test_python_config_subclass_and_asset_paths():
+    configs = pytest.importorskip("rcs_fr3.configs")
+    pytest.importorskip("rcs_robotiq2f85")
+    cfg = configs.DROIDEnv().config()
+    cfg.gripper_cfgs["right"].serial_number = "ABC"
+    data = snapshot.to_jsonable(cfg)
+    robot = data["fields"]["robot_cfgs"]["right"]["fields"]
+    # machine independent: asset paths are stored relative to the RCS asset prefix
+    assert "__rcs_prefix__" in robot["kinematic_model_path"]
+    restored = snapshot.from_jsonable(data)
+    assert restored.robot_cfgs["right"].kinematic_model_path == cfg.robot_cfgs["right"].kinematic_model_path
+    gripper = restored.gripper_cfgs["right"]
+    assert type(gripper).__name__ == "RobotiQ2F85GripperConfig"
+    assert gripper.serial_number == "ABC"
+    assert gripper.async_control is True
