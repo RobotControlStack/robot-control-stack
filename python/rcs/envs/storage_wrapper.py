@@ -5,7 +5,7 @@ import operator
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, wait
-from queue import Queue
+from queue import Full, Queue
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -213,8 +213,20 @@ class StorageWrapper(gym.Wrapper):
 
         rows[-1]["success"] = self._success
         batch = pa.RecordBatch.from_pylist(rows, schema=self.schema)
-        self.queue.put(batch)
+        self._put(batch)
         self.buffer = self.buffer[-1:] if keep_last else []
+
+    def _put(self, batch: pa.RecordBatch):
+        # a dead writer never empties the queue, do not block forever on it
+        while True:
+            if self._writer_future.done():
+                msg = "Writer thread failed"
+                raise RuntimeError(msg) from self._writer_future.exception()
+            try:
+                self.queue.put(batch, timeout=0.5)
+                return
+            except Full:
+                continue
 
     def _flatten_arrays(self, d: dict[str, Any]):
         # NOTE: list / tuples of arrays not supported
