@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RCS Web Interface</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>RCS</h1>
+  <nav>
+    <a href="#session" class="tab" data-tab="session">Session</a>
+    <a href="#data" class="tab" data-tab="data">Data</a>
+  </nav>
+  <span id="state" class="badge">...</span>
+</header>
+
+<main>
+<section id="tab-session" class="tabpane">
+  <div class="grid">
+    <div class="card">
+      <h2>Episode</h2>
+      <p class="muted">Main control is the Meta Quest: <b>A</b> start, <b>B</b> successful, <b>Y</b> unsuccessful. The buttons below do the same.</p>
+      <div class="buttons">
+        <button data-button="A" class="btn start">A &nbsp;start</button>
+        <button data-button="B" class="btn ok">B &nbsp;successful</button>
+        <button data-button="Y" class="btn fail">Y &nbsp;unsuccessful</button>
+      </div>
+      <dl id="status"></dl>
+      <p id="error" class="error"></p>
+    </div>
+
+    <div class="card">
+      <h2>Instruction</h2>
+      <form id="instruction-form">
+        <input id="instruction" type="text" placeholder="e.g. pick up the red cube and place it in the bowl">
+        <button class="btn">set</button>
+      </form>
+      <h2>Restart env</h2>
+      <p class="muted">Every restart creates a new data folder with the complete env config, git commit and diff.</p>
+      <form id="restart-form">
+        <label>Start from
+          <select id="restart-source">
+            <option value="same">same as now</option>
+            <option value="env">default config of env</option>
+            <option value="recording">config of a previous recording</option>
+          </select>
+        </label>
+        <label id="env-label" hidden>Env <select id="env-select"></select></label>
+        <label id="rec-label" hidden>Recording <select id="rec-select"></select></label>
+        <label>Overrides (JSON, dotted paths)
+          <textarea id="overrides" rows="3" placeholder='{"sim_cfg.frequency": 15, "wrapper_cfg.binary_gripper": false}'></textarea>
+        </label>
+        <button class="btn">restart env</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cameras</h2>
+    <div id="cameras" class="cameras"></div>
+  </div>
+</section>
+
+<section id="tab-data" class="tabpane" hidden>
+  <div class="card"><p class="muted">The data viewer is not part of this build.</p></div>
+</section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+"""HTTP server of the interface: a JSON API plus a single static page, standard library only."""
+
+import json
+import logging
+import mimetypes
+import re
+import threading
+from collections.abc import Callable
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib import resources
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
+
+import numpy as np
+import simplejpeg
+from rcs_webui import envs, snapshot
+from rcs_webui.session import EnvSpec, SessionRunner
+
+logger = logging.getLogger(__name__)
+
+Route = Callable[["Handler", re.Match, dict[str, Any]], Any]
+
+
+class ApiError(Exception):
+    def __init__(self, status: HTTPStatus, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+class App:
+    """Routes of the interface. ``runner`` is None if the interface only shows recorded data."""
+
+    def __init__(self, runner: SessionRunner | None, data_root: Path):
+        self.runner = runner
+        self.data_root = Path(data_root)
+        self.get_routes: list[tuple[re.Pattern, Route]] = []
+        self.post_routes: list[tuple[re.Pattern, Route]] = []
+        self._register()
+
+    def get(self, pattern: str):
+        def deco(fn: Route) -> Route:
+            self.get_routes.append((re.compile(f"^{pattern}$"), fn))
+            return fn
+
+        return deco
+
+    def post(self, pattern: str):
+        def deco(fn: Route) -> Route:
+            self.post_routes.append((re.compile(f"^{pattern}$"), fn))
+            return fn
+
+        return deco
+
+    def _need_runner(self) -> SessionRunner:
+        if self.runner is None:
+            raise ApiError(HTTPStatus.CONFLICT, "no env session is running (viewer only mode)")
+        return self.runner
+
+    def _register(self):
+        @self.get("/api/status")
+        def status(_h, _m, _q):
+            if self.runner is None:
+                return {"state": "viewer", "data_root": str(self.data_root)}
+            return {**self.runner.status(), "data_root": str(self.data_root), "cameras": self.runner.cameras()}
+
+        @self.get("/api/envs")
+        def list_envs(_h, _m, _q):
+            return {"envs": envs.available_envs()}
+
+        @self.get("/api/sessions")
+        def sessions(_h, _m, _q):
+            out = []
+            if self.data_root.exists():
+                for d in sorted(self.data_root.iterdir(), reverse=True):
+                    if (d / snapshot.CONFIG_FILE).exists():
+                        meta = (
+                            json.loads((d / snapshot.SESSION_FILE).read_text())
+                            if (d / snapshot.SESSION_FILE).exists()
+                            else {}
+                        )
+                        out.append({"name": d.name, **meta})
+            return {"sessions": out}
+
+        @self.get(r"/api/live/(?P<camera>[^/]+)\.jpg")
+        def live_frame(h, m, _q):
+            frame = self._need_runner().latest_frame(unquote(m["camera"]))
+            if frame is None:
+                raise ApiError(HTTPStatus.NOT_FOUND, "no frame")
+            h.send_bytes(simplejpeg.encode_jpeg(np.ascontiguousarray(frame), quality=70), "image/jpeg")
+
+        @self.post("/api/button")
+        def button(_h, _m, body):
+            name = str(body.get("button", "")).upper()
+            if name not in ("A", "B", "Y"):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "button must be A, B or Y")
+            self._need_runner().submit("button", name)
+            return {"ok": True}
+
+        @self.post("/api/instruction")
+        def instruction(_h, _m, body):
+            self._need_runner().submit("instruction", body.get("instruction", ""))
+            return {"ok": True}
+
+        @self.post("/api/restart")
+        def restart(_h, _m, body):
+            runner = self._need_runner()
+            overrides = body.get("overrides") or {}
+            if not isinstance(overrides, dict):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "overrides must be an object of dotted paths to values")
+            from_recording = body.get("from_recording")
+            if from_recording:
+                path = (self.data_root / from_recording).resolve()
+                if self.data_root.resolve() not in path.parents:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, "from_recording must be a session in the data root")
+                spec = EnvSpec(from_recording=path, overrides=overrides)
+            elif body.get("env"):
+                spec = EnvSpec(env=body["env"], overrides=overrides)
+            else:
+                spec = EnvSpec(
+                    env=runner.env_spec.env,
+                    config_file=runner.env_spec.config_file,
+                    from_recording=runner.env_spec.from_recording,
+                    overrides={**runner.env_spec.overrides, **overrides},
+                )
+            runner.submit("restart", spec)
+            return {"ok": True}
+
+
+class Handler(BaseHTTPRequestHandler):
+    app: App
+    server_version = "rcs-webui"
+
+    def log_message(self, format: str, *args: Any):
+        logger.debug("%s %s", self.address_string(), format % args)
+
+    def send_bytes(self, data: bytes, content_type: str, status: HTTPStatus = HTTPStatus.OK):
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def send_json(self, value: Any, status: HTTPStatus = HTTPStatus.OK):
+        self.send_bytes(json.dumps(value, default=_json_default).encode(), "application/json", status)
+
+    def _dispatch(self, routes: list[tuple[re.Pattern, Route]], body: dict[str, Any]):
+        path = urlparse(self.path).path
+        for pattern, fn in routes:
+            match = pattern.match(path)
+            if match:
+                try:
+                    result = fn(self, match, body)
+                except ApiError as e:
+                    self.send_json({"error": str(e)}, e.status)
+                    return
+                except Exception as e:
+                    logger.exception("request %s failed", path)
+                    self.send_json({"error": f"{type(e).__name__}: {e}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+                    return
+                if result is not None:
+                    self.send_json(result)
+                return
+        if self.command == "GET" and self._static(path):
+            return
+        self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+
+    def _static(self, path: str) -> bool:
+        name = "index.html" if path in ("", "/") else path.lstrip("/")
+        if "/" in name or name.startswith("."):
+            return False
+        static = resources.files("rcs_webui") / "static" / name
+        if not static.is_file():
+            return False
+        content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        self.send_bytes(static.read_bytes(), content_type)
+        return True
+
+    def do_GET(self):
+        query = {k: v[-1] for k, v in parse_qs(urlparse(self.path).query).items()}
+        self._dispatch(self.app.get_routes, query)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        try:
+            body = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            self.send_json({"error": "body must be JSON"}, HTTPStatus.BAD_REQUEST)
+            return
+        self._dispatch(self.app.post_routes, body if isinstance(body, dict) else {})
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, Path):
+        return str(value)
+    return str(value)
+
+
+def make_server(app: App, host: str, port: int) -> ThreadingHTTPServer:
+    handler = type("BoundHandler", (Handler,), {"app": app})
+    server = ThreadingHTTPServer((host, port), handler)
+    server.daemon_threads = True
+    return server
+
+
+def serve_in_thread(server: ThreadingHTTPServer) -> threading.Thread:
+    thread = threading.Thread(target=server.serve_forever, daemon=True, name="rcs-webui-http")
+    thread.start()
+    return thread
