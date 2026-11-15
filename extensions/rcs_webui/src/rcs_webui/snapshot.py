@@ -9,6 +9,7 @@ import dataclasses
 import datetime
 import enum
 import importlib
+import inspect
 import json
 import logging
 import re
@@ -19,6 +20,7 @@ from typing import Any
 
 import numpy as np
 
+import rcs
 from rcs import common
 
 logger = logging.getLogger(__name__)
@@ -60,7 +62,13 @@ def _readwrite_properties(obj_type: type) -> list[str]:
 
 def to_jsonable(value: Any) -> Any:
     """Converts a config (dataclasses, pybind11 configs, poses, enums, numpy arrays) into JSON compatible data."""
-    if value is None or isinstance(value, bool | int | float | str):
+    if isinstance(value, str):
+        prefix = rcs.RCS_PREFIX.rstrip("/") + "/"
+        if value.startswith(prefix):
+            # asset paths of RCS (robot models etc.) are stored relative to the asset prefix of the machine
+            return {"__rcs_prefix__": value[len(prefix) :]}
+        return value
+    if value is None or isinstance(value, bool | int | float):
         return value
     if isinstance(value, enum.Enum):
         return {"__enum__": _qualname(type(value)), "name": value.name}
@@ -93,6 +101,8 @@ def to_jsonable(value: Any) -> Any:
         return {"__enum__": _qualname(type(value)), "name": value.name}
     obj_type = type(value)
     props = _readwrite_properties(obj_type)
+    # python subclasses of pybind11 configs (e.g. RobotiQ2F85GripperConfig) keep their own fields in __dict__
+    props += [k for k in getattr(value, "__dict__", {}) if not k.startswith("_") and k not in props]
     if props:
         return {
             "__object__": _qualname(obj_type),
@@ -107,6 +117,12 @@ def to_jsonable(value: Any) -> Any:
 
 def _init_kwargs(cls: type, fields: dict[str, Any]) -> dict[str, Any]:
     """Keyword arguments of a pybind11 constructor that are present in the stored fields."""
+    try:
+        params = inspect.signature(cls).parameters
+        if not any(p.kind == p.VAR_POSITIONAL for p in params.values()):
+            return {k: v for k, v in fields.items() if k in params}
+    except (TypeError, ValueError):
+        pass
     doc = getattr(getattr(cls, "__init__", None), "__doc__", None) or ""
     names = set(re.findall(r"(\w+):", doc))
     return {k: v for k, v in fields.items() if k in names}
@@ -118,6 +134,8 @@ def from_jsonable(value: Any) -> Any:
         return [from_jsonable(v) for v in value]
     if not isinstance(value, dict):
         return value
+    if "__rcs_prefix__" in value:
+        return str(Path(rcs.RCS_PREFIX) / value["__rcs_prefix__"])
     if "__enum__" in value:
         enum_type = _import(value["__enum__"])
         return enum_type[value["name"]] if isinstance(enum_type, enum.EnumMeta) else getattr(enum_type, value["name"])
