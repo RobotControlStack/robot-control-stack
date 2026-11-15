@@ -31,6 +31,24 @@
       <p id="error" class="error"></p>
     </div>
 
+    <div class="card" id="policy-card" hidden>
+      <h2>Policy server</h2>
+      <p class="muted">Switching connects to the new server without restarting the interface; a running rollout is ended first.</p>
+      <form id="policy-form">
+        <label>Client <select id="policy-client"></select></label>
+        <div class="row">
+          <label style="flex:2">Host <input id="policy-host" type="text"></label>
+          <label style="flex:1">Port <input id="policy-port" type="number" min="1" max="65535"></label>
+        </div>
+        <div class="row">
+          <label style="flex:1">Actions per chunk <input id="policy-exec" type="number" min="1" placeholder="whole chunk"></label>
+          <label style="flex:1">RTC delay (steps, 0 = off) <input id="policy-rtc" type="number" min="0"></label>
+        </div>
+        <label>Client options (JSON) <input id="policy-options" type="text" placeholder='{"model": "lerobot"}'></label>
+        <button class="btn">connect</button>
+      </form>
+    </div>
+
     <div class="card">
       <h2>Instruction</h2>
       <form id="instruction-form">
