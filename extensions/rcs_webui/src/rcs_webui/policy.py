@@ -65,6 +65,11 @@ class ChunkRequest:
     should blend into (soft constraint / inpainting). May be empty."""
     delay: int = 0
     """RTC: number of steps executed between sending the query and the switch-over step (= ``len(prefix)``)."""
+    prefix_chunk_id: int = -1
+    """RTC: request id of the chunk the prefix and guidance were cut from (-1 without RTC). Lets a stateful server
+    use its own (e.g. normalized) copy of that chunk instead of the raw actions."""
+    prefix_start: int = 0
+    """RTC: index of the first prefix action in that chunk."""
 
 
 @dataclass(kw_only=True)
@@ -236,6 +241,8 @@ class ChunkExecutor:
             request.prefix = raw[idx : idx + self.rtc_delay]
             request.guidance = raw[idx + self.rtc_delay :]
             request.delay = len(request.prefix)
+            request.prefix_chunk_id = current.request.request_id
+            request.prefix_start = idx
         sent = time.time()
         return request, sent, self._pool.submit(self.client.infer, request)
 
