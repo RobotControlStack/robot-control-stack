@@ -101,3 +101,26 @@ def test_python_config_subclass_and_asset_paths():
     assert type(gripper).__name__ == "RobotiQ2F85GripperConfig"
     assert gripper.serial_number == "ABC"
     assert gripper.async_control is True
+
+
+def test_config_file_formats(tmp_path):
+    """A bare config (old format) still loads together with the env, a wrapped one also without."""
+    from rcs_webui import configs
+    from rcs_webui.session import EnvSpec, SessionRunner, SessionSettings
+
+    cfg_json = snapshot.to_jsonable(EmptyWorldFR3().config())
+    bare = tmp_path / "bare.json"
+    bare.write_text(json.dumps(cfg_json))
+    wrapped = tmp_path / "wrapped.json"
+    wrapped.write_text(json.dumps(configs.wrap("rcs.envs.configs:EmptyWorldFR3", cfg_json)))
+    runner = SessionRunner(SessionSettings(data_root=tmp_path), EnvSpec())
+    for spec in (
+        EnvSpec(env="rcs/fr3", config_file=bare),
+        EnvSpec(env="rcs/fr3", config_file=wrapped),
+        EnvSpec(config_file=wrapped),
+    ):
+        cfg, name, _ = runner._resolve_config(spec)
+        assert name == "rcs.envs.configs:EmptyWorldFR3"
+        assert cfg.sim_cfg.frequency == EmptyWorldFR3().config().sim_cfg.frequency
+    with pytest.raises(ValueError, match="no creator"):
+        runner._resolve_config(EnvSpec(config_file=bare))
