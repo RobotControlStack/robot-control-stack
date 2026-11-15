@@ -19,4 +19,5 @@ rcs_tacto
 rcs_robotiq2f85
 rcs_tilburg_hand
 rcs_zed
+rcs_webui
 ```
