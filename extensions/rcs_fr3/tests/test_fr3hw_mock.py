@@ -97,3 +97,25 @@ def test_control_states_opt_in():
     env.reset()
     _, _, _, _, info = env.step({})
     assert "control_states" not in info
+
+
+@pytest.mark.usefixtures("_patched_hw")
+def test_robot_error_truncates_visibly():
+    robot = FakeFranka(record=True)
+    env = envs.FR3HW(FakeHardwareEnv(robot))
+    env.reset()
+    _, _, _, truncated, info = env.step({})
+    assert not truncated
+    assert info["robot_error"] == ""
+
+    robot.fail_next_step = True
+    robot.control_loop(5)  # states recorded until the reflex
+    obs, _, terminated, truncated, info = env.step({})
+    assert truncated
+    assert not terminated
+    assert "reflex" in info["robot_error"]
+    # the states that lead to the reflex are not lost
+    assert info["control_states"]["num_samples"] == 5
+    # no silent recovery inside the step, this happens on reset
+    assert robot.recovered == 0
+    assert "joints" in obs
