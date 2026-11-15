@@ -15,9 +15,13 @@ class FR3HW(gym.Wrapper):
     - if ``record_control_states`` is enabled in the robot config, all states seen by the 1 kHz
       control loop since the last step are added to ``info["control_states"]`` as one array per
       signal (shape N or N x D) together with ``num_samples`` and ``dropped``
+    - a robot error (e.g. a reflex) ends the episode visibly: the step returns ``truncated=True``
+      and the error message in ``info["robot_error"]`` (empty string if there is no error).
+      The robot is not recovered silently in the step, the recovery happens on the next reset.
     """
 
     CONTROL_STATES_KEY = "control_states"
+    ROBOT_ERROR_KEY = "robot_error"
 
     def __init__(self, env):
         super().__init__(env)
@@ -26,6 +30,7 @@ class FR3HW(gym.Wrapper):
         self.hw_robot = cast(hw.Franka, self.get_wrapper_attr("robot"))
         self._robot_state_keys: list[str] | None = None
         self._record_control_states = bool(self.hw_robot.get_config().record_control_states)
+        self._last_obs: dict[str, Any] | None = None
 
     def _add_control_states(self, info: dict[str, Any]) -> dict[str, Any]:
         if self._record_control_states:
@@ -36,17 +41,28 @@ class FR3HW(gym.Wrapper):
         try:
             obs, reward, terminated, truncated, info = super().step(action)
             obs = self.get_obs(obs)
+            info[self.ROBOT_ERROR_KEY] = ""
             return obs, reward, terminated, truncated, self._add_control_states(info)
         except hw.exceptions.FrankaControlException as e:
-            _logger.error("FrankaControlException: %s", e)
-            self.hw_robot.automatic_error_recovery()
-            return self.get_obs(), 0, False, True, self._add_control_states({})
+            _logger.error("FrankaControlException, truncating the episode: %s", e)
+            try:
+                obs = self.get_obs()
+            except Exception:
+                _logger.exception("could not read the robot state after the control exception")
+                obs = self._last_obs if self._last_obs is not None else {}
+            info = {
+                "platform": "hardware",
+                "robot_type": self.hw_robot.get_config().robot_type.id,
+                self.ROBOT_ERROR_KEY: str(e),
+            }
+            return obs, 0, False, True, self._add_control_states(info)
 
     def get_obs(self, obs: dict | None = None) -> dict[str, Any]:
         if obs is None:
             obs = dict(self.get_wrapper_attr("get_robot_obs")())
         robot_state = cast(hw.FrankaState, self.hw_robot.get_state())
         obs["robot_state"] = self._rs2dict(robot_state.robot_state)
+        self._last_obs = obs
         return obs
 
     def _rs2dict(self, state: hw.RobotState):
@@ -64,6 +80,7 @@ class FR3HW(gym.Wrapper):
         # the config might have changed, states recorded before and during the reset do not belong to the next episode
         self._record_control_states = bool(self.hw_robot.get_config().record_control_states)
         self.hw_robot.clear_control_states()
+        info[self.ROBOT_ERROR_KEY] = ""
         return self.get_obs(obs), info
 
     def close(self):
