@@ -33,11 +33,11 @@ from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.storage_wrapper import StorageWrapper
 from rcs.operator.interface import BaseOperator, TeleopCommands
 from rcs.utils import SimpleFrameRate
-from rcs_webui import envs, snapshot
+from rcs_webui import configs, envs, snapshot
 
 logger = logging.getLogger(__name__)
 
-QUEST_CONTROL_MODE = (ControlMode.CARTESIAN_TQuat, RelativeTo.CONFIGURED_ORIGIN)
+QUEST_CONTROL_MODE = envs.QUEST_CONTROL_MODE
 
 
 @dataclass(kw_only=True)
@@ -46,6 +46,8 @@ class EnvSpec:
     each optionally with overrides (dotted paths into the serialized config, see snapshot.apply_overrides)."""
 
     env: str | None = None
+    config_data: dict[str, Any] | None = None
+    """a config in the format of ``rcs-webui dump-config`` (``{"creator": ..., "config": ...}``)"""
     config_file: Path | None = None
     from_recording: Path | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
@@ -64,6 +66,8 @@ class SessionSettings:
     quest_addr: str = "10.42.0.1"
     quest_switched_left_right: bool = False
     batch_size: int = 32
+    config_dirs: list[Path] = field(default_factory=list)
+    """directories with config files that the web page offers"""
 
 
 def _session_dir_name(env_name: str, mode: str) -> str:
@@ -142,7 +146,11 @@ class SessionRunner(threading.Thread):
     def _resolve_config(self, spec: EnvSpec) -> tuple[Any, str, dict[str, Any]]:
         """Returns the config, the creator name and how it was obtained."""
         source: dict[str, Any] = {"overrides": spec.overrides}
-        if spec.from_recording is not None:
+        if spec.config_data is not None:
+            name, cfg_json = configs.unwrap(spec.config_data, spec.env)
+            cfg = snapshot.from_jsonable(cfg_json)
+            source["edited_in_interface"] = spec.config_data.get("source", True)
+        elif spec.from_recording is not None:
             cfg, meta = snapshot.load_session_config(Path(spec.from_recording))
             name = meta.get("creator")
             if name is None:
@@ -150,11 +158,8 @@ class SessionRunner(threading.Thread):
                 raise ValueError(msg)
             source["from_recording"] = str(spec.from_recording)
         elif spec.config_file is not None:
-            cfg = snapshot.config_from_json(Path(spec.config_file).read_text())
-            if spec.env is None:
-                msg = "a config file needs the env (creator) it belongs to"
-                raise ValueError(msg)
-            name = envs.creator_name(envs.load_creator(spec.env))
+            name, cfg_json = configs.read_file(Path(spec.config_file), spec.env)
+            cfg = snapshot.from_jsonable(cfg_json)
             source["config_file"] = str(spec.config_file)
         else:
             if spec.env is None:

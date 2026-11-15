@@ -8,14 +8,9 @@ from pathlib import Path
 from typing import Annotated, Any, Optional
 
 import typer
-from rcs_webui import envs, snapshot
+from rcs_webui import configs, envs, snapshot
 from rcs_webui.server import App, make_server, serve_in_thread
-from rcs_webui.session import (
-    QUEST_CONTROL_MODE,
-    EnvSpec,
-    SessionRunner,
-    SessionSettings,
-)
+from rcs_webui.session import EnvSpec, SessionRunner, SessionSettings
 
 logger = logging.getLogger("rcs_webui")
 
@@ -64,6 +59,8 @@ def run_interface(settings: SessionSettings, spec: EnvSpec, host: str, port: int
     if spec.from_recording is not None:
         _, meta = snapshot.load_session_config(spec.from_recording)
         is_sim = str(meta.get("creator", "")).startswith("rcs.envs.")
+    elif spec.config_file is not None:
+        is_sim = configs.read_file(spec.config_file, spec.env)[0].startswith("rcs.envs.")
     operator = _make_operator(settings, is_sim)
     runner = SessionRunner(settings, spec, operator)
     server = make_server(App(runner, settings.data_root), host, port)
@@ -85,7 +82,8 @@ EnvOpt = Annotated[
     Optional[str], typer.Option("--env", "-e", help="env to start, see `rcs-webui envs` (e.g. rcs/fr3 or fr3)")
 ]
 ConfigOpt = Annotated[
-    Optional[Path], typer.Option("--config", help="env config JSON (e.g. from `rcs-webui dump-config`), needs --env")
+    Optional[Path],
+    typer.Option("--config", help="env config JSON from `rcs-webui dump-config` (a bare config also needs --env)"),
 ]
 FromRecOpt = Annotated[
     Optional[Path], typer.Option("--from-recording", help="session folder whose env_config.json is used")
@@ -94,6 +92,10 @@ SetOpt = Annotated[
     Optional[list[str]], typer.Option("--set", help="override a config value: key.path=json_value, repeatable")
 ]
 DataRootOpt = Annotated[Path, typer.Option("--data-root", help="every env start creates a new folder in here")]
+ConfigDirOpt = Annotated[
+    Optional[list[Path]],
+    typer.Option("--config-dir", help="directory with config files (*.json) offered in the web page, repeatable"),
+]
 
 
 @app.command()
@@ -103,6 +105,7 @@ def collect(
     from_recording: FromRecOpt = None,
     set_: SetOpt = None,
     data_root: DataRootOpt = Path("rcs_data"),
+    config_dir: ConfigDirOpt = None,
     instruction: Annotated[str, typer.Option(help="language instruction stored with every step")] = "",
     frequency: Annotated[float, typer.Option(help="env step rate in Hz (default configs only)")] = 15.0,
     operator: Annotated[str, typer.Option(help="quest or none (web buttons only)")] = "quest",
@@ -116,8 +119,8 @@ def collect(
     if sum(x is not None for x in (config, from_recording)) > 1:
         msg = "use either --config or --from-recording"
         raise typer.BadParameter(msg)
-    if env is None and from_recording is None:
-        msg = "--env or --from-recording is required"
+    if env is None and from_recording is None and config is None:
+        msg = "--env, --config or --from-recording is required"
         raise typer.BadParameter(msg)
     settings = SessionSettings(
         data_root=data_root,
@@ -128,6 +131,7 @@ def collect(
         operator=operator,
         quest_addr=quest_addr,
         quest_switched_left_right=quest_switch_left_right,
+        config_dirs=list(config_dir or []),
     )
     spec = EnvSpec(env=env, config_file=config, from_recording=from_recording, overrides=parse_overrides(set_))
     run_interface(settings, spec, host, port)
@@ -164,14 +168,9 @@ def dump_config(
     mode: Annotated[str, typer.Option(help="collect or eval, adapts the action space")] = "collect",
 ):
     """Prints the config the interface would start the env with, edit it and pass it with --config."""
-    cfg = envs.prepare_config(
-        envs.load_creator(env).config(),
-        frequency=frequency,
-        control_mode=QUEST_CONTROL_MODE if mode == "collect" else None,
-        headless=True,
-    )
-    cfg_json = snapshot.apply_overrides(snapshot.to_jsonable(cfg), parse_overrides(set_))
-    typer.echo(json.dumps(cfg_json, indent=2))
+    wrapped = configs.default_config(env, frequency=frequency, collect=mode == "collect", headless=True)
+    wrapped["config"] = snapshot.apply_overrides(wrapped["config"], parse_overrides(set_))
+    typer.echo(json.dumps(wrapped, indent=2))
 
 
 def main():

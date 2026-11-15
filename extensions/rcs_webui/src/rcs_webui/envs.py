@@ -12,6 +12,9 @@ from rcs.envs.scenes import RCSEnvCreator, SimEnvCreatorConfig
 
 logger = logging.getLogger(__name__)
 
+# action space of the Quest operator: tquat relative to the origin captured when the trigger is pressed
+QUEST_CONTROL_MODE = (ControlMode.CARTESIAN_TQuat, RelativeTo.CONFIGURED_ORIGIN)
+
 # hardware creators of the FR3 extension, only available if rcs_fr3 is installed
 HARDWARE_CREATORS = {
     "fr3": "rcs_webui.hw_envs:SingleFR3Env",

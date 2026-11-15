@@ -12,8 +12,8 @@ Meta Quest and records every step of every episode into the RCS parquet format w
 - **Reproducible**: every env (re)start creates a new data folder with the complete env config, the git
   commit and the git diff. A new env can be started from that stored config.
 
-Status of this PR (draft): data collection with the Quest is implemented and tested in simulation.
-Data viewer, relabel / delete, eval mode with the policy server switch follow in the same PR.
+- **Viewer**: plots of joints, gripper, TCP, actions and the controller rate signals, camera playback,
+  relabel (successful / unsuccessful) and delete of episodes.
 
 ## Setup from scratch
 
@@ -79,12 +79,14 @@ Open `http://<pc>:8080` in a browser. Add `--gui` for the MuJoCo viewer.
    start from it:
 
    ```shell
-   rcs-webui dump-config fr3 > fr3.json          # single FR3 with Franka Hand, robot name "right"
+   mkdir -p ~/rcs_configs
+   rcs-webui dump-config fr3 > ~/rcs_configs/fr3.json   # single FR3 with Franka Hand, robot name "right"
    # or: fr3_duo (two FR3 with Robotiq), droid, fr3_dual
-   rcs-webui collect --env fr3 --config fr3.json --data-root ~/rcs_data --quest-addr 10.42.0.1 \
-       --instruction "pick up the red cube and place it in the bowl"
+   rcs-webui collect --config ~/rcs_configs/fr3.json --config-dir ~/rcs_configs --data-root ~/rcs_data \
+       --quest-addr 10.42.0.1 --instruction "pick up the red cube and place it in the bowl"
    ```
 
+   A config file holds the env creator and the serialized config (`{"creator": ..., "config": ...}`).
    Small changes can also be given directly: `--set robot_cfgs.right.ip=192.168.101.1`
    (dotted path into the JSON config, the value is parsed as JSON and taken as string otherwise).
 3. Open `http://<robot-pc>:8080`. Hold the index trigger of the right controller to move the robot, the
@@ -113,12 +115,19 @@ Read it with pyarrow or duckdb, e.g.
 The 2D arrays (e.g. `info.right.control_states.q`, shape `N x 7`) are stored flattened, their shape is in the
 column with the `_shape` suffix: `np.asarray(row["q"]).reshape(row["q_shape"])`.
 
-### 7. Restart the env with another config
+### 7. Start the env with another config
 
-In the web page: *Restart env*, start from the same config, the default config of another env or the
-config of a previous recording, optionally with overrides as JSON (`{"sim_cfg.frequency": 20}`).
-From the CLI: `rcs-webui collect --from-recording <data-root>/<session>`.
-Every restart closes the running env (a running episode is stored as unsuccessful) and creates a new folder.
+In the web page, panel *Start env*: pick a config (the default configs of all envs, the `*.json` files of the
+`--config-dir` directories, the configs of previous recordings), edit the JSON, *validate* and *start env*.
+From the CLI: `rcs-webui collect --from-recording <data-root>/<session>` or `--config <file>`.
+Every start closes the running env (a running episode is stored as unsuccessful) and creates a new folder.
+
+### 8. Look at the data
+
+The *Data* tab lists the sessions and their episodes. Click an episode for the camera playback and the plots,
+relabel it with the check / cross buttons or delete it (both rewrite the parquet files of that episode; the
+episode that is being recorded can not be changed). `rcs-webui view --data-root ~/rcs_data` starts only the
+viewer, e.g. on another machine.
 
 ### Troubleshooting
 

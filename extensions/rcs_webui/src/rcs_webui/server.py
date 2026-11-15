@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import numpy as np
 import simplejpeg
-from rcs_webui import data, envs
+from rcs_webui import configs, data, envs
 from rcs_webui.session import EnvSpec, SessionRunner
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,44 @@ class App:
             self._need_runner().submit("instruction", body.get("instruction", ""))
             return {"ok": True}
 
+        @self.get("/api/configs")
+        def config_catalog(_h, _m, _q):
+            dirs = self.runner.settings.config_dirs if self.runner is not None else []
+            return {"configs": configs.catalog(dirs, self.data_root)}
+
+        @self.get("/api/configs/entry")
+        def config_entry(_h, _m, query):
+            runner = self._need_runner()
+            try:
+                return configs.load_entry(
+                    query.get("id", ""),
+                    config_dirs=runner.settings.config_dirs,
+                    data_root=self.data_root,
+                    frequency=runner.settings.frequency,
+                    collect=runner.settings.mode == "collect",
+                    headless=runner.settings.headless,
+                )
+            except (ValueError, KeyError, FileNotFoundError) as e:
+                raise ApiError(HTTPStatus.BAD_REQUEST, str(e)) from e
+
+        @self.post("/api/configs/validate")
+        def config_validate(_h, _m, body):
+            try:
+                cfg = configs.validate(body)
+            except Exception as e:
+                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+            return {"ok": True, "type": type(cfg).__name__}
+
         @self.post("/api/restart")
         def restart(_h, _m, body):
             runner = self._need_runner()
+            if "config" in body:
+                try:
+                    configs.validate(body["config"])
+                except Exception as e:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, f"invalid config: {type(e).__name__}: {e}") from e
+                runner.submit("restart", EnvSpec(config_data=body["config"]))
+                return {"ok": True}
             overrides = body.get("overrides") or {}
             if not isinstance(overrides, dict):
                 raise ApiError(HTTPStatus.BAD_REQUEST, "overrides must be an object of dotted paths to values")
