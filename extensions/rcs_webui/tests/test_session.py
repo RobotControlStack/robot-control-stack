@@ -3,6 +3,7 @@
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -32,14 +33,22 @@ def wait_for(predicate, timeout: float = 60.0, interval: float = 0.05):
 
 @pytest.fixture()
 def interface(tmp_path):
-    settings = SessionSettings(data_root=tmp_path, mode="collect", instruction="pick", frequency=30.0, operator="none")
+    (tmp_path / "configs").mkdir()
+    settings = SessionSettings(
+        data_root=tmp_path / "data",
+        mode="collect",
+        instruction="pick",
+        frequency=30.0,
+        operator="none",
+        config_dirs=[tmp_path / "configs"],
+    )
     runner = SessionRunner(settings, EnvSpec(env="rcs/fr3", overrides=SMALL_CAMERAS))
-    server = make_server(App(runner, tmp_path), "127.0.0.1", 0)
+    server = make_server(App(runner, tmp_path / "data"), "127.0.0.1", 0)
     serve_in_thread(server)
     runner.start()
     wait_for(lambda: runner.status()["state"] in ("ready", "error"))
     assert runner.status()["error"] is None
-    yield runner, f"http://127.0.0.1:{server.server_address[1]}", tmp_path
+    yield runner, f"http://127.0.0.1:{server.server_address[1]}", tmp_path / "data"
     server.shutdown()
     runner.stop()
 
@@ -177,3 +186,37 @@ def test_viewer_relabel_and_delete(interface):
         assert len(call(vbase, f"/api/sessions/{session}/episodes")["episodes"]) == 2
     finally:
         viewer.shutdown()
+
+
+def test_config_catalog_edit_and_start(interface):
+    runner, base, data_root = interface
+    config_dir = data_root.parent / "configs"
+    first = Path(runner.status()["session_dir"])
+    entries = {e["id"]: e for e in call(base, "/api/configs")["configs"]}
+    assert "default:rcs/fr3" in entries
+    assert f"recording:{first.name}" in entries
+
+    # a config file in the config dir, e.g. made with rcs-webui dump-config
+    recorded = call(base, "/api/configs/entry?id=" + urllib.parse.quote(f"recording:{first.name}"))
+    assert recorded["creator"] == "rcs.envs.configs:EmptyWorldFR3"
+    (config_dir / "small.json").write_text(json.dumps(recorded))
+    entries = {e["id"]: e for e in call(base, "/api/configs")["configs"]}
+    file_id = next(i for i in entries if i.startswith("file:") and i.endswith("small.json"))
+    cfg = call(base, "/api/configs/entry?id=" + urllib.parse.quote(file_id))
+
+    # edit and validate
+    cfg["config"]["fields"]["sim_cfg"]["fields"]["frequency"] = 20.0
+    assert call(base, "/api/configs/validate", cfg)["ok"]
+    broken = json.loads(json.dumps(cfg))
+    broken["config"]["fields"]["control_mode"]["name"] = "NOT_A_MODE"
+    assert not call(base, "/api/configs/validate", broken)["ok"]
+    with pytest.raises(urllib.error.HTTPError) as err:
+        call(base, "/api/restart", {"config": broken})
+    assert err.value.code == 400
+
+    call(base, "/api/restart", {"config": cfg})
+    wait_for(lambda: runner.status()["session_dir"] != str(first) and runner.status()["state"] == "ready")
+    second = Path(runner.status()["session_dir"])
+    stored, meta = snapshot.load_session_config(second)
+    assert stored.sim_cfg.frequency == 20.0
+    assert meta["creator"] == "rcs.envs.configs:EmptyWorldFR3"

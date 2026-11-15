@@ -42,7 +42,7 @@ function renderStatus(s) {
   const rows = [
     ["mode", s.mode],
     ["env", s.env],
-    ["policy", s.policy ? `${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"})` : null],
+    ["policy", s.policy ? `${s.policy.client} ${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"}${s.policy.rtc_delay ? `, RTC delay ${s.policy.rtc_delay}` : ""}${s.policy.intervening ? ", HUMAN INTERVENTION" : s.policy.running ? ", running" : ""})` : null],
     ["data folder", s.session_dir],
     ["step rate", `${s.step_hz} Hz`],
     ["episodes", `${s.episodes.successful} successful, ${s.episodes.unsuccessful} unsuccessful, ${s.episodes.truncated} ended by the robot`],
@@ -90,43 +90,67 @@ $("#instruction-form").addEventListener("submit", async (e) => {
   instructionTouched = false;
 });
 
-async function fillRestartOptions() {
-  const src = $("#restart-source").value;
-  $("#env-label").hidden = src !== "env";
-  $("#rec-label").hidden = src !== "recording";
-  if (src === "env" && !$("#env-select").options.length) {
-    const { envs } = await api("/api/envs");
-    $("#env-select").innerHTML = envs.map((e) => `<option>${esc(e)}</option>`).join("");
-  }
-  if (src === "recording") {
-    const { sessions } = await api("/api/sessions");
-    $("#rec-select").innerHTML = sessions
-      .map((s) => `<option value="${esc(s.name)}">${esc(s.name)} (${s.episodes ?? "?"} episodes)</option>`)
+async function loadConfigCatalog() {
+  const { configs } = await api("/api/configs");
+  const groups = {};
+  configs.forEach((c) => (groups[c.group] = groups[c.group] || []).push(c));
+  $("#config-select").innerHTML =
+    '<option value="">same as now</option>' +
+    Object.entries(groups)
+      .map(([g, cs]) => `<optgroup label="${esc(g)}">${cs.map((c) => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join("")}</optgroup>`)
       .join("");
-  }
 }
-$("#restart-source").addEventListener("change", fillRestartOptions);
+
+$("#config-select").addEventListener("change", async (e) => {
+  $("#config-check").textContent = "";
+  if (!e.target.value) {
+    $("#config-json").value = "";
+    return;
+  }
+  try {
+    const cfg = await api(`/api/configs/entry?id=${encodeURIComponent(e.target.value)}`);
+    $("#config-json").value = JSON.stringify(cfg, null, 2);
+  } catch (err) {
+    $("#config-check").textContent = err.message;
+  }
+});
+
+function parseConfigText() {
+  const text = $("#config-json").value.trim();
+  if (!text) return null;
+  return JSON.parse(text);
+}
+
+$("#validate-config").addEventListener("click", async () => {
+  try {
+    const cfg = parseConfigText();
+    if (!cfg) return ($("#config-check").textContent = "nothing to validate");
+    const res = await api("/api/configs/validate", cfg);
+    $("#config-check").textContent = res.ok ? `valid (${res.type})` : res.error;
+  } catch (err) {
+    $("#config-check").textContent = `not valid JSON: ${err.message}`;
+  }
+});
 
 $("#restart-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  let overrides = {};
-  const text = $("#overrides").value.trim();
-  if (text) {
-    try {
-      overrides = JSON.parse(text);
-    } catch (err) {
-      alert(`overrides are not valid JSON: ${err}`);
-      return;
-    }
+  let cfg;
+  try {
+    cfg = parseConfigText();
+  } catch (err) {
+    $("#config-check").textContent = `not valid JSON: ${err.message}`;
+    return;
   }
-  const body = { overrides };
-  const src = $("#restart-source").value;
-  if (src === "env") body.env = $("#env-select").value;
-  if (src === "recording") body.from_recording = $("#rec-select").value;
-  if (!confirm("Restart the env? A running episode is stored as unsuccessful.")) return;
-  await api("/api/restart", body).catch(alert);
+  if (!confirm("Start the env with this config? A running episode is stored as unsuccessful.")) return;
+  try {
+    await api("/api/restart", cfg ? { config: cfg } : {});
+    $("#config-check").textContent = "starting...";
+  } catch (err) {
+    $("#config-check").textContent = err.message;
+  }
 });
 
 showTab(location.hash.slice(1) || "session");
+loadConfigCatalog().catch(() => {});
 pollStatus();
 refreshCameras();

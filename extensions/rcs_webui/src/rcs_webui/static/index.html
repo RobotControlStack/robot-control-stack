@@ -37,22 +37,18 @@
         <input id="instruction" type="text" placeholder="e.g. pick up the red cube and place it in the bowl">
         <button class="btn">set</button>
       </form>
-      <h2>Restart env</h2>
-      <p class="muted">Every restart creates a new data folder with the complete env config, git commit and diff.</p>
+      <h2>Start env</h2>
+      <p class="muted">Pick a config (defaults, config directories, previous recordings), edit it if needed and start the env. Every start creates a new data folder with the complete env config, git commit and diff.</p>
       <form id="restart-form">
-        <label>Start from
-          <select id="restart-source">
-            <option value="same">same as now</option>
-            <option value="env">default config of env</option>
-            <option value="recording">config of a previous recording</option>
-          </select>
+        <label>Config <select id="config-select"><option value="">same as now</option></select></label>
+        <label>Config JSON (editable)
+          <textarea id="config-json" rows="14" spellcheck="false" placeholder="select a config to edit it, or leave empty to restart with the current config"></textarea>
         </label>
-        <label id="env-label" hidden>Env <select id="env-select"></select></label>
-        <label id="rec-label" hidden>Recording <select id="rec-select"></select></label>
-        <label>Overrides (JSON, dotted paths)
-          <textarea id="overrides" rows="3" placeholder='{"sim_cfg.frequency": 15, "wrapper_cfg.binary_gripper": false}'></textarea>
-        </label>
-        <button class="btn">restart env</button>
+        <p id="config-check" class="muted"></p>
+        <div class="row">
+          <button type="button" id="validate-config" class="btn small">validate</button>
+          <button class="btn">start env</button>
+        </div>
       </form>
     </div>
   </div>
