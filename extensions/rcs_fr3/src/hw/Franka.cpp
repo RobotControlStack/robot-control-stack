@@ -606,6 +606,11 @@ void Franka::osc() {
           avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
       }
       tau_d << tau_d + Nullspace * avoidance_force;
+
+      // Coriolis feed-forward: libfranka compensates gravity, not Coriolis /
+      // centrifugal torques (see the impedance examples of libfranka)
+      tau_d << tau_d + coriolis;
+
       for (int i = 0; i < 7; i++) {
         if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
         if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
@@ -696,6 +701,13 @@ void Franka::joint_controller() {
       joint_pos_error << desired_q - q;
 
       tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
+
+      // Coriolis feed-forward: libfranka compensates gravity, not Coriolis /
+      // centrifugal torques (see the impedance examples of libfranka)
+      std::array<double, 7> coriolis_array = model.coriolis(robot_state);
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
+          coriolis_array.data());
+      tau_d << tau_d + coriolis;
 
       Eigen::Matrix<double, 7, 1> dist2joint_max;
       Eigen::Matrix<double, 7, 1> dist2joint_min;
