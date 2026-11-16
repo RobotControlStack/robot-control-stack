@@ -106,19 +106,22 @@
       <button type="button" id="reload-configs" class="btn small" title="rescan the config directories and recordings">rescan</button>
     </div>
     <div id="config-summary" class="chips"></div>
-    <div id="editor" class="editor">
-      <div class="gutter"><div class="gutter-inner"></div></div>
-      <textarea class="code" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="select a config"></textarea>
-      <div class="peek" hidden></div>
-    </div>
-    <div class="row editor-bar">
-      <span id="diff-summary" class="muted">no changes</span>
-      <button type="button" id="diff-prev" class="btn small" title="previous change">&uarr;</button>
-      <button type="button" id="diff-next" class="btn small" title="next change">&darr;</button>
-      <button type="button" id="diff-revert-all" class="btn small">revert all</button>
-      <span style="flex:1"></span>
-      <button type="button" id="validate-config" class="btn small">validate</button>
-    </div>
+    <details id="config-details" class="config-details">
+      <summary><span class="config-details-title">config JSON</span> <span id="config-details-note" class="muted">no changes</span></summary>
+      <div id="editor" class="editor">
+        <div class="gutter"><div class="gutter-inner"></div></div>
+        <textarea class="code" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="select a config"></textarea>
+        <div class="peek" hidden></div>
+      </div>
+      <div class="row editor-bar">
+        <span id="diff-summary" class="muted">no changes</span>
+        <button type="button" id="diff-prev" class="btn small" title="previous change">&uarr;</button>
+        <button type="button" id="diff-next" class="btn small" title="next change">&darr;</button>
+        <button type="button" id="diff-revert-all" class="btn small">revert all</button>
+        <span style="flex:1"></span>
+        <button type="button" id="validate-config" class="btn small">validate</button>
+      </div>
+    </details>
     <p id="config-check" class="muted"></p>
     <div class="buttons">
       <button type="button" id="start-env" class="btn start">start env</button>
