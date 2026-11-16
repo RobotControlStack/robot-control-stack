@@ -1,4 +1,4 @@
-"""Command line entry point: ``rcs-webui collect ...``, ``rcs-webui envs``, ``rcs-webui dump-config ...``."""
+"""Command line entry point: ``rcs-webui serve``, ``rcs-webui view``, ``rcs-webui envs``, ``rcs-webui dump-config``."""
 
 import json
 import logging
@@ -11,7 +11,7 @@ from typing import Annotated, Any, Optional
 import typer
 from rcs_webui import configs, envs, snapshot
 from rcs_webui.server import App, make_server, serve_in_thread
-from rcs_webui.session import EnvSpec, PolicySettings, SessionRunner, SessionSettings
+from rcs_webui.session import EnvSpec, SessionRunner, SessionSettings
 
 logger = logging.getLogger("rcs_webui")
 
@@ -33,37 +33,11 @@ def parse_overrides(items: list[str] | None) -> dict[str, Any]:
     return overrides
 
 
-def _make_operator(settings: SessionSettings, is_sim: bool):
-    if settings.operator == "none":
-        return None
-    if settings.operator != "quest":
-        msg = f"unknown operator {settings.operator!r}, use quest or none"
-        raise typer.BadParameter(msg)
-    from rcs.operator.quest import QuestConfig, QuestOperator
-
-    config = QuestConfig(
-        mq3_addr=settings.quest_addr,
-        simulation=is_sim,
-        switched_left_right=settings.quest_switched_left_right,
-        display_cameras=False,
-        read_frequency=90,
-    )
-    operator = QuestOperator(config)
-    operator.start()
-    return operator
-
-
-def run_interface(settings: SessionSettings, spec: EnvSpec, host: str, port: int):
+def run_interface(settings: SessionSettings, host: str, port: int, spec: EnvSpec | None = None):
+    """Serves the web page. No env is started (unless ``spec`` is given), configs are picked in the page."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     settings.data_root.mkdir(parents=True, exist_ok=True)
-    is_sim = spec.env is not None and spec.env.startswith("rcs/")
-    if spec.from_recording is not None:
-        _, meta = snapshot.load_session_config(spec.from_recording)
-        is_sim = str(meta.get("creator", "")).startswith("rcs.envs.")
-    elif spec.config_file is not None:
-        is_sim = configs.read_file(spec.config_file, spec.env)[0].startswith("rcs.envs.")
-    operator = _make_operator(settings, is_sim)
-    runner = SessionRunner(settings, spec, operator)
+    runner = SessionRunner(settings, spec)
     server = make_server(App(runner, settings.data_root), host, port)
     stop = threading.Event()
 
@@ -83,137 +57,31 @@ def run_interface(settings: SessionSettings, spec: EnvSpec, host: str, port: int
     stop.wait()
     logger.info("shutting down, flushing the recording")
     server.shutdown()
-    runner.stop()
-    if operator is not None:
-        operator.close()
+    runner.stop()  # closes the env and the Quest operator
 
 
-EnvOpt = Annotated[
-    Optional[str], typer.Option("--env", "-e", help="env to start, see `rcs-webui envs` (e.g. rcs/fr3 or fr3)")
+DataRootOpt = Annotated[
+    Path, typer.Option("--data-root", help="every env start creates a new folder in here, settings are kept here")
 ]
-ConfigOpt = Annotated[
-    Optional[Path],
-    typer.Option("--config", help="env config JSON from `rcs-webui dump-config` (a bare config also needs --env)"),
-]
-FromRecOpt = Annotated[
-    Optional[Path], typer.Option("--from-recording", help="session folder whose env_config.json is used")
-]
+HostOpt = Annotated[str, typer.Option(help="address of the web server")]
+PortOpt = Annotated[int, typer.Option(help="port of the web server")]
 SetOpt = Annotated[
     Optional[list[str]], typer.Option("--set", help="override a config value: key.path=json_value, repeatable")
 ]
-DataRootOpt = Annotated[Path, typer.Option("--data-root", help="every env start creates a new folder in here")]
-ConfigDirOpt = Annotated[
-    Optional[list[Path]],
-    typer.Option("--config-dir", help="directory with config files (*.json) offered in the web page, repeatable"),
-]
 
 
 @app.command()
-def collect(
-    env: EnvOpt = None,
-    config: ConfigOpt = None,
-    from_recording: FromRecOpt = None,
-    set_: SetOpt = None,
-    data_root: DataRootOpt = Path("rcs_data"),
-    config_dir: ConfigDirOpt = None,
-    instruction: Annotated[str, typer.Option(help="language instruction stored with every step")] = "",
-    frequency: Annotated[float, typer.Option(help="env step rate in Hz (default configs only)")] = 15.0,
-    operator: Annotated[str, typer.Option(help="quest or none (web buttons only)")] = "quest",
-    quest_addr: Annotated[str, typer.Option(help="IP of this PC in the network of the Quest")] = "10.42.0.1",
-    quest_switch_left_right: bool = False,
-    gui: Annotated[bool, typer.Option(help="open the MuJoCo viewer (sim only)")] = False,
-    host: Annotated[str, typer.Option(help="address of the web server")] = "0.0.0.0",
-    port: Annotated[int, typer.Option(help="port of the web server")] = 8080,
-):
-    """Teleoperated data collection: Quest A starts an episode, B ends it successful, Y unsuccessful."""
-    if sum(x is not None for x in (config, from_recording)) > 1:
-        msg = "use either --config or --from-recording"
-        raise typer.BadParameter(msg)
-    if env is None and from_recording is None and config is None:
-        msg = "--env, --config or --from-recording is required"
-        raise typer.BadParameter(msg)
-    settings = SessionSettings(
-        data_root=data_root,
-        mode="collect",
-        instruction=instruction,
-        frequency=frequency,
-        headless=not gui,
-        operator=operator,
-        quest_addr=quest_addr,
-        quest_switched_left_right=quest_switch_left_right,
-        config_dirs=list(config_dir or []),
-    )
-    spec = EnvSpec(env=env, config_file=config, from_recording=from_recording, overrides=parse_overrides(set_))
-    run_interface(settings, spec, host, port)
+def serve(data_root: DataRootOpt = Path("rcs_data"), host: HostOpt = "0.0.0.0", port: PortOpt = 8080):
+    """Web interface for data collection (Quest teleop) and policy evaluation.
 
-
-@app.command("eval")
-def evaluate(
-    env: EnvOpt = None,
-    config: ConfigOpt = None,
-    from_recording: FromRecOpt = None,
-    set_: SetOpt = None,
-    data_root: DataRootOpt = Path("rcs_data"),
-    config_dir: ConfigDirOpt = None,
-    policy: Annotated[
-        str, typer.Option(help="policy client: vlagents, mock, an entry point or module:Class")
-    ] = "vlagents",
-    policy_server: Annotated[str, typer.Option(help="host:port of the policy server")] = "localhost:20000",
-    policy_option: Annotated[
-        Optional[list[str]], typer.Option(help='client option key=json_value, repeatable (e.g. model="lerobot")')
-    ] = None,
-    execute_steps: Annotated[
-        Optional[int], typer.Option(help="actions executed per chunk before the next query (default: whole chunk)")
-    ] = None,
-    rtc_delay: Annotated[
-        int, typer.Option(help="real-time chunking: steps executed while the server computes, 0 = off")
-    ] = 0,
-    instruction: Annotated[str, typer.Option(help="language instruction sent to the policy and stored")] = "",
-    frequency: Annotated[float, typer.Option(help="env step rate in Hz (default configs only)")] = 15.0,
-    operator: Annotated[str, typer.Option(help="quest (labelling and intervention) or none")] = "quest",
-    quest_addr: Annotated[str, typer.Option(help="IP of this PC in the network of the Quest")] = "10.42.0.1",
-    quest_switch_left_right: bool = False,
-    gui: Annotated[bool, typer.Option(help="open the MuJoCo viewer (sim only)")] = False,
-    host: Annotated[str, typer.Option(help="address of the web server")] = "0.0.0.0",
-    port: Annotated[int, typer.Option(help="port of the web server")] = 8080,
-):
-    """Policy evaluation: Quest A starts a rollout, B / Y label it, holding the trigger takes over (intervention)."""
-    if env is None and from_recording is None and config is None:
-        msg = "--env, --config or --from-recording is required"
-        raise typer.BadParameter(msg)
-    server_host, _, server_port = policy_server.rpartition(":")
-    if not server_host or not server_port.isdigit():
-        msg = "--policy-server must be host:port"
-        raise typer.BadParameter(msg)
-    settings = SessionSettings(
-        data_root=data_root,
-        mode="eval",
-        instruction=instruction,
-        frequency=frequency,
-        headless=not gui,
-        operator=operator,
-        quest_addr=quest_addr,
-        quest_switched_left_right=quest_switch_left_right,
-        config_dirs=list(config_dir or []),
-        policy=PolicySettings(
-            client=policy,
-            host=server_host,
-            port=int(server_port),
-            options=parse_overrides(policy_option),
-            execute_steps=execute_steps,
-            rtc_delay=rtc_delay,
-        ),
-    )
-    spec = EnvSpec(env=env, config_file=config, from_recording=from_recording, overrides=parse_overrides(set_))
-    run_interface(settings, spec, host, port)
+    Everything else is set in the web page and kept in <data-root>/.rcs_webui/settings.json: mode, instruction,
+    Quest address, config directories, policy server. No env runs until "start env" is clicked there.
+    """
+    run_interface(SessionSettings.load(data_root), host, port)
 
 
 @app.command()
-def view(
-    data_root: DataRootOpt = Path("rcs_data"),
-    host: Annotated[str, typer.Option(help="address of the web server")] = "0.0.0.0",
-    port: Annotated[int, typer.Option(help="port of the web server")] = 8080,
-):
+def view(data_root: DataRootOpt = Path("rcs_data"), host: HostOpt = "0.0.0.0", port: PortOpt = 8080):
     """Only the data viewer (plots, camera playback, relabel, delete), no env is started."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     server = make_server(App(None, data_root), host, port)
@@ -226,7 +94,8 @@ def view(
 
 @app.command("envs")
 def list_envs():
-    """Lists the envs that can be started."""
+    """Lists the envs that can be started (incl. the default env packages, e.g. duobench, if installed)."""
+    envs.import_env_packages(envs.DEFAULT_ENV_PACKAGES)
     for name in envs.available_envs():
         typer.echo(name)
 
@@ -238,7 +107,8 @@ def dump_config(
     frequency: float = 15.0,
     mode: Annotated[str, typer.Option(help="collect or eval, adapts the action space")] = "collect",
 ):
-    """Prints the config the interface would start the env with, edit it and pass it with --config."""
+    """Prints the config the interface would start the env with, e.g. to keep it in a config directory."""
+    envs.import_env_packages(envs.DEFAULT_ENV_PACKAGES)
     wrapped = configs.default_config(env, frequency=frequency, collect=mode == "collect", headless=True)
     wrapped["config"] = snapshot.apply_overrides(wrapped["config"], parse_overrides(set_))
     typer.echo(json.dumps(wrapped, indent=2))

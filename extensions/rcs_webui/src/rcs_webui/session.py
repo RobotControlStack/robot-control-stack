@@ -18,6 +18,7 @@ import contextlib
 import copy
 import dataclasses
 import datetime
+import json
 import logging
 import queue
 import re
@@ -58,6 +59,8 @@ class EnvSpec:
     config_file: Path | None = None
     from_recording: Path | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
+    source: dict[str, Any] = field(default_factory=dict)
+    """extra provenance stored in session.json, e.g. the catalog entry the config was edited from"""
 
 
 @dataclass(kw_only=True)
@@ -75,8 +78,82 @@ class SessionSettings:
     batch_size: int = 32
     config_dirs: list[Path] = field(default_factory=list)
     """directories with config files that the web page offers"""
+    env_packages: list[str] = field(default_factory=lambda: list(envs.DEFAULT_ENV_PACKAGES))
+    """packages whose modules register more envs (e.g. duobench.tasks), imported if installed"""
     policy: "PolicySettings | None" = None
     """policy server for eval mode"""
+    last_config: str | None = None
+    """catalog id of the config that was started last, preselected in the web page"""
+
+    # settings that only take effect when the env is (re)started
+    ENV_START_KEYS = ("mode", "operator", "quest_addr", "quest_switched_left_right", "headless")
+    EDITABLE_KEYS = (
+        *ENV_START_KEYS,
+        "instruction",
+        "frequency",
+        "config_dirs",
+        "env_packages",
+        "policy",
+    )
+
+    def to_json(self) -> dict[str, Any]:
+        out = {k: getattr(self, k) for k in (*self.EDITABLE_KEYS, "last_config")}
+        out["config_dirs"] = [str(d) for d in self.config_dirs]
+        out["policy"] = dataclasses.asdict(self.policy) if self.policy is not None else None
+        return out
+
+    def update(self, values: dict[str, Any]) -> None:
+        """Sets the editable settings in ``values``, raises ValueError on unknown keys or wrong values."""
+        unknown = set(values) - {*self.EDITABLE_KEYS, "last_config"}
+        if unknown:
+            msg = f"unknown settings {sorted(unknown)}"
+            raise ValueError(msg)
+        for key, raw in values.items():
+            value: Any = raw
+            if key == "mode" and raw not in ("collect", "eval"):
+                msg = "mode must be collect or eval"
+                raise ValueError(msg)
+            if key == "operator" and raw not in ("quest", "none"):
+                msg = "operator must be quest or none"
+                raise ValueError(msg)
+            if key == "config_dirs":
+                value = [Path(str(d)).expanduser() for d in raw if str(d).strip()]
+            elif key == "env_packages":
+                value = [str(p).strip() for p in raw if str(p).strip()]
+            elif key == "frequency":
+                value = float(raw)
+                if value <= 0:
+                    msg = "frequency must be positive"
+                    raise ValueError(msg)
+            elif key in ("quest_switched_left_right", "headless"):
+                value = bool(raw)
+            elif key == "policy":
+                value = PolicySettings(**raw) if raw is not None else None
+            elif key in ("instruction", "quest_addr", "last_config") and raw is not None:
+                value = str(raw)
+            setattr(self, key, value)
+
+    @property
+    def settings_file(self) -> Path:
+        return Path(self.data_root) / SETTINGS_FILE
+
+    def save(self) -> None:
+        self.settings_file.parent.mkdir(parents=True, exist_ok=True)
+        self.settings_file.write_text(json.dumps(self.to_json(), indent=2))
+
+    @classmethod
+    def load(cls, data_root: Path) -> "SessionSettings":
+        """Settings stored in the data root by the web page, defaults if there are none."""
+        settings = cls(data_root=Path(data_root))
+        if settings.settings_file.exists():
+            try:
+                settings.update(json.loads(settings.settings_file.read_text()))
+            except (ValueError, TypeError) as e:
+                logger.warning("ignoring %s: %s", settings.settings_file, e)
+        return settings
+
+
+SETTINGS_FILE = ".rcs_webui/settings.json"
 
 
 @dataclass(kw_only=True)
@@ -103,11 +180,19 @@ def _session_dir_name(env_name: str, mode: str) -> str:
 class SessionRunner(threading.Thread):
     """Runs the env loop in its own thread, see the module docstring."""
 
-    def __init__(self, settings: SessionSettings, env_spec: EnvSpec, operator: BaseOperator | None = None):
+    def __init__(
+        self, settings: SessionSettings, env_spec: EnvSpec | None = None, operator: BaseOperator | None = None
+    ):
+        """``env_spec``: env started right away, None waits for a start from the web page. ``operator``: a fixed
+        operator (tests), otherwise the operator of ``settings`` is created with every env start."""
         super().__init__(daemon=True, name="rcs-webui-session")
         self.settings = settings
         self.env_spec = env_spec
         self._operator = operator
+        self._fixed_operator = operator is not None
+        self._scene_publisher: Any = None
+        self.config_json: dict[str, Any] | None = None
+        """wrapped config ({"creator", "config"}) of the running env"""
         self._commands: queue.Queue[tuple[str, Any]] = queue.Queue()
         self._lock = threading.Lock()
         self._exit = threading.Event()
@@ -125,7 +210,7 @@ class SessionRunner(threading.Thread):
         self._policy_running = False
         self._intervening = False
         self._status: dict[str, Any] = {
-            "state": "starting",
+            "state": "idle",
             "mode": settings.mode,
             "env": None,
             "session_dir": None,
@@ -138,6 +223,9 @@ class SessionRunner(threading.Thread):
             "step_hz": 0.0,
             "instruction": settings.instruction,
             "policy": None,
+            "operator": None,
+            "operator_error": None,
+            "summary": None,
         }
 
     # ---------------------------------------------------------------- public, thread safe
@@ -146,9 +234,25 @@ class SessionRunner(threading.Thread):
             return copy.deepcopy(self._status)
 
     def submit(self, command: str, payload: Any = None):
-        """Commands: button (A, B or Y), restart (EnvSpec or None for the same spec), instruction (str),
+        """Commands: button (A, B or Y), restart (EnvSpec or None for the same spec), stop_env, instruction (str),
         policy (PolicySettings), stop."""
         self._commands.put((command, payload))
+
+    @property
+    def env_running(self) -> bool:
+        return self.env is not None
+
+    def update_settings(self, values: dict[str, Any]) -> None:
+        """Validates the settings (raises ValueError) and applies them in the runner thread. Settings that are
+        used when the env starts can only be changed while no env is running."""
+        blocked = sorted(
+            k for k in values if k in SessionSettings.ENV_START_KEYS and values[k] != getattr(self.settings, k)
+        )
+        if blocked and self.env_running:
+            msg = f"stop the env before changing {', '.join(blocked)}"
+            raise ValueError(msg)
+        copy.deepcopy(self.settings).update(values)
+        self.submit("settings", values)
 
     def stop(self, timeout: float | None = 30.0):
         self.submit("stop")
@@ -176,11 +280,11 @@ class SessionRunner(threading.Thread):
 
     def _resolve_config(self, spec: EnvSpec) -> tuple[Any, str, dict[str, Any]]:
         """Returns the config, the creator name and how it was obtained."""
-        source: dict[str, Any] = {"overrides": spec.overrides}
+        source: dict[str, Any] = {"overrides": spec.overrides, **spec.source}
         if spec.config_data is not None:
             name, cfg_json = configs.unwrap(spec.config_data, spec.env)
             cfg = snapshot.from_jsonable(cfg_json)
-            source["edited_in_interface"] = spec.config_data.get("source", True)
+            source["from_interface"] = True
         elif spec.from_recording is not None:
             cfg, meta = snapshot.load_session_config(Path(spec.from_recording))
             creator = meta.get("creator")
@@ -208,9 +312,69 @@ class SessionRunner(threading.Thread):
             source["default_config_of"] = spec.env
         if spec.overrides:
             cfg = snapshot.from_jsonable(snapshot.apply_overrides(snapshot.to_jsonable(cfg), spec.overrides))
-        return cfg, name, source
+        return envs.normalize_config(cfg), name, source
+
+    def _close_operator(self):
+        if self._fixed_operator:
+            return
+        if self._operator is not None:
+            try:
+                self._operator.close()
+            except Exception:
+                logger.exception("closing the operator failed")
+            self._operator = None
+        if self._scene_publisher is not None:
+            from rcs.operator.quest import stop_publisher
+
+            try:
+                stop_publisher(self._scene_publisher)
+            except Exception:
+                logger.exception("stopping the Quest scene publisher failed")
+            self._scene_publisher = None
+        self._set_status(operator=None)
+
+    def _start_operator(self, cfg: Any):
+        """Creates the operator of the settings for this env: on hardware the Quest app gets an empty scene, in
+        sim the MuJoCo scene of the env is streamed to the Quest."""
+        assert self.env is not None
+        is_sim = envs.is_sim_config(cfg)
+        sim = self.env.get_wrapper_attr("sim") if is_sim else None
+        if self._fixed_operator:
+            if self._operator is not None:
+                self._operator.sim = sim
+            return
+        self._set_status(operator_error=None)
+        if self.settings.operator == "none":
+            return
+        try:
+            from rcs.operator.quest import QuestConfig, QuestOperator
+
+            if is_sim:
+                from simpub.sim.mj_publisher import MujocoPublisher
+
+                self._scene_publisher = MujocoPublisher(
+                    sim.model, sim.data, self.settings.quest_addr, visible_geoms_groups=list(range(1, 3))
+                )
+            operator = QuestOperator(
+                QuestConfig(
+                    mq3_addr=self.settings.quest_addr,
+                    simulation=is_sim,
+                    switched_left_right=self.settings.quest_switched_left_right,
+                    display_cameras=False,
+                    read_frequency=90,
+                ),
+                sim,
+            )
+            operator.start()
+            self._operator = operator
+            self._set_status(operator=f"quest at {self.settings.quest_addr} ({'sim' if is_sim else 'hardware'})")
+        except Exception as e:
+            logger.exception("starting the Quest operator failed")
+            self._close_operator()
+            self._set_status(operator_error=f"Quest operator: {type(e).__name__}: {e} (web buttons still work)")
 
     def _close_env(self):
+        self._close_operator()
         if self.storage is not None:
             # flushes a running episode (unsuccessful) and waits for the writer
             try:
@@ -219,11 +383,14 @@ class SessionRunner(threading.Thread):
                 logger.exception("closing the env failed")
         self.env = None
         self.storage = None
+        self.config_json = None
         self._episode_active = False
+        self._set_status(env=None, summary=None, session_dir=None, step_hz=0.0)
 
     def _start_env(self, spec: EnvSpec):
         self._close_env()
         self._set_status(state="starting", error=None, episode_active=False, episode_steps=0)
+        envs.import_env_packages(self.settings.env_packages)
         cfg, name, source = self._resolve_config(spec)
         creator = envs.load_creator(name)
         session_dir = Path(self.settings.data_root) / _session_dir_name(spec.env or name, self.settings.mode)
@@ -253,13 +420,12 @@ class SessionRunner(threading.Thread):
         self._cfg = cfg
         self._control_mode = (cfg.control_mode, cfg.relative_to) if hasattr(cfg, "relative_to") else None
         self.env_spec = spec
+        self.config_json = configs.wrap(name, snapshot.to_jsonable(cfg))
         robot_envs = self.env.get_wrapper_attr("envs")
         self._robot_names = list(robot_envs) if isinstance(robot_envs, dict) else []
-        if self._operator is not None:
-            sim = self.env.get_wrapper_attr("sim") if envs.is_sim_config(cfg) else None
-            self._operator.sim = sim
+        self._start_operator(cfg)
         self._reset_env()
-        self._set_status(state="ready", env=name, session_dir=str(session_dir))
+        self._set_status(state="ready", env=name, session_dir=str(session_dir), summary=envs.describe(cfg, name))
         self._event(f"env {name} started, recording into {session_dir}")
 
     def _reset_env(self):
@@ -462,21 +628,45 @@ class SessionRunner(threading.Thread):
                 web.success |= payload == "B"
                 web.failure |= payload == "Y"
             elif command == "restart":
+                spec = payload or self.env_spec
+                if spec is None:
+                    self._event("no env to restart, select a config first", logging.WARNING)
+                    continue
                 try:
-                    self._start_env(payload or self.env_spec)
+                    self._start_env(spec)
                 except Exception as e:
                     self._fail(e)
+            elif command == "stop_env":
+                self._close_env()
+                self._set_status(state="idle", error=None)
+                self._event("env stopped")
             elif command == "policy":
                 self._switch_policy(payload)
+                self._save_settings()
+            elif command == "settings":
+                self.settings.update(payload)
+                self._save_settings()
+                self._set_status(mode=self.settings.mode, instruction=self.settings.instruction)
+                if self.settings.mode == "eval":
+                    self._policy_status()
+                else:
+                    self._set_status(policy=None)
             elif command == "instruction":
                 self.settings.instruction = str(payload)
                 self._set_status(instruction=self.settings.instruction)
+                self._save_settings()
         return web
+
+    def _save_settings(self):
+        try:
+            self.settings.save()
+        except OSError:
+            logger.exception("saving the settings failed")
 
     def _fail(self, e: BaseException):
         logger.exception("session error")
-        self._set_status(state="error", error="".join(traceback.format_exception_only(type(e), e)).strip())
         self._close_env()
+        self._set_status(state="error", error="".join(traceback.format_exception_only(type(e), e)).strip())
 
     def _tick(self, web: TeleopCommands):
         assert self.env is not None
@@ -523,10 +713,11 @@ class SessionRunner(threading.Thread):
     def run(self):
         if self.settings.mode == "eval" and self.settings.policy is not None:
             self._switch_policy(self.settings.policy)
-        try:
-            self._start_env(self.env_spec)
-        except Exception as e:
-            self._fail(e)
+        if self.env_spec is not None:
+            try:
+                self._start_env(self.env_spec)
+            except Exception as e:
+                self._fail(e)
         rate = SimpleFrameRate(None, "webui")
         last = time.perf_counter()
         while not self._exit.is_set():
@@ -548,6 +739,8 @@ class SessionRunner(threading.Thread):
             last = now
             rate()
         self._close_env()
+        if self._fixed_operator and self._operator is not None:
+            self._operator.close()
         if self._executor is not None:
             self._executor.close()
         if self._policy_client is not None:
