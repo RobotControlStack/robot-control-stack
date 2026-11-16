@@ -104,7 +104,7 @@ def test_python_config_subclass_and_asset_paths():
 
 
 def test_config_file_formats(tmp_path):
-    """A bare config (old format) still loads together with the env, a wrapped one also without."""
+    """A bare config loads with the env or the inferred generic creator, a wrapped one with its creator."""
     from rcs_webui import configs
     from rcs_webui.session import EnvSpec, SessionRunner, SessionSettings
 
@@ -122,5 +122,40 @@ def test_config_file_formats(tmp_path):
         cfg, name, _ = runner._resolve_config(spec)
         assert name == "rcs.envs.configs:EmptyWorldFR3"
         assert cfg.sim_cfg.frequency == EmptyWorldFR3().config().sim_cfg.frequency
-    with pytest.raises(ValueError, match="no creator"):
-        runner._resolve_config(EnvSpec(config_file=bare))
+    # without env: the generic creator of the config type
+    cfg, name, _ = runner._resolve_config(EnvSpec(config_file=bare))
+    assert name == "rcs_webui.envs:ConfigSimEnvCreator"
+    assert cfg.sim_cfg.frequency == EmptyWorldFR3().config().sim_cfg.frequency
+
+
+def test_changed_paths():
+    from rcs_webui import configs
+
+    base = snapshot.to_jsonable(EmptyWorldFR3().config())
+    new = snapshot.apply_overrides(
+        json.loads(json.dumps(base)),
+        {"sim_cfg.frequency": 20.0, "robot_cfgs.right.q_home": [0.0] * 7, "control_mode": "JOINTS"},
+    )
+    changed = configs.changed_paths(base, new)
+    assert set(changed) == {"sim_cfg.frequency", "robot_cfgs.right.q_home", "control_mode"}
+    assert changed["sim_cfg.frequency"] == 20.0
+    assert configs.changed_paths(base, json.loads(json.dumps(base))) == {}
+
+
+def test_hardware_config_without_creator():
+    """A bare hardware config (like SURF's droid_ai2.json) gets the generic FR3 creator and robot_platform
+    HARDWARE (the C++ default SIMULATION is never read on hardware but confusing)."""
+    pytest.importorskip("rcs_fr3")
+    pytest.importorskip("rcs_robotiq2f85")
+    from rcs._core.common import RobotPlatform
+    from rcs_fr3.configs import DROIDEnv
+    from rcs_webui import configs, envs
+
+    cfg_json = snapshot.to_jsonable(DROIDEnv().config())
+    creator = envs.infer_creator(snapshot.from_jsonable(cfg_json))
+    assert creator == "rcs_fr3.creators:RCSFR3MultiConfigEnvCreator"
+    entry = configs.normalized(*configs.unwrap(cfg_json))
+    platform = entry["config"]["fields"]["robot_cfgs"]["right"]["fields"]["robot_platform"]
+    assert platform["name"] == RobotPlatform.HARDWARE.name
+    assert entry["summary"]["platform"] == "hardware"
+    assert entry["summary"]["robots"] == ["right"]

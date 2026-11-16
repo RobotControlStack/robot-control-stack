@@ -3,7 +3,8 @@ the config directories (``--config-dir``) and the stored configs of previous rec
 
 Config files are JSON in the format of ``rcs-webui dump-config``: ``{"creator": "<module>:<EnvCreator>",
 "config": <serialized config>}``. A bare serialized config (like ``env_config.json`` of a recording) is accepted
-as well when the env (creator) is given separately.
+as well: the creator is then the given env or, without one, the generic creator of the config type
+(:func:`rcs_webui.envs.infer_creator`).
 """
 
 import json
@@ -25,10 +26,15 @@ def unwrap(data: Any, env: str | None = None) -> tuple[str, Any]:
     """Returns (creator name, serialized config) of a wrapped or bare config."""
     if isinstance(data, dict) and "creator" in data and "config" in data:
         return str(data["creator"]), data["config"]
-    if env is None:
-        msg = "the config has no creator, give the env it belongs to (--env)"
-        raise ValueError(msg)
-    return envs.creator_name(envs.load_creator(env)), data
+    if env is not None:
+        return envs.creator_name(envs.load_creator(env)), data
+    return envs.infer_creator(snapshot.from_jsonable(data)), data
+
+
+def normalized(creator: str, cfg_json: Any) -> dict[str, Any]:
+    """Wrapped config after :func:`rcs_webui.envs.normalize_config`, with a summary for the interface."""
+    cfg = envs.normalize_config(snapshot.from_jsonable(cfg_json))
+    return {**wrap(creator, snapshot.to_jsonable(cfg)), "summary": envs.describe(cfg, creator)}
 
 
 def read_file(path: Path, env: str | None = None) -> tuple[str, Any]:
@@ -53,11 +59,40 @@ def validate(data: dict[str, Any]) -> Any:
     return snapshot.from_jsonable(cfg_json)
 
 
+def changed_paths(base: Any, new: Any, prefix: str = "") -> dict[str, Any]:
+    """Dotted paths (the syntax of snapshot.apply_overrides) of the values that differ between two serialized
+    configs, mapped to the new value. A removed key maps to None."""
+    if isinstance(base, dict) and isinstance(new, dict):
+        if (
+            "fields" in base
+            and "fields" in new
+            and {k for k in base if k != "fields"} == {k for k in new if k != "fields"}
+            and all(base[k] == new[k] for k in base if k != "fields")
+        ):
+            return changed_paths(base["fields"], new["fields"], prefix)
+        if any(k.startswith("__") for k in (*base, *new)):
+            # a leaf value (ndarray, enum, pose, ...) or a changed type
+            return {} if base == new else {prefix.rstrip("."): new}
+        out: dict[str, Any] = {}
+        for key in sorted(set(base) | set(new)):
+            if key not in new:
+                out[f"{prefix}{key}"] = None
+            elif key not in base:
+                out[f"{prefix}{key}"] = new[key]
+            else:
+                out.update(changed_paths(base[key], new[key], f"{prefix}{key}."))
+        return out
+    return {} if base == new else {prefix.rstrip("."): new}
+
+
 def catalog(config_dirs: list[Path], data_root: Path) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     for name in envs.available_envs():
-        entries.append({"id": DEFAULT_PREFIX + name, "group": "default configs", "label": name})
+        group = "default configs: hardware" if name in envs.HARDWARE_CREATORS else "default configs: simulation"
+        entries.append({"id": DEFAULT_PREFIX + name, "group": group, "label": name})
     for directory in config_dirs:
+        if not Path(directory).is_dir():
+            continue
         for path in sorted(Path(directory).glob("*.json")):
             entries.append({"id": FILE_PREFIX + str(path.resolve()), "group": str(directory), "label": path.name})
     root = Path(data_root)
@@ -69,7 +104,12 @@ def catalog(config_dirs: list[Path], data_root: Path) -> list[dict[str, Any]]:
 
 
 def load_entry(entry_id: str, *, config_dirs: list[Path], data_root: Path, **default_kwargs: Any) -> dict[str, Any]:
-    """Returns the wrapped config of a catalog entry."""
+    """Returns the wrapped and normalized config of a catalog entry with its summary."""
+    wrapped = _load_entry(entry_id, config_dirs=config_dirs, data_root=data_root, **default_kwargs)
+    return normalized(wrapped["creator"], wrapped["config"])
+
+
+def _load_entry(entry_id: str, *, config_dirs: list[Path], data_root: Path, **default_kwargs: Any) -> dict[str, Any]:
     if entry_id.startswith(DEFAULT_PREFIX):
         return default_config(entry_id[len(DEFAULT_PREFIX) :], **default_kwargs)
     if entry_id.startswith(FILE_PREFIX):
