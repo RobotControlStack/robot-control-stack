@@ -73,15 +73,30 @@ def list_episodes(session_dir: Path) -> list[dict[str, Any]]:
     if dataset is None:
         return []
     names = set(dataset.schema.names)
-    columns = [c for c in [*EPISODE_COLUMNS, "truncated"] if c in names]
+    paths = _struct_paths(dataset.schema)
+    columns: dict[str, ds.Expression] = {c: ds.field(c) for c in [*EPISODE_COLUMNS, "truncated"] if c in names}
+    for key in ("controller", "source"):
+        if f"annotations.{key}" in paths:
+            columns[key] = _field(f"annotations.{key}")
     table = dataset.to_table(columns=columns)
     episodes: dict[str, dict[str, Any]] = {}
     for row in table.to_pylist():
         ep = episodes.setdefault(
             row["uuid"],
-            {"uuid": row["uuid"], "steps": 0, "start": row["timestamp"], "end": row["timestamp"], "last_step": -1},
+            {
+                "uuid": row["uuid"],
+                "steps": 0,
+                "start": row["timestamp"],
+                "end": row["timestamp"],
+                "last_step": -1,
+                "controllers": {},
+                "intervention_steps": 0,
+            },
         )
         ep["steps"] += 1
+        controller = _controller(row)
+        ep["controllers"][controller] = ep["controllers"].get(controller, 0) + 1
+        ep["intervention_steps"] += row.get("source") == "intervention"
         ep["start"] = min(ep["start"], row["timestamp"])
         ep["end"] = max(ep["end"], row["timestamp"])
         if row["step"] > ep["last_step"]:
@@ -94,6 +109,19 @@ def list_episodes(session_dir: Path) -> list[dict[str, Any]]:
         ep["duration"] = ep["end"] - ep["start"]
         del ep["last_step"]
     return result
+
+
+def _controller(row: dict[str, Any]) -> str:
+    """annotations.controller of a step; recordings from before the column existed are derived from
+    annotations.source, recordings without annotations are "unknown"."""
+    if row.get("controller"):
+        return str(row["controller"])
+    return {
+        "teleop": "human",
+        "intervention": "human",
+        "policy": "learned_policy",
+        "idle": "none",
+    }.get(row.get("source") or "", "unknown")
 
 
 def _field(path: str) -> ds.Expression:
@@ -145,6 +173,9 @@ def episode_signals(session_dir: Path, uuid: str) -> dict[str, Any]:
     for extra in ("truncated", "instruction"):
         if extra in paths:
             wanted[extra] = ds.field(extra)
+    for key in ("controller", "source"):
+        if f"annotations.{key}" in paths:
+            wanted[key] = _field(f"annotations.{key}")
     for robot in robots:
         for sig in OBS_SIGNALS:
             if f"obs.{robot}.{sig}" in paths:
@@ -170,6 +201,15 @@ def episode_signals(session_dir: Path, uuid: str) -> dict[str, Any]:
         "success": bool(cols["success"][-1]),
         "truncated": bool(cols.get("truncated", [False])[-1]),
         "instruction": cols.get("instruction", [""])[-1],
+        "controller": [
+            _controller({"controller": c, "source": src})
+            for c, src in zip(
+                cols.get("controller", [None] * table.num_rows),
+                cols.get("source", [None] * table.num_rows),
+                strict=True,
+            )
+        ],
+        "intervention": [src == "intervention" for src in cols.get("source", [None] * table.num_rows)],
         "cameras": cameras,
         "robots": {},
     }

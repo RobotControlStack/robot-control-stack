@@ -136,11 +136,21 @@
   <div class="card">
     <div class="row">
       <label style="flex:1">Session <select id="session-select"></select></label>
+      <label style="flex:0 0 220px">Show
+        <select id="episode-filter">
+          <option value="">all episodes</option>
+          <option value="intervention">with human intervention</option>
+          <option value="no-intervention">without intervention</option>
+          <option value="successful">successful</option>
+          <option value="unsuccessful">unsuccessful</option>
+        </select>
+      </label>
       <button id="reload-sessions" class="btn small">reload</button>
     </div>
     <p id="session-meta" class="muted"></p>
+    <p id="episode-count" class="muted"></p>
     <table id="episodes">
-      <thead><tr><th>#</th><th>episode</th><th>steps</th><th>duration</th><th>label</th><th>instruction</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>episode</th><th>steps</th><th>duration</th><th>label</th><th>controlled by</th><th>instruction</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
