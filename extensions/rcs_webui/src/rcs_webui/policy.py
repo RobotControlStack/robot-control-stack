@@ -19,6 +19,7 @@ steps since the query``); if the answer is late it switches as soon as it arrive
 """
 
 import abc
+import enum
 import importlib
 import itertools
 import logging
@@ -32,6 +33,26 @@ from typing import Any, ClassVar
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+class Controller(str, enum.Enum):
+    """Who commanded the robot in a step, recorded per step as ``annotations.controller`` (the string value).
+
+    Extend it with new members as new kinds of controllers appear; the column is a string, so recordings with
+    new values stay readable by old code (unknown values are kept as strings).
+    """
+
+    HUMAN = "human"
+    """teleoperation, also every step of a human intervention during a policy rollout"""
+    LEARNED_POLICY = "learned_policy"
+    """a trained policy (e.g. a VLA served by a policy server)"""
+    SCRIPTED_POLICY = "scripted_policy"
+    """a hand written controller (e.g. a motion planner, the mock client)"""
+    AGENT = "agent"
+    """an agent that decides on actions with tools / reasoning (e.g. an LLM agent driving the robot)"""
+    NONE = "none"
+    """nobody commands the robot: the hold action keeps it in place (eval without running policy, no trigger)"""
+
 
 ENTRY_POINT_GROUP = "rcs_webui.policy_clients"
 
@@ -94,6 +115,8 @@ class PolicyClient(abc.ABC):
     """Interface of a policy server client. Implementations must be safe to call from one worker thread."""
 
     capabilities: ClassVar[PolicyCapabilities] = PolicyCapabilities()
+    controller: ClassVar[Controller] = Controller.LEARNED_POLICY
+    """recorded per step while this client commands the robot; scripted controllers and agents override it"""
 
     def __init__(self, host: str, port: int, **options: Any):
         self.host = host
@@ -331,6 +354,7 @@ class MockPolicyClient(PolicyClient):
     """
 
     capabilities = PolicyCapabilities(realtime_chunking=True)
+    controller = Controller.SCRIPTED_POLICY
 
     def __init__(self, host: str = "mock", port: int = 0, **options: Any):
         super().__init__(host, port, **options)

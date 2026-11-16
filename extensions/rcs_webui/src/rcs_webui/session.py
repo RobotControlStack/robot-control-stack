@@ -38,6 +38,7 @@ from rcs.utils import SimpleFrameRate
 from rcs_webui import configs, envs, snapshot
 from rcs_webui.policy import (
     ChunkExecutor,
+    Controller,
     PolicyClient,
     StepSource,
     load_policy_client_class,
@@ -173,6 +174,12 @@ class PolicySettings:
     """actions of a chunk that are executed before the next query (None: the whole chunk)"""
     rtc_delay: int = 0
     """real-time chunking: steps executed while the server computes, 0 disables RTC"""
+
+
+def _controller_value(controller: Any) -> str:
+    """The recorded string of a client's controller kind; a client may also use a kind that the Controller enum
+    does not know yet."""
+    return str(getattr(controller, "value", controller))
 
 
 def _session_dir_name(env_name: str, mode: str) -> str:
@@ -603,7 +610,11 @@ class SessionRunner(threading.Thread):
                 self._executor.cancel()
                 self._event("human intervention")
                 self._policy_status()
-            return self._operator_action(), {"source": "intervention", **StepSource().as_dict()}
+            return self._operator_action(), {
+                "source": "intervention",
+                "controller": Controller.HUMAN.value,
+                **StepSource().as_dict(),
+            }
         if self._intervening:
             self._intervening = False
             self._event("policy continues")
@@ -617,7 +628,12 @@ class SessionRunner(threading.Thread):
         for robot, act in action.items():
             if robot in merged:
                 merged[robot] = act
-        return merged, {"source": "policy", **step_source.as_dict()}
+        assert self._policy_client is not None
+        return merged, {
+            "source": "policy",
+            "controller": _controller_value(type(self._policy_client).controller),
+            **step_source.as_dict(),
+        }
 
     def _process_commands(self) -> TeleopCommands:
         web = TeleopCommands()
@@ -696,7 +712,11 @@ class SessionRunner(threading.Thread):
         else:
             action = self._operator_action()
             engaged = self._operator is not None and self._operator.is_engaged()
-            annotations = {"source": "teleop" if engaged or self.settings.mode == "collect" else "idle"}
+            human = engaged or self.settings.mode == "collect"
+            annotations = {
+                "source": "teleop" if human else "idle",
+                "controller": (Controller.HUMAN if human else Controller.NONE).value,
+            }
             annotations.update(StepSource().as_dict())
         assert self.storage is not None
         self.storage.annotate_step(**annotations)

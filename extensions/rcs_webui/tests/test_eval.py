@@ -51,6 +51,7 @@ def test_eval_rollout_records_chunk_provenance(eval_interface):
     assert rows[-1]["success"] is True
     ann = [r["annotations"] for r in rows]
     assert all(a["source"] == "policy" for a in ann)
+    assert all(a["controller"] == "scripted_policy" for a in ann)  # the mock client is a scripted policy
     assert ann[0]["chunk_id"] == 0
     assert ann[0]["chunk_index"] == 0
     assert all(a["response_received"] >= a["request_sent"] for a in ann)

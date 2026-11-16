@@ -112,6 +112,7 @@ def test_collect_records_episodes_with_snapshot(interface):
         assert len(ep_rows) >= 10
         labels.append(ep_rows[-1]["success"])
         assert all(r["instruction"] == "pick" for r in ep_rows)
+        assert all(r["annotations"]["controller"] == "human" for r in ep_rows)  # teleop
         ts = [r["timestamp"] for r in ep_rows]
         assert np.all(np.diff(ts) > 0)
         states = ep_rows[-1]["info"]["right"]["control_states"]
