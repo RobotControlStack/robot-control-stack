@@ -318,6 +318,32 @@ $("#validate-config").addEventListener("click", async () => {
   }
 });
 
+// The picked config (e.g. a file in a config directory) may have changed on disk since it was loaded into the
+// editor. Without this check the editor's old text would be started and the gutter, which compares against the
+// old text, would show no change.
+async function pickedConfigIsCurrent() {
+  if (!pickedId || pickedId === "running:") return true;
+  let entry;
+  try {
+    entry = await api(`/api/configs/entry?id=${encodeURIComponent(pickedId)}`);
+  } catch (err) {
+    return true; // e.g. the file was removed: the editor content is all there is
+  }
+  const fresh = formatJson({ creator: entry.creator, config: entry.config });
+  if (fresh === editor.base) return true;
+  if (!editor.dirty()) {
+    editor.set(fresh);
+    renderSummary(entry.summary);
+    $("#config-check").textContent = "The picked config changed on disk and was reloaded, check it and start again.";
+    $("#config-details").open = true;
+    return false;
+  }
+  return confirm(
+    "The picked config changed on disk since you opened it, your edits are based on the old version.\n\n" +
+      "OK: start with the editor content anyway.\nCancel: keep editing (pick the config again to load the new version)."
+  );
+}
+
 $("#start-env").addEventListener("click", async () => {
   let cfg;
   try {
@@ -326,6 +352,7 @@ $("#start-env").addEventListener("click", async () => {
     $("#config-check").textContent = err.message;
     return;
   }
+  if (!(await pickedConfigIsCurrent())) return;
   const running = lastStatus && lastStatus.env;
   const n = editor.hunks.length;
   const what = `${running ? "Restart" : "Start"} the env with this config${n ? ` (${n} change${n > 1 ? "s" : ""} against the picked config)` : ""}?`;
