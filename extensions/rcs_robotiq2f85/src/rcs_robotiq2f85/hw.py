@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import threading
 import typing
 
 from rcs._core.common import Gripper, GripperConfig, GripperState
@@ -50,6 +51,16 @@ class RobotiQ2F85Gripper(Gripper):
         self._cfg: RobotiQ2F85GripperConfig = cfg
         self.gripper = Robotiq2F85(serial_number=cfg.serial_number, async_control=cfg.async_control)
         self.gripper.reset()
+        # async control: robotiq2f only reads the status in a thread, go_to() still writes the Modbus registers in
+        # the calling thread and waits for the gripper's reply (seen: 80-200 ms stalls of the env step at open /
+        # close). Commands are therefore sent from a writer thread; only the newest pending command is sent.
+        self._command = threading.Condition()
+        self._pending: tuple[float, float, float] | None = None
+        self._stop_writer = False
+        self._writer: threading.Thread | None = None
+        if cfg.async_control:
+            self._writer = threading.Thread(target=self._write_commands, daemon=True, name="robotiq-commands")
+            self._writer.start()
 
     def get_normalized_width(self) -> float:
         return self.gripper.opening / self.gripper.MAX_OPENING
@@ -76,12 +87,31 @@ class RobotiQ2F85Gripper(Gripper):
         if not (0 <= width <= 1):
             msg = f"Width must be between 0 and 1, got {width}."
             raise ValueError(msg)
-        abs_width = width * self.gripper.MAX_OPENING
-        self.gripper.go_to(
-            opening=float(abs_width),
-            speed=self._cfg.speed,
-            force=force if force != 0 else self._cfg.force,
+        command = (
+            float(width * self.gripper.MAX_OPENING),
+            float(self._cfg.speed),
+            float(force if force != 0 else self._cfg.force),
         )
+        if self._writer is None:
+            self.gripper.go_to(opening=command[0], speed=command[1], force=command[2])
+            return
+        with self._command:
+            self._pending = command
+            self._command.notify()
+
+    def _write_commands(self) -> None:
+        while True:
+            with self._command:
+                while self._pending is None and not self._stop_writer:
+                    self._command.wait()
+                if self._stop_writer:
+                    return
+                opening, speed, force = self._pending  # type: ignore[misc]
+                self._pending = None
+            try:
+                self.gripper.go_to(opening=opening, speed=speed, force=force)
+            except Exception:
+                logger.exception("sending the Robotiq command failed")
 
     def shut(self) -> None:
         """
@@ -90,7 +120,7 @@ class RobotiQ2F85Gripper(Gripper):
         self.set_normalized_width(0.0)
 
     def close(self) -> None:
-        """Stops the status thread of async control, then closes the serial port.
+        """Stops the command writer and the status thread of async control, then closes the serial port.
 
         robotiq2f 0.2.0 reads the status in a ``while True`` thread without a stop flag, so closing the port under
         it made the thread crash with ``termios.error: Bad file descriptor`` (seen when the RCS web interface
@@ -98,6 +128,12 @@ class RobotiQ2F85Gripper(Gripper):
         a function that raises SystemExit ends the thread silently after its current read. Remove this once
         robotiq2f can stop the thread itself.
         """
+        writer = getattr(self, "_writer", None)
+        if writer is not None:
+            with self._command:
+                self._stop_writer = True
+                self._command.notify()
+            writer.join(timeout=2.0)
         gripper = self.gripper
         thread = getattr(gripper, "_async_thread", None)
         if thread is not None and thread.is_alive():
