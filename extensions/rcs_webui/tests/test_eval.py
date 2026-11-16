@@ -214,3 +214,56 @@ def test_operator_engagement_and_robot_motion_are_recorded(tmp_path):
     finally:
         server.shutdown()
         runner.stop()
+
+
+class _JumpingQuest(_FakeQuest):
+    """Trigger held, commands a 10 cm offset from the origin (like a hand that moved since the origin was set)."""
+
+    def consume_action(self):
+        import numpy as np
+
+        return {"right": {"tquat": np.array([0.10, 0, 0, 0, 0, 0, 1.0]), "gripper": np.array([1.0], dtype=np.float32)}}
+
+
+def test_after_recovery_the_robot_waits_for_a_fresh_trigger_press(tmp_path):
+    from test_session import _ReflexOnce
+
+    settings = SessionSettings(data_root=tmp_path, mode="collect", frequency=30.0, operator="none")
+    settings.on_robot_error = "recover"
+    quest = _JumpingQuest()
+    runner = SessionRunner(settings, EnvSpec(env="rcs/fr3", overrides=SMALL_CAMERAS), operator=quest)
+    server = make_server(App(runner, tmp_path), "127.0.0.1", 0)
+    serve_in_thread(server)
+    runner.start()
+    try:
+        wait_for(lambda: runner.status()["state"] in ("ready", "error"))
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        runner.env.get_wrapper_attr("envs")["right"].recover = lambda: None
+        steps = lambda: runner.status()["episode_steps"]  # noqa: E731
+        runner.storage.env = _ReflexOnce(runner.storage.env, at=30)
+        call(base, "/api/button", {"button": "A"})
+        wait_for(lambda: steps() >= 5)
+        quest.engaged = True  # press: the robot follows the operator
+        wait_for(lambda: runner.status().get("robot_errors_recovered") == 1)
+        assert runner._await_release == {"right"}  # trigger held through the recovery: ignored
+        n = steps()
+        wait_for(lambda: steps() >= n + 15)  # still held: must not move
+        quest.engaged = False  # release ...
+        wait_for(lambda: "right" not in runner._await_release)
+        quest.engaged = True  # ... and press again: follows
+        n2 = steps()
+        wait_for(lambda: steps() >= n2 + 15)
+        call(base, "/api/button", {"button": "B"})
+        wait_for(lambda: not runner.status()["episode_active"])
+        session_dir = Path(runner.status()["session_dir"])
+        wait_for(lambda: _rows(session_dir) >= n2 + 15)
+        rows = sorted(read_session(session_dir).to_pylist(), key=lambda r: r["step"])
+        err = next(r["step"] for r in rows if r["truncated"])
+        held = [r for r in rows if err + 3 < r["step"] <= n + 10]
+        assert held and not any(r["annotations"]["moving"]["right"] for r in held)  # no jump while still held
+        assert not any(r["annotations"]["engaged"]["right"] for r in held)  # and not counted as operated
+        assert any(r["annotations"]["moving"]["right"] for r in rows if 5 < r["step"] < err)  # followed before
+        assert any(r["annotations"]["moving"]["right"] for r in rows if r["step"] > n2 + 1)  # and after re-press
+    finally:
+        server.shutdown()
+        runner.stop()
