@@ -7,7 +7,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import gymnasium as gym
 import numpy as np
+import pyarrow as pa
 import pyarrow.dataset as ds
 import pytest
 from rcs_webui import snapshot
@@ -319,3 +321,53 @@ def test_duobench_pick_place_is_offered(idle_interface):
     assert summary["cameras"] == ["front_rgb", "gripper_rgb"]
     assert summary["control_mode"] == "CARTESIAN_TQuat"
     assert summary["relative_to"] == "CONFIGURED_ORIGIN"
+
+
+class _SucceedAfter(gym.Wrapper):
+    """Ends the episode like a task check does: terminated with info["success"] after ``n`` steps."""
+
+    def __init__(self, env, n: int, success: bool = True):
+        super().__init__(env)
+        self.n, self.count, self.success_value = n, 0, success
+
+    def reset(self, **kwargs):
+        self.count = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        self.count += 1
+        if self.count >= self.n:
+            terminated = True
+            info = {**info, "success": self.success_value}
+        return obs, reward, terminated, truncated, info
+
+
+@pytest.mark.parametrize("success", [True, False])
+def test_env_task_check_labels_the_episode(interface, success):
+    """A task that terminates the episode with info["success"] labels it like B; without success like Y."""
+    runner, base, _ = interface
+    storage = runner.storage
+    # the task check sits below the StorageWrapper, as with duobench's TaskStageWrapper
+    storage.env = _SucceedAfter(storage.env, 8, success)
+    call(base, "/api/button", {"button": "A"})
+    wait_for(lambda: runner.status()["episodes"]["successful"] + runner.status()["episodes"]["truncated"] == 1)
+    status = runner.status()
+    assert status["episodes"] == {
+        "successful": int(success),
+        "unsuccessful": 0,
+        "truncated": int(not success),
+    }
+    assert (status["error"] is None) == success
+    session_dir = Path(status["session_dir"])
+
+    def flushed() -> bool:
+        try:
+            return read_session(session_dir).num_rows >= 8
+        except (FileNotFoundError, pa.ArrowInvalid):  # the writer thread has not finished the file yet
+            return False
+
+    wait_for(flushed)
+    rows = sorted(read_session(session_dir).to_pylist(), key=lambda r: r["step"])
+    assert [r["success"] for r in rows] == [False] * (len(rows) - 1) + [success]
+    assert rows[-1]["terminated"] is True

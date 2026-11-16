@@ -705,6 +705,10 @@ class SessionRunner(threading.Thread):
                 self._status["episode_steps"] += 1
         if terminated or truncated:
             errors = {k: v.get("robot_error") for k, v in info.items() if isinstance(v, dict) and v.get("robot_error")}
+            if terminated and not truncated and not errors and info.get("success"):
+                # the task check of the env (e.g. a duobench TaskStageWrapper) ended the episode: same as B
+                self._end_episode(True, "successful (task check of the env)")
+                return
             self._set_status(
                 error=f"episode ended by the env: {errors or ('terminated' if terminated else 'truncated')}"
             )
