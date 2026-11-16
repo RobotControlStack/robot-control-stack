@@ -814,6 +814,8 @@ class RelativeActionSpace(ActObsInfoWrapper):
         self._absolute_action: common.Pose | VecType | None = None
 
     def set_origin(self, origin: common.Pose | VecType):
+        # the per-step limit compares with the last action, which was relative to the previous origin
+        self._last_action = None
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
             assert isinstance(
                 origin, np.ndarray
@@ -826,6 +828,9 @@ class RelativeActionSpace(ActObsInfoWrapper):
             self._origin = copy.deepcopy(origin)
 
     def set_origin_to_current(self):
+        # the per-step limit compares with the last action, which was relative to the previous origin: without this
+        # reset the first action after a new origin (e.g. a Quest trigger press) is limited towards the stale offset
+        self._last_action = None
         if self.get_wrapper_attr("get_control_mode")() == ControlMode.JOINTS:
             self._origin = self._robot.get_joint_position()
         else:
