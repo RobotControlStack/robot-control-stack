@@ -66,6 +66,7 @@
         <div class="row checks">
           <label class="check"><input id="set-switch" type="checkbox" data-start-key="quest_switched_left_right"> swap Quest left / right</label>
           <label class="check"><input id="set-gui" type="checkbox" data-start-key="headless"> MuJoCo viewer (sim)</label>
+          <label class="check" title="when the env is stopped, merge the session's small batch files into large parquet files (in the background)"><input id="set-consolidate" type="checkbox"> consolidate files on stop</label>
           <label class="check" title="end the episode and reset the env when the env reports task success (labelled successful) or truncation (unsuccessful); off: keep recording until B / Y. Robot errors always reset."><input id="set-auto-reset" type="checkbox"> auto reset when the env ends the episode</label>
         </div>
         <label>Config directories (one per line, *.json files are offered as configs)

@@ -63,6 +63,7 @@ function renderStatus(s) {
     ["policy error", s.policy && s.policy.error ? s.policy.error : null],
     ["env reports", s.env_end ? `${s.env_end}: end the episode with B or Y (auto reset is off)` : null],
     ["data folder", s.session_dir],
+    ["consolidating", s.consolidating && s.consolidating.length ? s.consolidating.join(", ") : null],
     ["step rate", s.env ? `${s.step_hz} Hz` : null],
     ["episodes", `${s.episodes.successful} successful, ${s.episodes.unsuccessful} unsuccessful, ${s.episodes.truncated} ended by the robot`],
     ["last event", s.last_event],
@@ -143,6 +144,7 @@ async function loadSettings() {
   $("#set-switch").checked = st.quest_switched_left_right;
   $("#set-gui").checked = !st.headless;
   $("#set-auto-reset").checked = st.auto_reset;
+  $("#set-consolidate").checked = st.consolidate_on_stop;
   $("#set-config-dirs").value = st.config_dirs.join("\n");
   $("#set-env-packages").value = st.env_packages.join("\n");
   $("#env-packages-status").textContent = Object.entries(res.env_packages)
@@ -155,6 +157,7 @@ $("#settings-form").addEventListener("submit", async (e) => {
   const body = {
     frequency: +$("#set-frequency").value,
     auto_reset: $("#set-auto-reset").checked,
+    consolidate_on_stop: $("#set-consolidate").checked,
     config_dirs: lines($("#set-config-dirs").value),
     env_packages: lines($("#set-env-packages").value),
   };

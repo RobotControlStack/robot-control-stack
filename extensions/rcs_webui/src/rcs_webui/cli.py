@@ -58,6 +58,7 @@ def run_interface(settings: SessionSettings, host: str, port: int, spec: EnvSpec
     logger.info("shutting down, flushing the recording")
     server.shutdown()
     runner.stop()  # closes the env and the Quest operator
+    runner.wait_for_consolidation()  # a second Ctrl+C exits right away (the original files are kept)
 
 
 DataRootOpt = Annotated[

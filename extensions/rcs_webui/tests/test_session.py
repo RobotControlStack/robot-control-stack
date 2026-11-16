@@ -99,6 +99,7 @@ def test_collect_records_episodes_with_snapshot(interface):
     new_dir = Path(runner.status()["session_dir"])
     assert new_dir != session_dir
 
+    runner.wait_for_consolidation()
     table = read_session(session_dir)
     rows = table.to_pylist()
     episodes: dict[str, list[dict]] = {}
@@ -424,3 +425,27 @@ def test_client_that_disconnects_is_not_an_error(interface, caplog):
     time.sleep(0.5)
     assert call(base, "/api/status")["state"] == "ready"
     assert not [r for r in caplog.records if r.levelno >= logging.ERROR], [r.getMessage() for r in caplog.records]
+
+
+def test_stopped_session_is_consolidated_in_the_background(interface):
+    """Stopping the env merges the session's small batch files into large parquet files, rows unchanged."""
+    runner, base, _ = interface
+    record_episode(runner, base, "B", steps=40)
+    record_episode(runner, base, "Y", steps=40)
+    session_dir = Path(runner.status()["session_dir"])
+    data_dir = session_dir / snapshot.DATA_DIR
+    wait_for(lambda: len(list(data_dir.glob("*.parquet"))) >= 3)  # batches of 32 rows
+    call(base, "/api/stop_env", {})
+    wait_for(lambda: runner.status()["state"] == "idle")
+    runner.wait_for_consolidation()
+    assert runner.status()["consolidating"] == []
+    assert len(list(data_dir.glob("*.parquet"))) == 1
+    assert not list(session_dir.glob("data.*"))  # no temporary folders left
+    rows = read_session(session_dir).to_pylist()
+    episodes: dict[str, list[dict]] = {}
+    for row in rows:
+        episodes.setdefault(row["uuid"], []).append(row)
+    assert len(episodes) == 2
+    for ep in episodes.values():
+        assert [r["step"] for r in ep] == list(range(len(ep)))  # whole and in order
+    assert sorted(ep[-1]["success"] for ep in episodes.values()) == [False, True]
