@@ -57,6 +57,12 @@ class FR3HW(gym.Wrapper):
             }
             return obs, 0, False, True, self._add_control_states(info)
 
+    def recover(self) -> None:
+        """Clears a robot error (e.g. a reflex) without resetting the env: the robot stays where it stopped and the
+        next action starts the controller again from the measured state. Raises if the robot can not recover."""
+        self.hw_robot.automatic_error_recovery()
+        self.hw_robot.clear_background_error()
+
     def get_obs(self, obs: dict | None = None) -> dict[str, Any]:
         if obs is None:
             obs = dict(self.get_wrapper_attr("get_robot_obs")())

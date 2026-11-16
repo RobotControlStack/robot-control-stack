@@ -81,6 +81,10 @@ class SessionSettings:
     """quest or none (episodes are then controlled with the buttons of the web interface)"""
     quest_addr: str = "10.42.0.1"
     quest_switched_left_right: bool = False
+    on_robot_error: str = "end"
+    """end: a robot error (e.g. a reflex) ends the episode as unsuccessful and resets the env. recover: the error is
+    cleared, the robot stays where it stopped and the episode keeps recording; the operator re-engages (the Quest
+    origin is reset, so the robot does not jump to the hand) and decides with B / Y"""
     consolidate_on_stop: bool = True
     """merge the small batch files of a session into large parquet files when its env is stopped (background)"""
     auto_reset: bool = True
@@ -107,6 +111,7 @@ class SessionSettings:
         "policy",
         "auto_reset",
         "consolidate_on_stop",
+        "on_robot_error",
     )
 
     def to_json(self) -> dict[str, Any]:
@@ -126,6 +131,9 @@ class SessionSettings:
             if key == "mode" and raw not in ("collect", "eval"):
                 msg = "mode must be collect or eval"
                 raise ValueError(msg)
+            if key == "on_robot_error" and raw not in ("end", "recover"):
+                msg = "on_robot_error must be end or recover"
+                raise ValueError(msg)
             if key == "operator" and raw not in ("quest", "none"):
                 msg = "operator must be quest or none"
                 raise ValueError(msg)
@@ -142,7 +150,7 @@ class SessionSettings:
                 value = bool(raw)
             elif key == "policy":
                 value = PolicySettings(**raw) if raw is not None else None
-            elif key in ("instruction", "quest_addr", "last_config") and raw is not None:
+            elif key in ("instruction", "quest_addr", "last_config", "on_robot_error") and raw is not None:
                 value = str(raw)
             setattr(self, key, value)
 
@@ -757,6 +765,30 @@ class SessionRunner(threading.Thread):
             moving={robot: v > MOVING_JOINT_SPEED for robot, v in speed.items()},
         )
 
+    def _recover(self, errors: dict[str, str]) -> bool:
+        """Clears the robot errors and keeps the episode running. Returns False if a robot can not recover (the
+        episode then ends as before). The recorded row of the step keeps truncated=True and the error message."""
+        assert self.env is not None
+        robot_envs = self.env.get_wrapper_attr("envs")
+        try:
+            for robot in errors:
+                robot_envs[robot].get_wrapper_attr("recover")()
+        except Exception as e:
+            logger.exception("recovering from the robot error failed")
+            self._event(f"recovery failed ({type(e).__name__}: {e}), the episode ends", logging.ERROR)
+            return False
+        # the robot stays where it stopped: the operator re-engages from there instead of the robot jumping to the
+        # current hand pose (the Quest origin is reset)
+        self._set_origins_to_current()
+        if self._operator is not None:
+            self._operator.reset_operator_state()
+        if self._executor is not None and self._policy_running:
+            self._executor.cancel()  # fresh chunk from the current state
+        with self._lock:
+            self._status["robot_errors_recovered"] = self._status.get("robot_errors_recovered", 0) + 1
+        self._event(f"robot error recovered, the episode continues: {errors}", logging.WARNING)
+        return True
+
     def _process_commands(self) -> TeleopCommands:
         web = TeleopCommands()
         while True:
@@ -860,6 +892,8 @@ class SessionRunner(threading.Thread):
         if terminated or truncated:
             errors = {k: v.get("robot_error") for k, v in info.items() if isinstance(v, dict) and v.get("robot_error")}
             task_success = bool(terminated and not truncated and not errors and info.get("success"))
+            if errors and self.settings.on_robot_error == "recover" and self._episode_active and self._recover(errors):
+                return
             if not errors and not self.settings.auto_reset:
                 # the operator decides: the episode keeps recording until B / Y, the env is not reset
                 end = "task success" if task_success else ("truncated" if truncated else "terminated")

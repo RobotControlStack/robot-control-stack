@@ -66,6 +66,8 @@
         <div class="row checks">
           <label class="check"><input id="set-switch" type="checkbox" data-start-key="quest_switched_left_right"> swap Quest left / right</label>
           <label class="check"><input id="set-gui" type="checkbox" data-start-key="headless"> MuJoCo viewer (sim)</label>
+          <label class="check" title="what a robot error (e.g. a reflex) does: end the episode (unsuccessful, env reset) or clear the error and keep recording (re-engage the trigger, label with B / Y)">on robot error
+            <select id="set-on-robot-error" style="width:auto"><option value="end">end episode</option><option value="recover">recover and continue</option></select></label>
           <label class="check" title="when the env is stopped, merge the session's small batch files into large parquet files (in the background)"><input id="set-consolidate" type="checkbox"> consolidate files on stop</label>
           <label class="check" title="end the episode and reset the env when the env reports task success (labelled successful) or truncation (unsuccessful); off: keep recording until B / Y. Robot errors always reset."><input id="set-auto-reset" type="checkbox"> auto reset when the env ends the episode</label>
         </div>

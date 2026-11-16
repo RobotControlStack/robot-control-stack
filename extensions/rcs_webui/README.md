@@ -78,6 +78,14 @@ Open `http://<pc>:8080`. No env runs yet. Everything is configured in the page a
   successful if the task check reports success (`terminated` with `info["success"]`, e.g. DuoBench tasks), as
   unsuccessful for any other termination or truncation. Off: the env's end is only shown in the status and the
   episode keeps recording until `B` / `Y`. Robot errors always end the episode and reset the env.
+- *On robot error*: `end episode` (default) stores the episode as unsuccessful (`truncated=True` and the message in
+  `info.<robot>.robot_error` in the last row) and resets the env. `recover and continue` clears the error
+  (`FR3HW.recover()`, libfranka automatic error recovery), the robot stays where it stopped and the episode keeps
+  recording; the row of the error keeps `truncated=True` and the message, so converters can cut there. The Quest
+  origin is reset: re-press the trigger to continue from where the robot is. If recovery fails, the episode ends.
+- *Consolidate files on stop* (default on): when the env is stopped or restarted, the session's batch files are
+  merged into files of about 512 MB (row groups of about 128 MB) in the background; relabel / delete of that session
+  wait until it is done.
 - *Env config*: pick a config, it is shown complete and editable, then *start env*. The list has the running
   env, the config directories, previous recordings and the default configs of the code (hardware: `fr3`,
   `fr3_duo`, `fr3_dual`, `droid`; simulation: `rcs/*` and e.g. `duobench/*` when DuoBench is installed).

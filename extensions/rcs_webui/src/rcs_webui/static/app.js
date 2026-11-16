@@ -145,6 +145,7 @@ async function loadSettings() {
   $("#set-gui").checked = !st.headless;
   $("#set-auto-reset").checked = st.auto_reset;
   $("#set-consolidate").checked = st.consolidate_on_stop;
+  $("#set-on-robot-error").value = st.on_robot_error;
   $("#set-config-dirs").value = st.config_dirs.join("\n");
   $("#set-env-packages").value = st.env_packages.join("\n");
   $("#env-packages-status").textContent = Object.entries(res.env_packages)
@@ -158,6 +159,7 @@ $("#settings-form").addEventListener("submit", async (e) => {
     frequency: +$("#set-frequency").value,
     auto_reset: $("#set-auto-reset").checked,
     consolidate_on_stop: $("#set-consolidate").checked,
+    on_robot_error: $("#set-on-robot-error").value,
     config_dirs: lines($("#set-config-dirs").value),
     env_packages: lines($("#set-env-packages").value),
   };
