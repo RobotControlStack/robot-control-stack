@@ -159,3 +159,23 @@ def test_hardware_config_without_creator():
     assert platform["name"] == RobotPlatform.HARDWARE.name
     assert entry["summary"]["platform"] == "hardware"
     assert entry["summary"]["robots"] == ["right"]
+
+
+def test_snapshot_logs_the_packages_of_creator_and_config(tmp_path):
+    """The package of the creator and of the config classes (e.g. a task package) is logged in git.json."""
+    pytest.importorskip("duobench.tasks.pick_place")
+    from rcs_webui import envs
+
+    envs.import_env_packages(["duobench.tasks"])
+    creator = envs.load_creator("duobench/pick_place_red_on_green")
+    cfg = creator.config()
+    assert "duobench.tasks.pick_place" in snapshot.config_modules(snapshot.to_jsonable(cfg))
+    snapshot.write_snapshot(tmp_path / "s", cfg, {"creator": envs.creator_name(creator)})
+    repos = json.loads((tmp_path / "s" / snapshot.GIT_FILE).read_text())
+    assert "rcs" in repos
+    assert "duobench" in repos
+    duobench = repos["duobench"]
+    if duobench["root"] is not None:  # editable install from a git checkout
+        assert len(duobench["commit"]) == 40
+        assert (tmp_path / "s" / duobench["diff_file"]).exists()
+    assert duobench["version"]

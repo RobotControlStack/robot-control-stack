@@ -240,8 +240,34 @@ def git_state(path: Path) -> dict[str, Any] | None:
     }
 
 
-def code_locations() -> dict[str, Path]:
-    """Source locations whose git state is logged: RCS itself, its extensions and the current working directory."""
+def config_modules(cfg_json: Any) -> set[str]:
+    """Modules of the classes and enums in a serialized config (``__dataclass__``, ``__object__``, ``__enum__``)."""
+    found: set[str] = set()
+    if isinstance(cfg_json, dict):
+        for key in ("__dataclass__", "__object__", "__enum__"):
+            if isinstance(cfg_json.get(key), str):
+                found.add(cfg_json[key].partition(":")[0])
+        for value in cfg_json.values():
+            found |= config_modules(value)
+    elif isinstance(cfg_json, list):
+        for value in cfg_json:
+            found |= config_modules(value)
+    return found
+
+
+def _package_version(top_level: str) -> str | None:
+    try:
+        from importlib.metadata import packages_distributions, version
+
+        dists = packages_distributions().get(top_level) or [top_level]
+        return version(dists[0])
+    except Exception:
+        return None
+
+
+def code_locations(modules: set[str] | None = None) -> dict[str, Path]:
+    """Source locations whose git state is logged: RCS itself, its extensions, the packages of ``modules`` (e.g.
+    the env creator and the config classes: a task package like duobench) and the current working directory."""
     import rcs
 
     locations = {"rcs": Path(rcs.__file__).resolve()}
@@ -252,6 +278,16 @@ def code_locations() -> dict[str, Path]:
             continue
         if getattr(module, "__file__", None):
             locations[name] = Path(typing.cast(str, module.__file__)).resolve()
+    for module_name in sorted(modules or ()):
+        top = module_name.partition(".")[0]
+        if not top or top in locations or top == "builtins":
+            continue
+        try:
+            module = importlib.import_module(module_name)
+        except Exception:
+            continue
+        if getattr(module, "__file__", None):
+            locations[top] = Path(typing.cast(str, module.__file__)).resolve()
     locations["cwd"] = Path.cwd()
     return locations
 
@@ -261,10 +297,19 @@ def write_snapshot(session_dir: Path, cfg: Any, meta: dict[str, Any]) -> None:
     session_dir.mkdir(parents=True, exist_ok=True)
     (session_dir / CONFIG_FILE).write_text(config_to_json(cfg))
     repos: dict[str, dict[str, Any]] = {}
-    for name, location in code_locations().items():
+    modules = config_modules(to_jsonable(cfg))
+    if meta.get("creator"):
+        modules.add(str(meta["creator"]).partition(":")[0])
+    for name, location in code_locations(modules).items():
         state = git_state(location)
-        if state is None or any(r["root"] == state["root"] for r in repos.values()):
+        if state is None:
+            # not in a git checkout (e.g. installed from PyPI): at least the installed version
+            if name != "cwd" and (version := _package_version(name)) is not None:
+                repos[name] = {"root": None, "path": str(location), "version": version}
             continue
+        if any(r["root"] == state["root"] for r in repos.values()):
+            continue
+        state["version"] = _package_version(name) if name != "cwd" else None
         diff = state.pop("diff")
         diff_name = f"{name}{DIFF_SUFFIX}"
         (session_dir / diff_name).write_text(diff)
