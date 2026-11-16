@@ -147,3 +147,12 @@ def test_action_at_converts_at_execution_time():
         obs = {"right": {"joints": np.full(7, float(step)), "gripper": [1.0]}}
         action, source, _ = executor.act(obs, step)
         assert action == {"row": [source.request_id, source.chunk_index], "obs": float(step)}
+
+
+def test_controller_kinds():
+    from rcs_webui.policy import Controller, MockPolicyClient, VLAgentsPolicyClient
+
+    assert {c.value for c in Controller} >= {"human", "learned_policy", "scripted_policy", "agent", "none"}
+    assert VLAgentsPolicyClient.controller is Controller.LEARNED_POLICY
+    assert MockPolicyClient.controller is Controller.SCRIPTED_POLICY
+    assert Controller("agent") == "agent"  # str enum: compares and serializes as its value
