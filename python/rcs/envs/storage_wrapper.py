@@ -346,6 +346,14 @@ class StorageWrapper(gym.Wrapper):
         self._annotations = None
         return obs_original, reward, terminated, truncated, info
 
+    def annotate_recorded_step(self, **annotations: Any):
+        """Adds fields to the ``annotations`` of the step that was just recorded, for values that are only known
+        after the step (e.g. whether the robot moved). No-op while not recording. Use the same keys and types in
+        every step of a dataset."""
+        if self._pause or not self.buffer:
+            return
+        self.buffer[-1].setdefault("annotations", {}).update(annotations)
+
     def annotate_step(self, **annotations: Any):
         """Adds fields to the ``annotations`` column of the next recorded step, e.g. where its action came from
         (policy chunk and index, query times, human intervention). Use the same keys and types in every step

@@ -160,7 +160,10 @@ actions per chunk, RTC delay, client options) can be switched at any time withou
 
 Every step of an episode has an `annotations` column: `controller` (who commanded the robot: `human` incl.
 interventions, `learned_policy`, `scripted_policy`, `agent`, `none`; enum `rcs_webui.policy.Controller`), `source`
-(`policy`, `intervention`, `teleop`, `idle`), `chunk_id`,
+(`policy`, `intervention`, `teleop`, `idle`), per robot `engaged.<robot>` (Quest trigger held: the operator
+commands that robot), `joint_speed.<robot>` (rad/s, max over the joints between the observations before and after
+the step) and `moving.<robot>` (`joint_speed` above 0.0075 rad/s). `engaged == false` with `moving == false` is
+operator repositioning (trigger released, robot still); `chunk_id`,
 `chunk_index`, `request_id`, `request_sent`, `response_received` (host clock s), `switch_step` (episode step at
 which the chunk took over) and `waited` (s the loop waited for the server in that step).
 

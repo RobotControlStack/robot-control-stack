@@ -185,6 +185,9 @@ class QuestOperator(BaseOperator):
         # the robot follows a controller only while its index trigger is held
         return any(self._engaged.values())
 
+    def engaged_controllers(self) -> dict[str, bool]:
+        return dict(self._engaged)
+
     def set_camera(self, observation: dict) -> None:
         if not self.config.display_cameras:
             return

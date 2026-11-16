@@ -48,6 +48,11 @@ logger = logging.getLogger(__name__)
 
 QUEST_CONTROL_MODE = envs.QUEST_CONTROL_MODE
 
+MOVING_JOINT_SPEED = 0.0075
+"""rad/s (max over the joints, from consecutive step observations) above which a robot counts as moving. At rest
+the FR3 reads at most 0.0018 rad/s (1.2e-4 rad per 15 Hz step), while teleoperated 95 % of steps are above
+0.024 rad/s (2026-11-15 DROID recordings)."""
+
 
 @dataclass(kw_only=True)
 class EnvSpec:
@@ -679,6 +684,31 @@ class SessionRunner(threading.Thread):
         self._event("policy continues (X)")
         self._policy_status()
 
+    def _robot_joints(self, obs: dict[str, Any]) -> dict[str, np.ndarray]:
+        return {
+            robot: np.asarray(obs[robot]["joints"], dtype=np.float64)
+            for robot in self._robot_names
+            if isinstance(obs.get(robot), dict) and "joints" in obs[robot]
+        }
+
+    def _annotate_motion(self, joints_before: dict[str, np.ndarray], engaged: dict[str, bool]):
+        """Per robot: whether the operator commanded it (trigger held), how fast it moved in this step and whether
+        that counts as moving. Lets a converter drop operator repositioning (trigger released, robot still) without
+        inferring it from the poses."""
+        assert self.storage is not None
+        joints_after = self._robot_joints(self._last_obs)
+        dt = 1.0 / self.settings.frequency
+        speed = {
+            robot: float(np.abs(joints_after[robot] - joints_before[robot]).max() / dt)
+            for robot in self._robot_names
+            if robot in joints_before and robot in joints_after
+        }
+        self.storage.annotate_recorded_step(
+            engaged={robot: bool(engaged.get(robot, False)) for robot in self._robot_names},
+            joint_speed=speed,
+            moving={robot: v > MOVING_JOINT_SPEED for robot, v in speed.items()},
+        )
+
     def _process_commands(self) -> TeleopCommands:
         web = TeleopCommands()
         while True:
@@ -768,7 +798,10 @@ class SessionRunner(threading.Thread):
             annotations.update(StepSource().as_dict())
         assert self.storage is not None
         self.storage.annotate_step(**annotations)
+        joints_before = self._robot_joints(self._last_obs)
+        engaged = self._operator.engaged_controllers() if self._operator is not None else {}
         self._last_obs, _, terminated, truncated, info = self.env.step(action)
+        self._annotate_motion(joints_before, engaged)
         if self._episode_active:
             self._episode_step += 1
         if self._operator is not None:
