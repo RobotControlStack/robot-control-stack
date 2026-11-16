@@ -86,9 +86,11 @@ class App:
         except Exception as e:
             raise ApiError(HTTPStatus.BAD_REQUEST, f"{type(e).__name__}: {e}") from e
 
-    def _check_not_recording(self, uuid: str):
+    def _check_not_recording(self, uuid: str, session: Path | None = None):
         if self.runner is not None and self.runner.status().get("episode_uuid") == uuid:
             raise ApiError(HTTPStatus.CONFLICT, "the episode is being recorded, end it first")
+        if self.runner is not None and session is not None and session.name in self.runner.consolidating():
+            raise ApiError(HTTPStatus.CONFLICT, "the session is being consolidated, try again in a moment")
 
     def _register(self):
         @self.get("/api/status")
@@ -122,14 +124,14 @@ class App:
 
         @self.post(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/label")
         def label(_h, m, body):
-            self._check_not_recording(m["uuid"])
+            self._check_not_recording(m["uuid"], self._session(m))
             if not isinstance(body.get("success"), bool):
                 raise ApiError(HTTPStatus.BAD_REQUEST, "success must be true or false")
             return {"files": data.relabel_episode(self._session(m), m["uuid"], body["success"])}
 
         @self.post(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/delete")
         def delete(_h, m, _body):
-            self._check_not_recording(m["uuid"])
+            self._check_not_recording(m["uuid"], self._session(m))
             return {"files": data.delete_episode(self._session(m), m["uuid"])}
 
         @self.get(r"/api/live/(?P<camera>[^/]+)\.jpg")

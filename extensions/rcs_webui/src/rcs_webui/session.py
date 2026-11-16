@@ -81,6 +81,8 @@ class SessionSettings:
     """quest or none (episodes are then controlled with the buttons of the web interface)"""
     quest_addr: str = "10.42.0.1"
     quest_switched_left_right: bool = False
+    consolidate_on_stop: bool = True
+    """merge the small batch files of a session into large parquet files when its env is stopped (background)"""
     auto_reset: bool = True
     """end the episode and reset the env when the env reports the end (task success: successful, terminated /
     truncated: unsuccessful); off: keep recording until B / Y. Robot errors always end the episode."""
@@ -104,6 +106,7 @@ class SessionSettings:
         "env_packages",
         "policy",
         "auto_reset",
+        "consolidate_on_stop",
     )
 
     def to_json(self) -> dict[str, Any]:
@@ -135,7 +138,7 @@ class SessionSettings:
                 if value <= 0:
                     msg = "frequency must be positive"
                     raise ValueError(msg)
-            elif key in ("quest_switched_left_right", "headless", "auto_reset"):
+            elif key in ("quest_switched_left_right", "headless", "auto_reset", "consolidate_on_stop"):
                 value = bool(raw)
             elif key == "policy":
                 value = PolicySettings(**raw) if raw is not None else None
@@ -206,6 +209,7 @@ class SessionRunner(threading.Thread):
         self.env_spec = env_spec
         self._operator = operator
         self._fixed_operator = operator is not None
+        self._consolidations: dict[str, threading.Thread] = {}
         self._scene_publisher: Any = None
         self.config_json: dict[str, Any] | None = None
         """wrapped config ({"creator", "config"}) of the running env"""
@@ -244,6 +248,7 @@ class SessionRunner(threading.Thread):
             "operator_error": None,
             "summary": None,
             "env_end": None,
+            "consolidating": [],
         }
 
     # ---------------------------------------------------------------- public, thread safe
@@ -414,11 +419,54 @@ class SessionRunner(threading.Thread):
                     sim.close_gui()
                 except Exception:
                     logger.exception("closing the MuJoCo viewer failed")
+            if self.session_dir is not None and self.settings.consolidate_on_stop:
+                self._consolidate_async(self.session_dir)
         self.env = None
         self.storage = None
         self.config_json = None
         self._episode_active = False
         self._set_status(env=None, summary=None, session_dir=None, step_hz=0.0)
+
+    # ---------------------------------------------------------------- consolidation of finished sessions
+    def consolidating(self) -> list[str]:
+        """Names of the session folders whose data is being consolidated right now (thread safe)."""
+        with self._lock:
+            return [name for name, t in self._consolidations.items() if t.is_alive()]
+
+    def _consolidate_async(self, session_dir: Path):
+        """Merges the small batch files of a closed session into large parquet files in a background thread (it
+        can take a while for long sessions; the env can be restarted meanwhile, into a new folder)."""
+        data_dir = Path(session_dir) / snapshot.DATA_DIR
+
+        def run():
+            try:
+                summary = StorageWrapper.consolidate(str(data_dir))
+            except Exception as e:
+                logger.exception("consolidating %s failed", data_dir)
+                self._event(f"consolidating {session_dir.name} failed, the original files are kept: {e}", logging.ERROR)
+            else:
+                if summary is not None:
+                    self._event(
+                        f"consolidated {session_dir.name}: {summary['files_before']} -> {summary['files_after']} files"
+                    )
+            finally:
+                with self._lock:
+                    self._consolidations.pop(session_dir.name, None)
+                self._set_status(consolidating=self.consolidating())
+
+        thread = threading.Thread(target=run, name=f"consolidate-{session_dir.name}")
+        with self._lock:
+            self._consolidations[session_dir.name] = thread
+        thread.start()
+        self._set_status(consolidating=self.consolidating())
+
+    def wait_for_consolidation(self, timeout: float | None = None):
+        with self._lock:
+            threads = list(self._consolidations.values())
+        for thread in threads:
+            if thread.is_alive():
+                logger.info("waiting for the consolidation of %s", thread.name.removeprefix("consolidate-"))
+                thread.join(timeout)
 
     def _start_env(self, spec: EnvSpec):
         self._close_env()
