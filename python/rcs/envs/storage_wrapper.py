@@ -12,6 +12,7 @@ from uuid import uuid4
 import gymnasium as gym
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute  # registers pa.compute
 import pyarrow.dataset as ds
 import simplejpeg
 from PIL import Image
@@ -110,50 +111,88 @@ class StorageWrapper(gym.Wrapper):
         self._writer_future = self.thread_pool.submit(self._writer_worker)
 
     @staticmethod
-    def consolidate(base_dir: str, schema: Optional[pa.Schema] = None):
-        """
-        Static method to merge small Parquet files into larger ones.
-        Can be used by the class or an external CLI to clean up a dataset directory.
-        """
-        if not os.path.exists(base_dir):
-            print(f"Directory {base_dir} does not exist.")
-            return
+    def consolidate(
+        base_dir: str,
+        schema: Optional[pa.Schema] = None,
+        target_file_bytes: int = 512 * 2**20,
+        target_row_group_bytes: int = 128 * 2**20,
+    ) -> Optional[dict[str, Any]]:
+        """Merges the many small files of a recording into files of about ``target_file_bytes`` with row groups of
+        about ``target_row_group_bytes`` (sized from the measured bytes per row; large enough for efficient
+        scans, small enough for selective reads). Rows keep their recording order, so an episode stays
+        contiguous. Must not run while the directory is being written to.
 
-        part_scheme = ds.partitioning(
-            schema=pa.schema(fields=[pa.field("date", pa.string())]),
-            flavor="filename",
+        The new files are written next to the directory and swapped in at the end (old directory moved aside,
+        new one renamed, old one deleted), so the data is never missing. Returns a summary or None if there was
+        nothing to do.
+        """
+        base = str(base_dir).rstrip("/")
+        if not os.path.isdir(base):
+            return None
+        files = sorted(
+            os.path.join(root, f) for root, _, names in os.walk(base) for f in names if f.endswith(".parquet")
         )
+        if len(files) == 0:
+            return None
+        part_scheme = ds.partitioning(schema=pa.schema(fields=[pa.field("date", pa.string())]), flavor="filename")
+        # recording order: by the first timestamp of each file (the file names carry random ids)
+        first_ts = {
+            f: pa.compute.min(ds.dataset(f, format="parquet").to_table(columns=["timestamp"])["timestamp"]).as_py()
+            for f in files
+        }
+        files.sort(key=lambda f: (first_ts[f] is None, first_ts[f]))
+        rows = sum(ds.dataset(f, format="parquet").count_rows() for f in files)
+        if rows == 0:
+            return None
+        size = sum(os.path.getsize(f) for f in files)
+        row_bytes = max(size / rows, 1.0)
+        rows_per_file = max(int(target_file_bytes / row_bytes), 1)
+        rows_per_group = max(min(int(target_row_group_bytes / row_bytes), rows_per_file), 1)
+        if schema is None:
+            schema = pa.unify_schemas([ds.dataset(f, format="parquet").schema for f in files])
+        dataset = ds.dataset(files, format="parquet", partitioning=part_scheme, schema=schema)
 
-        print(f"Consolidating files in {base_dir}...")
-        temp_dir = str(base_dir).rstrip("/") + "_temp"
-
+        temp_dir = base + ".consolidating"
+        old_dir = base + ".before-consolidation"
+        for d in (temp_dir, old_dir):
+            if os.path.exists(d):
+                shutil.rmtree(d)
         try:
-            # Read existing dataset
-            dataset = ds.dataset(base_dir, format="parquet", partitioning=part_scheme, schema=schema)
-
-            try:
-                if dataset.count_rows() == 0:
-                    return
-            except (IndexError, ValueError):
-                return
-
             ds.write_dataset(
                 data=dataset,
                 base_dir=temp_dir,
                 format="parquet",
                 schema=schema,
                 partitioning=part_scheme,
+                max_rows_per_file=rows_per_file,
+                max_rows_per_group=rows_per_group,
+                min_rows_per_group=rows_per_group if rows > rows_per_group else 0,
+                preserve_order=True,
                 existing_data_behavior="overwrite_or_ignore",
             )
-
-            shutil.rmtree(base_dir)
-            os.rename(temp_dir, base_dir)
-            print(f"Consolidation complete for {base_dir}")
-
-        except Exception as e:
-            print(f"Consolidation failed (data remains safe in original fragments): {e}")
+            written = ds.dataset(temp_dir, format="parquet").count_rows()
+            if written != rows:
+                msg = f"consolidation wrote {written} rows instead of {rows}"
+                raise RuntimeError(msg)
+            os.rename(base, old_dir)
+            os.rename(temp_dir, base)
+            shutil.rmtree(old_dir)
+        except BaseException:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
+            if not os.path.exists(base) and os.path.exists(old_dir):
+                os.rename(old_dir, base)
+            raise
+        new_files = [f for f in os.listdir(base) if f.endswith(".parquet")]
+        return {
+            "rows": rows,
+            "files_before": len(files),
+            "files_after": len(new_files),
+            "bytes_before": size,
+            "bytes_after": sum(os.path.getsize(os.path.join(base, f)) for f in new_files),
+            "rows_per_file": rows_per_file,
+            "rows_per_group": rows_per_group,
+        }
 
     def _writer_worker(self):
         """
