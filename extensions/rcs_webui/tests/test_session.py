@@ -295,7 +295,7 @@ def test_bare_config_file_in_config_dir(idle_interface):
     runner, base, tmp_path = idle_interface
     cfg_json = snapshot.apply_overrides(
         snapshot.to_jsonable(__import__("rcs.envs.configs", fromlist=["EmptyWorldFR3"]).EmptyWorldFR3().config()),
-        SMALL_CAMERAS,
+        {**SMALL_CAMERAS, "headless": True},  # the raw default opens the MuJoCo viewer
     )
     (tmp_path / "configs" / "bare.json").write_text(json.dumps(cfg_json))
     entries = call(base, "/api/configs")["configs"]
