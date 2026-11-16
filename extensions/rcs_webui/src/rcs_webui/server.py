@@ -284,12 +284,18 @@ class Handler(BaseHTTPRequestHandler):
         logger.debug("%s %s", self.address_string(), format % args)
 
     def send_bytes(self, data: bytes, content_type: str, status: HTTPStatus = HTTPStatus.OK):
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            # the browser gave up on the request (e.g. a camera image replaced while the page re-renders after an
+            # env stop): nothing to answer, not an error
+            logger.debug("client closed the connection before %s was answered", self.path)
+            self.close_connection = True
 
     def send_json(self, value: Any, status: HTTPStatus = HTTPStatus.OK):
         self.send_bytes(json.dumps(value, default=_json_default).encode(), "application/json", status)
