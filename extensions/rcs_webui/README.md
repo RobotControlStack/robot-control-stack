@@ -59,44 +59,54 @@ Install the Quest app and SimPublisher as described in
 [`examples/teleop/README.md`](../../examples/teleop/README.md) ("Teleoperation with Meta Quest 3"):
 put PC and Quest into the same network, install the IRIS APK, `pip install` SimPublisher from source,
 name the Quest `RCSNode` and align the coordinate frame with `examples/teleop/quest_align_frame.py`.
-The IP of the PC in that network is passed with `--quest-addr` (default `10.42.0.1`).
+The IP of the PC in that network is set in the web page (*Settings*, default `10.42.0.1`).
 
-### 4. Try it in simulation
+### 4. Start the interface
 
 ```shell
-rcs-webui envs                                   # envs that can be started
-rcs-webui collect --env rcs/fr3 --data-root ~/rcs_data --instruction "pick up the cube"
-# without a Quest, control episodes with the web buttons only:
-rcs-webui collect --env rcs/fr3 --operator none --data-root ~/rcs_data
+rcs-webui serve --data-root ~/rcs_data          # optional: --port 8080 --host 0.0.0.0
 ```
 
-Open `http://<pc>:8080` in a browser. Add `--gui` for the MuJoCo viewer.
+Open `http://<pc>:8080`. No env runs yet. Everything is configured in the page and kept in
+`<data-root>/.rcs_webui/settings.json`:
 
-### 5. Start on the robot PC (*untested on hardware*)
+- *Settings*: mode (collect / eval), operator (Meta Quest or web buttons only), Quest network IP, swap left /
+  right, MuJoCo viewer (sim), the rate of default configs, config directories (their `*.json` files are offered
+  as configs) and env packages (modules that register more envs, default `duobench.tasks`). Mode, operator,
+  Quest and viewer settings are used at env start and can only be changed while no env runs.
+- *Env config*: pick a config, it is shown complete and editable, then *start env*. The list has the running
+  env, the config directories, previous recordings and the default configs of the code (hardware: `fr3`,
+  `fr3_duo`, `fr3_dual`, `droid`; simulation: `rcs/*` and e.g. `duobench/*` when DuoBench is installed).
+  Changes against the picked config are marked in the gutter like in VS Code (green added, blue changed, red
+  wedge deleted); click a mark to see the old and new lines and revert that change. Each start stores the
+  picked config's id and the changed fields (`source.base` / `source.changed` in `session.json`).
+
+The Quest operator is created with every env start: on hardware the Quest app gets an empty scene, in sim the
+MuJoCo scene is streamed to the Quest. A config file holds the env creator and the serialized config
+(`{"creator": ..., "config": ...}`, see `rcs-webui dump-config <env>`); a file without creator (e.g. an
+`env_config.json`) gets the generic creator of its config type (`rcs_fr3.creators:RCSFR3MultiConfigEnvCreator`
+for FR3 hardware, `rcs_webui.envs:ConfigSimEnvCreator` for sim). `robot_platform` of hardware robot configs is
+set to `HARDWARE` (the C++ default `SIMULATION` is never read on hardware, the env class decides).
+
+Try it in simulation first: pick e.g. `rcs/fr3` or `duobench/pick_place_red_on_green` (DuoBench branch
+`juelg/single-arm`, a single FR3 with the DROID cameras `front_rgb` and `gripper_rgb`), set the operator to
+*none* to use only the web buttons.
+
+### 5. On the robot PC (*untested on hardware*)
 
 1. Unlock the FR3 joints and activate FCI in Desk.
-2. Get the default config of your setup, edit it (robot IP, gripper, cameras with their serial numbers) and
-   start from it:
+2. Put the config of your setup into a config directory, e.g. start from the default
+   (`rcs-webui dump-config droid > ~/rcs_configs/droid.json`) and set robot IP, gripper and cameras with their
+   serial numbers, or edit it in the page and start it there.
+3. Hold the index trigger of the right controller to move the robot, the hand trigger closes the gripper.
+   Press `A` to start recording, `B` (successful) or `Y` (unsuccessful) to end the episode, the env is reset
+   (the robot moves home) after each episode. Ctrl+C stops the interface after flushing the recording, a second
+   Ctrl+C exits immediately.
 
-   ```shell
-   mkdir -p ~/rcs_configs
-   rcs-webui dump-config fr3 > ~/rcs_configs/fr3.json   # single FR3 with Franka Hand, robot name "right"
-   # or: fr3_duo (two FR3 with Robotiq), droid, fr3_dual
-   rcs-webui collect --config ~/rcs_configs/fr3.json --config-dir ~/rcs_configs --data-root ~/rcs_data \
-       --quest-addr 10.42.0.1 --instruction "pick up the red cube and place it in the bowl"
-   ```
-
-   A config file holds the env creator and the serialized config (`{"creator": ..., "config": ...}`).
-   Small changes can also be given directly: `--set robot_cfgs.right.ip=192.168.101.1`
-   (dotted path into the JSON config, the value is parsed as JSON and taken as string otherwise).
-3. Open `http://<robot-pc>:8080`. Hold the index trigger of the right controller to move the robot, the
-   hand trigger closes the gripper. Press `A` to start recording, `B` (successful) or `Y` (unsuccessful)
-   to end the episode, the env is reset (the robot moves home) after each episode.
-
-Default configs are adapted for recording: `wrapper_cfg.record_control_states=True`, async control at
-`--frequency` (default 15 Hz, also the controller interpolation window `policy_rate`), and the action space
-of the Quest (`tquat` relative to the configured origin). A config file or a previous recording is used
-exactly as stored.
+Default configs are adapted for recording: `wrapper_cfg.record_control_states=True`, async control at the
+default config rate (15 Hz, also the controller interpolation window `policy_rate`), and in collect mode the
+action space of the Quest (`tquat` relative to the configured origin). Config files and previous recordings are
+used as stored.
 
 ### 6. Where the data lands
 
@@ -104,7 +114,7 @@ exactly as stored.
 <data-root>/
   2026-11-15_13-42-36_fr3_collect/      one folder per env (re)start: <date>_<time>_<env>_<mode>
     session.json                        creator, mode, instruction, frequency, how the config was obtained
-    env_config.json                     the complete env config (load it with --from-recording)
+    env_config.json                     the complete env config (offered again under previous recordings)
     git.json                            commit, branch, remote, untracked files of each git repo in use
     rcs.diff                            uncommitted changes (git diff HEAD) of that repo
     data/<date>_part-<n>-<id>.parquet   the recording, one or more files per episode
@@ -117,10 +127,8 @@ column with the `_shape` suffix: `np.asarray(row["q"]).reshape(row["q_shape"])`.
 
 ### 7. Start the env with another config
 
-In the web page, panel *Start env*: pick a config (the default configs of all envs, the `*.json` files of the
-`--config-dir` directories, the configs of previous recordings), edit the JSON, *validate* and *start env*.
-From the CLI: `rcs-webui collect --from-recording <data-root>/<session>` or `--config <file>`.
-Every start closes the running env (a running episode is stored as unsuccessful) and creates a new folder.
+Pick it in *Env config* and click *restart env*: the running env is closed (a running episode is stored as
+unsuccessful) and a new data folder is created. *stop env* closes it without starting another one.
 
 ### 8. Look at the data
 
@@ -132,12 +140,12 @@ viewer, e.g. on another machine.
 ### 9. Evaluate a policy
 
 ```shell
-pip install -ve "extensions/rcs_webui[eval]"     # VLAgents client (only for --policy vlagents)
-rcs-webui eval --config ~/rcs_configs/fr3_joints.json --data-root ~/rcs_eval \
-    --policy vlagents --policy-server gpu-host:20000 --policy-option model='"lerobot"' --instruction "..."
-# try it without robot and server:
-rcs-webui eval --env rcs/fr3 --operator none --policy mock --policy-server mock:0 --data-root ~/rcs_eval
+pip install -ve "extensions/rcs_webui[eval]"     # VLAgents client (only for the vlagents client)
 ```
+
+Set the mode to *eval* in *Settings* (while no env runs), choose the client, host and port in *Policy server*
+and start an env with a config that matches the policy. To try it without robot and server: client `mock`,
+config `rcs/fr3`, operator *none*.
 
 The env config must match the action space of the policy (VLAgents: absolute joints, `control_mode JOINTS`,
 `relative_to NONE`); eval does not adapt default configs to the Quest. `A` starts a rollout, `B` / `Y` label it.
@@ -152,7 +160,7 @@ which the chunk took over) and `waited` (s the loop waited for the server in tha
 #### Policy server clients
 
 A client implements `rcs_webui.policy.PolicyClient` (`connect`, `reset(instruction)`, `infer(ChunkRequest) ->
-ActionChunk`, `close`, `capabilities`). It is selected with `--policy` by built-in name (`vlagents`, `mock`), by an
+ActionChunk`, `close`, `capabilities`). It is selected in *Policy server* by built-in name (`vlagents`, `mock`), by an
 entry point of the group `rcs_webui.policy_clients` of an installed package, or as `my_package.module:MyClient`.
 Clients of other projects live in those projects, RCS only ships the VLAgents client (untested against a running
 VLAgents server, it follows `examples/inference/franka.py`) and the mock.
@@ -169,9 +177,9 @@ and waits only if the current chunk is used up.
 
 ### Troubleshooting
 
-- `simpub is not installed`: install SimPublisher (step 3) or start with `--operator none`.
+- `simpub is not installed`: install SimPublisher (step 3) or set the operator to *none* in *Settings*.
 - `[Quest Reader] packets empty` in the log: the Quest app is not running or not in the same network,
-  check `--quest-addr` and the name `RCSNode`.
+  check the Quest IP in *Settings* and the name `RCSNode`.
 - The robot does not follow the controller: it only moves while the index trigger is held.
 - A reflex ends the episode: the status shows `episode ended by the env`, the episode is stored with
   `truncated=True` and the message in `info.<robot>.robot_error`; the next reset recovers the robot.
