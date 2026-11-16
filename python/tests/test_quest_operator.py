@@ -1,5 +1,5 @@
 import threading
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import numpy as np
 from rcs._core.common import Pose
@@ -63,3 +63,64 @@ def test_is_engaged_follows_index_trigger():
     assert not QuestOperator.is_engaged(operator)
     operator._engaged["right"] = True
     assert QuestOperator.is_engaged(operator)
+
+
+def test_stop_publisher_removes_its_scene_and_ignores_reconnects(monkeypatch):
+    """A stopped publisher deletes its scene on the connected Quest apps (the next publisher only deletes a scene
+    with its own name), stops streaming and does not send the scene to apps that connect later."""
+    import asyncio
+    import concurrent.futures
+
+    import pyzlc
+    from rcs.operator import quest
+
+    calls: list[tuple[str, Any]] = []
+
+    async def fake_call(service, request, **_kwargs):
+        calls.append((service, request))
+
+    def fake_submit(coro, *_args, **_kwargs):
+        future: concurrent.futures.Future = concurrent.futures.Future()
+        future.set_result(asyncio.run(coro))
+        return future
+
+    monkeypatch.setattr(pyzlc, "async_call", fake_call)
+    monkeypatch.setattr(pyzlc, "submit_loop_task", fake_submit)
+    monkeypatch.setattr(
+        pyzlc,
+        "get_nodes_info",
+        lambda *_args, **_kwargs: [
+            {"name": "IRIS/Device/Meta Quest 3/RCSNode", "nodeID": "quest"},
+            {"name": "IRIS/Device/other", "nodeID": "not-this-publishers-device"},
+        ],
+    )
+
+    class _Streamer:
+        running = True
+
+    class _WebServer:
+        stopped = False
+
+        def shutdown(self):
+            self.stopped = True
+
+    class _Scene:
+        name = "blocksuite_sim2real_scene"
+
+    class _Publisher:
+        xr_device_set: ClassVar[set[str]] = {"quest"}
+        sim_scene = _Scene()
+        scene_update_streamer = _Streamer()
+        web_server = _WebServer()
+
+        async def on_new_device_found(self, xr_info):
+            calls.append(("sent scene", xr_info))
+
+    publisher = _Publisher()
+    quest.stop_publisher(cast(Any, publisher))
+
+    assert calls == [("IRIS/Device/Meta Quest 3/RCSNode/DeleteSimScene", "blocksuite_sim2real_scene")]
+    assert publisher.scene_update_streamer.running is False
+    assert publisher.web_server.stopped
+    asyncio.run(publisher.on_new_device_found({"name": "IRIS/Device/Meta Quest 3/RCSNode"}))
+    assert len(calls) == 1  # a reconnecting Quest app does not get the old scene again
