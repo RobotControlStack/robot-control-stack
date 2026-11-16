@@ -13,7 +13,6 @@ from rcs.sim.sim import Sim
 from rcs.utils import SimpleFrameRate
 
 try:
-    import pyzlc
     from simpub.core.simpub_server import RigidObjectUpdateData, SimPublisher
     from simpub.core.video_streamer import VideoStreamerManager
     from simpub.parser.simdata import SimObject, SimScene, SimSceneConfig
@@ -224,13 +223,9 @@ class QuestOperator(BaseOperator):
         self._reader.disconnect()
         self._exit_requested = True
         self.join()
-        # The simpub publisher serves its web dashboard (127.0.0.1:5000) with serve_forever in pyzlc's
-        # thread pool. If nothing stops it, the thread pool join at interpreter exit (and pyzlc's atexit
-        # shutdown) blocks forever. Stop it, then the pyzlc node.
-        web_server = getattr(getattr(self, "_publisher", None), "web_server", None)
-        if web_server is not None:
-            web_server.shutdown()
-        pyzlc.shutdown()
+        publisher = getattr(self, "_publisher", None)
+        if publisher is not None:
+            stop_publisher(publisher)
 
     def run(self):
         rate_limiter = SimpleFrameRate(self.config.read_frequency, "teleop readout")
@@ -319,3 +314,18 @@ class QuestConfig(BaseOperatorConfig):
     mq3_addr: str = "10.42.0.1"
     switched_left_right: bool = False
     display_cameras: bool = True
+
+
+def stop_publisher(publisher: "SimPublisher") -> None:
+    """Stops the scene stream and the web dashboard (127.0.0.1:5000) of a simpub publisher.
+
+    The dashboard runs serve_forever in pyzlc's thread pool: if it is not stopped, the thread pool join at
+    interpreter exit (and pyzlc's atexit shutdown) blocks forever. The pyzlc node itself stays up, it can not
+    be initialized a second time in the same process, so a new operator / publisher can be created afterwards.
+    """
+    streamer = getattr(publisher, "scene_update_streamer", None)
+    if streamer is not None:
+        streamer.running = False
+    web_server = getattr(publisher, "web_server", None)
+    if web_server is not None:
+        web_server.shutdown()
