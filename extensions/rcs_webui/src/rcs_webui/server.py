@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 Route = Callable[["Handler", re.Match, dict[str, Any]], Any]
 
+RUNNING_ID = "running:"
+
 
 class ApiError(Exception):
     def __init__(self, status: HTTPStatus, message: str):
@@ -64,6 +66,25 @@ class App:
             return data.session_path(self.data_root, unquote(match["session"]))
         except data.DataError as e:
             raise ApiError(HTTPStatus.NOT_FOUND, str(e)) from e
+
+    def _config_entry(self, entry_id: str) -> dict[str, Any]:
+        runner = self._need_runner()
+        if entry_id == RUNNING_ID:
+            if runner.config_json is None:
+                raise ApiError(HTTPStatus.NOT_FOUND, "no env is running")
+            return configs.normalized(runner.config_json["creator"], runner.config_json["config"])
+        envs.import_env_packages(runner.settings.env_packages)
+        try:
+            return configs.load_entry(
+                entry_id,
+                config_dirs=runner.settings.config_dirs,
+                data_root=self.data_root,
+                frequency=runner.settings.frequency,
+                collect=runner.settings.mode == "collect",
+                headless=runner.settings.headless,
+            )
+        except Exception as e:
+            raise ApiError(HTTPStatus.BAD_REQUEST, f"{type(e).__name__}: {e}") from e
 
     def _check_not_recording(self, uuid: str):
         if self.runner is not None and self.runner.status().get("episode_uuid") == uuid:
@@ -159,43 +180,79 @@ class App:
             self._need_runner().submit("instruction", body.get("instruction", ""))
             return {"ok": True}
 
+        @self.get("/api/settings")
+        def get_settings(_h, _m, _q):
+            runner = self._need_runner()
+            return {
+                "settings": runner.settings.to_json(),
+                "env_start_keys": list(runner.settings.ENV_START_KEYS),
+                "env_running": runner.env_running,
+                "env_packages": envs.import_env_packages(runner.settings.env_packages),
+                "settings_file": str(runner.settings.settings_file),
+            }
+
+        @self.post("/api/settings")
+        def set_settings(_h, _m, body):
+            try:
+                self._need_runner().update_settings(body)
+            except (ValueError, TypeError) as e:
+                raise ApiError(
+                    HTTPStatus.CONFLICT if "stop the env" in str(e) else HTTPStatus.BAD_REQUEST, str(e)
+                ) from e
+            return {"ok": True}
+
         @self.get("/api/configs")
         def config_catalog(_h, _m, _q):
-            dirs = self.runner.settings.config_dirs if self.runner is not None else []
-            return {"configs": configs.catalog(dirs, self.data_root)}
+            if self.runner is None:
+                return {"configs": configs.catalog([], self.data_root)}
+            envs.import_env_packages(self.runner.settings.env_packages)
+            entries = configs.catalog(self.runner.settings.config_dirs, self.data_root)
+            if self.runner.config_json is not None:
+                label = Path(self.runner.status().get("session_dir") or "running").name
+                entries.insert(0, {"id": RUNNING_ID, "group": "running env", "label": f"running: {label}"})
+            return {"configs": entries, "last": self.runner.settings.last_config}
 
         @self.get("/api/configs/entry")
         def config_entry(_h, _m, query):
-            runner = self._need_runner()
-            try:
-                return configs.load_entry(
-                    query.get("id", ""),
-                    config_dirs=runner.settings.config_dirs,
-                    data_root=self.data_root,
-                    frequency=runner.settings.frequency,
-                    collect=runner.settings.mode == "collect",
-                    headless=runner.settings.headless,
-                )
-            except (ValueError, KeyError, FileNotFoundError) as e:
-                raise ApiError(HTTPStatus.BAD_REQUEST, str(e)) from e
+            return self._config_entry(query.get("id", ""))
 
         @self.post("/api/configs/validate")
         def config_validate(_h, _m, body):
+            if self.runner is not None:
+                envs.import_env_packages(self.runner.settings.env_packages)
             try:
                 cfg = configs.validate(body)
+                creator = configs.unwrap(body)[0]
             except Exception as e:
                 return {"ok": False, "error": f"{type(e).__name__}: {e}"}
-            return {"ok": True, "type": type(cfg).__name__}
+            return {"ok": True, "type": type(cfg).__name__, "summary": envs.describe(cfg, creator)}
+
+        @self.post("/api/stop_env")
+        def stop_env(_h, _m, _body):
+            self._need_runner().submit("stop_env")
+            return {"ok": True}
 
         @self.post("/api/restart")
         def restart(_h, _m, body):
             runner = self._need_runner()
             if "config" in body:
+                envs.import_env_packages(runner.settings.env_packages)
                 try:
                     configs.validate(body["config"])
                 except Exception as e:
                     raise ApiError(HTTPStatus.BAD_REQUEST, f"invalid config: {type(e).__name__}: {e}") from e
-                runner.submit("restart", EnvSpec(config_data=body["config"]))
+                source: dict[str, Any] = {}
+                base_id = body.get("base_id")
+                if base_id:
+                    source["base"] = base_id
+                    try:
+                        base = self._config_entry(base_id)
+                        source["changed"] = configs.changed_paths(base["config"], body["config"]["config"])
+                    except ApiError:
+                        logger.warning("base config %s not loadable, no diff stored", base_id)
+                    if base_id != RUNNING_ID:
+                        runner.update_settings({"last_config": base_id})
+                runner.submit("restart", EnvSpec(config_data=body["config"], source=source))
                 return {"ok": True}
             overrides = body.get("overrides") or {}
             if not isinstance(overrides, dict):

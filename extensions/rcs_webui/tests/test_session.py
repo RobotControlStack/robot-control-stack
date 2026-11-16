@@ -220,3 +220,102 @@ def test_config_catalog_edit_and_start(interface):
     stored, meta = snapshot.load_session_config(second)
     assert stored.sim_cfg.frequency == 20.0
     assert meta["creator"] == "rcs.envs.configs:EmptyWorldFR3"
+
+
+@pytest.fixture()
+def idle_interface(tmp_path):
+    """The interface as `rcs-webui serve` starts it: no env until it is started from the page."""
+    (tmp_path / "configs").mkdir()
+    settings = SessionSettings.load(tmp_path / "data")
+    settings.update({"operator": "none", "config_dirs": [str(tmp_path / "configs")], "frequency": 30.0})
+    runner = SessionRunner(settings)
+    server = make_server(App(runner, tmp_path / "data"), "127.0.0.1", 0)
+    serve_in_thread(server)
+    runner.start()
+    yield runner, f"http://127.0.0.1:{server.server_address[1]}", tmp_path
+    server.shutdown()
+    runner.stop()
+
+
+def test_env_starts_only_from_the_page(idle_interface):
+    runner, base, tmp_path = idle_interface
+    time.sleep(0.3)
+    status = call(base, "/api/status")
+    assert status["state"] == "idle"
+    assert status["env"] is None
+    assert not (tmp_path / "data").exists() or not any(
+        (d / snapshot.CONFIG_FILE).exists() for d in (tmp_path / "data").iterdir()
+    )
+
+    # pick a default config, edit it like the page does and start it
+    catalog = call(base, "/api/configs")
+    assert "running:" not in {e["id"] for e in catalog["configs"]}
+    entry = call(base, "/api/configs/entry?id=" + urllib.parse.quote("default:rcs/fr3"))
+    assert entry["summary"]["platform"] == "simulation"
+    cfg = {"creator": entry["creator"], "config": entry["config"]}
+    snapshot.apply_overrides(cfg["config"], {**SMALL_CAMERAS, "sim_cfg.frequency": 30.0})
+    call(base, "/api/restart", {"config": cfg, "base_id": "default:rcs/fr3"})
+    wait_for(lambda: runner.status()["state"] in ("ready", "error"))
+    assert runner.status()["error"] is None
+    first = Path(runner.status()["session_dir"])
+    _, meta = snapshot.load_session_config(first)
+    assert meta["source"]["base"] == "default:rcs/fr3"
+    assert meta["source"]["changed"]["camera_cfgs.wrist.resolution_width"] == 64
+    assert runner.status()["summary"]["cameras"] == ["bird_eye", "wrist"]
+
+    # the running config is offered and is the complete config of the env
+    catalog = call(base, "/api/configs")
+    assert catalog["configs"][0]["id"] == "running:"
+    assert catalog["last"] == "default:rcs/fr3"
+    running = call(base, "/api/configs/entry?id=running:")
+    assert running["config"]["fields"]["camera_cfgs"]["wrist"]["fields"]["resolution_width"] == 64
+
+    # env start settings are locked while the env runs, the others are not
+    with pytest.raises(urllib.error.HTTPError) as err:
+        call(base, "/api/settings", {"mode": "eval"})
+    assert err.value.code == 409
+    call(base, "/api/settings", {"instruction": "stack"})
+    wait_for(lambda: runner.status()["instruction"] == "stack")
+
+    call(base, "/api/stop_env", {})
+    wait_for(lambda: runner.status()["state"] == "idle")
+    assert runner.status()["env"] is None
+    call(base, "/api/settings", {"mode": "eval"})
+    wait_for(lambda: runner.status()["mode"] == "eval")
+
+    # settings survive a restart of the interface
+    stored = SessionSettings.load(tmp_path / "data")
+    assert stored.mode == "eval"
+    assert stored.instruction == "stack"
+    assert stored.last_config == "default:rcs/fr3"
+    assert stored.config_dirs == [tmp_path / "configs"]
+
+
+def test_bare_config_file_in_config_dir(idle_interface):
+    runner, base, tmp_path = idle_interface
+    cfg_json = snapshot.apply_overrides(
+        snapshot.to_jsonable(__import__("rcs.envs.configs", fromlist=["EmptyWorldFR3"]).EmptyWorldFR3().config()),
+        SMALL_CAMERAS,
+    )
+    (tmp_path / "configs" / "bare.json").write_text(json.dumps(cfg_json))
+    entries = call(base, "/api/configs")["configs"]
+    file_id = next(e["id"] for e in entries if e["id"].endswith("bare.json"))
+    entry = call(base, "/api/configs/entry?id=" + urllib.parse.quote(file_id))
+    assert entry["creator"] == "rcs_webui.envs:ConfigSimEnvCreator"
+    call(base, "/api/restart", {"config": {"creator": entry["creator"], "config": entry["config"]}, "base_id": file_id})
+    wait_for(lambda: runner.status()["state"] in ("ready", "error"))
+    assert runner.status()["error"] is None
+    record_episode(runner, base, "B", steps=3)
+
+
+def test_duobench_pick_place_is_offered(idle_interface):
+    pytest.importorskip("duobench.tasks.pick_place")
+    _, base, _ = idle_interface
+    ids = {e["id"] for e in call(base, "/api/configs")["configs"]}
+    assert "default:duobench/pick_place_red_on_green" in ids
+    entry = call(base, "/api/configs/entry?id=" + urllib.parse.quote("default:duobench/pick_place_red_on_green"))
+    summary = entry["summary"]
+    assert summary["task"] == "pick_place_red_on_green"
+    assert summary["cameras"] == ["front_rgb", "gripper_rgb"]
+    assert summary["control_mode"] == "CARTESIAN_TQuat"
+    assert summary["relative_to"] == "CONFIGURED_ORIGIN"
