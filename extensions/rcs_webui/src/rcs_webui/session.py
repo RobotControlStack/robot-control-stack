@@ -218,6 +218,9 @@ class SessionRunner(threading.Thread):
         self._operator = operator
         self._fixed_operator = operator is not None
         self._consolidations: dict[str, threading.Thread] = {}
+        self._await_release: set[str] = set()
+        """robots whose operator commands are ignored until their trigger was released once (after a recovery or an
+        env reset), so that the robot only follows a fresh trigger press"""
         self._scene_publisher: Any = None
         self.config_json: dict[str, Any] | None = None
         """wrapped config ({"creator", "config"}) of the running env"""
@@ -523,6 +526,7 @@ class SessionRunner(threading.Thread):
         if self._operator is not None:
             self._operator.set_camera(self._last_obs)
             self._operator.reset_operator_state()
+        self._require_retrigger(self._robot_names)
         self._episode_active = False
         self._episode_step = 0
         self._stop_policy()
@@ -553,12 +557,26 @@ class SessionRunner(threading.Thread):
             actions[robot] = act
         return actions
 
+    def _require_retrigger(self, robots: list[str]):
+        """Holds these robots until the operator released their trigger once, see _await_release."""
+        if self._operator is None:
+            return
+        engaged = self._operator.engaged_controllers()
+        waiting = {r for r in robots if engaged.get(r, False)}
+        if waiting:
+            self._await_release |= waiting
+            self._event(f"release the trigger of {', '.join(sorted(waiting))} and press it again to continue")
+
     def _operator_action(self) -> dict[str, Any]:
         actions = self._hold_action()
         if self._operator is None:
             return actions
+        engaged = self._operator.engaged_controllers()
+        for robot in list(self._await_release):
+            if not engaged.get(robot, False):
+                self._await_release.discard(robot)
         for robot, act in self._operator.consume_action().items():
-            if robot in actions:
+            if robot in actions and robot not in self._await_release:
                 actions[robot] = act
         return actions
 
@@ -782,6 +800,7 @@ class SessionRunner(threading.Thread):
         self._set_origins_to_current()
         if self._operator is not None:
             self._operator.reset_operator_state()
+        self._require_retrigger(self._robot_names)
         if self._executor is not None and self._policy_running:
             self._executor.cancel()  # fresh chunk from the current state
         with self._lock:
@@ -880,6 +899,7 @@ class SessionRunner(threading.Thread):
         self.storage.annotate_step(**annotations)
         joints_before = self._robot_joints(self._last_obs)
         engaged = self._operator.engaged_controllers() if self._operator is not None else {}
+        engaged = {r: e and r not in self._await_release for r, e in engaged.items()}
         self._last_obs, _, terminated, truncated, info = self.env.step(action)
         self._annotate_motion(joints_before, engaged)
         if self._episode_active:
