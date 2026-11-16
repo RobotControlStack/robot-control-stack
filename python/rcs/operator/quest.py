@@ -81,6 +81,7 @@ class QuestOperator(BaseOperator):
         self._start_btn = "A"
         self._stop_btn = "B"
         self._unsuccessful_btn = "Y"
+        self._resume_btn = "X"
 
         self._prev_data = None
         self._engaged = {key: False for key in self.controller_names}
@@ -259,6 +260,11 @@ class QuestOperator(BaseOperator):
                     self._prev_data is None or not self._prev_data[self._unsuccessful_btn]
                 ):
                     self._commands.failure = True
+
+                if input_data.get(self._resume_btn) and (
+                    self._prev_data is None or not self._prev_data.get(self._resume_btn)
+                ):
+                    self._commands.resume = True
 
             # === Update Poses & Grippers ===
             for controller in self.controller_names:

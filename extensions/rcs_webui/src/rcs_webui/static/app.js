@@ -59,7 +59,7 @@ function renderStatus(s) {
     ["mode", s.mode],
     ["env", s.env ? `${s.env}${sum ? ` (${sum.platform}${sum.task ? `, task ${sum.task}` : ""})` : ""}` : "none, pick a config below and start it"],
     ["operator", s.operator],
-    ["policy", s.policy ? `${s.policy.client} ${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"}${s.policy.rtc_delay ? `, RTC delay ${s.policy.rtc_delay}` : ""}${s.policy.intervening ? ", HUMAN INTERVENTION" : s.policy.running ? ", running" : ""})` : null],
+    ["policy", s.policy ? `${s.policy.client} ${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"}${s.policy.rtc_delay ? `, RTC delay ${s.policy.rtc_delay}` : ""}${s.policy.intervening ? (s.policy.awaiting_resume ? ", HUMAN INTERVENTION, press X to continue" : ", HUMAN INTERVENTION") : s.policy.running ? ", running" : ""})` : null],
     ["policy error", s.policy && s.policy.error ? s.policy.error : null],
     ["env reports", s.env_end ? `${s.env_end}: end the episode with B or Y (auto reset is off)` : null],
     ["data folder", s.session_dir],
@@ -71,6 +71,7 @@ function renderStatus(s) {
   $("#error").textContent = [s.error, s.operator_error].filter(Boolean).join("\n");
   if (!instructionTouched) $("#instruction").value = s.instruction || "";
   $("#policy-card").hidden = s.mode !== "eval";
+  $("#resume-btn").hidden = s.mode !== "eval";
   if (s.mode === "eval" && !policyFormFilled) {
     policyFormFilled = true;
     fillPolicyForm(s.policy || {});
