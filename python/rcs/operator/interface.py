@@ -22,6 +22,8 @@ class TeleopCommands:
     record: bool = False
     success: bool = False
     failure: bool = False
+    resume: bool = False
+    """hand the robot back to the policy after a human intervention (eval)"""
     sync_position: bool = False
     reset_origin_to_current: dict[str, bool] = field(default_factory=dict)
 

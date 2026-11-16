@@ -153,11 +153,14 @@ config `rcs/fr3`, operator *none*.
 
 The env config must match the action space of the policy (VLAgents: absolute joints, `control_mode JOINTS`,
 `relative_to NONE`); eval does not adapt default configs to the Quest. `A` starts a rollout, `B` / `Y` label it.
-Holding the Quest trigger takes over (human intervention, only when the env uses the Quest action space); the
-policy continues with a fresh chunk when it is released. In the web page the policy server (client, host, port,
+Holding the Quest trigger takes over (human intervention, only when the env uses the Quest action space). After
+releasing the trigger the robot holds the pose the operator left it in and the human stays in control until `X`
+(Quest or web button) hands it back to the policy, which continues with a fresh chunk from the current state. In the web page the policy server (client, host, port,
 actions per chunk, RTC delay, client options) can be switched at any time without restarting the interface.
 
-Every step of an episode has an `annotations` column: `source` (`policy`, `intervention`, `teleop`), `chunk_id`,
+Every step of an episode has an `annotations` column: `controller` (who commanded the robot: `human` incl.
+interventions, `learned_policy`, `scripted_policy`, `agent`, `none`; enum `rcs_webui.policy.Controller`), `source`
+(`policy`, `intervention`, `teleop`, `idle`), `chunk_id`,
 `chunk_index`, `request_id`, `request_sent`, `response_received` (host clock s), `switch_step` (episode step at
 which the chunk took over) and `waited` (s the loop waited for the server in that step).
 

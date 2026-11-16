@@ -142,8 +142,8 @@ class App:
         @self.post("/api/button")
         def button(_h, _m, body):
             name = str(body.get("button", "")).upper()
-            if name not in ("A", "B", "Y"):
-                raise ApiError(HTTPStatus.BAD_REQUEST, "button must be A, B or Y")
+            if name not in ("A", "B", "Y", "X"):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "button must be A, B, Y or X")
             self._need_runner().submit("button", name)
             return {"ok": True}
 

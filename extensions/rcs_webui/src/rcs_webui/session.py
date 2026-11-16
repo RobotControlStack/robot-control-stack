@@ -220,6 +220,7 @@ class SessionRunner(threading.Thread):
         self._executor: ChunkExecutor | None = None
         self._policy_running = False
         self._intervening = False
+        self._awaiting_resume = False
         self._status: dict[str, Any] = {
             "state": "idle",
             "mode": settings.mode,
@@ -537,6 +538,7 @@ class SessionRunner(threading.Thread):
                 execute_steps=policy.execute_steps,
                 running=self._policy_running,
                 intervening=self._intervening,
+                awaiting_resume=self._awaiting_resume,
                 **extra,
             )
             self._status["policy"] = current
@@ -588,6 +590,7 @@ class SessionRunner(threading.Thread):
             self._executor.cancel()
         self._policy_running = False
         self._intervening = False
+        self._awaiting_resume = False
         if self.settings.mode == "eval":
             self._policy_status()
 
@@ -603,6 +606,7 @@ class SessionRunner(threading.Thread):
         assert self._executor is not None
         engaged = self._operator is not None and self._operator.is_engaged()
         if engaged and self._control_mode == QUEST_CONTROL_MODE:
+            self._awaiting_resume = False
             if not self._intervening:
                 # human takes over: the operator moves relative to where the robot is now
                 self._intervening = True
@@ -616,9 +620,17 @@ class SessionRunner(threading.Thread):
                 **StepSource().as_dict(),
             }
         if self._intervening:
-            self._intervening = False
-            self._event("policy continues")
-            self._policy_status()
+            # trigger released: the human still owns the robot (it holds the pose the operator left it in) until
+            # X hands it back to the policy
+            if not self._awaiting_resume:
+                self._awaiting_resume = True
+                self._event("trigger released: press X to continue the policy")
+                self._policy_status()
+            return self._operator_action(), {
+                "source": "intervention",
+                "controller": Controller.HUMAN.value,
+                **StepSource().as_dict(),
+            }
         action, step_source, done = self._executor.act(self._last_obs, self._episode_step)
         if done:
             self._event("the policy reported done, label the episode with B or Y")
@@ -635,6 +647,23 @@ class SessionRunner(threading.Thread):
             **step_source.as_dict(),
         }
 
+    def _resume_policy(self):
+        """X: the policy takes the robot back after an intervention, with a fresh chunk from the current state."""
+        if self.settings.mode != "eval" or not self._episode_active:
+            return
+        if not self._intervening:
+            self._event("X: no intervention to end")
+            return
+        if self._operator is not None and self._operator.is_engaged():
+            self._event("X: release the trigger first")
+            return
+        self._intervening = False
+        self._awaiting_resume = False
+        if self._executor is not None:
+            self._executor.cancel()
+        self._event("policy continues (X)")
+        self._policy_status()
+
     def _process_commands(self) -> TeleopCommands:
         web = TeleopCommands()
         while True:
@@ -648,6 +677,7 @@ class SessionRunner(threading.Thread):
                 web.record |= payload == "A"
                 web.success |= payload == "B"
                 web.failure |= payload == "Y"
+                web.resume |= payload == "X"
             elif command == "restart":
                 spec = payload or self.env_spec
                 if spec is None:
@@ -695,8 +725,11 @@ class SessionRunner(threading.Thread):
         cmds.record |= web.record
         cmds.success |= web.success
         cmds.failure |= web.failure
+        cmds.resume |= web.resume
         if self._handle_buttons(cmds):
             return
+        if cmds.resume:
+            self._resume_policy()
         for controller, reset in cmds.reset_origin_to_current.items():
             robot_envs = self.env.get_wrapper_attr("envs")
             if reset and controller in robot_envs:

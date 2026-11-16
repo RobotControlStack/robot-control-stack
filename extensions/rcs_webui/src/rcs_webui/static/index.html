@@ -25,11 +25,12 @@
   <div class="grid">
     <div class="card">
       <h2>Episode</h2>
-      <p class="muted">Main control is the Meta Quest: <b>A</b> start, <b>B</b> successful, <b>Y</b> unsuccessful. The buttons below do the same.</p>
+      <p class="muted">Main control is the Meta Quest: <b>A</b> start, <b>B</b> successful, <b>Y</b> unsuccessful; eval: hold the trigger to intervene, <b>X</b> continues the policy. The buttons below do the same.</p>
       <div class="buttons">
         <button data-button="A" class="btn start">A &nbsp;start</button>
         <button data-button="B" class="btn ok">B &nbsp;successful</button>
         <button data-button="Y" class="btn fail">Y &nbsp;unsuccessful</button>
+        <button data-button="X" class="btn" id="resume-btn" title="eval: hand the robot back to the policy after an intervention">X &nbsp;continue policy</button>
       </div>
       <dl id="status"></dl>
       <p id="error" class="error"></p>
