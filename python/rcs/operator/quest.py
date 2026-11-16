@@ -322,16 +322,51 @@ class QuestConfig(BaseOperatorConfig):
     display_cameras: bool = True
 
 
-def stop_publisher(publisher: "SimPublisher") -> None:
-    """Stops the scene stream and the web dashboard (127.0.0.1:5000) of a simpub publisher.
+def stop_publisher(publisher: "SimPublisher", remove_scene: bool = True, timeout: float = 3.0) -> None:
+    """Stops a simpub publisher: its scene on the Quest, the scene stream and the web dashboard (127.0.0.1:5000).
 
-    The dashboard runs serve_forever in pyzlc's thread pool: if it is not stopped, the thread pool join at
-    interpreter exit (and pyzlc's atexit shutdown) blocks forever. The pyzlc node itself stays up, it can not
-    be initialized a second time in the same process, so a new operator / publisher can be created afterwards.
+    - ``remove_scene``: the scene is deleted on every connected Quest. The Quest app only deletes a scene with the
+      name of the scene that is spawned next, so without this a MuJoCo scene of a sim env stays visible after
+      switching to the real robot (whose placeholder scene has another name).
+    - the publisher stops reacting to Quest apps that (re)connect: its device search loop keeps running on the pyzlc
+      event loop, which can not be stopped per publisher, and would send the old scene again.
+    - the dashboard runs serve_forever in pyzlc's thread pool: if it is not stopped, the thread pool join at
+      interpreter exit (and pyzlc's atexit shutdown) blocks forever.
+
+    The pyzlc node itself stays up, it can not be initialized a second time in the same process, so a new operator /
+    publisher can be created afterwards.
     """
+
+    async def _ignore_device(_xr_info: Any) -> None:
+        return None
+
+    publisher.on_new_device_found = _ignore_device  # type: ignore[method-assign]
     streamer = getattr(publisher, "scene_update_streamer", None)
     if streamer is not None:
         streamer.running = False
+    if remove_scene:
+        try:
+            _delete_scene(publisher, timeout)
+        except Exception:
+            logger.exception("removing the scene from the Quest failed")
     web_server = getattr(publisher, "web_server", None)
     if web_server is not None:
         web_server.shutdown()
+
+
+def _delete_scene(publisher: "SimPublisher", timeout: float) -> None:
+    import pyzlc
+    from simpub.core.utils import ZLC_GROUP_NAME
+
+    devices = getattr(publisher, "xr_device_set", set())
+    names = [info["name"] for info in pyzlc.get_nodes_info(ZLC_GROUP_NAME) if info["nodeID"] in devices]
+    if not names:
+        return
+    scene = publisher.sim_scene.name
+
+    async def delete() -> None:
+        for name in names:
+            await pyzlc.async_call(f"{name}/DeleteSimScene", scene, timeout=timeout, group_name=ZLC_GROUP_NAME)
+
+    pyzlc.submit_loop_task(delete(), group_name=ZLC_GROUP_NAME).result(timeout=timeout * len(names) + 1)
+    logger.info("removed the scene %s from %s", scene, ", ".join(names))
