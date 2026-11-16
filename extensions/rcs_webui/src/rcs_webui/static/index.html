@@ -29,11 +29,53 @@
       </div>
       <dl id="status"></dl>
       <p id="error" class="error"></p>
+      <h2>Instruction</h2>
+      <form id="instruction-form" class="inline">
+        <input id="instruction" type="text" placeholder="e.g. pick up the red cube and place it on top of the green cube">
+        <button class="btn">set</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Settings</h2>
+      <p class="muted" id="settings-note">Stored in the data root and used for the next env start.</p>
+      <form id="settings-form">
+        <div class="row">
+          <label style="flex:1">Mode
+            <select id="set-mode" data-start-key="mode">
+              <option value="collect">collect (Quest teleop)</option>
+              <option value="eval">eval (policy, Quest intervention)</option>
+            </select>
+          </label>
+          <label style="flex:1">Operator
+            <select id="set-operator" data-start-key="operator">
+              <option value="quest">Meta Quest</option>
+              <option value="none">none (web buttons only)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label style="flex:2">Quest network IP of this PC <input id="set-quest-addr" type="text" data-start-key="quest_addr"></label>
+          <label style="flex:1">Default config rate (Hz) <input id="set-frequency" type="number" min="1" step="any"></label>
+        </div>
+        <div class="row checks">
+          <label class="check"><input id="set-switch" type="checkbox" data-start-key="quest_switched_left_right"> swap Quest left / right</label>
+          <label class="check"><input id="set-gui" type="checkbox" data-start-key="headless"> MuJoCo viewer (sim)</label>
+        </div>
+        <label>Config directories (one per line, *.json files are offered as configs)
+          <textarea id="set-config-dirs" rows="2" spellcheck="false" placeholder="/home/me/surf/configs/rcs"></textarea>
+        </label>
+        <label>Env packages (one per line, their modules register more envs)
+          <textarea id="set-env-packages" rows="1" spellcheck="false" placeholder="duobench.tasks"></textarea>
+        </label>
+        <p id="env-packages-status" class="muted"></p>
+        <div class="row"><button class="btn">save settings</button><span id="settings-check" class="muted"></span></div>
+      </form>
     </div>
 
     <div class="card" id="policy-card" hidden>
       <h2>Policy server</h2>
-      <p class="muted">Switching connects to the new server without restarting the interface; a running rollout is ended first.</p>
+      <p class="muted">Switching connects to the new server without restarting the env; a running rollout is ended first.</p>
       <form id="policy-form">
         <label>Client <select id="policy-client"></select></label>
         <div class="row">
@@ -48,26 +90,33 @@
         <button class="btn">connect</button>
       </form>
     </div>
+  </div>
 
-    <div class="card">
-      <h2>Instruction</h2>
-      <form id="instruction-form">
-        <input id="instruction" type="text" placeholder="e.g. pick up the red cube and place it in the bowl">
-        <button class="btn">set</button>
-      </form>
-      <h2>Start env</h2>
-      <p class="muted">Pick a config (defaults, config directories, previous recordings), edit it if needed and start the env. Every start creates a new data folder with the complete env config, git commit and diff.</p>
-      <form id="restart-form">
-        <label>Config <select id="config-select"><option value="">same as now</option></select></label>
-        <label>Config JSON (editable)
-          <textarea id="config-json" rows="14" spellcheck="false" placeholder="select a config to edit it, or leave empty to restart with the current config"></textarea>
-        </label>
-        <p id="config-check" class="muted"></p>
-        <div class="row">
-          <button type="button" id="validate-config" class="btn small">validate</button>
-          <button class="btn">start env</button>
-        </div>
-      </form>
+  <div class="card">
+    <h2>Env config</h2>
+    <p class="muted">Pick a config (running env, config directories, previous recordings, defaults from the code). The complete config is shown and can be edited; changes against the picked config are marked in the gutter, click a mark to see the change. Every start creates a new data folder with the complete config, the changed fields, git commit and diff.</p>
+    <div class="row">
+      <label style="flex:1">Config <select id="config-select"><option value="">select a config...</option></select></label>
+      <button type="button" id="reload-configs" class="btn small" title="rescan the config directories and recordings">rescan</button>
+    </div>
+    <div id="config-summary" class="chips"></div>
+    <div id="editor" class="editor">
+      <div class="gutter"><div class="gutter-inner"></div></div>
+      <textarea class="code" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="select a config"></textarea>
+      <div class="peek" hidden></div>
+    </div>
+    <div class="row editor-bar">
+      <span id="diff-summary" class="muted">no changes</span>
+      <button type="button" id="diff-prev" class="btn small" title="previous change">&uarr;</button>
+      <button type="button" id="diff-next" class="btn small" title="next change">&darr;</button>
+      <button type="button" id="diff-revert-all" class="btn small">revert all</button>
+      <span style="flex:1"></span>
+      <button type="button" id="validate-config" class="btn small">validate</button>
+    </div>
+    <p id="config-check" class="muted"></p>
+    <div class="buttons">
+      <button type="button" id="start-env" class="btn start">start env</button>
+      <button type="button" id="stop-env" class="btn fail">stop env</button>
     </div>
   </div>
 
@@ -103,6 +152,7 @@
 </section>
 </main>
 
+<script src="diffeditor.js"></script>
 <script src="app.js"></script>
 <script src="viewer.js"></script>
 </body>
