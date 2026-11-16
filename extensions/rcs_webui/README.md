@@ -74,6 +74,10 @@ Open `http://<pc>:8080`. No env runs yet. Everything is configured in the page a
   right, MuJoCo viewer (sim), the rate of default configs, config directories (their `*.json` files are offered
   as configs) and env packages (modules that register more envs, default `duobench.tasks`). Mode, operator,
   Quest and viewer settings are used at env start and can only be changed while no env runs.
+- *Auto reset* (on by default): when the env ends the episode itself, it is stored and the env is reset: as
+  successful if the task check reports success (`terminated` with `info["success"]`, e.g. DuoBench tasks), as
+  unsuccessful for any other termination or truncation. Off: the env's end is only shown in the status and the
+  episode keeps recording until `B` / `Y`. Robot errors always end the episode and reset the env.
 - *Env config*: pick a config, it is shown complete and editable, then *start env*. The list has the running
   env, the config directories, previous recordings and the default configs of the code (hardware: `fr3`,
   `fr3_duo`, `fr3_dual`, `droid`; simulation: `rcs/*` and e.g. `duobench/*` when DuoBench is installed).

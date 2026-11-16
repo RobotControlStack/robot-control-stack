@@ -371,3 +371,33 @@ def test_env_task_check_labels_the_episode(interface, success):
     rows = sorted(read_session(session_dir).to_pylist(), key=lambda r: r["step"])
     assert [r["success"] for r in rows] == [False] * (len(rows) - 1) + [success]
     assert rows[-1]["terminated"] is True
+
+
+def test_auto_reset_off_keeps_recording_until_the_operator_ends(interface):
+    """With auto reset off the env's end of episode is only reported, the episode ends with B / Y."""
+    runner, base, _ = interface
+    call(base, "/api/settings", {"auto_reset": False})
+    wait_for(lambda: runner.settings.auto_reset is False)
+    runner.storage.env = _SucceedAfter(runner.storage.env, 5, True)
+    call(base, "/api/button", {"button": "A"})
+    wait_for(lambda: runner.status()["env_end"] == "task success")
+    wait_for(lambda: runner.status()["episode_steps"] >= 12)  # still recording after the env's end
+    assert runner.status()["episode_active"]
+    assert runner.status()["episodes"]["successful"] == 0
+    call(base, "/api/button", {"button": "Y"})
+    wait_for(lambda: not runner.status()["episode_active"])
+    status = runner.status()
+    assert status["env_end"] is None
+    assert status["episodes"] == {"successful": 0, "unsuccessful": 1, "truncated": 0}
+    session_dir = Path(status["session_dir"])
+
+    def flushed() -> bool:
+        try:
+            return read_session(session_dir).num_rows >= 12
+        except (FileNotFoundError, pa.ArrowInvalid):
+            return False
+
+    wait_for(flushed)
+    rows = read_session(session_dir).to_pylist()
+    assert not any(r["success"] for r in rows)  # the operator's Y wins over the env's success
+    assert sum(r["terminated"] for r in rows) >= 7  # the env kept reporting the end

@@ -75,6 +75,9 @@ class SessionSettings:
     """quest or none (episodes are then controlled with the buttons of the web interface)"""
     quest_addr: str = "10.42.0.1"
     quest_switched_left_right: bool = False
+    auto_reset: bool = True
+    """end the episode and reset the env when the env reports the end (task success: successful, terminated /
+    truncated: unsuccessful); off: keep recording until B / Y. Robot errors always end the episode."""
     batch_size: int = 32
     config_dirs: list[Path] = field(default_factory=list)
     """directories with config files that the web page offers"""
@@ -94,6 +97,7 @@ class SessionSettings:
         "config_dirs",
         "env_packages",
         "policy",
+        "auto_reset",
     )
 
     def to_json(self) -> dict[str, Any]:
@@ -125,7 +129,7 @@ class SessionSettings:
                 if value <= 0:
                     msg = "frequency must be positive"
                     raise ValueError(msg)
-            elif key in ("quest_switched_left_right", "headless"):
+            elif key in ("quest_switched_left_right", "headless", "auto_reset"):
                 value = bool(raw)
             elif key == "policy":
                 value = PolicySettings(**raw) if raw is not None else None
@@ -226,6 +230,7 @@ class SessionRunner(threading.Thread):
             "operator": None,
             "operator_error": None,
             "summary": None,
+            "env_end": None,
         }
 
     # ---------------------------------------------------------------- public, thread safe
@@ -437,7 +442,7 @@ class SessionRunner(threading.Thread):
         self._episode_active = False
         self._episode_step = 0
         self._stop_policy()
-        self._set_status(episode_active=False, episode_steps=0, episode_uuid=None)
+        self._set_status(episode_active=False, episode_steps=0, episode_uuid=None, env_end=None)
 
     def _hold_action(self) -> dict[str, Any]:
         """Action that keeps every robot where it is."""
@@ -705,7 +710,15 @@ class SessionRunner(threading.Thread):
                 self._status["episode_steps"] += 1
         if terminated or truncated:
             errors = {k: v.get("robot_error") for k, v in info.items() if isinstance(v, dict) and v.get("robot_error")}
-            if terminated and not truncated and not errors and info.get("success"):
+            task_success = bool(terminated and not truncated and not errors and info.get("success"))
+            if not errors and not self.settings.auto_reset:
+                # the operator decides: the episode keeps recording until B / Y, the env is not reset
+                end = "task success" if task_success else ("truncated" if truncated else "terminated")
+                if self.status().get("env_end") != end:
+                    self._set_status(env_end=end)
+                    self._event(f"the env reports {end}, auto reset is off: end the episode with B or Y")
+                return
+            if task_success:
                 # the task check of the env (e.g. a duobench TaskStageWrapper) ended the episode: same as B
                 self._end_episode(True, "successful (task check of the env)")
                 return

@@ -61,6 +61,7 @@ function renderStatus(s) {
     ["operator", s.operator],
     ["policy", s.policy ? `${s.policy.client} ${s.policy.host}:${s.policy.port} (${s.policy.connected ? "connected" : "not connected"}${s.policy.rtc_delay ? `, RTC delay ${s.policy.rtc_delay}` : ""}${s.policy.intervening ? ", HUMAN INTERVENTION" : s.policy.running ? ", running" : ""})` : null],
     ["policy error", s.policy && s.policy.error ? s.policy.error : null],
+    ["env reports", s.env_end ? `${s.env_end}: end the episode with B or Y (auto reset is off)` : null],
     ["data folder", s.session_dir],
     ["step rate", s.env ? `${s.step_hz} Hz` : null],
     ["episodes", `${s.episodes.successful} successful, ${s.episodes.unsuccessful} unsuccessful, ${s.episodes.truncated} ended by the robot`],
@@ -140,6 +141,7 @@ async function loadSettings() {
   $("#set-frequency").value = st.frequency;
   $("#set-switch").checked = st.quest_switched_left_right;
   $("#set-gui").checked = !st.headless;
+  $("#set-auto-reset").checked = st.auto_reset;
   $("#set-config-dirs").value = st.config_dirs.join("\n");
   $("#set-env-packages").value = st.env_packages.join("\n");
   $("#env-packages-status").textContent = Object.entries(res.env_packages)
@@ -151,6 +153,7 @@ $("#settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = {
     frequency: +$("#set-frequency").value,
+    auto_reset: $("#set-auto-reset").checked,
     config_dirs: lines($("#set-config-dirs").value),
     env_packages: lines($("#set-env-packages").value),
   };
