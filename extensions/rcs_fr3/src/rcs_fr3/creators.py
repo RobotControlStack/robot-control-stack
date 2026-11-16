@@ -66,6 +66,10 @@ class FR3HardwareEnvCreatorConfig:
     hand_cfg: HandConfig | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
+    max_step_movement: float | tuple[float, float] | None = None
+    """per-step limit of the commanded target relative to the *measured* pose (LimitedAbsoluteAction below the
+    RelativeActionSpace), e.g. (0.075, 0.15) m / rad like DROID; None disables it. max_relative_movement only bounds the
+    action relative to the origin / last step."""
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     frequency: float | None = None
     """Control frequency in Hz, rate limits env.step(). None disables rate limiting."""
@@ -80,6 +84,10 @@ class FR3MultiHardwareEnvCreatorConfig:
     hand_cfgs: dict[str, HandConfig | None] | None = None
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
+    max_step_movement: float | tuple[float, float] | None = None
+    """per-step limit of the commanded target relative to the *measured* pose (LimitedAbsoluteAction below the
+    RelativeActionSpace), e.g. (0.075, 0.15) m / rad like DROID; None disables it. max_relative_movement only bounds the
+    action relative to the origin / last step."""
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
     frequency: float | None = None
@@ -117,6 +125,9 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
             env = CameraSetWrapper(env, camera_set, cfg.wrapper_cfg.include_depth)
 
         if cfg.relative_to != RelativeTo.NONE:
+            if cfg.max_step_movement is not None:
+                # below the relative wrapper: limits its absolute target against the measured pose
+                env = LimitedAbsoluteAction(env, max_mov=cfg.max_step_movement)
             env = RelativeActionSpace(env, max_mov=cfg.max_relative_movement, relative_to=cfg.relative_to)
         else:
             env = LimitedAbsoluteAction(env, max_mov=cfg.max_relative_movement)
@@ -139,6 +150,7 @@ class RCSFR3MultiConfigEnvCreator(RCSEnvCreator[FR3MultiHardwareEnvCreatorConfig
                     hand_cfg=cfg.hand_cfgs[robot_name] if cfg.hand_cfgs is not None else None,
                     camera_cfgs=None,
                     max_relative_movement=cfg.max_relative_movement,
+                    max_step_movement=cfg.max_step_movement,
                     relative_to=cfg.relative_to,
                     frequency=cfg.frequency,
                     wrapper_cfg=cfg.wrapper_cfg,

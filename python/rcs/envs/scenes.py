@@ -108,6 +108,10 @@ class SimEnvCreatorConfig(typing.Generic[TaskConfig]):
     gripper_cfgs: dict[str, SimGripperConfig] | None = None
     camera_cfgs: dict[str, SimCameraConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
+    max_step_movement: float | tuple[float, float] | None = None
+    """per-step limit of the commanded target relative to the *measured* pose (LimitedAbsoluteAction below the
+    RelativeActionSpace), e.g. (0.075, 0.15) m / rad like DROID; None disables it. max_relative_movement only bounds the
+    action relative to the origin / last step."""
     relative_to: RelativeTo = RelativeTo.LAST_STEP
     robot_to_shared_base_frame: dict[str, rcs.common.Pose] | None = None
     """shared base frame is a common reference frame for all robots in the scene and the origin for all actions and observations, e.g. the middle of franka duo
@@ -391,6 +395,9 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                 env = self.add_gripper_env(prefixed_cfg, robot_name, simulation, env)
 
             if prefixed_cfg.relative_to != RelativeTo.NONE:
+                if prefixed_cfg.max_step_movement is not None:
+                    # below the relative wrapper: limits its absolute target against the measured pose
+                    env = LimitedAbsoluteAction(env, max_mov=prefixed_cfg.max_step_movement)
                 env = RelativeActionSpace(
                     env, max_mov=prefixed_cfg.max_relative_movement, relative_to=prefixed_cfg.relative_to
                 )
