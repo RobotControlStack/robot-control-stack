@@ -394,6 +394,21 @@ class SessionRunner(threading.Thread):
                 self.storage.close()
             except Exception:
                 logger.exception("closing the env failed")
+            # StorageWrapper.close only stops the recording: close the env below it (robot, gripper and camera
+            # connections on hardware) and the MuJoCo viewer, which env.close does not stop
+            sim = None
+            if envs.is_sim_config(self._cfg):
+                with contextlib.suppress(AttributeError):
+                    sim = self.storage.get_wrapper_attr("sim")
+            try:
+                self.storage.env.close()
+            except Exception:
+                logger.exception("closing the env failed")
+            if sim is not None:
+                try:
+                    sim.close_gui()
+                except Exception:
+                    logger.exception("closing the MuJoCo viewer failed")
         self.env = None
         self.storage = None
         self.config_json = None
