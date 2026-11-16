@@ -115,8 +115,21 @@ function controllerPills(ep) {
     .join(" ");
 }
 
-function controllerTimeline(time, controller, intervention) {
-  const W = 1300, H = 64, L = 46, R = 8, T = 6, B = 22; // about the rendered width of the full-width panel, so text is not stretched
+// lanes below the controller row: per robot when the Quest trigger was held and when the robot moved;
+// neither = operator repositioning the controller
+function flagLanes(flags) {
+  const lanes = [];
+  for (const [robot, f] of Object.entries(flags || {})) {
+    if (f.engaged) lanes.push({ label: `trigger ${robot}`, values: f.engaged, color: "var(--ctrl-human)" });
+    if (f.moving) lanes.push({ label: `moving ${robot}`, values: f.moving, color: "var(--accent)" });
+  }
+  return lanes;
+}
+
+function controllerTimeline(time, controller, intervention, lanes = []) {
+  const LANE = 14;
+  const W = 1300, L = 92, R = 8, T = 6, B = 22; // about the rendered width of the full-width panel, so text is not stretched
+  const H = T + 26 + 6 + lanes.length * (LANE + 4) + B;
   const n = controller.length;
   const tmin = time[0] ?? 0, tmax = time[n - 1] ?? 1;
   const x = (t) => L + ((t - tmin) / (tmax - tmin || 1)) * (W - L - R);
@@ -141,16 +154,43 @@ function controllerTimeline(time, controller, intervention) {
   const tticks = [tmin, (tmin + tmax) / 2, tmax]
     .map((t, i) => `<text x="${x(t)}" y="${H - 6}" text-anchor="${["start", "middle", "end"][i]}" font-size="10" fill="currentColor">${(t - tmin).toFixed(1)} s</text>`)
     .join("");
+  const laneSvg = lanes
+    .map((lane, li) => {
+      const y0 = T + 26 + 6 + li * (LANE + 4);
+      const segs = [];
+      for (let k = 0; k < n; k++) {
+        if (!lane.values[k]) continue;
+        let e = k;
+        while (e + 1 < n && lane.values[e + 1]) e++;
+        const x0 = x(time[k]), x1 = Math.min(x(time[e] + dt), W - R);
+        segs.push(`<rect x="${x0}" y="${y0}" width="${Math.max(1, x1 - x0)}" height="${LANE}" rx="2" fill="${lane.color}"><title>${esc(lane.label)}: steps ${k}-${e}</title></rect>`);
+        k = e;
+      }
+      const on = lane.values.filter(Boolean).length;
+      return `<rect x="${L}" y="${y0}" width="${W - L - R}" height="${LANE}" rx="2" fill="currentColor" fill-opacity="0.06"/>${segs.join("")}
+        <text x="${L - 6}" y="${y0 + LANE - 3}" text-anchor="end" font-size="10" fill="currentColor">${esc(lane.label)} (${on})</text>`;
+    })
+    .join("");
   const present = [...new Set(controller)];
   const legend = present
     .map((c) => `<span><span class="swatch" style="background:${controllerColor(c)}"></span> ${esc(controllerName(c))} (${controller.filter((v) => v === c).length} steps)</span>`)
     .join("");
   const ivSteps = intervention.filter(Boolean).length;
+  const repositioning = lanes.length
+    ? (() => {
+        const eng = lanes.find((l) => l.label.startsWith("trigger"));
+        const mov = lanes.find((l) => l.label.startsWith("moving"));
+        if (!eng || !mov) return "";
+        const r = eng.values.filter((v, k) => !v && !mov.values[k]).length;
+        return `<span>trigger released and robot still (repositioning): ${r} steps</span>`;
+      })()
+    : "";
   return `<div class="plot plot-wide"><h3>controlled by</h3>
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="timeline" data-tmin="${tmin}" data-tmax="${tmax}" data-l="${L}" data-r="${R}" data-w="${W}">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="timeline" style="height:${H}px" data-tmin="${tmin}" data-tmax="${tmax}" data-l="${L}" data-r="${R}" data-w="${W}">
       <defs><pattern id="iv-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" stroke-opacity="0.45" stroke-width="2"/></pattern></defs>
-      ${rects}${tticks}<line class="cursor" y1="${T - 3}" y2="${T + 29}" stroke="currentColor" stroke-width="1.5"/>
-    </svg><div class="legend">${legend}${ivSteps ? `<span>hatched: intervention (${ivSteps} steps)</span>` : ""}</div></div>`;
+      <text x="${L - 6}" y="${T + 17}" text-anchor="end" font-size="10" fill="currentColor">controller</text>
+      ${rects}${laneSvg}${tticks}<line class="cursor" y1="${T - 3}" y2="${H - B + 2}" stroke="currentColor" stroke-width="1.5"/>
+    </svg><div class="legend">${legend}${ivSteps ? `<span>hatched: intervention (${ivSteps} steps)</span>` : ""}${repositioning}</div></div>`;
 }
 
 function rows2series(rows) {
@@ -203,7 +243,8 @@ const CONTROL_PLOTS = [
 
 function buildPlots(ep) {
   const html = [];
-  if (ep.controller && ep.controller.length) html.push(controllerTimeline(ep.time, ep.controller, ep.intervention || []));
+  if (ep.controller && ep.controller.length)
+    html.push(controllerTimeline(ep.time, ep.controller, ep.intervention || [], flagLanes(ep.teleop_flags)));
   for (const [robot, r] of Object.entries(ep.robots)) {
     if (r.step.joints) html.push(plotSvg(`${robot}: joints (rad, per step)`, ep.time, r.step.joints, JOINT_LABELS));
     if (r.step.gripper) html.push(plotSvg(`${robot}: gripper (1 = open)`, ep.time, r.step.gripper, ["obs"]));
