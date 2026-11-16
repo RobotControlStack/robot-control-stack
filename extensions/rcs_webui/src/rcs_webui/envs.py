@@ -3,12 +3,13 @@
 import dataclasses
 import importlib
 import logging
+import pkgutil
 from typing import Any
 
 import gymnasium as gym
 import rcs.envs.configs  # noqa: F401 registers the rcs/* sim envs
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs.envs.scenes import RCSEnvCreator, SimEnvCreatorConfig
+from rcs.envs.scenes import RCSEnvCreator, SimEnvCreator, SimEnvCreatorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +25,49 @@ HARDWARE_CREATORS = {
 }
 
 
+# packages whose submodules register more RCS envs on import (each task module calls gym.register),
+# imported if installed
+DEFAULT_ENV_PACKAGES = ["duobench.tasks"]
+
+_imported_packages: dict[str, str | None] = {}
+
+
+def import_env_packages(packages: list[str]) -> dict[str, str | None]:
+    """Imports every submodule of the given packages so that their envs are registered.
+
+    Returns per package None if it was imported or the reason why not (not installed, import error).
+    Each package is only imported once per process.
+    """
+    for package in packages:
+        if package in _imported_packages:
+            continue
+        try:
+            pkg = importlib.import_module(package)
+        except ImportError as e:
+            _imported_packages[package] = f"not installed ({e})"
+            continue
+        errors = []
+        for info in pkgutil.iter_modules(getattr(pkg, "__path__", []), prefix=f"{package}."):
+            try:
+                importlib.import_module(info.name)
+            except Exception as e:  # a broken task must not hide the others
+                logger.warning("importing %s failed: %s", info.name, e)
+                errors.append(f"{info.name}: {type(e).__name__}: {e}")
+        _imported_packages[package] = "; ".join(errors) or None
+    return {p: _imported_packages[p] for p in packages}
+
+
+def _is_rcs_env(name: str) -> bool:
+    entry_point = gym.registry[name].entry_point
+    if isinstance(entry_point, RCSEnvCreator):
+        return True
+    return isinstance(entry_point, str) and name.startswith("rcs/")
+
+
 def available_envs() -> list[str]:
-    """Names that can be passed to :func:`load_creator`: registered rcs gym ids and the hardware creators."""
-    names = [name for name in gym.registry if name.startswith("rcs/")]
+    """Names that can be passed to :func:`load_creator`: gym ids registered with an RCSEnvCreator (rcs/*, and
+    e.g. duobench/* after :func:`import_env_packages`) and the hardware creators."""
+    names = [name for name in gym.registry if _is_rcs_env(name)]
     try:
         importlib.import_module("rcs_fr3")
         names += list(HARDWARE_CREATORS)
@@ -60,6 +101,75 @@ def creator_name(creator: RCSEnvCreator) -> str:
 
 def is_sim_config(cfg: Any) -> bool:
     return isinstance(cfg, SimEnvCreatorConfig)
+
+
+class ConfigSimEnvCreator(SimEnvCreator):
+    """Builds any sim env from a complete config (scene, robots, cameras and the task in ``cfg.task_cfg``).
+    Used for config files without a creator; it has no default config of its own."""
+
+    def config(self) -> SimEnvCreatorConfig:
+        msg = "ConfigSimEnvCreator only starts complete configs, it has no default config"
+        raise NotImplementedError(msg)
+
+
+def infer_creator(cfg: Any) -> str:
+    """Creator for a config without one (e.g. a bare ``env_config.json``): the generic, config driven creator
+    that builds envs of this config type (sim: ``SimEnvCreator``, the task comes from ``cfg.task_cfg``)."""
+    if is_sim_config(cfg):
+        return f"{__name__}:ConfigSimEnvCreator"
+    for name in HARDWARE_CREATORS:
+        try:
+            creator = load_creator(name)
+            default_type = type(creator.config())
+        except Exception:
+            continue
+        if type(cfg) is default_type:
+            owner = next(c for c in type(creator).__mro__ if "create_env" in vars(c))
+            return f"{owner.__module__}:{owner.__qualname__}"
+    msg = f"no creator known for a {type(cfg).__qualname__}, use a config file with a creator"
+    raise ValueError(msg)
+
+
+def _robot_platform_hardware(cfg: Any) -> Any:
+    """Hardware robot configs carry the C++ default robot_platform=SIMULATION, which is never read on hardware
+    (the env class decides) but is confusing in the stored config, so it is set to HARDWARE."""
+    if is_sim_config(cfg):
+        return cfg
+    from rcs._core.common import RobotPlatform
+
+    for robot_cfg in _robot_cfgs(cfg):
+        if hasattr(robot_cfg, "robot_platform"):
+            robot_cfg.robot_platform = RobotPlatform.HARDWARE
+    return cfg
+
+
+def normalize_config(cfg: Any) -> Any:
+    """Applied to every config the interface shows or starts, whatever its source."""
+    return _robot_platform_hardware(cfg)
+
+
+def describe(cfg: Any, creator: str) -> dict[str, Any]:
+    """Short summary of a config for the interface."""
+    robots = list(cfg.robot_cfgs) if hasattr(cfg, "robot_cfgs") else (["robot"] if hasattr(cfg, "robot_cfg") else [])
+    cameras = list(getattr(cfg, "camera_cfgs", None) or {})
+    if not is_sim_config(cfg) and cameras:
+        # hardware: camera_cfgs are camera creators (e.g. "zed") with the cameras inside
+        cameras = [name for c in cfg.camera_cfgs.values() for name in (getattr(c, "camera_cfgs", None) or {c: None})]
+    frequency = cfg.sim_cfg.frequency if is_sim_config(cfg) else getattr(cfg, "frequency", None)
+    control_mode = getattr(cfg, "control_mode", None)
+    relative_to = getattr(cfg, "relative_to", None)
+    task = getattr(getattr(cfg, "task_cfg", None), "task_id", None)
+    return {
+        "creator": creator,
+        "platform": "simulation" if is_sim_config(cfg) else "hardware",
+        "config_type": type(cfg).__qualname__,
+        "robots": robots,
+        "cameras": [str(c) for c in cameras],
+        "frequency": frequency,
+        "control_mode": getattr(control_mode, "name", None),
+        "relative_to": getattr(relative_to, "name", None),
+        "task": task,
+    }
 
 
 def _robot_cfgs(cfg: Any) -> list[Any]:
