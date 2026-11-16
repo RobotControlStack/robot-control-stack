@@ -53,6 +53,9 @@ class LinearPoseTrajInterpolator {
                   traj_interpolator_time_fraction;
     start_time_ = time_sec;
 
+    // whether next_step() ran since the last reset, i.e. last_p_t_ / last_q_t_
+    // hold the current reference
+    const bool reference_valid = start_;
     start_ = false;
 
     if (first_goal_) {
@@ -63,13 +66,15 @@ class LinearPoseTrajInterpolator {
       prev_q_goal_ = q_start;
       first_goal_ = false;
     } else {
-      // If the goal is already set, use prev goal as the starting point of
-      // interpolation.
+      // Continue from where the reference is now. Starting from the previous
+      // goal made the reference jump ahead whenever a new goal arrived before
+      // the previous segment was finished (timing jitter of the policy loop).
       prev_p_goal_ = p_goal_;
       prev_q_goal_ = q_goal_;
-
-      p_start_ = prev_p_goal_;
-      q_start_ = prev_q_goal_;
+      if (reference_valid) {
+        p_start_ = last_p_t_;
+        q_start_ = last_q_t_;
+      }  // else the reference has not moved since the last reset: keep start
     }
 
     p_goal_ = p_goal;
@@ -151,6 +156,9 @@ class LinearJointPositionTrajInterpolator {
                   traj_interpolator_time_fraction;
     start_time_ = time_sec;
 
+    // whether next_step() ran since the last reset (last_q_t_ is the current
+    // reference)
+    const bool reference_valid = start_;
     start_ = false;
 
     if (first_goal_) {
@@ -159,8 +167,11 @@ class LinearJointPositionTrajInterpolator {
       first_goal_ = false;
       // std::cout << "First goal of the interpolation" << std::endl;
     } else {
+      // continue from the current reference, see LinearPoseTrajInterpolator
       prev_q_goal_ = q_goal_;
-      q_start_ = prev_q_goal_;
+      if (reference_valid) {
+        q_start_ = last_q_t_;
+      }
     }
     q_goal_ = q_goal;
   };
