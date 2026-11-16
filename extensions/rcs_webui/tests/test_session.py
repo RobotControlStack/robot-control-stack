@@ -406,3 +406,21 @@ def test_auto_reset_off_keeps_recording_until_the_operator_ends(interface):
     rows = read_session(session_dir).to_pylist()
     assert not any(r["success"] for r in rows)  # the operator's Y wins over the env's success
     assert sum(r["terminated"] for r in rows) >= 7  # the env kept reporting the end
+
+
+def test_client_that_disconnects_is_not_an_error(interface, caplog):
+    """A browser that drops a camera image request (page re-render) must not produce error tracebacks."""
+    import logging
+    import socket
+
+    runner, base, _ = interface
+    host, port = base.removeprefix("http://").split(":")
+    caplog.set_level(logging.DEBUG, logger="rcs_webui.server")
+    for _ in range(20):
+        sock = socket.create_connection((host, int(port)))
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")  # RST on close
+        sock.sendall(b"GET /api/live/wrist.jpg HTTP/1.1\r\nHost: x\r\n\r\n")
+        sock.close()
+    time.sleep(0.5)
+    assert call(base, "/api/status")["state"] == "ready"
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR], [r.getMessage() for r in caplog.records]
