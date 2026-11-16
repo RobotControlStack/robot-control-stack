@@ -98,6 +98,9 @@ class _FakeQuest(BaseOperator):
     def is_engaged(self) -> bool:
         return self.engaged
 
+    def engaged_controllers(self) -> dict[str, bool]:
+        return {"right": self.engaged}
+
 
 def test_intervention_lasts_until_x(tmp_path):
     """Trigger held: human; trigger released: still human (robot held) until X; then the policy continues."""
@@ -169,3 +172,41 @@ def _rows(session_dir: Path) -> int:
         return read_session(session_dir).num_rows
     except (FileNotFoundError, pa.ArrowInvalid):
         return 0
+
+
+def test_operator_engagement_and_robot_motion_are_recorded(tmp_path):
+    """Every step records per robot whether the trigger was held, the joint speed and whether the robot moved."""
+    settings = SessionSettings(data_root=tmp_path, mode="collect", frequency=30.0, operator="none")
+    quest = _FakeQuest()
+    runner = SessionRunner(settings, EnvSpec(env="rcs/fr3", overrides=SMALL_CAMERAS), operator=quest)
+    server = make_server(App(runner, tmp_path), "127.0.0.1", 0)
+    serve_in_thread(server)
+    runner.start()
+    try:
+        wait_for(lambda: runner.status()["state"] in ("ready", "error"))
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        steps = lambda: runner.status()["episode_steps"]  # noqa: E731
+        call(base, "/api/button", {"button": "A"})
+        wait_for(lambda: steps() >= 6)
+        quest.engaged = True
+        n = steps()
+        wait_for(lambda: steps() >= n + 6)
+        quest.engaged = False
+        n = steps()
+        wait_for(lambda: steps() >= n + 6)
+        call(base, "/api/button", {"button": "B"})
+        wait_for(lambda: not runner.status()["episode_active"])
+        session_dir = Path(runner.status()["session_dir"])
+        wait_for(lambda: _rows(session_dir) >= 18)
+        rows = sorted(read_session(session_dir).to_pylist(), key=lambda r: r["step"])
+        ann = [r["annotations"] for r in rows]
+        engaged = [a["engaged"]["right"] for a in ann]
+        assert engaged[0] is False and True in engaged and engaged[-1] is False
+        blocks = [e for i, e in enumerate(engaged) if i == 0 or e != engaged[i - 1]]
+        assert blocks == [False, True, False]
+        # the fake Quest commands nothing: the hold action keeps the robot still
+        assert all(a["joint_speed"]["right"] >= 0 for a in ann)
+        assert sum(a["moving"]["right"] for a in ann) <= 2  # at most settling right after the env reset
+    finally:
+        server.shutdown()
+        runner.stop()

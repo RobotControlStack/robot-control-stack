@@ -60,6 +60,11 @@ class BaseOperator(ABC, threading.Thread):
         Used to detect human interventions during policy rollouts. Must be thread-safe."""
         return False
 
+    def engaged_controllers(self) -> dict[str, bool]:
+        """Per controller (= robot name): True while the human commands that robot (e.g. its trigger is held).
+        Recorded per step, so that operator repositioning (trigger released) can be told apart. Thread-safe."""
+        return {name: self.is_engaged() for name in self.controller_names}
+
     def close(self):
         pass
 
