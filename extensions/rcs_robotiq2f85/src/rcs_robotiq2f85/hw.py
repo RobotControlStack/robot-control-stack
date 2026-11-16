@@ -1,3 +1,5 @@
+import contextlib
+import logging
 import typing
 
 from rcs._core.common import Gripper, GripperConfig, GripperState
@@ -5,6 +7,8 @@ from rcs.common_typing import GripperConfigKwargs
 from robotiq2f import Robotiq2F85, Robotiq2FStatus
 
 import rcs
+
+logger = logging.getLogger(__name__)
 
 
 class RobotiQ2F85GripperConfig(GripperConfig):
@@ -86,7 +90,28 @@ class RobotiQ2F85Gripper(Gripper):
         self.set_normalized_width(0.0)
 
     def close(self) -> None:
-        self.gripper.client.serial.close()
+        """Stops the status thread of async control, then closes the serial port.
+
+        robotiq2f 0.2.0 reads the status in a ``while True`` thread without a stop flag, so closing the port under
+        it made the thread crash with ``termios.error: Bad file descriptor`` (seen when the RCS web interface
+        closed the env). The thread looks ``read_status_sync`` up on the instance in every loop: shadowing it with
+        a function that raises SystemExit ends the thread silently after its current read. Remove this once
+        robotiq2f can stop the thread itself.
+        """
+        gripper = self.gripper
+        thread = getattr(gripper, "_async_thread", None)
+        if thread is not None and thread.is_alive():
+
+            def _stop_status_thread():
+                raise SystemExit
+
+            gripper.read_status_sync = _stop_status_thread  # type: ignore[method-assign]
+            thread.join(timeout=2.0)
+            if thread.is_alive():
+                logger.warning("the Robotiq status thread did not stop, closing the serial port anyway")
+        lock = getattr(gripper, "_client_mutex", None)
+        with lock if lock is not None else contextlib.nullcontext():
+            gripper.client.serial.close()
 
     def get_config(self) -> GripperConfig:
         return self._cfg
