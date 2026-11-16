@@ -449,3 +449,61 @@ def test_stopped_session_is_consolidated_in_the_background(interface):
     for ep in episodes.values():
         assert [r["step"] for r in ep] == list(range(len(ep)))  # whole and in order
     assert sorted(ep[-1]["success"] for ep in episodes.values()) == [False, True]
+
+
+class _ReflexOnce(gym.Wrapper):
+    """Reports one robot error (like FR3HW on a reflex: truncated, message in info.<robot>.robot_error)."""
+
+    def __init__(self, env, at: int):
+        super().__init__(env)
+        self.at, self.count = at, 0
+
+    def reset(self, **kwargs):
+        self.count = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        self.count += 1
+        if self.count == self.at:
+            info = {**info, "right": {**info.get("right", {}), "robot_error": "reflex: joint_velocity_violation"}}
+            truncated = True
+        return obs, reward, terminated, truncated, info
+
+
+@pytest.mark.parametrize("mode", ["recover", "end"])
+def test_robot_error_recover_or_end(interface, mode):
+    runner, base, _ = interface
+    call(base, "/api/settings", {"on_robot_error": mode})
+    wait_for(lambda: runner.settings.on_robot_error == mode)
+    recoveries = []
+    robot_env = runner.env.get_wrapper_attr("envs")["right"]
+    robot_env.recover = lambda: recoveries.append(1)  # FR3HW.recover on hardware
+    runner.storage.env = _ReflexOnce(runner.storage.env, at=5)
+    call(base, "/api/button", {"button": "A"})
+    if mode == "recover":
+        wait_for(lambda: runner.status()["episode_steps"] >= 15)
+        assert runner.status()["episode_active"]
+        assert recoveries == [1]
+        assert runner.status()["robot_errors_recovered"] == 1
+        call(base, "/api/button", {"button": "B"})
+        wait_for(lambda: not runner.status()["episode_active"])
+        expected = {"successful": 1, "unsuccessful": 0, "truncated": 0}
+    else:
+        wait_for(lambda: not runner.status()["episode_active"] and runner.status()["episodes"]["truncated"] == 1)
+        assert recoveries == []
+        expected = {"successful": 0, "unsuccessful": 0, "truncated": 1}
+    assert runner.status()["episodes"] == expected
+    session_dir = Path(runner.status()["session_dir"])
+
+    def flushed() -> bool:
+        try:
+            return read_session(session_dir).num_rows >= 5
+        except (FileNotFoundError, pa.ArrowInvalid):
+            return False
+
+    wait_for(flushed)
+    rows = sorted(read_session(session_dir).to_pylist(), key=lambda r: r["step"])
+    assert [r["step"] for r in rows if r["truncated"]] == [4]  # the error row is kept in both modes
+    if mode == "recover":
+        assert len(rows) >= 15 and rows[-1]["success"] is True
