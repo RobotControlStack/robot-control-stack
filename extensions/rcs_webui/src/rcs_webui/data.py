@@ -6,6 +6,8 @@ normally holds rows of a single episode. Relabel and delete rewrite every file t
 """
 
 import json
+import threading
+from collections import OrderedDict
 import os
 from pathlib import Path
 from typing import Any
@@ -256,19 +258,45 @@ def episode_signals(session_dir: Path, uuid: str) -> dict[str, Any]:
     return out
 
 
-def frame(session_dir: Path, uuid: str, camera: str, step: int) -> bytes:
+# frames of the last few (episode, camera) pairs, keyed by the session's files so that relabel / delete /
+# consolidation invalidate them. One episode of two 720p cameras is ~30 MB.
+_FRAME_CACHE: "OrderedDict[tuple, dict[int, bytes]]" = OrderedDict()
+_FRAME_CACHE_SIZE = 4
+_FRAME_CACHE_LOCK = threading.Lock()
+
+
+def _files_signature(session_dir: Path) -> tuple:
+    return tuple((f.name, f.stat().st_mtime_ns, f.stat().st_size) for f in _files(session_dir))
+
+
+def _episode_frames(session_dir: Path, uuid: str, camera: str) -> dict[int, bytes]:
+    """All JPEG frames of one camera of one episode, read in one pass (a single-frame read has to decode the whole
+    row group of the image column, ~130 MB in a consolidated file, i.e. ~50 ms per frame)."""
+    key = (str(session_dir), uuid, camera, _files_signature(session_dir))
+    with _FRAME_CACHE_LOCK:
+        if key in _FRAME_CACHE:
+            _FRAME_CACHE.move_to_end(key)
+            return _FRAME_CACHE[key]
     path = f"obs.frames.{camera}.rgb.data"
     dataset = _dataset(session_dir)
     if dataset is None or path not in _struct_paths(dataset.schema):
         msg = f"unknown camera {camera!r}"
         raise DataError(msg)
-    table = dataset.to_table(
-        columns={"data": _field(path)}, filter=(ds.field("uuid") == uuid) & (ds.field("step") == step)
-    )
-    if table.num_rows == 0:
+    table = dataset.to_table(columns={"step": ds.field("step"), "data": _field(path)}, filter=ds.field("uuid") == uuid)
+    frames = dict(zip(table.column("step").to_pylist(), table.column("data").to_pylist(), strict=True))
+    with _FRAME_CACHE_LOCK:
+        _FRAME_CACHE[key] = frames
+        while len(_FRAME_CACHE) > _FRAME_CACHE_SIZE:
+            _FRAME_CACHE.popitem(last=False)
+    return frames
+
+
+def frame(session_dir: Path, uuid: str, camera: str, step: int) -> bytes:
+    frames = _episode_frames(session_dir, uuid, camera)
+    if step not in frames or frames[step] is None:
         msg = f"no frame for step {step}"
         raise DataError(msg)
-    return table.column("data")[0].as_py()
+    return frames[step]
 
 
 def _files_with(session_dir: Path, uuid: str) -> list[Path]:
