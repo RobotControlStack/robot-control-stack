@@ -225,6 +225,8 @@ const editor = new DiffEditor($("#editor"), {
     const changed = hunks.reduce((acc, h) => acc + Math.max(h.aLines.length, h.bLines.length), 0);
     $("#diff-summary").textContent = n ? `${n} change${n > 1 ? "s" : ""} (${changed} lines) against the picked config` : "no changes";
     $("#diff-summary").classList.toggle("changed", n > 0);
+    $("#config-details-note").textContent = n ? `${n} change${n > 1 ? "s" : ""} against the picked config` : "no changes";
+    $("#config-details-note").classList.toggle("changed", n > 0);
   },
 });
 

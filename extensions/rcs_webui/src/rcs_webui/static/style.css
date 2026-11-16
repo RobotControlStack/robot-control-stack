@@ -126,7 +126,11 @@ label.check input { width: auto; }
 .editor .peek-body .old { background: var(--diff-del-bg); color: var(--text); padding: 0 10px; }
 .editor .peek-body .new { background: var(--diff-add-bg); color: var(--text); padding: 0 10px; }
 .editor-bar { margin-top: 6px; }
-#diff-summary.changed { color: var(--diff-mod); font-weight: 600; }
+#diff-summary.changed, #config-details-note.changed { color: var(--diff-mod); font-weight: 600; }
+.config-details { margin: 6px 0 4px; }
+.config-details > summary { cursor: pointer; padding: 6px 2px; user-select: none; list-style-position: inside; }
+.config-details > summary .config-details-title { font-weight: 600; font-size: 13px; }
+.config-details[open] > summary { margin-bottom: 6px; }
 
 .ctrl-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
