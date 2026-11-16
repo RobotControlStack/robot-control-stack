@@ -81,7 +81,13 @@ $("#episodes").addEventListener("click", async (e) => {
   }
 });
 
-$("#session-select").addEventListener("change", (e) => loadEpisodes(e.target.value));
+$("#session-select").addEventListener("change", (e) => {
+  // the open episode belongs to the previous session
+  stopPlay();
+  viewerEpisode = null;
+  $("#episode-card").hidden = true;
+  loadEpisodes(e.target.value);
+});
 $("#episode-filter").addEventListener("change", () => viewerSession && loadEpisodes(viewerSession));
 $("#reload-sessions").addEventListener("click", loadSessions);
 
@@ -288,21 +294,37 @@ function stopPlay() {
   $("#play").textContent = "play";
 }
 
+// Playback follows the recording time but only switches the images once the previous ones have loaded: changing
+// img.src while a frame is still loading aborts it, so with slow frames nothing was ever shown.
+let playStart = null;
+
+function framesLoaded() {
+  return [...document.querySelectorAll("#episode-cameras img")].every((img) => img.complete);
+}
+
 function playNext() {
   const ep = viewerEpisode;
-  let step = +$("#scrub").value;
-  if (step >= ep.steps - 1) return stopPlay();
-  step += 1;
+  if (!ep) return stopPlay();
+  if (!framesLoaded()) {
+    playTimer = setTimeout(playNext, 10);
+    return;
+  }
+  const current = +$("#scrub").value;
+  if (current >= ep.steps - 1) return stopPlay();
+  const elapsed = (performance.now() - playStart.wall) / 1000 + playStart.time;
+  let step = current + 1;
+  while (step < ep.steps - 1 && ep.time[step + 1] <= elapsed) step++; // skip frames if loading fell behind
   $("#scrub").value = step;
   showStep(step);
-  const dt = Math.max(0.01, (ep.time[step + 1] ?? ep.time[step]) - ep.time[step]);
-  playTimer = setTimeout(playNext, dt * 1000);
+  const wait = Math.max(0.005, (ep.time[step + 1] ?? ep.time[step]) - elapsed);
+  playTimer = setTimeout(playNext, wait * 1000);
 }
 
 $("#play").addEventListener("click", () => {
   if (playTimer) return stopPlay();
   if (+$("#scrub").value >= viewerEpisode.steps - 1) $("#scrub").value = 0;
   $("#play").textContent = "pause";
+  playStart = { wall: performance.now(), time: viewerEpisode.time[+$("#scrub").value] ?? 0 };
   playNext();
 });
 $("#scrub").addEventListener("input", (e) => showStep(+e.target.value));
