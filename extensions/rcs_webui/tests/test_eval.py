@@ -207,6 +207,10 @@ def test_operator_engagement_and_robot_motion_are_recorded(tmp_path):
         # the fake Quest commands nothing: the hold action keeps the robot still
         assert all(a["joint_speed"]["right"] >= 0 for a in ann)
         assert sum(a["moving"]["right"] for a in ann) <= 2  # at most settling right after the env reset
+        # the viewer gets the flags per robot for its timeline lanes
+        signals = call(base, f"/api/sessions/{session_dir.name}/episodes/{rows[0]['uuid']}")
+        assert signals["teleop_flags"]["right"]["engaged"] == engaged
+        assert len(signals["teleop_flags"]["right"]["moving"]) == len(rows)
     finally:
         server.shutdown()
         runner.stop()

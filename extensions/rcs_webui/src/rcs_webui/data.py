@@ -177,6 +177,10 @@ def episode_signals(session_dir: Path, uuid: str) -> dict[str, Any]:
         if f"annotations.{key}" in paths:
             wanted[key] = _field(f"annotations.{key}")
     for robot in robots:
+        for flag in ("engaged", "moving"):
+            if f"annotations.{flag}.{robot}" in paths:
+                wanted[f"annotations.{flag}.{robot}"] = _field(f"annotations.{flag}.{robot}")
+    for robot in robots:
         for sig in OBS_SIGNALS:
             if f"obs.{robot}.{sig}" in paths:
                 wanted[f"obs.{robot}.{sig}"] = _field(f"obs.{robot}.{sig}")
@@ -210,6 +214,16 @@ def episode_signals(session_dir: Path, uuid: str) -> dict[str, Any]:
             )
         ],
         "intervention": [src == "intervention" for src in cols.get("source", [None] * table.num_rows)],
+        # per robot: Quest trigger held / robot moving (annotations.engaged / .moving), absent in older recordings
+        "teleop_flags": {
+            robot: {
+                flag: [bool(v) for v in cols[f"annotations.{flag}.{robot}"]]
+                for flag in ("engaged", "moving")
+                if f"annotations.{flag}.{robot}" in cols
+            }
+            for robot in robots
+            if any(f"annotations.{flag}.{robot}" in cols for flag in ("engaged", "moving"))
+        },
         "cameras": cameras,
         "robots": {},
     }
