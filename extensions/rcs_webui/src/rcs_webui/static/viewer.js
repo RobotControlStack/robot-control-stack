@@ -29,19 +29,30 @@ async function loadEpisodes(name) {
   viewerSession = name;
   const meta = window._sessions[name] || {};
   $("#session-meta").textContent = `${meta.mode || ""} · ${meta.creator || ""} · ${meta.created || ""}`;
-  const { episodes } = await api(`/api/sessions/${encodeURIComponent(name)}/episodes`);
+  const { episodes: all } = await api(`/api/sessions/${encodeURIComponent(name)}/episodes`);
+  const filter = $("#episode-filter").value;
+  const episodes = all.filter((ep) =>
+    filter === "intervention" ? ep.intervention_steps > 0
+    : filter === "no-intervention" ? !ep.intervention_steps
+    : filter === "successful" ? ep.success
+    : filter === "unsuccessful" ? !ep.success
+    : true
+  );
+  $("#episode-count").textContent = `${episodes.length} of ${all.length} episodes`;
   $("#episodes tbody").innerHTML = episodes
     .map(
       (ep, i) => `<tr class="clickable" data-uuid="${ep.uuid}">
         <td>${i + 1}</td><td><code>${ep.uuid.slice(0, 8)}</code></td><td>${ep.steps}</td>
-        <td>${fmtDuration(ep.duration)}</td><td>${labelPill(ep)}</td><td>${esc(ep.instruction)}</td>
+        <td>${fmtDuration(ep.duration)}</td><td>${labelPill(ep)}</td>
+        <td>${controllerPills(ep)}${ep.intervention_steps ? ` <span class="pill warn" title="steps of human intervention">${ep.intervention_steps} intervention steps</span>` : ""}</td>
+        <td>${esc(ep.instruction)}</td>
         <td class="row">
           <button class="btn small ok" data-act="label" data-success="true" title="label successful">&#10003;</button>
           <button class="btn small fail" data-act="label" data-success="false" title="label unsuccessful">&#10007;</button>
           <button class="btn small" data-act="delete" title="delete episode">delete</button>
         </td></tr>`
     )
-    .join("") || '<tr><td colspan="7" class="muted">no episodes recorded</td></tr>';
+    .join("") || `<tr><td colspan="8" class="muted">${all.length ? "no episode matches the filter" : "no episodes recorded"}</td></tr>`;
 }
 
 $("#episodes").addEventListener("click", async (e) => {
@@ -71,6 +82,7 @@ $("#episodes").addEventListener("click", async (e) => {
 });
 
 $("#session-select").addEventListener("change", (e) => loadEpisodes(e.target.value));
+$("#episode-filter").addEventListener("change", () => viewerSession && loadEpisodes(viewerSession));
 $("#reload-sessions").addEventListener("click", loadSessions);
 
 async function loadEpisode(uuid) {
@@ -88,6 +100,57 @@ async function loadEpisode(uuid) {
   $("#scrub").value = 0;
   buildPlots(ep);
   showStep(0);
+}
+
+// who commanded the robot (annotations.controller); the color follows the controller, never its position
+const CONTROLLER_ORDER = ["human", "learned_policy", "scripted_policy", "agent", "none"];
+const controllerColor = (c) => `var(--ctrl-${CONTROLLER_ORDER.includes(c) ? c.replace("_", "-") : "unknown"})`;
+const controllerName = (c) => c.replace("_", " ");
+
+function controllerPills(ep) {
+  const total = ep.steps || 1;
+  return Object.entries(ep.controllers || {})
+    .sort(([a], [b]) => (CONTROLLER_ORDER.indexOf(a) + 99) % 99 - (CONTROLLER_ORDER.indexOf(b) + 99) % 99)
+    .map(([c, n]) => `<span class="ctrl-pill" title="${n} of ${ep.steps} steps"><span class="swatch" style="background:${controllerColor(c)}"></span>${esc(controllerName(c))} ${Math.round((100 * n) / total)}%</span>`)
+    .join(" ");
+}
+
+function controllerTimeline(time, controller, intervention) {
+  const W = 1300, H = 64, L = 46, R = 8, T = 6, B = 22; // about the rendered width of the full-width panel, so text is not stretched
+  const n = controller.length;
+  const tmin = time[0] ?? 0, tmax = time[n - 1] ?? 1;
+  const x = (t) => L + ((t - tmin) / (tmax - tmin || 1)) * (W - L - R);
+  // runs of the same controller; a step covers [t_k, t_k+1)
+  const runs = [];
+  for (let k = 0; k < n; k++) {
+    const last = runs[runs.length - 1];
+    if (last && last.c === controller[k] && last.iv === intervention[k]) last.end = k;
+    else runs.push({ c: controller[k], iv: intervention[k], start: k, end: k });
+  }
+  const dt = n > 1 ? (tmax - tmin) / (n - 1) : 1;
+  const rects = runs
+    .map((r) => {
+      const x0 = x(time[r.start]), x1 = Math.max(x0 + 1, x(time[r.end] + dt) - 1); // 1px gap between runs
+      const w = Math.min(x1, W - R) - x0;
+      const tip = `${controllerName(r.c)}${r.iv ? " (intervention)" : ""}: steps ${r.start}-${r.end}, ${(time[r.start] - tmin).toFixed(2)}-${(time[r.end] - tmin + dt).toFixed(2)} s`;
+      const label = w > 70 ? `<text x="${x0 + 4}" y="${T + 17}" font-size="10" fill="#fff" pointer-events="none">${esc(controllerName(r.c))}</text>` : "";
+      const hatch = r.iv ? `<rect x="${x0}" y="${T}" width="${w}" height="26" fill="url(#iv-hatch)" pointer-events="none"/>` : "";
+      return `<rect x="${x0}" y="${T}" width="${w}" height="26" rx="3" fill="${controllerColor(r.c)}"><title>${esc(tip)}</title></rect>${hatch}${label}`;
+    })
+    .join("");
+  const tticks = [tmin, (tmin + tmax) / 2, tmax]
+    .map((t, i) => `<text x="${x(t)}" y="${H - 6}" text-anchor="${["start", "middle", "end"][i]}" font-size="10" fill="currentColor">${(t - tmin).toFixed(1)} s</text>`)
+    .join("");
+  const present = [...new Set(controller)];
+  const legend = present
+    .map((c) => `<span><span class="swatch" style="background:${controllerColor(c)}"></span> ${esc(controllerName(c))} (${controller.filter((v) => v === c).length} steps)</span>`)
+    .join("");
+  const ivSteps = intervention.filter(Boolean).length;
+  return `<div class="plot plot-wide"><h3>controlled by</h3>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="timeline" data-tmin="${tmin}" data-tmax="${tmax}" data-l="${L}" data-r="${R}" data-w="${W}">
+      <defs><pattern id="iv-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" stroke-opacity="0.45" stroke-width="2"/></pattern></defs>
+      ${rects}${tticks}<line class="cursor" y1="${T - 3}" y2="${T + 29}" stroke="currentColor" stroke-width="1.5"/>
+    </svg><div class="legend">${legend}${ivSteps ? `<span>hatched: intervention (${ivSteps} steps)</span>` : ""}</div></div>`;
 }
 
 function rows2series(rows) {
@@ -140,6 +203,7 @@ const CONTROL_PLOTS = [
 
 function buildPlots(ep) {
   const html = [];
+  if (ep.controller && ep.controller.length) html.push(controllerTimeline(ep.time, ep.controller, ep.intervention || []));
   for (const [robot, r] of Object.entries(ep.robots)) {
     if (r.step.joints) html.push(plotSvg(`${robot}: joints (rad, per step)`, ep.time, r.step.joints, JOINT_LABELS));
     if (r.step.gripper) html.push(plotSvg(`${robot}: gripper (1 = open)`, ep.time, r.step.gripper, ["obs"]));

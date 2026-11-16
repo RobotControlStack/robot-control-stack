@@ -160,6 +160,10 @@ def test_viewer_relabel_and_delete(interface):
 
     ep = call(base, f"/api/sessions/{session}/episodes/{first}")
     assert ep["steps"] == episodes[0]["steps"]
+    assert episodes[0]["controllers"] == {"human": episodes[0]["steps"]}
+    assert episodes[0]["intervention_steps"] == 0
+    assert ep["controller"] == ["human"] * ep["steps"]
+    assert ep["intervention"] == [False] * ep["steps"]
     assert ep["cameras"] == ["bird_eye", "wrist"]
     robot = ep["robots"]["right"]
     assert len(robot["step"]["joints"]) == ep["steps"]

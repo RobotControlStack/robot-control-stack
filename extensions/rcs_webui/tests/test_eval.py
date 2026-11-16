@@ -151,6 +151,14 @@ def test_intervention_lasts_until_x(tmp_path):
         human = [r for r in rows if r["annotations"]["controller"] == "human"]
         assert len(human) >= 10
         assert all(r["annotations"]["source"] == "intervention" for r in human)
+        # the viewer counts and filters by it
+        session = session_dir.name
+        (ep,) = call(base, f"/api/sessions/{session}/episodes")["episodes"]
+        assert ep["intervention_steps"] == len(human)
+        assert ep["controllers"]["human"] == len(human)
+        assert ep["controllers"]["scripted_policy"] == len(rows) - len(human)
+        signals = call(base, f"/api/sessions/{session}/episodes/{ep['uuid']}")
+        assert signals["controller"] == ctrl
     finally:
         server.shutdown()
         runner.stop()
