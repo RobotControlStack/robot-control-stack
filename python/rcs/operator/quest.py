@@ -89,6 +89,9 @@ class QuestOperator(BaseOperator):
         self._grp_pos = {key: 1.0 for key in self.controller_names}  # start with opened gripper
         self._last_controller_pose = {key: Pose() for key in self.controller_names}
         self._offset_pose = {key: Pose() for key in self.controller_names}
+        # after a reset the offset must be taken again from the current controller pose, also if the trigger is
+        # still held (otherwise the action is the absolute controller pose: the robot jumps)
+        self._rebase = {key: False for key in self.controller_names}
 
         self._commands = TeleopCommands()
         self._reset_origin_to_current()
@@ -129,6 +132,7 @@ class QuestOperator(BaseOperator):
                 self._offset_pose[controller] = Pose()
                 self._last_controller_pose[controller] = Pose()
                 self._grp_pos[controller] = 1
+                self._rebase[controller] = True
 
     def _swap_controller_input(self, input_data: dict[str, Any]) -> dict[str, Any]:
         if not self.config.switched_left_right:
@@ -289,8 +293,12 @@ class QuestOperator(BaseOperator):
                 else:
                     prev_trigger_pressed = self._normalize_axis(prev_data[controller][self._trg_btn[controller]]) > 0.5
 
-                if trigger_pressed and not prev_trigger_pressed:
-                    # trigger just pressed (first data sample with button pressed)
+                with self._resource_lock:
+                    rebase = self._rebase[controller]
+                    self._rebase[controller] = False
+                if trigger_pressed and (not prev_trigger_pressed or rebase):
+                    # trigger just pressed (first data sample with button pressed), or still held after a reset:
+                    # the motion is relative to the controller pose from now on
 
                     with self._resource_lock:
                         self._offset_pose[controller] = last_controller_pose

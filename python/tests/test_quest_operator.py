@@ -124,3 +124,19 @@ def test_stop_publisher_removes_its_scene_and_ignores_reconnects(monkeypatch):
     assert publisher.web_server.stopped
     asyncio.run(publisher.on_new_device_found({"name": "IRIS/Device/Meta Quest 3/RCSNode"}))
     assert len(calls) == 1  # a reconnecting Quest app does not get the old scene again
+
+
+def test_reset_while_trigger_held_rebases_the_offset():
+    """After reset_operator_state() with the trigger still held, the next packet takes the offset again, so the action
+    is relative to the current controller pose instead of the absolute pose (the robot jumped)."""
+    operator = QuestOperator.__new__(QuestOperator)
+    operator._resource_lock = threading.Lock()
+    operator._cmd_lock = threading.Lock()
+    operator.controller_names = ["right"]
+    operator._rebase = {"right": False}
+    operator._offset_pose = {"right": Pose()}
+    operator._last_controller_pose = {"right": Pose()}
+    operator._grp_pos = {"right": 1.0}
+    operator._commands = TeleopCommands()
+    operator._reset_state()
+    assert operator._rebase["right"] is True
