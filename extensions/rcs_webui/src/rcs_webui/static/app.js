@@ -26,6 +26,19 @@ function showTab(name) {
 }
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1) || "session"));
 
+// ------------------------------------------------------------------ theme
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $("#theme-toggle").textContent = theme === "dark" ? "light" : "dark";
+  try {
+    localStorage.setItem("rcs-theme", theme);
+  } catch (e) {}
+}
+$("#theme-toggle").addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark")
+);
+applyTheme(document.documentElement.dataset.theme || "dark");
+
 // ------------------------------------------------------------------ session
 let knownCameras = "";
 let instructionTouched = false;

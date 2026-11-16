@@ -1,9 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RCS Web Interface</title>
+<script>
+  try { document.documentElement.dataset.theme = localStorage.getItem("rcs-theme") || "dark"; } catch (e) {}
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,6 +17,7 @@
     <a href="#data" class="tab" data-tab="data">Data</a>
   </nav>
   <span id="state" class="badge">...</span>
+  <button id="theme-toggle" class="btn small" title="switch light / dark">light</button>
 </header>
 
 <main>
