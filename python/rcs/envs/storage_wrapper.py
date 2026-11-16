@@ -426,11 +426,19 @@ class StorageWrapper(gym.Wrapper):
         return obs, info
 
     def close(self):
+        if getattr(self, "closes_inner_env", False):  # already closed (e.g. close() and then __del__ of an owner)
+            return
         try:
             if len(self.buffer) > 0:
                 self._flush()
         finally:
             self.queue.put(self.QueueSentinel)
             wait([self._writer_future])
+            # Close the wrapped env too (robot control thread, gripper status thread + serial port, cameras).
+            # Without this a process that rebuilds the env after close() races the old gripper thread on the
+            # serial port (Modbus checksum errors) and finds the cameras still held. closes_inner_env lets
+            # callers that worked around the old behaviour skip their own inner close.
+            self.closes_inner_env = True
+            super().close()
 
         # StorageWrapper.consolidate(self.base_dir, self.schema)
