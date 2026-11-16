@@ -48,6 +48,15 @@ struct FrankaConfig : common::RobotConfig {
   common::Vector7d kd =
       (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
   common::Vector7d torque_limit = common::Vector7d::Constant(5.0);
+  // Joint-limit guard of the torque controllers, per joint, distances to the
+  // nearest limit in rad: within joint_limit_avoid_margin the OSC adds a
+  // nullspace avoidance potential and both controllers brake the velocity
+  // towards the limit (joint_limit_damping in Nm s/rad, reached at the stop
+  // margin, growing linearly over the band; 0 disables braking); within
+  // joint_limit_stop_margin no torque towards the limit is applied at all.
+  common::Vector7d joint_limit_stop_margin = common::Vector7d::Constant(0.1);
+  common::Vector7d joint_limit_avoid_margin = common::Vector7d::Constant(0.25);
+  common::Vector7d joint_limit_damping = common::Vector7d::Zero();
   bool allow_high_collision = false;
   // values from deoxys/config/osc-position-controller.yml
   Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();

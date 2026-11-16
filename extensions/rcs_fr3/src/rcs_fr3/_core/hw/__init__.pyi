@@ -148,6 +148,9 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    joint_limit_stop_margin: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    joint_limit_avoid_margin: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    joint_limit_damping: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
 
 class FrankaHand(rcs._core.common.Gripper):

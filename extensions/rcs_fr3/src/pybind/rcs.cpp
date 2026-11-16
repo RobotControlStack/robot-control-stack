@@ -238,6 +238,12 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
       .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
       .def_readwrite("torque_limit", &rcs::hw::FrankaConfig::torque_limit)
+      .def_readwrite("joint_limit_stop_margin",
+                     &rcs::hw::FrankaConfig::joint_limit_stop_margin)
+      .def_readwrite("joint_limit_avoid_margin",
+                     &rcs::hw::FrankaConfig::joint_limit_avoid_margin)
+      .def_readwrite("joint_limit_damping",
+                     &rcs::hw::FrankaConfig::joint_limit_damping)
       .def_readwrite("allow_high_collision",
                      &rcs::hw::FrankaConfig::allow_high_collision)
       .def_readwrite("kp_p", &rcs::hw::FrankaConfig::kp_p)

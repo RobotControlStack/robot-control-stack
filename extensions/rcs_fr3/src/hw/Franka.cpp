@@ -179,6 +179,34 @@ void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
   M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
 }
 
+// Joint-limit guard shared by the torque controllers, see
+// FrankaConfig::joint_limit_*: velocity braking towards a limit within the
+// avoidance band, no torque towards a limit within the stop margin.
+void JointLimitGuardFn(Eigen::Matrix<double, 7, 1>& tau,
+                       const Eigen::Matrix<double, 7, 1>& q,
+                       const Eigen::Matrix<double, 7, 1>& dq,
+                       const Eigen::Array<double, 7, 1>& q_min,
+                       const Eigen::Array<double, 7, 1>& q_max,
+                       const common::Vector7d& stop_margin,
+                       const common::Vector7d& avoid_margin,
+                       const common::Vector7d& damping) {
+  for (int i = 0; i < 7; i++) {
+    const double d_max = q_max[i] - q[i];
+    const double d_min = q[i] - q_min[i];
+    const double band = std::max(avoid_margin[i] - stop_margin[i], 1e-6);
+    if (d_max < avoid_margin[i] && dq[i] > 0.) {
+      tau[i] -= damping[i] *
+                std::clamp((avoid_margin[i] - d_max) / band, 0., 1.) * dq[i];
+    }
+    if (d_min < avoid_margin[i] && dq[i] < 0.) {
+      tau[i] -= damping[i] *
+                std::clamp((avoid_margin[i] - d_min) / band, 0., 1.) * dq[i];
+    }
+    if (d_max < stop_margin[i] && tau[i] > 0.) tau[i] = 0.;
+    if (d_min < stop_margin[i] && tau[i] < 0.) tau[i] = 0.;
+  }
+}
+
 void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
                          const common::Vector7d& torque_limit) {
   for (size_t i = 0; i < tau_d_array.size(); i++) {
@@ -408,6 +436,9 @@ void Franka::osc() {
   const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
   const double kp_r_cfg = this->m_cfg.kp_r;
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const common::Vector7d stop_margin = this->m_cfg.joint_limit_stop_margin;
+  const common::Vector7d avoid_margin = this->m_cfg.joint_limit_avoid_margin;
+  const common::Vector7d limit_damping = this->m_cfg.joint_limit_damping;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
@@ -601,9 +632,11 @@ void Franka::osc() {
       dist2joint_min = q - joint_min_.matrix();
 
       for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
+        if (dist2joint_max[i] < avoid_margin[i] &&
+            dist2joint_max[i] > stop_margin[i])
           avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
-        if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
+        if (dist2joint_min[i] < avoid_margin[i] &&
+            dist2joint_min[i] > stop_margin[i])
           avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
       }
       tau_d << tau_d + Nullspace * avoidance_force;
@@ -612,10 +645,8 @@ void Franka::osc() {
       // centrifugal torques (see the impedance examples of libfranka)
       tau_d << tau_d + coriolis;
 
-      for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-      }
+      JointLimitGuardFn(tau_d, q, dq, joint_min_, joint_max_, stop_margin,
+                        avoid_margin, limit_damping);
 
       std::array<double, 7> tau_d_array{};
       Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
@@ -646,6 +677,9 @@ void Franka::joint_controller() {
   const common::Vector7d Kp = this->m_cfg.kp;
   const common::Vector7d Kd = this->m_cfg.kd;
   const common::Vector7d torque_limit = this->m_cfg.torque_limit;
+  const common::Vector7d stop_margin = this->m_cfg.joint_limit_stop_margin;
+  const common::Vector7d avoid_margin = this->m_cfg.joint_limit_avoid_margin;
+  const common::Vector7d limit_damping = this->m_cfg.joint_limit_damping;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
 
@@ -717,10 +751,8 @@ void Franka::joint_controller() {
       dist2joint_max = joint_max_.matrix() - q;
       dist2joint_min = q - joint_min_.matrix();
 
-      for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-      }
+      JointLimitGuardFn(tau_d, q, dq, joint_min_, joint_max_, stop_margin,
+                        avoid_margin, limit_damping);
 
       std::array<double, 7> tau_d_array{};
       Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
