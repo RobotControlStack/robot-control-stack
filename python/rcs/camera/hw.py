@@ -184,14 +184,11 @@ class HardwareCameraSet(BaseCameraSet):
             self._thread = None
 
     def close(self):
-        if self.running:
-            self.running = False
-            for camera in self.cameras:
-                camera.close()
-            self.stop()
-        else:
-            for camera in self.cameras:
-                camera.close()
+        # stop and join the polling thread first: closing a camera under a running poll made the thread crash
+        # (e.g. KeyError in rcs_zed's poll_frame when the env was closed)
+        self.stop()
+        for camera in self.cameras:
+            camera.close()
         self.stop_video()
 
     def start(self, warm_up: bool = True):
