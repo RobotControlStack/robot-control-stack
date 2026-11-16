@@ -456,8 +456,9 @@ void Franka::osc() {
   // The manual residual mass matrix to add on the internal mass matrix
   residual_mass_vec_ << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5;
 
-  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
-  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+  // joint limits of the configured robot (were hard coded Panda limits)
+  joint_min_ = this->m_cfg.joint_limits.row(0).head<7>().transpose().array();
+  joint_max_ = this->m_cfg.joint_limits.row(1).head<7>().transpose().array();
   avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
 
   try {
@@ -663,8 +664,9 @@ void Franka::joint_controller() {
   Eigen::Array<double, 7, 1> joint_max_;
   Eigen::Array<double, 7, 1> joint_min_;
 
-  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
-  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+  // joint limits of the configured robot (were hard coded Panda limits)
+  joint_min_ = this->m_cfg.joint_limits.row(0).head<7>().transpose().array();
+  joint_max_ = this->m_cfg.joint_limits.row(1).head<7>().transpose().array();
 
   try {
     this->robot.control([&](const franka::RobotState& robot_state,
