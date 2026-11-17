@@ -137,6 +137,48 @@ class PyZEDCameraHandle:
             color_intrinsics=self.color_intrinsics,
         )
 
+    def get_color_settings(self) -> dict[str, float]:
+        """Current exposure / gain (0-100) and white balance (Kelvin) and whether they are automatic."""
+        assert sl is not None
+        out: dict[str, float] = {}
+        for key, setting in (
+            ("auto_exposure_gain", sl.VIDEO_SETTINGS.AEC_AGC),
+            ("exposure", sl.VIDEO_SETTINGS.EXPOSURE),
+            ("gain", sl.VIDEO_SETTINGS.GAIN),
+            ("auto_white_balance", sl.VIDEO_SETTINGS.WHITEBALANCE_AUTO),
+            ("white_balance", sl.VIDEO_SETTINGS.WHITEBALANCE_TEMPERATURE),
+        ):
+            value = self.camera.get_camera_settings(setting)
+            # pyzed 4+: (ERROR_CODE, value), older versions: value
+            out[key] = float(value[1] if isinstance(value, tuple) else value)
+        return out
+
+    def set_color_settings(self, settings: dict[str, float]):
+        """Fixes exposure / gain (0-100, ZED units) and / or white balance (Kelvin, 2800-6500 in steps of 100).
+
+        Giving exposure or gain switches off automatic exposure and gain; the one not given keeps its current
+        value. Giving white_balance switches off automatic white balance. Keys not given stay as they are."""
+        assert sl is not None
+        unknown = set(settings) - {"exposure", "gain", "white_balance"}
+        if unknown:
+            msg = f"unknown ZED color settings {sorted(unknown)}, use exposure, gain, white_balance"
+            raise ValueError(msg)
+        current = self.get_color_settings()
+
+        def _set(setting, value):
+            err = self.camera.set_camera_settings(setting, int(value))
+            if err != sl.ERROR_CODE.SUCCESS:  # type: ignore[union-attr]
+                msg = f"ZED {self.device_info.serial}: setting {setting} to {value} failed: {err}"
+                raise RuntimeError(msg)
+
+        if "exposure" in settings or "gain" in settings:
+            _set(sl.VIDEO_SETTINGS.AEC_AGC, 0)
+            _set(sl.VIDEO_SETTINGS.EXPOSURE, settings.get("exposure", current["exposure"]))
+            _set(sl.VIDEO_SETTINGS.GAIN, settings.get("gain", current["gain"]))
+        if "white_balance" in settings:
+            _set(sl.VIDEO_SETTINGS.WHITEBALANCE_AUTO, 0)
+            _set(sl.VIDEO_SETTINGS.WHITEBALANCE_TEMPERATURE, settings["white_balance"])
+
     def close(self):
         self.camera.close()
 
@@ -256,8 +298,17 @@ class ZEDCameraSet(HardwareCamera):
         enable_depth: bool = True,
         enable_imu: bool = True,
         include_right: bool = False,
+        color_settings: dict[str, dict[str, float]] | None = None,
     ) -> None:
+        """color_settings: fixed exposure / gain / white balance per camera name, e.g.
+        ``{"front_rgb": {"exposure": 40, "gain": 30, "white_balance": 4200}}`` (see
+        :meth:`PyZEDCameraHandle.set_color_settings`). Cameras not listed (and keys not given) stay automatic."""
         self.cameras = cameras
+        self.color_settings = color_settings or {}
+        unknown_cameras = set(self.color_settings) - set(cameras)
+        if unknown_cameras:
+            msg = f"color_settings for unknown cameras {sorted(unknown_cameras)}"
+            raise ValueError(msg)
         if calibration_strategy is None:
             calibration_strategy = {camera_name: IdentityCalibrationStrategy() for camera_name in cameras}
         self.calibration_strategy = calibration_strategy
@@ -363,6 +414,9 @@ class ZEDCameraSet(HardwareCamera):
                 enable_imu=self.enable_imu and device_info.has_imu,
                 include_right=self.include_right,
             )
+            if self.color_settings.get(camera_name):
+                opened.set_color_settings(self.color_settings[camera_name])
+                self._logger.info("ZED %s: fixed color settings %s", camera_name, opened.get_color_settings())
             self._enabled_devices[camera_name] = opened
             self._frame_buffer[camera_name] = []
             self._frame_buffer_lock[camera_name] = threading.Lock()
