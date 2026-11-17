@@ -46,7 +46,16 @@ class RealSenseCameraSet(HardwareCamera):
         laser_power: int = 330,
         enable_imu: bool = False,
         align_depth_to_color: bool = False,
+        color_settings: dict[str, dict[str, float]] | None = None,
     ) -> None:
+        """color_settings: fixed exposure (microseconds) / gain / white balance (Kelvin) of the color image per
+        camera name, e.g. ``{"gripper_rgb": {"exposure": 8000, "gain": 32, "white_balance": 4200}}`` (see
+        :meth:`set_color_settings`). Cameras not listed are not touched (automatic by default)."""
+        self.color_settings = color_settings or {}
+        unknown_cameras = set(self.color_settings) - set(cameras)
+        if unknown_cameras:
+            msg = f"color_settings for unknown cameras {sorted(unknown_cameras)}"
+            raise ValueError(msg)
         self.enable_ir_emitter = enable_ir_emitter
         self.enable_ir = enable_ir
         self.laser_power = laser_power
@@ -212,6 +221,63 @@ class RealSenseCameraSet(HardwareCamera):
         self._frame_buffer[camera_name] = []
         self._frame_buffer_lock[camera_name] = threading.Lock()
         self._logger.debug("Enabled device %s (%s)", device_info.serial, device_info.product_line)
+        if self.color_settings.get(camera_name):
+            self.set_color_settings(camera_name, self.color_settings[camera_name])
+            self._logger.info("RealSense %s: fixed color settings %s", camera_name, self.get_color_settings(camera_name))
+
+    _COLOR_OPTIONS = {
+        "auto_exposure": rs.option.enable_auto_exposure,
+        "exposure": rs.option.exposure,
+        "gain": rs.option.gain,
+        "auto_white_balance": rs.option.enable_auto_white_balance,
+        "white_balance": rs.option.white_balance,
+    }
+
+    def _color_sensor(self, camera_name: str) -> rs.sensor:
+        """The sensor that delivers the color stream (RGB camera on a D435, the stereo module on a D405)."""
+        device = self._enabled_devices[camera_name].pipeline_profile.get_device()
+        for sensor in device.query_sensors():
+            if any(p.stream_type() == rs.stream.color for p in sensor.get_stream_profiles()):
+                return sensor
+        msg = f"RealSense {camera_name}: no sensor with a color stream"
+        raise RuntimeError(msg)
+
+    def get_color_settings(self, camera_name: str) -> dict[str, float]:
+        """Current exposure (microseconds), gain, white balance (Kelvin) and whether they are automatic."""
+        sensor = self._color_sensor(camera_name)
+        return {k: float(sensor.get_option(o)) for k, o in self._COLOR_OPTIONS.items() if sensor.supports(o)}
+
+    def set_color_settings(self, camera_name: str, settings: dict[str, float]):
+        """Fixes exposure / gain and / or white balance of the color image.
+
+        Giving exposure or gain switches off auto exposure; the one not given keeps its current value. Giving
+        white_balance switches off auto white balance. On a D405 the color image comes from the stereo module, so the
+        exposure also applies to the depth image. The values stay on the device until it is reset or set again."""
+        unknown = set(settings) - {"exposure", "gain", "white_balance"}
+        if unknown:
+            msg = f"unknown RealSense color settings {sorted(unknown)}, use exposure, gain, white_balance"
+            raise ValueError(msg)
+        sensor = self._color_sensor(camera_name)
+
+        def _set(key: str, value: float):
+            option = self._COLOR_OPTIONS[key]
+            if not sensor.supports(option):
+                msg = f"RealSense {camera_name}: {key} not supported"
+                raise RuntimeError(msg)
+            r = sensor.get_option_range(option)
+            if not r.min <= value <= r.max:
+                msg = f"RealSense {camera_name}: {key} {value} outside [{r.min}, {r.max}]"
+                raise ValueError(msg)
+            sensor.set_option(option, float(value))
+
+        if "exposure" in settings or "gain" in settings:
+            current = self.get_color_settings(camera_name)
+            _set("auto_exposure", 0)
+            _set("exposure", settings.get("exposure", current["exposure"]))
+            _set("gain", settings.get("gain", current["gain"]))
+        if "white_balance" in settings:
+            _set("auto_white_balance", 0)
+            _set("white_balance", settings["white_balance"])
 
     @staticmethod
     def enumerate_connected_devices(context: rs.context) -> dict[str, RealSenseDeviceInfo]:
