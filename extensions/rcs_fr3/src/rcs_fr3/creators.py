@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 import gymnasium as gym
 import numpy as np
+from frankik import FrankaKinematics
 from rcs._core.common import Gripper, GripperConfig, HandConfig, Kinematics, Pose
 from rcs.camera.hw import HardwareCameraCreatorConfig, create_hardware_camera_set
 from rcs.envs.base import (
@@ -24,7 +25,6 @@ from rcs_fr3._core import hw
 from rcs_fr3.envs import FR3HW
 
 import rcs
-from frankik import FrankaKinematics
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
