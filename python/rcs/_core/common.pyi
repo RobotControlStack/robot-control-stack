@@ -20,8 +20,8 @@ __all__: list[str] = [
     "HARDWARE",
     "Hand",
     "HandConfig",
-    "HandType",
     "HandState",
+    "HandType",
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
@@ -108,6 +108,7 @@ class GripperState:
     def __init__(self) -> None: ...
 
 class GripperType:
+    FlexivGrav: typing.ClassVar[GripperType]  # value = <GripperType: FlexivGrav>
     FrankaHand: typing.ClassVar[GripperType]  # value = <GripperType: FrankaHand>
     PandaHand: typing.ClassVar[GripperType]  # value = <GripperType: PandaHand>
     Robotiq2F85: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85>
@@ -136,6 +137,13 @@ class Hand:
     def set_normalized_joint_poses(self, q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
     def shut(self) -> None: ...
 
+class HandConfig:
+    hand_type: HandType
+    def __init__(self, hand_type: HandType = ...) -> None: ...
+
+class HandState:
+    def __init__(self) -> None: ...
+
 class HandType:
     TilburgHand: typing.ClassVar[HandType]  # value = <HandType: TilburgHand>
     @staticmethod
@@ -146,13 +154,6 @@ class HandType:
     def __repr__(self) -> str: ...
     @property
     def id(self) -> str: ...
-
-class HandConfig:
-    hand_type: HandType
-    def __init__(self, hand_type: HandType = ...) -> None: ...
-
-class HandState:
-    def __init__(self) -> None: ...
 
 class Kinematics:
     def __init__(self) -> None: ...
@@ -313,6 +314,7 @@ class RobotState:
 class RobotType:
     FR3: typing.ClassVar[RobotType]  # value = <RobotType: FR3>
     Panda: typing.ClassVar[RobotType]  # value = <RobotType: Panda>
+    Rizon4S: typing.ClassVar[RobotType]  # value = <RobotType: Rizon4S>
     SO101: typing.ClassVar[RobotType]  # value = <RobotType: SO101>
     UR5e: typing.ClassVar[RobotType]  # value = <RobotType: UR5e>
     XArm7: typing.ClassVar[RobotType]  # value = <RobotType: XArm7>

@@ -13,13 +13,13 @@ PIN_SUPPORTED_ROBOTS = [
     common.RobotType.UR5e,
     common.RobotType.SO101,
     common.RobotType.Yam,
-    common.RobotType("Rizon4S"),
+    common.RobotType.Rizon4S,
 ]
 
 # Robots with a genuine redundant DOF (7-DoF arms), where null-space biasing has room to act.
 REDUNDANT_ROBOTS = [
     common.RobotType.FR3,
-    common.RobotType("XArm7"),
+    common.RobotType.XArm7,
 ]
 
 # Identity pose / no TCP offset, reused across tests.
@@ -250,7 +250,7 @@ def test_kinematics_joint_limits_override_model_limits():
 
 
 def test_kinematics_joint_limits_more_joints_than_model_raises():
-    robot = rcs.ROBOTS[common.RobotType("UR5e")]
+    robot = rcs.ROBOTS[common.RobotType.UR5e]
     too_many = np.vstack([-np.ones(robot.dof + 1), np.ones(robot.dof + 1)])
     with pytest.raises(ValueError, match="joint_limits"):
         common.Pin(robot.mjcf_model_path, robot.attachment_site, False, joint_limits=too_many)

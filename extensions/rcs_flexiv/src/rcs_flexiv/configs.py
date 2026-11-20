@@ -25,8 +25,8 @@ class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
     active tool. The active tool matters for gravity compensation, so it should match the mounted gripper."""
 
     def config(self) -> FlexivHardwareEnvCreatorConfig:
-        robot_type = RobotType("Rizon4S")
-        gripper_type = rcs.common.GripperType("FlexivGrav")
+        robot_type = RobotType.Rizon4S
+        gripper_type = rcs.common.GripperType.FlexivGrav
         robot_cfg = FlexivConfig(
             robot_sn=self.robot_sn,
             control_mode=FlexivControlMode.JOINT_IMPEDANCE,

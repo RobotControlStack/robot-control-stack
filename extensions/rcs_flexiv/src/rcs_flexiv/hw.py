@@ -537,7 +537,7 @@ class FlexivGripperConfig(common.GripperConfig):
             command_timeout: Seconds after which a synchronous command returns even if the width was not reached.
         """
         super().__init__(**kwargs)
-        self.gripper_type = common.GripperType("FlexivGrav")
+        self.gripper_type = common.GripperType.FlexivGrav
         self.device_name = device_name
         self.async_control = async_control
         self.manual_init = manual_init

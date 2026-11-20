@@ -614,13 +614,13 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
     """Flexiv Rizon 4s with the Flexiv Grav (GN-01) gripper mounted on the flange."""
 
     def config(self) -> SimEnvCreatorConfig:
-        rt = RobotType("Rizon4S")
+        rt = RobotType.Rizon4S
         cfg = super().config()
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         robot_cfg.robot_type = rt
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType("FlexivGrav")]
+        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.FlexivGrav]
         robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
         robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
@@ -633,7 +633,7 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
 
         assert cfg.gripper_cfgs is not None
         gripper_cfg = cfg.gripper_cfgs[lead_robot_name]
-        gripper_cfg.gripper_type = GripperType("FlexivGrav")
+        gripper_cfg.gripper_type = GripperType.FlexivGrav
         # The actuator is commanded in finger opening width (0 m closed, 0.1 m open).
         gripper_cfg.actuator = "fingers_actuator"
         gripper_cfg.min_actuator_width = 0.0
@@ -645,7 +645,7 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         gripper_cfg.collision_geoms = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
         gripper_cfg.collision_geoms_fingers = ["left_pad1", "left_pad2", "right_pad1", "right_pad2"]
 
-        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[GripperType("FlexivGrav")]}
+        cfg.gripper_offsets = {lead_robot_name: GRIPPER_MOUNT_OFFSETS[GripperType.FlexivGrav]}
         # D405 wrist camera on a rail screwed to the accessory pocket of the wrist link, see assets/objects/rizon_d405_wrist_mount
         cfg.robot_frame_objects = {
             lead_robot_name: {
@@ -778,7 +778,7 @@ class EmptyWorldRizon4SDuo(SimEnvCreator):
             robot_cfgs[name] = robot_cfg
             gripper_cfgs[name] = copy.deepcopy(base_gripper_cfg)
 
-        grav_offset = GRIPPER_MOUNT_OFFSETS[GripperType("FlexivGrav")]
+        grav_offset = GRIPPER_MOUNT_OFFSETS[GripperType.FlexivGrav]
         # D405 wrist camera on its mount on each arm, see EmptyWorldRizon4S
         robot_frame_objects = {
             name: {

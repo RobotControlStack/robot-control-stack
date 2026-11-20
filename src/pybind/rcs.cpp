@@ -415,7 +415,8 @@ Args:
       .def_readonly_static("XArm7", &rcs::common::RobotType::XArm7)
       .def_readonly_static("UR5e", &rcs::common::RobotType::UR5e)
       .def_readonly_static("SO101", &rcs::common::RobotType::SO101)
-      .def_readonly_static("Yam", &rcs::common::RobotType::Yam);
+      .def_readonly_static("Yam", &rcs::common::RobotType::Yam)
+      .def_readonly_static("Rizon4S", &rcs::common::RobotType::Rizon4S);
 
   py::enum_<rcs::common::RobotPlatform>(common, "RobotPlatform")
       .value("HARDWARE", rcs::common::RobotPlatform::HARDWARE)
@@ -473,7 +474,8 @@ Args:
       .def_readonly_static("Robotiq2F85Digit",
                            &rcs::common::GripperType::Robotiq2F85Digit)
       .def_readonly_static("SO101", &rcs::common::GripperType::SO101)
-      .def_readonly_static("Yam", &rcs::common::GripperType::Yam);
+      .def_readonly_static("Yam", &rcs::common::GripperType::Yam)
+      .def_readonly_static("FlexivGrav", &rcs::common::GripperType::FlexivGrav);
 
   rcs::common::GripperConfig default_gripper_config;
   py::class_<rcs::common::GripperConfig>(common, "GripperConfig")
