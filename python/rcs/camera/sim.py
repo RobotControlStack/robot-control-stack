@@ -198,7 +198,7 @@ class SimCameraSet:
         cameras: dict[str, SimCameraConfig],
         physical_units: bool = False,
         render_on_demand: bool = True,
-        max_buffer_frames: int = 100,
+        max_buffer_frames: int = 30,
         render_depth: bool = True,
     ):
         if max_buffer_frames <= 0:
@@ -369,7 +369,7 @@ class FilamentSimCameraSet(SimCameraSet):
         cameras: dict[str, SimCameraConfig],
         physical_units: bool = True,
         render_on_demand: bool = True,
-        max_buffer_frames: int = 100,
+        max_buffer_frames: int = 30,
         render_depth: bool = True,
     ):
         filament.require("FilamentSimCameraSet")
