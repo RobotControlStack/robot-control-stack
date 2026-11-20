@@ -43,7 +43,7 @@ jobs:
         run: xvfb-run make pytest
 
   pythonpackage-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:

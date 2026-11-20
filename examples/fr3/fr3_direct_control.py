@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from rcs._core.common import RobotPlatform
-from rcs._core.sim import CameraType, SimConfig
+from rcs._core.sim import SimConfig
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from rcs.envs.configs import EmptyWorldFR3
 from rcs_fr3._core import hw
@@ -86,18 +86,10 @@ def main():
             gripper_cfg = cfg.gripper_cfgs[fr3]  # type: ignore
             gripper = sim.SimGripper(simulation, gripper_cfg)
 
-            # add camera to have a rendering gui
+            # render the wrist camera of the model
             cameras = {
-                "default_free": sim.SimCameraConfig(
-                    identifier="",
-                    type=CameraType.default_free,
-                    resolution_width=1280,
-                    resolution_height=720,
-                    frame_rate=20,
-                ),
                 "wrist": SimCameraConfig(
                     identifier="wrist_0",
-                    type=CameraType.fixed,
                     resolution_width=640,
                     resolution_height=480,
                     frame_rate=30,

@@ -6,12 +6,13 @@
 #include <sim/SimGripper.h>
 #include <sim/SimRobot.h>
 #include <sim/SimTilburgHand.h>
-#include <sim/camera.h>
 #include <sim/gui.h>
 
 #include <functional>
+#include <limits>
 #include <memory>
 
+#include "rcs/Camera.h"
 #include "rcs/Kinematics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
@@ -256,9 +257,6 @@ PYBIND11_MODULE(_core, m) {
   // COMMON MODULE
   auto common = m.def_submodule("common", "common module");
 
-  common.def("_bootstrap_egl_context", &rcs::common::bootstrap_egl_context,
-             py::arg("fn_addr"), py::arg("display"), py::arg("context"));
-  common.def("_bootstrap_gl_context", &rcs::common::bootstrap_gl_context);
   common.def("IdentityTranslation", &rcs::common::IdentityTranslation);
   common.def("IdentityRotMatrix", &rcs::common::IdentityRotMatrix);
   common.def("IdentityRotQuatVec", &rcs::common::IdentityRotQuatVec);
@@ -748,16 +746,23 @@ Args:
       .def_readonly("last_width", &rcs::sim::SimGripperState::last_width)
       .def_readonly("collision", &rcs::sim::SimGripperState::collision);
 
+  py::enum_<rcs::sim::RendererBackend>(sim, "RendererBackend")
+      .value("CLASSIC", rcs::sim::RendererBackend::CLASSIC)
+      .value("FILAMENT", rcs::sim::RendererBackend::FILAMENT)
+      .export_values();
+
   rcs::sim::SimConfig default_sim_cfg = rcs::sim::SimConfig();
   py::class_<rcs::sim::SimConfig>(sim, "SimConfig")
       .def(py::init([](bool async_control, bool realtime, double frequency,
-                       int max_convergence_steps, long long memory) {
+                       int max_convergence_steps, long long memory,
+                       rcs::sim::RendererBackend renderer) {
              rcs::sim::SimConfig config;
              config.async_control = async_control;
              config.realtime = realtime;
              config.frequency = frequency;
              config.max_convergence_steps = max_convergence_steps;
              config.memory = memory;
+             config.renderer = renderer;
              return config;
            }),
            py::arg("async_control") = default_sim_cfg.async_control,
@@ -765,13 +770,15 @@ Args:
            py::arg("frequency") = default_sim_cfg.frequency,
            py::arg("max_convergence_steps") =
                default_sim_cfg.max_convergence_steps,
-           py::arg("memory") = default_sim_cfg.memory)
+           py::arg("memory") = default_sim_cfg.memory,
+           py::arg("renderer") = default_sim_cfg.renderer)
       .def_readwrite("async_control", &rcs::sim::SimConfig::async_control)
       .def_readwrite("realtime", &rcs::sim::SimConfig::realtime)
       .def_readwrite("frequency", &rcs::sim::SimConfig::frequency)
       .def_readwrite("max_convergence_steps",
                      &rcs::sim::SimConfig::max_convergence_steps)
       .def_readwrite("memory", &rcs::sim::SimConfig::memory)
+      .def_readwrite("renderer", &rcs::sim::SimConfig::renderer)
       .def("__copy__",
            [](const rcs::sim::SimConfig& self) {
              return rcs::sim::SimConfig(self);
@@ -792,6 +799,9 @@ Args:
       .def_readwrite("qpos", &rcs::sim::DynamicJointState::qpos)
       .def_readwrite("qvel", &rcs::sim::DynamicJointState::qvel);
 
+  py::class_<rcs::sim::CapturedState>(sim, "CapturedState")
+      .def_readonly("timestamp", &rcs::sim::CapturedState::timestamp)
+      .def_readonly("state", &rcs::sim::CapturedState::state);
   py::class_<rcs::sim::Sim, std::shared_ptr<rcs::sim::Sim>>(sim, "Sim")
       .def(py::init([](long m, long d) {
              return std::make_shared<rcs::sim::Sim>((mjModel*)m, (mjData*)d);
@@ -809,6 +819,15 @@ Args:
       .def("get_dynamic_joint_state", &rcs::sim::Sim::get_dynamic_joint_state)
       .def("set_dynamic_joint_state", &rcs::sim::Sim::set_dynamic_joint_state,
            py::arg("schema"), py::arg("state"))
+      .def("register_state_capture", &rcs::sim::Sim::register_state_capture,
+           py::arg("frame_rate"), py::arg("buffer_size"), py::arg("state_spec"))
+      .def("get_captured_state", &rcs::sim::Sim::get_captured_state,
+           py::arg("id"),
+           py::arg("max_timestamp") = std::numeric_limits<mjtNum>::infinity())
+      .def("captured_state_count", &rcs::sim::Sim::captured_state_count,
+           py::arg("id"))
+      .def("clear_captured_states", &rcs::sim::Sim::clear_captured_states,
+           py::arg("id"))
       .def("_start_gui_server", &rcs::sim::Sim::start_gui_server, py::arg("id"))
       .def("_stop_gui_server", &rcs::sim::Sim::stop_gui_server);
 
@@ -920,67 +939,8 @@ Args:
       .def("get_state", &rcs::sim::SimTilburgHand::get_state)
       .def("set_config", &rcs::sim::SimTilburgHand::set_config, py::arg("cfg"));
 
-  py::enum_<rcs::sim::CameraType>(sim, "CameraType")
-      .value("free", rcs::sim::CameraType::free)
-      .value("tracking", rcs::sim::CameraType::tracking)
-      .value("fixed", rcs::sim::CameraType::fixed)
-      .value("default_free", rcs::sim::CameraType::default_free)
-      .export_values();
-  py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
-      sim, "SimCameraConfig")
-      .def(py::init([](const std::string& identifier, int frame_rate,
-                       int resolution_width, int resolution_height,
-                       rcs::sim::CameraType type) {
-             rcs::sim::SimCameraConfig config;
-             config.identifier = identifier;
-             config.frame_rate = frame_rate;
-             config.resolution_width = resolution_width;
-             config.resolution_height = resolution_height;
-             config.type = type;
-             return config;
-           }),
-           py::arg("identifier"), py::arg("frame_rate"),
-           py::arg("resolution_width"), py::arg("resolution_height"),
-           py::arg("type") = rcs::sim::CameraType::fixed)
-      .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def("__copy__",
-           [](const rcs::sim::SimCameraConfig& self) {
-             return rcs::sim::SimCameraConfig(self);
-           })
-      .def("__deepcopy__", [](const rcs::sim::SimCameraConfig& self, py::dict) {
-        return rcs::sim::SimCameraConfig(self);
-      });
-  py::class_<rcs::sim::FrameSet>(sim, "FrameSet")
-      .def(py::init(
-               [](const std::unordered_map<std::string, rcs::sim::ColorFrame>&
-                      color_frames,
-                  const std::unordered_map<std::string, rcs::sim::DepthFrame>&
-                      depth_frames,
-                  double timestamp) {
-                 rcs::sim::FrameSet fs;
-                 fs.color_frames = color_frames;
-                 fs.depth_frames = depth_frames;
-                 fs.timestamp = timestamp;
-                 return fs;
-               }),
-           py::arg("color_frames"), py::arg("depth_frames"),
-           py::arg("timestamp"))
-      .def_readonly("color_frames", &rcs::sim::FrameSet::color_frames)
-      .def_readonly("depth_frames", &rcs::sim::FrameSet::depth_frames)
-      .def_readonly("timestamp", &rcs::sim::FrameSet::timestamp);
-  py::class_<rcs::sim::SimCameraSet>(sim, "SimCameraSet")
-      .def(py::init<std::shared_ptr<rcs::sim::Sim>,
-                    std::unordered_map<std::string, rcs::sim::SimCameraConfig>,
-                    bool, int>(),
-           py::arg("sim"), py::arg("cameras"),
-           py::arg("render_on_demand") = true,
-           py::arg("max_buffer_frames") = 100)
-      .def("buffer_size", &rcs::sim::SimCameraSet::buffer_size)
-      .def("clear_buffer", &rcs::sim::SimCameraSet::clear_buffer)
-      .def("get_latest_frameset", &rcs::sim::SimCameraSet::get_latest_frameset)
-      .def_property_readonly("_sim", &rcs::sim::SimCameraSet::get_sim)
-      .def("get_timestamp_frameset",
-           &rcs::sim::SimCameraSet::get_timestamp_frameset, py::arg("ts"));
+  // simulated cameras render the camera of the model named by identifier
+  sim.attr("SimCameraConfig") = common.attr("BaseCameraConfig");
   py::class_<rcs::sim::GuiClient>(sim, "GuiClient")
       .def(py::init<const std::string&>(), py::arg("id"))
       .def("get_model_bytes",

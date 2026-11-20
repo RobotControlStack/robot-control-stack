@@ -15,19 +15,8 @@
 
 namespace rcs {
 namespace sim {
-class Renderer {
- public:
-  Renderer(mjModel* m);
-  ~Renderer();
-  void register_context(const std::string& id, size_t width, size_t height);
-  mjrContext* get_context(const std::string& id);
-  mjvScene scene;
-  mjvOption opt;
-
- private:
-  mjModel* m;
-  std::unordered_map<std::string, mjrContext*> ctxs;
-};
+// Both renderers are implemented in python, see python/rcs/camera/sim.py
+enum class RendererBackend { CLASSIC, FILAMENT };
 
 struct SimConfig {
   bool async_control = false;
@@ -39,28 +28,51 @@ struct SimConfig {
   // MuJoCo's automatic sizing, which can be too small for scenes with many
   // contacts ("mj_stackAlloc: insufficient memory").
   long long memory = -1;
+  RendererBackend renderer = RendererBackend::CLASSIC;
+};
+
+/* Fixed schedule of a callback in simulation time: the k-th call is due at
+ * start + k * period and happens at the physics step closest to that time, so
+ * that the calls do not drift. The schedule restarts on reset and whenever
+ * the simulation time goes backwards. */
+struct CallbackSchedule {
+  mjtNum period;               // in seconds, 0 calls the callback every step
+  mjtNum next_call_time = 0;   // in seconds of simulation time
+  mjtNum last_check_time = 0;  // to detect the simulation time going backwards
 };
 
 struct Callback {
-  const std::function<void(void)> cb;
-  mjtNum seconds_between_calls;  // in seconds
-  mjtNum last_call_timestamp;
+  std::function<void(void)> cb;
+  // called when the schedule (re)starts: at registration, on reset and when
+  // the simulation time goes backwards, may be empty
+  std::function<void(void)> on_restart;
+  CallbackSchedule schedule;
 };
 
 struct ConditionCallback {
-  const std::function<bool(void)> cb;
-  mjtNum seconds_between_calls;  // in seconds
-  mjtNum last_call_timestamp;    // in seconds
-  bool last_return_value;
+  std::function<bool(void)> cb;
+  CallbackSchedule schedule;
+  bool last_return_value = false;
 };
 
-struct RenderingCallback {
-  const std::function<void(const std::string&, mjrContext&, mjvScene&,
-                           mjvOption&)>
-      cb;
-  const std::string id;          // rendering context id in renderer class
-  mjtNum seconds_between_calls;  // in seconds
-  mjtNum last_call_timestamp;    // in seconds
+/* Simulation states captured at a fixed rate of simulation time, e.g. at the
+ * exposure times of a camera, so that they can be rendered later. Kept in a
+ * ring buffer of the most recent states. The captures are taken by a
+ * callback. */
+struct StateCapture {
+  size_t callback_id;
+  int state_spec;  // mjtState bit mask passed to mj_getState
+  int state_size;
+  size_t capacity;
+  std::vector<mjtNum> states;      // capacity x state_size, row major
+  std::vector<mjtNum> timestamps;  // capacity
+  size_t next_index = 0;
+  size_t size = 0;
+};
+
+struct CapturedState {
+  mjtNum timestamp;
+  rcs::common::VectorXd state;
 };
 
 struct DynamicJointSchema {
@@ -90,12 +102,16 @@ class Sim {
   std::vector<Callback> callbacks;
   std::vector<ConditionCallback> any_callbacks;
   std::vector<ConditionCallback> all_callbacks;
-  std::vector<RenderingCallback> rendering_callbacks;
+  std::vector<StateCapture> state_captures;
   std::vector<DynamicJointSpec> dynamic_joint_specs;
   std::unordered_map<std::string, size_t> dynamic_joint_name_to_index;
+  enum class Due { no, yes, restarted };
+  Due poll(CallbackSchedule& schedule);
+  void restart(CallbackSchedule& schedule);
+  void restart(Callback& callback);
   void invoke_callbacks();
   bool invoke_condition_callbacks();
-  void invoke_rendering_callbacks();
+  void capture_state(size_t id);
   void init_dynamic_joint_specs();
   static int get_joint_qpos_size(int joint_type);
   static int get_joint_qvel_size(int joint_type);
@@ -106,7 +122,6 @@ class Sim {
 
  public:
   // TODO: hide m & d, pass as parameter to callback (easier refactoring)
-  rcs::sim::Renderer renderer;
   mjModel* m;
   mjData* d;
   Sim(mjModel* m, mjData* d);
@@ -121,23 +136,33 @@ class Sim {
   DynamicJointState get_dynamic_joint_state() const;
   void set_dynamic_joint_state(const DynamicJointSchema& schema,
                                const DynamicJointState& state);
-  /* NOTE: IMPORTANT, the callback is not necessarily called at exactly the
-   * the requested interval. We invoke a callback if the elapsed simulation time
-   * since the last call of the callback is greater than the requested time.
-   * The exact interval at which they are called depends on the models timestep
-   * option (cf.
-   * https://mujoco.readthedocs.io/en/stable/programming/simulation.html#simulation-loop
-   */
-  void register_cb(std::function<void(void)> cb, mjtNum seconds_between_calls);
+  /* Callbacks are called after each physics step that is closest to their
+   * fixed schedule of start + k * seconds_between_calls in simulation time,
+   * i.e. the actual calls jitter by up to half a timestep but do not drift.
+   * The schedule starts at registration and restarts on reset and whenever
+   * the simulation time goes backwards. seconds_between_calls = 0 calls the
+   * callback after every step. Condition callbacks are only evaluated in
+   * step_until_convergence. */
+  size_t register_cb(std::function<void(void)> cb, mjtNum seconds_between_calls,
+                     std::function<void(void)> on_restart = nullptr);
   void register_any_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
   void register_all_cb(std::function<bool(void)> cb,
                        mjtNum seconds_between_calls);
-  void register_rendering_callback(
-      std::function<void(const std::string& id, mjrContext&, mjvScene&,
-                         mjvOption&)>
-          cb,
-      const std::string& id, int frame_rate, size_t width, size_t height);
+  /* Captures the simulation state (mj_getState with state_spec) frame_rate
+   * times per second of simulation time and keeps the latest buffer_size
+   * states. The current state is captured right away. The captures are taken
+   * by a callback, i.e. they follow its fixed schedule and happen after
+   * integration so that the state is consistent with its time stamp. Returns
+   * the id of the capture. */
+  size_t register_state_capture(double frame_rate, size_t buffer_size,
+                                int state_spec);
+  /* Latest captured state with a time stamp <= max_timestamp */
+  std::optional<CapturedState> get_captured_state(size_t id,
+                                                  mjtNum max_timestamp) const;
+  size_t captured_state_count(size_t id) const;
+  /* Clears the buffer and restarts the capture schedule at the current state */
+  void clear_captured_states(size_t id);
   void start_gui_server(const std::string& id);
   void stop_gui_server();
   void sync_gui();

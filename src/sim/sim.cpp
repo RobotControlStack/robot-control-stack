@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -12,17 +13,6 @@
 
 namespace rcs {
 namespace sim {
-
-void process_condition_callbacks(std::vector<ConditionCallback>& cbs,
-                                 mjtNum time) {
-  for (int i = 0; i < std::size(cbs); ++i) {
-    mjtNum dt = time - cbs[i].last_call_timestamp;
-    if (dt > cbs[i].seconds_between_calls) {
-      cbs[i].last_return_value = cbs[i].cb();
-      cbs[i].last_call_timestamp = time;
-    }
-  }
-}
 
 bool get_last_return_value(ConditionCallback cb) {
   return cb.last_return_value;
@@ -84,7 +74,7 @@ void Sim::init_dynamic_joint_specs() {
   }
 }
 
-Sim::Sim(mjModel* m, mjData* d) : m(m), d(d), renderer(m) {
+Sim::Sim(mjModel* m, mjData* d) : m(m), d(d) {
   this->init_dynamic_joint_specs();
 };
 
@@ -95,20 +85,72 @@ bool Sim::set_config(const SimConfig& cfg) {
 
 SimConfig Sim::get_config() { return this->cfg; }
 
+Sim::Due Sim::poll(CallbackSchedule& schedule) {
+  mjtNum time = this->d->time;
+  if (time < schedule.last_check_time) {
+    // simulation time went backwards (e.g. the state was set externally)
+    return Due::restarted;
+  }
+  schedule.last_check_time = time;
+  // call at the physics step closest to the scheduled time
+  mjtNum half_step = 0.5 * this->m->opt.timestep;
+  if (time + half_step < schedule.next_call_time) {
+    return Due::no;
+  }
+  if (schedule.period <= 0) {
+    schedule.next_call_time = time;
+  } else {
+    // advance on the fixed schedule, skipping call times that fell into this
+    // step (rates above the physics rate)
+    while (schedule.next_call_time <= time + half_step) {
+      schedule.next_call_time += schedule.period;
+    }
+  }
+  return Due::yes;
+}
+
+void Sim::restart(CallbackSchedule& schedule) {
+  schedule.next_call_time = this->d->time + schedule.period;
+  schedule.last_check_time = this->d->time;
+}
+
+void Sim::restart(Callback& callback) {
+  this->restart(callback.schedule);
+  if (callback.on_restart) {
+    callback.on_restart();
+  }
+}
+
 void Sim::invoke_callbacks() {
-  for (int i = 0; i < std::size(this->callbacks); ++i) {
-    Callback& cb = this->callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      cb.cb();
-      cb.last_call_timestamp = this->d->time;
+  for (size_t i = 0; i < std::size(this->callbacks); ++i) {
+    switch (this->poll(this->callbacks[i].schedule)) {
+      case Due::yes:
+        this->callbacks[i].cb();
+        break;
+      case Due::restarted:
+        this->restart(this->callbacks[i]);
+        break;
+      case Due::no:
+        break;
     }
   }
 }
 
 bool Sim::invoke_condition_callbacks() {
-  process_condition_callbacks(this->any_callbacks, this->d->time);
-  process_condition_callbacks(this->all_callbacks, this->d->time);
+  for (auto* cbs : {&this->any_callbacks, &this->all_callbacks}) {
+    for (ConditionCallback& cb : *cbs) {
+      switch (this->poll(cb.schedule)) {
+        case Due::yes:
+          cb.last_return_value = cb.cb();
+          break;
+        case Due::restarted:
+          this->restart(cb.schedule);
+          break;
+        case Due::no:
+          break;
+      }
+    }
+  }
   if (std::any_of(this->any_callbacks.begin(), this->any_callbacks.end(),
                   get_last_return_value)) {
     return true;
@@ -120,24 +162,14 @@ bool Sim::invoke_condition_callbacks() {
   return false;
 }
 
-void Sim::invoke_rendering_callbacks() {
-  // bool scene_updated = false;
-  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
-    RenderingCallback& cb = this->rendering_callbacks[i];
-    mjtNum dt = this->d->time - cb.last_call_timestamp;
-    if (dt > cb.seconds_between_calls) {
-      // if (!scene_updated) {
-      //   // update scene once for all cameras
-      //   mjv_updateScene(this->m, this->d, &this->renderer.opt, NULL, NULL,
-      //   mjCAT_ALL,
-      //                   &this->renderer.scene);
-      //   scene_updated = true;
-      // }
-      mjrContext* ctx = this->renderer.get_context(cb.id);
-      cb.cb(cb.id, *ctx, this->renderer.scene, this->renderer.opt);
-      cb.last_call_timestamp = this->d->time;
-    }
-  }
+void Sim::capture_state(size_t id) {
+  StateCapture& capture = this->state_captures[id];
+  mj_getState(this->m, this->d,
+              capture.states.data() + capture.next_index * capture.state_size,
+              capture.state_spec);
+  capture.timestamps[capture.next_index] = this->d->time;
+  capture.next_index = (capture.next_index + 1) % capture.capacity;
+  capture.size = std::min(capture.size + 1, capture.capacity);
 }
 
 bool Sim::is_converged() { return this->converged; }
@@ -167,10 +199,10 @@ void Sim::step_until_convergence() {
 
 void Sim::step(size_t k) {
   for (size_t i = 0; i < k; ++i) {
-    mj_step1(this->m, this->d);
+    mj_step(this->m, this->d);
+    // after integration, so that callbacks see a state consistent with its
+    // time stamp
     this->invoke_callbacks();
-    mj_step2(this->m, this->d);
-    this->invoke_rendering_callbacks();
   }
 }
 
@@ -309,55 +341,96 @@ void Sim::set_dynamic_joint_state(const DynamicJointSchema& schema,
 
 void Sim::reset_callbacks() {
   for (size_t i = 0; i < std::size(this->callbacks); ++i) {
-    this->callbacks[i].last_call_timestamp = 0;
+    this->restart(this->callbacks[i]);
   }
-  for (size_t i = 0; i < std::size(this->any_callbacks); ++i) {
-    this->any_callbacks[i].last_call_timestamp = 0;
-  }
-  for (size_t i = 0; i < std::size(this->all_callbacks); ++i) {
-    this->all_callbacks[i].last_call_timestamp = 0;
-  }
-  for (size_t i = 0; i < std::size(this->rendering_callbacks); ++i) {
-    // this is negative so that we will directly render the cameras
-    // in the first step
-    this->rendering_callbacks[i].last_call_timestamp =
-        -this->rendering_callbacks[i].seconds_between_calls;
+  for (auto* cbs : {&this->any_callbacks, &this->all_callbacks}) {
+    for (ConditionCallback& cb : *cbs) {
+      this->restart(cb.schedule);
+    }
   }
 }
 
-void Sim::register_cb(std::function<void(void)> cb,
-                      mjtNum seconds_between_calls) {
-  this->callbacks.push_back(Callback{cb, seconds_between_calls, 0.0});
+static CallbackSchedule make_schedule(mjtNum seconds_between_calls) {
+  if (seconds_between_calls < 0) {
+    throw std::invalid_argument("seconds_between_calls must not be negative");
+  }
+  return CallbackSchedule{.period = seconds_between_calls};
+}
+
+size_t Sim::register_cb(std::function<void(void)> cb,
+                        mjtNum seconds_between_calls,
+                        std::function<void(void)> on_restart) {
+  this->callbacks.push_back(
+      Callback{.cb = std::move(cb),
+               .on_restart = std::move(on_restart),
+               .schedule = make_schedule(seconds_between_calls)});
+  this->restart(this->callbacks.back());
+  return this->callbacks.size() - 1;
 }
 
 void Sim::register_any_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
-  this->any_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0, false});
+  this->any_callbacks.push_back(ConditionCallback{
+      .cb = std::move(cb), .schedule = make_schedule(seconds_between_calls)});
+  this->restart(this->any_callbacks.back().schedule);
 }
 
 void Sim::register_all_cb(std::function<bool(void)> cb,
                           mjtNum seconds_between_calls) {
-  this->all_callbacks.push_back(
-      ConditionCallback{cb, seconds_between_calls, 0.0, false});
+  this->all_callbacks.push_back(ConditionCallback{
+      .cb = std::move(cb), .schedule = make_schedule(seconds_between_calls)});
+  this->restart(this->all_callbacks.back().schedule);
 }
 
-void Sim::register_rendering_callback(
-    std::function<void(const std::string&, mjrContext&, mjvScene&, mjvOption&)>
-        cb,
-    const std::string& id, int frame_rate, size_t width, size_t height) {
-  this->renderer.register_context(id, width, height);
-  // in case frame_rate is zero, rendering needs to be triggered
-  // manually
-  if (frame_rate != 0) {
-    this->rendering_callbacks.push_back(
-        RenderingCallback{.cb = cb,
-                          .id = id,
-                          .seconds_between_calls = 1.0 / frame_rate,
-                          // this is negative so that we will directly render
-                          // the cameras in the first step
-                          .last_call_timestamp = -1.0 / frame_rate});
+size_t Sim::register_state_capture(double frame_rate, size_t buffer_size,
+                                   int state_spec) {
+  if (frame_rate <= 0) {
+    throw std::invalid_argument("frame_rate must be positive");
   }
+  if (buffer_size == 0) {
+    throw std::invalid_argument("buffer_size must be positive");
+  }
+  StateCapture capture;
+  capture.state_spec = state_spec;
+  capture.state_size = mj_stateSize(this->m, state_spec);
+  capture.capacity = buffer_size;
+  capture.states.resize(buffer_size * capture.state_size);
+  capture.timestamps.resize(buffer_size);
+  this->state_captures.push_back(std::move(capture));
+  size_t id = this->state_captures.size() - 1;
+  // on (re)start: clear the buffer and capture the current state right away
+  this->state_captures[id].callback_id = this->register_cb(
+      [this, id]() { this->capture_state(id); }, 1.0 / frame_rate,
+      [this, id]() {
+        this->state_captures[id].next_index = 0;
+        this->state_captures[id].size = 0;
+        this->capture_state(id);
+      });
+  return id;
+}
+
+std::optional<CapturedState> Sim::get_captured_state(
+    size_t id, mjtNum max_timestamp) const {
+  const StateCapture& capture = this->state_captures.at(id);
+  for (size_t i = 0; i < capture.size; ++i) {
+    size_t idx =
+        (capture.next_index + capture.capacity - 1 - i) % capture.capacity;
+    if (capture.timestamps[idx] <= max_timestamp) {
+      return CapturedState{capture.timestamps[idx],
+                           Eigen::Map<const rcs::common::VectorXd>(
+                               capture.states.data() + idx * capture.state_size,
+                               capture.state_size)};
+    }
+  }
+  return std::nullopt;
+}
+
+size_t Sim::captured_state_count(size_t id) const {
+  return this->state_captures.at(id).size;
+}
+
+void Sim::clear_captured_states(size_t id) {
+  this->restart(this->callbacks.at(this->state_captures.at(id).callback_id));
 }
 
 void Sim::start_gui_server(const std::string& id) {

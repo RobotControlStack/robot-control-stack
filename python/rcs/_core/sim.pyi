@@ -8,16 +8,18 @@ import typing
 
 import numpy
 import rcs._core.common
+from rcs._core.common import BaseCameraConfig as SimCameraConfig
 
 __all__: list[str] = [
-    "CameraType",
+    "CLASSIC",
+    "CapturedState",
     "DynamicJointSchema",
     "DynamicJointState",
-    "FrameSet",
+    "FILAMENT",
     "GuiClient",
+    "RendererBackend",
     "Sim",
     "SimCameraConfig",
-    "SimCameraSet",
     "SimConfig",
     "SimGripper",
     "SimGripperConfig",
@@ -28,33 +30,47 @@ __all__: list[str] = [
     "SimTilburgHand",
     "SimTilburgHandConfig",
     "SimTilburgHandState",
-    "default_free",
-    "fixed",
-    "free",
-    "tracking",
 ]
 M = typing.TypeVar("M", bound=int)
 
-class CameraType:
+class CapturedState:
+    @property
+    def state(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+    @property
+    def timestamp(self) -> float: ...
+
+class DynamicJointSchema:
+    joint_names: list[str]
+    joint_types: list[int]
+    qpos_sizes: list[int]
+    qvel_sizes: list[int]
+    def __init__(self) -> None: ...
+
+class DynamicJointState(typing.Generic[M]):
+    qpos: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __init__(self) -> None: ...
+
+class GuiClient:
+    def __init__(self, id: str) -> None: ...
+    def get_model_bytes(self) -> bytes: ...
+    def set_model_and_data(self, arg0: int, arg1: int) -> None: ...
+    def sync(self) -> None: ...
+
+class RendererBackend:
     """
     Members:
 
-      free
+      CLASSIC
 
-      tracking
-
-      fixed
-
-      default_free
+      FILAMENT
     """
 
+    CLASSIC: typing.ClassVar[RendererBackend]  # value = <RendererBackend.CLASSIC: 0>
+    FILAMENT: typing.ClassVar[RendererBackend]  # value = <RendererBackend.FILAMENT: 1>
     __members__: typing.ClassVar[
-        dict[str, CameraType]
-    ]  # value = {'free': <CameraType.free: 0>, 'tracking': <CameraType.tracking: 1>, 'fixed': <CameraType.fixed: 2>, 'default_free': <CameraType.default_free: 3>}
-    default_free: typing.ClassVar[CameraType]  # value = <CameraType.default_free: 3>
-    fixed: typing.ClassVar[CameraType]  # value = <CameraType.fixed: 2>
-    free: typing.ClassVar[CameraType]  # value = <CameraType.free: 0>
-    tracking: typing.ClassVar[CameraType]  # value = <CameraType.tracking: 1>
+        dict[str, RendererBackend]
+    ]  # value = {'CLASSIC': <RendererBackend.CLASSIC: 0>, 'FILAMENT': <RendererBackend.FILAMENT: 1>}
     def __eq__(self, other: typing.Any) -> bool: ...
     def __getstate__(self) -> int: ...
     def __hash__(self) -> int: ...
@@ -70,46 +86,18 @@ class CameraType:
     @property
     def value(self) -> int: ...
 
-class DynamicJointSchema:
-    joint_names: list[str]
-    joint_types: list[int]
-    qpos_sizes: list[int]
-    qvel_sizes: list[int]
-    def __init__(self) -> None: ...
-
-class DynamicJointState(typing.Generic[M]):
-    qpos: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    def __init__(self) -> None: ...
-
-class FrameSet:
-    def __init__(
-        self,
-        color_frames: dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.uint8]]],
-        depth_frames: dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.float32]]],
-        timestamp: float,
-    ) -> None: ...
-    @property
-    def color_frames(self) -> dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.uint8]]]: ...
-    @property
-    def depth_frames(self) -> dict[str, numpy.ndarray[tuple[M], numpy.dtype[numpy.float32]]]: ...
-    @property
-    def timestamp(self) -> float: ...
-
-class GuiClient:
-    def __init__(self, id: str) -> None: ...
-    def get_model_bytes(self) -> bytes: ...
-    def set_model_and_data(self, arg0: int, arg1: int) -> None: ...
-    def sync(self) -> None: ...
-
 class Sim:
     def __init__(self, mjmdl: int, mjdata: int) -> None: ...
     def _start_gui_server(self, id: str) -> None: ...
     def _stop_gui_server(self) -> None: ...
+    def captured_state_count(self, id: int) -> int: ...
+    def clear_captured_states(self, id: int) -> None: ...
+    def get_captured_state(self, id: int, max_timestamp: float = ...) -> CapturedState | None: ...
     def get_config(self) -> SimConfig: ...
     def get_dynamic_joint_schema(self) -> DynamicJointSchema: ...
     def get_dynamic_joint_state(self) -> DynamicJointState: ...
     def is_converged(self) -> bool: ...
+    def register_state_capture(self, frame_rate: float, buffer_size: int, state_spec: int) -> int: ...
     def reset(self) -> None: ...
     def set_config(self, cfg: SimConfig) -> bool: ...
     def set_dynamic_joint_state(self, schema: DynamicJointSchema, state: DynamicJointState) -> None: ...
@@ -117,31 +105,13 @@ class Sim:
     def step_until_convergence(self) -> None: ...
     def sync_gui(self) -> None: ...
 
-class SimCameraConfig(rcs._core.common.BaseCameraConfig):
-    type: CameraType
-    def __copy__(self) -> SimCameraConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimCameraConfig: ...
-    def __init__(
-        self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int, type: CameraType = ...
-    ) -> None: ...
-
-class SimCameraSet:
-    def __init__(
-        self, sim: Sim, cameras: dict[str, SimCameraConfig], render_on_demand: bool = True, max_buffer_frames: int = 100
-    ) -> None: ...
-    def buffer_size(self) -> int: ...
-    def clear_buffer(self) -> None: ...
-    def get_latest_frameset(self) -> FrameSet | None: ...
-    def get_timestamp_frameset(self, ts: float) -> FrameSet | None: ...
-    @property
-    def _sim(self) -> Sim: ...
-
 class SimConfig:
     async_control: bool
     frequency: float
     max_convergence_steps: int
     memory: int
     realtime: bool
+    renderer: RendererBackend
     def __copy__(self) -> SimConfig: ...
     def __deepcopy__(self, arg0: dict) -> SimConfig: ...
     def __init__(
@@ -151,6 +121,7 @@ class SimConfig:
         frequency: float = 30.0,
         max_convergence_steps: int = 500,
         memory: int = -1,
+        renderer: RendererBackend = ...,
     ) -> None: ...
 
 class SimGripper(rcs._core.common.Gripper):
@@ -383,7 +354,5 @@ class SimTilburgHandState(rcs._core.common.HandState):
     @property
     def last_qpos(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
 
-default_free: CameraType  # value = <CameraType.default_free: 3>
-fixed: CameraType  # value = <CameraType.fixed: 2>
-free: CameraType  # value = <CameraType.free: 0>
-tracking: CameraType  # value = <CameraType.tracking: 1>
+CLASSIC: RendererBackend  # value = <RendererBackend.CLASSIC: 0>
+FILAMENT: RendererBackend  # value = <RendererBackend.FILAMENT: 1>

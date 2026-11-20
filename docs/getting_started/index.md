@@ -63,7 +63,6 @@ Here is a simple example of direct robot control using the low-level API:
 ```python
 import rcs
 from rcs import sim
-from rcs._core.sim import CameraType
 from rcs.camera.sim import SimCameraConfig, SimCameraSet
 from time import sleep
 import numpy as np

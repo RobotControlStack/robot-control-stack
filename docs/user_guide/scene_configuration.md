@@ -100,7 +100,7 @@ This is the main top-level config for the scene API.
 | `task_cfg` | Optional task-specific config | Add pick/place or other task logic |
 | `scene` | Base scene XML path or scene key | Usually from `SCENE_PATHS[...]` |
 | `gripper_cfgs` | Optional gripper config per robot | Add one gripper per robot |
-| `camera_cfgs` | Optional camera config dictionary | Define resolution, type, and frame rate for named cameras |
+| `camera_cfgs` | Optional camera config dictionary | Define the model camera, resolution and frame rate for named cameras |
 | `max_relative_movement` | Relative action limit | Limit per-step Cartesian delta |
 | `relative_to` | Relative action reference | Usually `RelativeTo.LAST_STEP` or `RelativeTo.NONE` |
 | `robot_to_shared_base_frame` | Per-robot offset relative to the shared base frame | Multi-robot layouts |
@@ -149,8 +149,8 @@ Each gripper entry usually defines:
 
 Each camera entry usually defines:
 
-- camera identifier
-- camera type
+- camera identifier, the name of the camera in the MuJoCo model. Cameras attached to a body or with a
+  tracking `mode` in MJCF move with the simulation, e.g. for videos.
 - resolution
 - frame rate
 
@@ -298,6 +298,58 @@ So in practice:
 Example:
 
 - `depth[y, x] == 1500` means the point is about **1.5 m** away from the camera
+
+## Camera timing
+
+Simulation cameras render in Python (`rcs.camera.sim.SimCameraSet`) and show one of two simulation states:
+
+- `render_on_demand=True` (default): the state at the moment the frames are requested, e.g. after the
+  last env step.
+- `render_on_demand=False`: the state at the last *exposure* of each camera, like a real camera that
+  records at its `frame_rate`. While the simulation steps, it captures its state at each camera frame
+  rate (the state only, no rendering, about a microsecond per capture); frames are rendered from the
+  latest captured state when they are requested. With a 30 Hz camera and a 10 Hz env, an observation
+  therefore shows the scene up to 33 ms before the end of the env step, as a real camera would.
+
+```python
+camera_set = SimCameraSet(simulation, camera_cfgs, physical_units=True, render_on_demand=False)
+```
+
+Captures follow a fixed schedule of simulation time (`k / frame_rate`, no drift) and happen at the
+physics step closest to each capture time. Frame time stamps are the simulation time of the rendered
+state, and `get_timestamp_frames(ts)` renders the latest exposure at or before `ts` (the last
+`max_buffer_frames` captured states are kept). Cameras with different frame rates are captured
+independently.
+
+## Rendering backend (Filament)
+
+By default, simulation cameras and the GUI use MuJoCo's classic OpenGL renderer. MuJoCo >= 4.0 also
+ships the physically based [Filament](https://github.com/google/filament) renderer and the new
+MuJoCo Studio viewer. Switch to them with the `renderer` flag of `SimConfig`:
+
+```python
+from rcs.sim import RendererBackend, SimConfig
+
+sim_cfg = SimConfig(async_control=False, realtime=False, renderer=RendererBackend.FILAMENT)
+```
+
+With this flag
+
+- `SimCameraSet(...)` returns a `FilamentSimCameraSet`: color and depth images are rendered with Filament
+  instead of the classic renderer (both timing modes below are supported). Depth images always use the
+  metric units described above. The depth pass is a second Filament render per camera, so
+  it is skipped when `CameraSetWrapper(include_depth=False)` (or `FilamentSimCameraSet(render_depth=False)`)
+  is used.
+- `open_gui()` launches MuJoCo Studio instead of the passive `mujoco.viewer`. Studio runs in the GUI
+  subprocess under a regular `python` interpreter (not `mjpython`, also on macOS).
+
+Environment variables for fine tuning:
+
+- `RCS_FILAMENT_GRAPHICS_API=opengl|vulkan` graphics API of the camera renderer (default `opengl`, or `vulkan`
+  on Linux without an X display, where Filament's OpenGL backend does not work)
+- `RCS_FILAMENT_SOFTWARE_RENDERING=1` force software rendering for the cameras
+- `RCS_FILAMENT_GFX=opengl|vulkan|web|...` Studio graphics mode; `web` serves the viewer over http instead
+  of opening a window
 
 ### Camera placement
 
