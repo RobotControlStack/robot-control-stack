@@ -8,10 +8,10 @@ import typing
 
 import numpy
 import rcs._core.common
+from rcs._core.common import BaseCameraConfig as SimCameraConfig
 
 __all__: list[str] = [
     "CLASSIC",
-    "CameraType",
     "CapturedState",
     "DynamicJointSchema",
     "DynamicJointState",
@@ -30,47 +30,8 @@ __all__: list[str] = [
     "SimTilburgHand",
     "SimTilburgHandConfig",
     "SimTilburgHandState",
-    "default_free",
-    "fixed",
-    "free",
-    "tracking",
 ]
 M = typing.TypeVar("M", bound=int)
-
-class CameraType:
-    """
-    Members:
-
-      free
-
-      tracking
-
-      fixed
-
-      default_free
-    """
-
-    __members__: typing.ClassVar[
-        dict[str, CameraType]
-    ]  # value = {'free': <CameraType.free: 0>, 'tracking': <CameraType.tracking: 1>, 'fixed': <CameraType.fixed: 2>, 'default_free': <CameraType.default_free: 3>}
-    default_free: typing.ClassVar[CameraType]  # value = <CameraType.default_free: 3>
-    fixed: typing.ClassVar[CameraType]  # value = <CameraType.fixed: 2>
-    free: typing.ClassVar[CameraType]  # value = <CameraType.free: 0>
-    tracking: typing.ClassVar[CameraType]  # value = <CameraType.tracking: 1>
-    def __eq__(self, other: typing.Any) -> bool: ...
-    def __getstate__(self) -> int: ...
-    def __hash__(self) -> int: ...
-    def __index__(self) -> int: ...
-    def __init__(self, value: int) -> None: ...
-    def __int__(self) -> int: ...
-    def __ne__(self, other: typing.Any) -> bool: ...
-    def __repr__(self) -> str: ...
-    def __setstate__(self, state: int) -> None: ...
-    def __str__(self) -> str: ...
-    @property
-    def name(self) -> str: ...
-    @property
-    def value(self) -> int: ...
 
 class CapturedState:
     @property
@@ -143,14 +104,6 @@ class Sim:
     def step(self, k: int) -> None: ...
     def step_until_convergence(self) -> None: ...
     def sync_gui(self) -> None: ...
-
-class SimCameraConfig(rcs._core.common.BaseCameraConfig):
-    type: CameraType
-    def __copy__(self) -> SimCameraConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimCameraConfig: ...
-    def __init__(
-        self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int, type: CameraType = ...
-    ) -> None: ...
 
 class SimConfig:
     async_control: bool
@@ -403,7 +356,3 @@ class SimTilburgHandState(rcs._core.common.HandState):
 
 CLASSIC: RendererBackend  # value = <RendererBackend.CLASSIC: 0>
 FILAMENT: RendererBackend  # value = <RendererBackend.FILAMENT: 1>
-default_free: CameraType  # value = <CameraType.default_free: 3>
-fixed: CameraType  # value = <CameraType.fixed: 2>
-free: CameraType  # value = <CameraType.free: 0>
-tracking: CameraType  # value = <CameraType.tracking: 1>

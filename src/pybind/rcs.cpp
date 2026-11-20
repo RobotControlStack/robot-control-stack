@@ -6,13 +6,13 @@
 #include <sim/SimGripper.h>
 #include <sim/SimRobot.h>
 #include <sim/SimTilburgHand.h>
-#include <sim/camera.h>
 #include <sim/gui.h>
 
 #include <functional>
 #include <limits>
 #include <memory>
 
+#include "rcs/Camera.h"
 #include "rcs/Kinematics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
@@ -939,36 +939,8 @@ Args:
       .def("get_state", &rcs::sim::SimTilburgHand::get_state)
       .def("set_config", &rcs::sim::SimTilburgHand::set_config, py::arg("cfg"));
 
-  py::enum_<rcs::sim::CameraType>(sim, "CameraType")
-      .value("free", rcs::sim::CameraType::free)
-      .value("tracking", rcs::sim::CameraType::tracking)
-      .value("fixed", rcs::sim::CameraType::fixed)
-      .value("default_free", rcs::sim::CameraType::default_free)
-      .export_values();
-  py::class_<rcs::sim::SimCameraConfig, rcs::common::BaseCameraConfig>(
-      sim, "SimCameraConfig")
-      .def(py::init([](const std::string& identifier, int frame_rate,
-                       int resolution_width, int resolution_height,
-                       rcs::sim::CameraType type) {
-             rcs::sim::SimCameraConfig config;
-             config.identifier = identifier;
-             config.frame_rate = frame_rate;
-             config.resolution_width = resolution_width;
-             config.resolution_height = resolution_height;
-             config.type = type;
-             return config;
-           }),
-           py::arg("identifier"), py::arg("frame_rate"),
-           py::arg("resolution_width"), py::arg("resolution_height"),
-           py::arg("type") = rcs::sim::CameraType::fixed)
-      .def_readwrite("type", &rcs::sim::SimCameraConfig::type)
-      .def("__copy__",
-           [](const rcs::sim::SimCameraConfig& self) {
-             return rcs::sim::SimCameraConfig(self);
-           })
-      .def("__deepcopy__", [](const rcs::sim::SimCameraConfig& self, py::dict) {
-        return rcs::sim::SimCameraConfig(self);
-      });
+  // simulated cameras render the camera of the model named by identifier
+  sim.attr("SimCameraConfig") = common.attr("BaseCameraConfig");
   py::class_<rcs::sim::GuiClient>(sim, "GuiClient")
       .def(py::init<const std::string&>(), py::arg("id"))
       .def("get_model_bytes",

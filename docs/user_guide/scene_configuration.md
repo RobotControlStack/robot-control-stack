@@ -100,7 +100,7 @@ This is the main top-level config for the scene API.
 | `task_cfg` | Optional task-specific config | Add pick/place or other task logic |
 | `scene` | Base scene XML path or scene key | Usually from `SCENE_PATHS[...]` |
 | `gripper_cfgs` | Optional gripper config per robot | Add one gripper per robot |
-| `camera_cfgs` | Optional camera config dictionary | Define resolution, type, and frame rate for named cameras |
+| `camera_cfgs` | Optional camera config dictionary | Define the model camera, resolution and frame rate for named cameras |
 | `max_relative_movement` | Relative action limit | Limit per-step Cartesian delta |
 | `relative_to` | Relative action reference | Usually `RelativeTo.LAST_STEP` or `RelativeTo.NONE` |
 | `robot_to_shared_base_frame` | Per-robot offset relative to the shared base frame | Multi-robot layouts |
@@ -149,8 +149,8 @@ Each gripper entry usually defines:
 
 Each camera entry usually defines:
 
-- camera identifier
-- camera type
+- camera identifier, the name of the camera in the MuJoCo model. Cameras attached to a body or with a
+  tracking `mode` in MJCF move with the simulation, e.g. for videos.
 - resolution
 - frame rate
 

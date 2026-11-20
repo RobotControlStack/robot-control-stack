@@ -149,3 +149,10 @@ def test_frames_show_last_exposure():
     assert newer.avg_timestamp == pytest.approx(4 * period, abs=dt)
     exposed.close()
     live.close()
+
+
+def test_unknown_camera_raises():
+    simulation, _ = _droid_sim()
+    cfg = sim.SimCameraConfig(identifier="missing", frame_rate=30, resolution_width=64, resolution_height=48)
+    with pytest.raises(ValueError, match="missing"):
+        SimCameraSet(simulation, {"missing": cfg})

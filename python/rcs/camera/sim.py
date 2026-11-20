@@ -24,7 +24,7 @@ import cv2
 import mujoco
 import numpy as np
 from rcs._core import common
-from rcs._core.sim import CameraType, RendererBackend, SimCameraConfig
+from rcs._core.sim import RendererBackend, SimCameraConfig
 from rcs.camera.interface import BaseCameraSet, CameraFrame, DataFrame, Frame, FrameSet
 from rcs.sim import filament, render_context_bootstrap
 
@@ -37,7 +37,11 @@ STATE_SPEC = mujoco.mjtState.mjSTATE_INTEGRATION
 
 
 def _camera_id(model: mujoco.MjModel, cfg: SimCameraConfig) -> int:
-    return mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cfg.identifier)
+    cam_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cfg.identifier)
+    if cam_id < 0:
+        msg = f"camera {cfg.identifier!r} does not exist in the model"
+        raise ValueError(msg)
+    return cam_id
 
 
 def _intrinsics(
@@ -167,7 +171,9 @@ class SimCameraSet:
 
     Args:
         simulation: the simulation to render.
-        cameras: camera configurations by name.
+        cameras: camera configurations by name. Each renders the camera of the model named by its
+            ``identifier``; cameras attached to bodies or with a tracking ``mode`` in MJCF move with the
+            simulation.
         physical_units: depth in meters (scaled by ``BaseCameraSet.DEPTH_SCALE``); otherwise the raw
             [0, 1] depth buffer of the classic renderer is scaled.
         render_on_demand: if True, frames show the simulation state at the time they are requested.
@@ -212,11 +218,8 @@ class SimCameraSet:
         self._mj_cameras: dict[str, mujoco.MjvCamera] = {}
         for name, cfg in cameras.items():
             cam = mujoco.MjvCamera()
-            if cfg.type == CameraType.default_free:
-                mujoco.mjv_defaultFreeCamera(model, cam)
-            else:
-                cam.type = int(cfg.type)
-                cam.fixedcamid = _camera_id(model, cfg)
+            cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+            cam.fixedcamid = _camera_id(model, cfg)
             self._mj_cameras[name] = cam
 
         # render_on_demand=True: rendered framesets, newest last

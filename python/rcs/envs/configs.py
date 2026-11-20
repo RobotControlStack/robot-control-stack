@@ -5,13 +5,7 @@ from typing import Literal
 import gymnasium as gym
 import numpy as np
 from rcs._core.common import GripperType, RobotType
-from rcs._core.sim import (
-    CameraType,
-    SimCameraConfig,
-    SimConfig,
-    SimGripperConfig,
-    SimRobotConfig,
-)
+from rcs._core.sim import SimCameraConfig, SimConfig, SimGripperConfig, SimRobotConfig
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs.envs.scenes import (
     CameraAdderConfig,
@@ -105,14 +99,12 @@ class EmptyWorldFR3(SimEnvCreator):
         camera_cfgs: dict[str, SimCameraConfig] | None = {
             "bird_eye": SimCameraConfig(
                 identifier="bird_eye",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "wrist": SimCameraConfig(
                 identifier="wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
@@ -251,28 +243,24 @@ class EmptyWorldDroid(EmptyWorldFR3):
         cfg.camera_cfgs = {
             "over_shoulder_left": SimCameraConfig(
                 identifier="over_shoulder_left",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "over_shoulder_right": SimCameraConfig(
                 identifier="over_shoulder_right",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "front": SimCameraConfig(
                 identifier="front",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "wrist": SimCameraConfig(
                 identifier="wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
@@ -357,21 +345,18 @@ class EmptyWorldFR3Duo(SimEnvCreator):
         camera_cfgs: dict[str, SimCameraConfig] | None = {
             "head": SimCameraConfig(
                 identifier="head",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "left_wrist": SimCameraConfig(
                 identifier="left_wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
             ),
             "right_wrist": SimCameraConfig(
                 identifier="right_wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
@@ -673,7 +658,6 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         cfg.camera_cfgs = {
             "wrist": SimCameraConfig(
                 identifier="wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
@@ -712,7 +696,6 @@ class EmptyWorldYamDuo(SimEnvCreator):
         camera_cfgs: dict[str, SimCameraConfig] | None = {
             name: SimCameraConfig(
                 identifier=name,
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
@@ -809,7 +792,6 @@ class EmptyWorldRizon4SDuo(SimEnvCreator):
         camera_cfgs = {
             f"{name}_wrist": SimCameraConfig(
                 identifier=f"{name}_wrist",
-                type=CameraType.fixed,
                 resolution_width=1280,
                 resolution_height=720,
                 frame_rate=30,
