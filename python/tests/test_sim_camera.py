@@ -86,6 +86,24 @@ def test_state_capture_restarts_on_reset():
     assert captured.timestamp == 0
 
 
+def test_state_capture_restarts_when_time_goes_backwards():
+    simulation, _ = _droid_sim()
+    dt = simulation.model.opt.timestep
+    capture = simulation.register_state_capture(30, 100, int(STATE_SPEC))
+    simulation.step(100)
+    assert simulation.captured_state_count(capture) > 1
+    # set the time back without reset, e.g. when a recorded state is restored
+    simulation.data.time = 0
+    simulation.step(1)
+    assert simulation.captured_state_count(capture) == 1
+    captured = simulation.get_captured_state(capture)
+    assert captured is not None
+    assert captured.timestamp == pytest.approx(dt)
+    # and the fixed schedule continues from there
+    simulation.step(round(1 / 30 / dt))
+    assert simulation.captured_state_count(capture) == 2
+
+
 def test_frames_show_last_exposure():
     simulation, camera_cfgs = _droid_sim()
     dt = simulation.model.opt.timestep
