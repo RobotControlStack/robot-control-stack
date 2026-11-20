@@ -93,7 +93,7 @@ class HardwareCameraSet(BaseCameraSet):
     """
 
     def __init__(
-        self, cameras: Sequence[HardwareCamera], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 1000
+        self, cameras: Sequence[HardwareCamera], warm_up_disposal_frames: int = 30, max_buffer_frames: int = 30
     ):
         self.cameras = cameras
         self.camera_dict, self._camera_names = self._cameras_util()

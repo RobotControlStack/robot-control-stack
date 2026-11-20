@@ -46,7 +46,9 @@ struct FrankaConfig : common::RobotConfig {
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
   common::Vector7d kd =
       (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
-  common::Vector7d torque_limit = common::Vector7d::Constant(5.0);
+  // FR3/Panda joint torque limits (Nm) from the Franka robot specification
+  common::Vector7d torque_limit =
+      (common::Vector7d() << 87., 87., 87., 87., 12., 12., 12.).finished();
   bool allow_high_collision = false;
   // values from deoxys/config/osc-position-controller.yml
   Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
