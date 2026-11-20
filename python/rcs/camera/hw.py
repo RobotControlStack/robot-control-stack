@@ -250,7 +250,7 @@ class HardwareCameraSet(BaseCameraSet):
             with self._buffer_lock:
                 self._buffer[self._next_ring_index] = frame_set
                 self._next_ring_index = (self._next_ring_index + 1) % self.max_buffer_frames
-                self._buffer_len = max(self._buffer_len + 1, self.max_buffer_frames)
+                self._buffer_len = min(self._buffer_len + 1, self.max_buffer_frames)
             # video recording
             for camera_key, writer in self.writer.items():
                 if frame_set is not None:
