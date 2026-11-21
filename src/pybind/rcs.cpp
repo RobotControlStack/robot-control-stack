@@ -14,6 +14,7 @@
 
 #include "rcs/Camera.h"
 #include "rcs/Kinematics.h"
+#include "rcs/LinearInterpolator.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -408,6 +409,42 @@ Args:
           py::arg("nullspace_gain") = 0.0, py::arg("enforce_limits") = true,
           py::arg("base_frame") = std::nullopt,
           py::arg("joint_limits") = std::nullopt);
+
+  py::class_<rcs::common::JointSetpoint>(common, "JointSetpoint")
+      .def_readonly("q", &rcs::common::JointSetpoint::q)
+      .def_readonly("dq", &rcs::common::JointSetpoint::dq);
+
+  py::class_<rcs::common::CartesianSetpoint>(common, "CartesianSetpoint")
+      .def_readonly("pose", &rcs::common::CartesianSetpoint::pose)
+      .def_readonly("twist", &rcs::common::CartesianSetpoint::twist);
+
+  py::class_<rcs::common::JointInterpolator,
+             std::shared_ptr<rcs::common::JointInterpolator>>(
+      common, "JointInterpolator")
+      .def("reset", &rcs::common::JointInterpolator::reset, py::arg("q"))
+      .def("set_goal", &rcs::common::JointInterpolator::set_goal,
+           py::arg("q_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::JointInterpolator::step, py::arg("dt"));
+
+  py::class_<rcs::common::LinearJointInterpolator,
+             rcs::common::JointInterpolator,
+             std::shared_ptr<rcs::common::LinearJointInterpolator>>(
+      common, "LinearJointInterpolator")
+      .def(py::init<double>(), py::arg("duration"));
+
+  py::class_<rcs::common::CartesianInterpolator,
+             std::shared_ptr<rcs::common::CartesianInterpolator>>(
+      common, "CartesianInterpolator")
+      .def("reset", &rcs::common::CartesianInterpolator::reset, py::arg("pose"))
+      .def("set_goal", &rcs::common::CartesianInterpolator::set_goal,
+           py::arg("pose_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::CartesianInterpolator::step, py::arg("dt"));
+
+  py::class_<rcs::common::LinearCartesianInterpolator,
+             rcs::common::CartesianInterpolator,
+             std::shared_ptr<rcs::common::LinearCartesianInterpolator>>(
+      common, "LinearCartesianInterpolator")
+      .def(py::init<double>(), py::arg("duration"));
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)

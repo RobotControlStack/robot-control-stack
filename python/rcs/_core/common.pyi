@@ -11,6 +11,8 @@ import pybind11_stubgen.typing_ext
 
 __all__: list[str] = [
     "BaseCameraConfig",
+    "CartesianInterpolator",
+    "CartesianSetpoint",
     "FrankaHandTCPOffset",
     "GraspType",
     "Gripper",
@@ -25,8 +27,12 @@ __all__: list[str] = [
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
+    "JointInterpolator",
+    "JointSetpoint",
     "Kinematics",
     "LATERAL_GRASP",
+    "LinearCartesianInterpolator",
+    "LinearJointInterpolator",
     "POWER_GRASP",
     "PRECISION_GRASP",
     "Pin",
@@ -51,6 +57,17 @@ class BaseCameraConfig:
     def __copy__(self) -> BaseCameraConfig: ...
     def __deepcopy__(self, arg0: dict) -> BaseCameraConfig: ...
     def __init__(self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int) -> None: ...
+
+class CartesianInterpolator:
+    def reset(self, pose: Pose) -> None: ...
+    def set_goal(self, pose_goal: Pose, duration: float | None = None) -> None: ...
+    def step(self, dt: float) -> CartesianSetpoint: ...
+
+class CartesianSetpoint:
+    @property
+    def pose(self) -> Pose: ...
+    @property
+    def twist(self) -> numpy.ndarray[tuple[typing.Literal[6]], numpy.dtype[numpy.float64]]: ...
 
 class GraspType:
     """
@@ -155,6 +172,19 @@ class HandType:
     def __repr__(self) -> str: ...
     @property
     def id(self) -> str: ...
+
+class JointInterpolator:
+    def reset(self, q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
+    def set_goal(
+        self, q_goal: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], duration: float | None = None
+    ) -> None: ...
+    def step(self, dt: float) -> JointSetpoint: ...
+
+class JointSetpoint:
+    @property
+    def dq(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+    @property
+    def q(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
 
 class Kinematics:
     def __init__(self) -> None: ...
@@ -338,6 +368,12 @@ class RotVec:
     def rotation_matrix(
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
+
+class LinearCartesianInterpolator(CartesianInterpolator):
+    def __init__(self, duration: float) -> None: ...
+
+class LinearJointInterpolator(JointInterpolator):
+    def __init__(self, duration: float) -> None: ...
 
 class Pin(Kinematics):
     def __init__(
