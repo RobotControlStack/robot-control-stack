@@ -248,9 +248,12 @@ class PinocchioDynamics {
 - The bodies of the two `robot.control(...)` lambdas become: take `q`/`dq`
   from `RobotState`, `PinocchioDynamics::compute()`, `controller->step()`,
   return the torque. The payload is set from `RobotState` (`I_total`,
-  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does. The
-  backend warns when it differs noticeably from the payload in the robot
-  config, so that sim and real can be kept equal.
+  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does.
+  `FrankaConfig` has no tool payload to compare it with, so there is no
+  warning on hardware (a possible follow-up).
+- `PinocchioDynamics` is built from `kinematic_model_path` and
+  `attachment_site` of `FrankaConfig` when a controller starts, so Desk-only
+  uses of `Franka` don't need a model.
 - By default `Franka` builds an `FR3JointController` / `FR3OSC` from
   `FrankaConfig`, so the Python API and configs are unchanged.
 
@@ -278,9 +281,35 @@ is **not** modelled.
    `LinearPoseTrajInterpolator.h`. Before that, a read-only check on the
    robot that `PinocchioDynamics` matches `franka::Model` on live states.
 
+## Validation
+
+Against the real FR3s on `ai2duo` (read only: the URDF from `getRobotModel()`
+and logged 1 kHz control states of the right arm, recorded with the OSC on
+2026-11-16):
+
+- **Kinematics**: `PinocchioDynamics` TCP pose vs the robot's `O_T_EE` on
+  40 s of logged states: within 0.0001 mm and 0.02°.
+- **Dynamics**: vs `franka::Model` built from the robot's URDF, with the Desk
+  payload, on 500 logged states: mass matrix within 1e-6, Coriolis within
+  2e-7, Jacobian within 2e-15.
+- **Gravity and payload**: `tau_J - tau_J_d` at rest (the firmware's gravity
+  compensation) is reproduced to 0.05–0.23 Nm per joint by `PinocchioDynamics`
+  with the Desk payload, once the gravity direction is fitted: the arm is
+  mounted tilted by about 52°, and the fitted gravity is 9.94 m/s². Without
+  the payload the fit is clearly worse.
+- **FR3 OSC port**: open-loop replay of the logged states and 15 Hz goals
+  through `FR3OSC` + `PinocchioDynamics` vs the logged commanded torque
+  `tau_J_d`: correlation 0.95–0.997 per joint; with the goals delayed by the
+  measured ~15 ms latency, mean absolute error 0.02–0.13 Nm on torques with
+  an RMS of 0.6–1.6 Nm. Samples within 0.3 rad of a joint limit are left out,
+  because the recordings ran a newer joint-limit guard than master.
+
+The FR3 backend with the new controllers has been built but **not yet run on
+the robot**.
+
 ## Open questions
 
-None at the moment.
+- First run of step 7 on the robot.
 
 ## Decisions
 

@@ -12,8 +12,10 @@
 #include <string>
 #include <thread>
 
+#include "rcs/Controller.h"
+#include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
-#include "rcs/LinearPoseTrajInterpolator.h"
+#include "rcs/PinocchioDynamics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -115,18 +117,23 @@ class Franka : public common::Robot {
   FrankaConfig m_cfg;
   std::optional<std::shared_ptr<common::Kinematics>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
-  common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
-  // Snapshot of m_cfg.policy_rate taken when a controller thread is started, so
-  // the interpolation window stays consistent for the controller's lifetime.
-  int m_active_policy_rate = 20;
-  common::LinearJointPositionTrajInterpolator joint_interpolator;
+  // The shared torque controllers (core), stepped in the libfranka control
+  // loop. They are created when a controller thread starts, so the gains and
+  // the interpolation window (1 / policy_rate) stay fixed for its lifetime.
+  std::shared_ptr<common::PinocchioDynamics> dynamics;
+  std::shared_ptr<common::FR3JointController> fr3_joint_controller;
+  std::shared_ptr<common::FR3OSC> fr3_osc;
   common::ThreadSafeValue<franka::RobotState> curr_state;
+  // guards the controllers between set_goal() and the control loop
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
   common::ThreadSafeValue<std::exception_ptr> background_exception;
   void osc();
   void joint_controller();
+  void create_dynamics();
+  common::ControllerState controller_state(const franka::RobotState& state,
+                                           double dt);
   void zero_torque_controller();
   void check_for_background_errors();
   void clear_background_error();
