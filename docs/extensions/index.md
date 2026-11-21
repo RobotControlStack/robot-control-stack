@@ -13,8 +13,10 @@ rcs_so101
 rcs_yam
 rcs_flexiv
 rcs_realsense
+rcs_digit
 rcs_usb_cam
 rcs_tacto
 rcs_robotiq2f85
+rcs_tilburg_hand
 rcs_zed
 ```

@@ -33,7 +33,7 @@ class UR5eConfig(common.RobotConfig):
     ):
         super().__init__(**kwargs)
         self.robot_platform = common.RobotPlatform.HARDWARE
-        self.robot_type = common.RobotType("UR5e")
+        self.robot_type = common.RobotType.UR5e
         self.ip = ip
         # Robot movement parameters
         self.max_velocity = max_velocity
@@ -64,7 +64,10 @@ class UR5eConfig(common.RobotConfig):
 
 
 class RobotiQGripperConfig(common.GripperConfig):
+    """Robotiq 2F-85 on the UR tool flange, driven through the UR controller (Robotiq URCap, port 63352)."""
+
     def __init__(self, ip: str, **kwargs: typing.Unpack[GripperConfigKwargs]) -> None:
+        kwargs.setdefault("gripper_type", common.GripperType.Robotiq2F85UR)
         super().__init__(**kwargs)
         self.ip = ip
 
@@ -194,7 +197,7 @@ class UR5e(common.Robot):
         super().__init__()
         self.ik = ik
         self._config = cfg
-        self._config.robot_type = common.RobotType("UR5e")
+        self._config.robot_type = common.RobotType.UR5e
         self._ip = cfg.ip
 
         # Delete shared memory if it exists

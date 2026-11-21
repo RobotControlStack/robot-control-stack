@@ -69,7 +69,7 @@ class YamConfig(common.RobotConfig):
     ):
         super().__init__(**kwargs)
         self.robot_platform = common.RobotPlatform.HARDWARE
-        self.robot_type = common.RobotType("Yam")
+        self.robot_type = common.RobotType.Yam
         self.channel = channel
         self.arm_type_id = arm_type_id
         self.gripper_type_id = gripper_type_id

@@ -46,9 +46,19 @@ struct RobotType : public TypeBase<RobotType> {
 
   static const RobotType FR3;
   static const RobotType Panda;
+  static const RobotType XArm7;
+  static const RobotType UR5e;
+  static const RobotType SO101;
+  static const RobotType Yam;
+  static const RobotType Rizon4S;
 };
 inline const RobotType RobotType::FR3{"FR3"};
 inline const RobotType RobotType::Panda{"Panda"};
+inline const RobotType RobotType::XArm7{"XArm7"};
+inline const RobotType RobotType::UR5e{"UR5e"};
+inline const RobotType RobotType::SO101{"SO101"};
+inline const RobotType RobotType::Yam{"Yam"};
+inline const RobotType RobotType::Rizon4S{"Rizon4S"};
 
 struct RobotConfig {
   RobotType robot_type = RobotType::FR3;
@@ -76,8 +86,24 @@ struct GripperType : public TypeBase<GripperType> {
   using TypeBase::TypeBase;
 
   static const GripperType FrankaHand;
+  static const GripperType PandaHand;
+  static const GripperType Robotiq2F85;
+  static const GripperType Robotiq2F85Digit;
+  static const GripperType Robotiq2F85UR;
+  static const GripperType SO101;
+  static const GripperType Yam;
+  static const GripperType FlexivGrav;
 };
 inline const GripperType GripperType::FrankaHand{"FrankaHand"};
+inline const GripperType GripperType::PandaHand{"PandaHand"};
+inline const GripperType GripperType::Robotiq2F85{"Robotiq2F85"};
+inline const GripperType GripperType::Robotiq2F85Digit{"Robotiq2F85Digit"};
+// Robotiq 2F-85 on a UR arm, driven through the robot controller (Robotiq
+// URCap)
+inline const GripperType GripperType::Robotiq2F85UR{"Robotiq2F85UR"};
+inline const GripperType GripperType::SO101{"SO101"};
+inline const GripperType GripperType::Yam{"Yam"};
+inline const GripperType GripperType::FlexivGrav{"FlexivGrav"};
 
 struct GripperConfig {
   GripperType gripper_type = GripperType::FrankaHand;
@@ -93,7 +119,15 @@ enum GraspType {
   LATERAL_GRASP,
   TRIPOD_GRASP
 };
+struct HandType : public TypeBase<HandType> {
+  using TypeBase::TypeBase;
+
+  static const HandType TilburgHand;
+};
+inline const HandType HandType::TilburgHand{"TilburgHand"};
+
 struct HandConfig {
+  HandType hand_type = HandType::TilburgHand;
   virtual ~HandConfig() {};
 };
 struct HandState {

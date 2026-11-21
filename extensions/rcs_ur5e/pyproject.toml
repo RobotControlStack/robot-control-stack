@@ -18,6 +18,9 @@ authors = [
 ]
 requires-python = ">=3.11"
 
+[project.entry-points."rcs.grippers"]
+Robotiq2F85UR = "rcs_ur5e.creators:create_robotiq_gripper"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]

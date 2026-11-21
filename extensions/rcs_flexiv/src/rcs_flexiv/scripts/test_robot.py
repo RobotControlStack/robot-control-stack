@@ -29,8 +29,8 @@ def main() -> None:
     robot_sn = sys.argv[1]
     gripper_device = sys.argv[2] if len(sys.argv) > 2 else None
 
-    robot_type = common.RobotType("Rizon4S")
-    gripper_type = common.GripperType("FlexivGrav")
+    robot_type = common.RobotType.Rizon4S
+    gripper_type = common.GripperType.FlexivGrav
     robot_config = FlexivConfig(
         robot_sn=robot_sn,
         control_mode=FlexivControlMode.JOINT_IMPEDANCE,

@@ -108,6 +108,11 @@ class SimEnvCreatorConfig(typing.Generic[TaskConfig]):
     """shared base frame is a common reference frame for all robots in the scene and the origin for all actions and observations, e.g. the middle of franka duo
     thus this transformation defines the offset of each robot's base to this shared base frame."""
     add_gravcomp: bool = False
+    gravcomp_ignore: set[str] = field(default_factory=set)
+    """ids of attached cameras (``camera_adds`` keys) and robot-frame objects (``robot_frame_objects`` ids)
+    that are NOT gravity-compensated even when ``add_gravcomp`` is True, e.g. a wrist camera and its mount
+    that the real robot's controller does not compensate. The simulated arm then carries them as an
+    uncompensated load, like the real robot."""
     wrapper_cfg: WrapperConfig = field(default_factory=WrapperConfig)
     headless: bool = False
     shared_base_frame_to_root_frame: rcs.common.Pose = field(default_factory=rcs.common.Pose)
@@ -325,6 +330,17 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                         else camera_add_cfg.attachment_site
                     ),
                 )
+
+        # attachments the real robot's controller does not gravity-compensate, their prefix is id + "_"
+        if cfg.gravcomp_ignore:
+            attachments = set(cfg.camera_adds or {}) | {
+                object_id for robot_objects in (cfg.robot_frame_objects or {}).values() for object_id in robot_objects
+            }
+            unknown = cfg.gravcomp_ignore - attachments
+            if unknown:
+                msg = f"gravcomp_ignore contains ids that are neither camera_adds nor robot_frame_objects: {sorted(unknown)}"
+                raise ValueError(msg)
+            composer.ignore_gravcomp({f"{attachment_id}_" for attachment_id in cfg.gravcomp_ignore})
 
         if cfg.visual_randomization is not None and cfg.visual_randomization.enabled_randomizers():
             composer.visual_randomization_params = VisualRandomizer(cfg.visual_randomization).apply(
