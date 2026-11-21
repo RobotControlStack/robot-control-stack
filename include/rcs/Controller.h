@@ -2,6 +2,7 @@
 #define RCS_CONTROLLER_H
 
 #include <Eigen/Core>
+#include <optional>
 
 #include "Pose.h"
 #include "utils.h"
@@ -23,8 +24,9 @@ struct ControllerState {
   double dt = 0.0;  // seconds since the previous step()
 };
 
-// Controllers return joint torques WITHOUT gravity compensation. Backends whose
-// actuators don't compensate gravity themselves add state.gravity.
+// Controllers return joint torques WITHOUT gravity compensation. The backend
+// compensates gravity the way the robot does (see the spec in
+// docs/development/controller_interface.md).
 // The interfaces aren't thread-safe: a backend that calls set_goal() and step()
 // from different threads has to serialise the calls.
 
@@ -33,8 +35,10 @@ class JointController {
   virtual ~JointController() = default;
   // Hold the current configuration.
   virtual void reset(const ControllerState& state) = 0;
-  // Called at policy rate.
-  virtual void set_goal(const VectorXd& q_goal) = 0;
+  // Called at policy rate. duration overrides the interpolator's segment
+  // duration for this goal only (see JointInterpolator::set_goal).
+  virtual void set_goal(const VectorXd& q_goal,
+                        std::optional<double> duration = std::nullopt) = 0;
   // Called at servo rate. Returns joint torques without gravity.
   virtual VectorXd step(const ControllerState& state) = 0;
 };
@@ -44,7 +48,8 @@ class CartesianController {
   virtual ~CartesianController() = default;
   virtual void reset(const ControllerState& state) = 0;
   // TCP goal in the robot base frame.
-  virtual void set_goal(const Pose& pose_goal) = 0;
+  virtual void set_goal(const Pose& pose_goal,
+                        std::optional<double> duration = std::nullopt) = 0;
   virtual VectorXd step(const ControllerState& state) = 0;
 };
 
