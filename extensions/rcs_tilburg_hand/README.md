@@ -34,13 +34,14 @@ pip install -ve extensions/rcs_tilburg_hand
 
 ## Usage
 
-The arm extensions accept a `THConfig` wherever they take a gripper config, and attach the hand
-through a `HandWrapper` once this extension is installed:
+The arm extensions with hand support (`rcs_fr3`, `rcs_panda` and `rcs_xarm7`) take a `THConfig` as
+their `hand_cfg` (`hand_cfgs` per robot for the multi-robot creators) and attach the hand through a
+`HandWrapper` once this extension is installed:
 
 ```python
 from rcs_tilburg_hand.hand import THConfig
 
-cfg.gripper_cfg = THConfig(
+cfg.hand_cfg = THConfig(
     calibration_file="/path/to/calibration.json",
     grasp_percentage=1,
     hand_orientation="right",

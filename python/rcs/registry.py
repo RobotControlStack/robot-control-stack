@@ -12,9 +12,12 @@ available backends imports nothing, and a backend is imported only when its id i
 backend that is not installed is simply absent from the metadata, which is how a missing
 extension surfaces: as an unknown id, with the installed ids listed next to it.
 
-Two installed distributions may provide the same id, for example `rcs_fr3` and `rcs_panda` both
-implement `FrankaHand` against different libfranka versions. Resolving that silently would pick an
-arbitrary one, so it is an error instead; `register` settles it explicitly for the process.
+Two installed distributions may provide the same id, for example two packages that both drive the
+same gripper model. Resolving that silently would pick an arbitrary one, so it is an error instead;
+`register` settles it explicitly for the process. Backends of the same device that are driven
+differently get their own ids instead, e.g. `FrankaHand` (`rcs_fr3`) and `PandaHand` (`rcs_panda`)
+for the libfranka versions, or `Robotiq2F85` (serial, `rcs_robotiq2f85`) and `Robotiq2F85UR` (through
+the UR controller, `rcs_ur5e`).
 """
 
 from collections.abc import Callable
