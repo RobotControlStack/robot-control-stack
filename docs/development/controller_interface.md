@@ -49,8 +49,11 @@ policy rate (e.g. 20 Hz)              servo rate (sim: model timestep, FR3: 1 kH
 ### Gravity convention
 
 Controllers return torque **without gravity compensation**, because Franka
-compensates gravity in firmware. A backend whose actuators don't do that (the
-MuJoCo backend) adds `state.gravity` itself. Coriolis compensation is the
+compensates gravity in firmware. In sim, MuJoCo's gravity compensation
+(`add_gravcomp` in the scene config) plays the part of the firmware, so the
+MuJoCo backend doesn't add gravity either. Loads that the real robot doesn't
+compensate (e.g. a wrist camera) are excluded with `gravcomp_ignore` and then
+act on the arm in both sim and real. Coriolis compensation is the
 controller's job, using `state.coriolis`.
 
 ### Threading
@@ -107,7 +110,7 @@ know "is the last command a joint or a Cartesian one".
 | `LinearJointInterpolator`, `LinearCartesianInterpolator` | core | Straight line (slerp for rotation) from the current setpoint to the goal over a fixed duration, then hold. Generalises the 7-DoF `LinearPoseTrajInterpolator.h`, which is deleted once FR3 has moved over. |
 | `JointPD` | core | `tau = Kp (q_d - q) + Kd (dq_d - dq) + coriolis` |
 | `OSC` | core | Decoupled operational-space control with null-space posture: `tau = Jpᵀ Λp (Kp_p e_p + Kd_p (v_d - v)) + Joᵀ Λo (Kp_o e_o + Kd_o (w_d - w)) + N (posture term) + coriolis` |
-| `FrankaJointController`, `FrankaOSC` | `rcs_fr3` | The current `Franka::joint_controller` / `Franka::osc` maths moved out of the libfranka lambdas: residual mass, null-space posture, joint-limit avoidance and guard, deadband, `franka::limitRate`, torque clip. The rate limit uses the controller's own previous output instead of `tau_J_d`, so it runs in sim too. |
+| `FrankaJointController`, `FrankaOSC` | `rcs_fr3` | The current `Franka::joint_controller` / `Franka::osc` maths moved out of the libfranka lambdas: Coriolis feed-forward, residual mass, null-space posture, joint-limit avoidance and guard, deadband, `franka::limitRate`, torque clip. The rate limit uses the controller's own previous output instead of `tau_J_d`, so it runs in sim too. |
 | Ruckig interpolator | open | See open questions. |
 
 ## Backends
@@ -121,15 +124,18 @@ know "is the last command a joint or a Cartesian one".
   - On install, the arm actuators are switched to torque mode at runtime, the
     same way `set_config` already rewrites `gainprm`/`biasprm` (gain 1,
     bias 0). The torque is clamped to the actuator's `forcerange`/`ctrlrange`.
-  - The controller is stepped from a per-step `Sim` callback, i.e. after
-    `mj_step1` (where `qM`, `qfrc_bias` and kinematics are current) and before
-    `mj_step2`. That is the same position as robosuite's
-    `step1 → _pre_action → step2`.
+    The scene must use `add_gravcomp` (see the gravity convention).
+  - `Sim` gets a separate **control hook**: `Sim::step` runs
+    `mj_step1 → control hooks → mj_step2 → callbacks`. Control hooks see
+    `qM`, `qfrc_bias` and kinematics that match the current state, which the
+    existing callbacks (called after integration) don't. That is the same
+    position as robosuite's `step1 → _pre_action → step2`. `mj_step1`/`mj_step2`
+    support every integrator except RK4.
   - State: `q`/`dq` from the robot's joints; `mass` from `mj_fullM`,
-    restricted to the robot's DoFs; `gravity` from `qfrc_gravcomp`-style
-    evaluation (RNE with zero velocity); `coriolis = qfrc_bias - gravity`;
-    `jacobian` from `mj_jac` at the TCP point, rotated into the base frame.
-  - `ctrl = step(state) + gravity`.
+    restricted to the robot's DoFs; `gravity` from RNE with zero velocity;
+    `coriolis = qfrc_bias - gravity`; `jacobian` from `mj_jac` at the TCP
+    point, rotated into the base frame.
+  - `ctrl = step(state)`. Gravity comes from MuJoCo's gravity compensation.
   - `set_joint_position(q)` goes to the joint controller if one is installed.
     `set_cartesian_position(pose)` goes to the Cartesian controller if one is
     installed, otherwise IK and the joint path as today. Switching between
@@ -144,8 +150,6 @@ know "is the last command a joint or a Cartesian one".
   `controller->step()`, return the torque.
 - By default `Franka` builds a `FrankaJointController` / `FrankaOSC` from
   `FrankaConfig`, so the Python API and configs are unchanged.
-- The missing Coriolis compensation in the current OSC and joint controller is
-  fixed in a separate commit, because it changes how the real robot behaves.
 
 ### Using hardware controllers in sim
 
@@ -159,12 +163,10 @@ collision thresholds, internal torque tracking) is **not** modelled.
 1. Spec and interfaces (header only, no behaviour change).
 2. Linear interpolators in core, plus pybind and unit tests.
 3. `JointPD` and `OSC` in core, plus pybind.
-4. MuJoCo backend in `SimRobot`. Sim tests: hold under gravity, reach a joint
-   goal, reach a Cartesian goal, switch modes.
+4. Control hook in `Sim` and MuJoCo backend in `SimRobot`. Sim tests: hold
+   under gravity, reach a joint goal, reach a Cartesian goal, switch modes.
 5. `FrankaJointController` / `FrankaOSC` in `rcs_fr3`; `Franka` uses them;
    delete `LinearPoseTrajInterpolator.h`. Sim test with the FR3 controllers.
-6. Fix: add Coriolis compensation to the FR3 controllers (needs testing on
-   hardware).
 
 ## Open questions
 
@@ -177,5 +179,3 @@ collision thresholds, internal torque tracking) is **not** modelled.
   each segment at the *previous goal*. The new one starts at the *current
   setpoint*, which avoids a setpoint jump when a goal arrives before the last
   segment is finished. That is a small behaviour change for FR3.
-- **FR3 default `torque_limit` of 5 Nm** is very conservative and will
-  saturate in sim with tuned gains.
