@@ -53,13 +53,28 @@ policy rate (e.g. 20 Hz)              servo rate (sim: model timestep, FR3: 1 kH
 
 ### Gravity convention
 
-Controllers return torque **without gravity compensation**, because Franka
-compensates gravity in firmware. In sim, MuJoCo's gravity compensation
-(`add_gravcomp` in the scene config) plays the part of the firmware, so the
-MuJoCo backend doesn't add gravity either. Loads that the real robot doesn't
-compensate (e.g. a wrist camera) are excluded with `gravcomp_ignore` and then
-act on the arm in both sim and real. Coriolis compensation is the
-controller's job, using `state.coriolis`.
+Controllers return torque **without gravity compensation**. Gravity is
+compensated the way the real robot does it:
+
+- **Real robot**: the firmware compensates the arm plus the tool configured on
+  the robot (for Franka: the end effector set in Desk). The backend adds
+  nothing.
+- **Sim**: the backend plays the firmware's part and adds `state.gravity`,
+  which `PinocchioDynamics` computes from the arm model plus the **configured
+  payload**. MuJoCo's own gravity compensation is switched off for the
+  robot's bodies.
+
+The MuJoCo plant keeps the true gripper bodies. Any gap between the
+configured payload and the simulated gripper therefore acts on the arm, as a
+wrong tool configuration does on the real robot. Attachments that aren't
+part of the payload (e.g. a wrist camera) are not compensated, in sim and on
+the real robot alike.
+
+This is the general rule for any robot that uses the interface: the backend
+reproduces what the robot itself does. A robot whose firmware doesn't
+compensate gravity has its real backend add `state.gravity` too.
+
+Coriolis compensation is the controller's job, using `state.coriolis`.
 
 ### Threading
 
@@ -134,9 +149,16 @@ class PinocchioDynamics {
   `jacobian` and `tcp_pose` from the frame at `flange * tcp_offset`
   (`LOCAL_WORLD_ALIGNED`, i.e. base frame).
 - `set_payload()` adds the payload to the inertia of the flange body, as
-  libfranka does with `I_total`, `m_total` and `F_x_Ctotal`.
+  libfranka does with `I_total`, `m_total` and `F_x_Ctotal`. The payload
+  enters the mass matrix, Coriolis and gravity.
 - The model file must contain only the arm. The gripper is part of the
   payload, so that sim and real describe it the same way.
+- **FR3 model file**: `assets/robots/fr3/fr3.xml`, loaded with its joint
+  armature set to zero. Both of our FR3s report the same URDF through
+  `getRobotModel()`. It is Franka's public `franka_description` `fr3` (v1)
+  model, and its link masses, centres of mass, inertias and kinematics are
+  identical to this MJCF. The MJCF only adds joint armature (rotor inertia),
+  which the robot's model and `franka::Model` don't have.
 
 ## Where the implementations live
 
@@ -160,7 +182,9 @@ class PinocchioDynamics {
   - On install, the arm actuators are switched to torque mode at runtime, the
     same way `set_config` already rewrites `gainprm`/`biasprm` (gain 1,
     bias 0). The torque is clamped to the actuator's `forcerange`/`ctrlrange`.
-    The scene must use `add_gravcomp` (see the gravity convention).
+    MuJoCo gravity compensation (`body_gravcomp`) is switched off for the
+    robot's bodies, and the backend logs that it did (see the gravity
+    convention).
   - `Sim` gets a separate **control hook**: `Sim::step` runs
     `mj_step1 → control hooks → mj_step2 → callbacks`. Control hooks see
     `qM`, `qfrc_bias` and kinematics that match the current state, which the
@@ -168,9 +192,14 @@ class PinocchioDynamics {
     position as robosuite's `step1 → _pre_action → step2`. `mj_step1`/`mj_step2`
     support every integrator except RK4.
   - State: `q`/`dq` from the robot's joints, then
-    `PinocchioDynamics::compute()`. The payload is configured, e.g. the
-    Franka Hand.
-  - `ctrl = step(state)`. Gravity comes from MuJoCo's gravity compensation.
+    `PinocchioDynamics::compute()`.
+  - Payload: from the sim robot config, set to the values configured on the
+    real robot. If none is configured, it defaults to the MJCF bodies
+    attached after the flange (summed mass, centre of mass and inertia),
+    i.e. a perfectly configured tool. The backend warns when the configured
+    payload differs noticeably from those bodies, because then either the
+    robot's tool configuration or the MJCF gripper is off.
+  - `ctrl = step(state) + state.gravity`.
   - The controller's model (Pinocchio) is not exactly the plant (MuJoCo).
     That is intended: it plays the part of the model error on the real
     robot.
@@ -189,7 +218,9 @@ class PinocchioDynamics {
 - The bodies of the two `robot.control(...)` lambdas become: take `q`/`dq`
   from `RobotState`, `PinocchioDynamics::compute()`, `controller->step()`,
   return the torque. The payload is set from `RobotState` (`I_total`,
-  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does.
+  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does. The
+  backend warns when it differs noticeably from the payload in the robot
+  config, so that sim and real can be kept equal.
 - By default `Franka` builds an `FR3JointController` / `FR3OSC` from
   `FrankaConfig`, so the Python API and configs are unchanged.
 
@@ -217,10 +248,6 @@ is **not** modelled.
 
 ## Open questions
 
-- **Model file**: the URDF the robot reports (`getRobotModel()`), Franka's
-  public `franka_description` URDF, or the MJCF in `assets/robots/fr3/`.
-  To be decided by comparing the URDFs of our two FR3s with each other, with
-  the public one and with the MJCF.
 - **Ruckig** (MIT community version) as a jerk-limited interpolator: core or
   an optional extension? It is only an extra `JointInterpolator`, so it can be
   added later without interface changes.
