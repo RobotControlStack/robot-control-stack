@@ -33,18 +33,23 @@ policy rate (e.g. 20 Hz)              servo rate (sim: model timestep, FR3: 1 kH
   set_goal(goal) ──► Interpolator ──► setpoint ──► Controller ──► joint torque ──► backend
                                          ▲                           (no gravity)
                                 ControllerState (q, dq, M, c, g, J, tcp pose, dt)
+                                         ▲
+                     backend (q, dq) ──► PinocchioDynamics
 ```
 
 - **ControllerState**: everything a torque controller needs about one robot,
-  filled by the *backend* (MuJoCo or libfranka) on every servo tick. All
-  Cartesian quantities are in the **robot base frame** at the **TCP**
-  (`tcp_offset` applied).
+  computed on every servo tick by `PinocchioDynamics` from the `q` and `dq`
+  that the backend measured. All Cartesian quantities are in the **robot base
+  frame** at the **TCP** (`tcp_offset` applied).
+- **PinocchioDynamics**: the robot's dynamics model. Sim and real use the
+  same class, so both run the same dynamics code and not only the same
+  controller.
 - **Interpolator**: turns sparse goals into a smooth setpoint (position plus
   velocity) on every servo tick.
 - **Controller**: owns an interpolator. `set_goal()` is called at policy rate,
   `step(state)` at servo rate, and `step()` returns joint torques.
-- **Backend**: builds the `ControllerState`, calls `step()` and applies the
-  torque. Only the backend knows the hardware.
+- **Backend**: reads `q` and `dq`, calls `PinocchioDynamics` and `step()`,
+  and applies the torque. Only the backend knows the hardware.
 
 ### Gravity convention
 
@@ -103,6 +108,36 @@ Joint and Cartesian are separate interfaces on purpose. Each is about ten
 lines, the goal type is checked at compile time, and the backend only has to
 know "is the last command a joint or a Cartesian one".
 
+## Dynamics model (core package)
+
+`PinocchioDynamics.h`
+
+```cpp
+struct Payload {                      // load at the flange, in the flange frame
+  double mass = 0.0;
+  Eigen::Vector3d com = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d inertia = Eigen::Matrix3d::Zero();  // about the CoM
+};
+
+class PinocchioDynamics {
+ public:
+  PinocchioDynamics(const std::string& model_path, bool urdf,
+                    const std::string& flange_frame, const Pose& tcp_offset);
+  void set_payload(const Payload& payload);
+  ControllerState compute(const VectorXd& q, const VectorXd& dq, double dt);
+};
+```
+
+- `compute()` does the same as libfranka's `franka::Model`, which (since
+  libfranka 0.14) is itself Pinocchio: `mass` from `crba`, `gravity` from
+  `computeGeneralizedGravity`, `coriolis` from `rnea(q, dq, 0) - gravity`,
+  `jacobian` and `tcp_pose` from the frame at `flange * tcp_offset`
+  (`LOCAL_WORLD_ALIGNED`, i.e. base frame).
+- `set_payload()` adds the payload to the inertia of the flange body, as
+  libfranka does with `I_total`, `m_total` and `F_x_Ctotal`.
+- The model file must contain only the arm. The gripper is part of the
+  payload, so that sim and real describe it the same way.
+
 ## Where the implementations live
 
 | Implementation | Package | Notes |
@@ -110,7 +145,8 @@ know "is the last command a joint or a Cartesian one".
 | `LinearJointInterpolator`, `LinearCartesianInterpolator` | core | Straight line (slerp for rotation) from the current setpoint to the goal over a fixed duration, then hold. Generalises the 7-DoF `LinearPoseTrajInterpolator.h`, which is deleted once FR3 has moved over. |
 | `JointPD` | core | `tau = Kp (q_d - q) + Kd (dq_d - dq) + coriolis` |
 | `OSC` | core | Decoupled operational-space control with null-space posture: `tau = Jpᵀ Λp (Kp_p e_p + Kd_p (v_d - v)) + Joᵀ Λo (Kp_o e_o + Kd_o (w_d - w)) + N (posture term) + coriolis` |
-| `FrankaJointController`, `FrankaOSC` | `rcs_fr3` | The current `Franka::joint_controller` / `Franka::osc` maths moved out of the libfranka lambdas: Coriolis feed-forward, residual mass, null-space posture, joint-limit avoidance and guard, deadband, `franka::limitRate`, torque clip. The rate limit uses the controller's own previous output instead of `tau_J_d`, so it runs in sim too. |
+| `PinocchioDynamics` | core | See above. |
+| `FR3JointController`, `FR3OSC` | core | The current `Franka::joint_controller` / `Franka::osc` maths, ported one to one out of the libfranka lambdas: Coriolis feed-forward, residual mass, null-space posture, joint-limit avoidance and guard, deadband, torque rate limit, torque clip. They need nothing from libfranka: the rate limit (1000 Nm/s per joint, as `franka::limitRate`) is a few lines and uses the controller's own previous output instead of `tau_J_d`. Being in core, the sim can use them without `rcs_fr3` installed. They are separate classes rather than options on `JointPD`/`OSC`, so that `JointPD`/`OSC` stay minimal and the port can be reviewed line by line against the old code. |
 | Ruckig interpolator | open | See open questions. |
 
 ## Backends
@@ -131,11 +167,13 @@ know "is the last command a joint or a Cartesian one".
     existing callbacks (called after integration) don't. That is the same
     position as robosuite's `step1 → _pre_action → step2`. `mj_step1`/`mj_step2`
     support every integrator except RK4.
-  - State: `q`/`dq` from the robot's joints; `mass` from `mj_fullM`,
-    restricted to the robot's DoFs; `gravity` from RNE with zero velocity;
-    `coriolis = qfrc_bias - gravity`; `jacobian` from `mj_jac` at the TCP
-    point, rotated into the base frame.
+  - State: `q`/`dq` from the robot's joints, then
+    `PinocchioDynamics::compute()`. The payload is configured, e.g. the
+    Franka Hand.
   - `ctrl = step(state)`. Gravity comes from MuJoCo's gravity compensation.
+  - The controller's model (Pinocchio) is not exactly the plant (MuJoCo).
+    That is intended: it plays the part of the model error on the real
+    robot.
   - `set_joint_position(q)` goes to the joint controller if one is installed.
     `set_cartesian_position(pose)` goes to the Cartesian controller if one is
     installed, otherwise IK and the joint path as today. Switching between
@@ -145,31 +183,44 @@ know "is the last command a joint or a Cartesian one".
 
 ### FR3 hardware (`Franka`)
 
-- The bodies of the two `robot.control(...)` lambdas become: fill the
-  `ControllerState` from `franka::Model` and `RobotState`, call
-  `controller->step()`, return the torque.
-- By default `Franka` builds a `FrankaJointController` / `FrankaOSC` from
+- libfranka is only used for the connection: `robot.control(...)` with
+  torques, the robot state, error recovery and collision behaviour.
+  `franka::Model` is no longer used.
+- The bodies of the two `robot.control(...)` lambdas become: take `q`/`dq`
+  from `RobotState`, `PinocchioDynamics::compute()`, `controller->step()`,
+  return the torque. The payload is set from `RobotState` (`I_total`,
+  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does.
+- By default `Franka` builds an `FR3JointController` / `FR3OSC` from
   `FrankaConfig`, so the Python API and configs are unchanged.
 
-### Using hardware controllers in sim
+### Using the FR3 controllers in sim
 
-`FrankaOSC` only needs a `ControllerState`. With `rcs_fr3` installed it can
-be passed to `SimRobot.set_cartesian_controller()`, so the sim runs the exact
-FR3 controller, including its clipping. Franka firmware behaviour (reflexes,
-collision thresholds, internal torque tracking) is **not** modelled.
+`FR3OSC` and `FR3JointController` live in core and only need a
+`ControllerState`, so they can be passed to `SimRobot.set_*_controller()`. The
+sim then runs the exact FR3 controller, including its clipping. Franka
+firmware behaviour (reflexes, collision thresholds, internal torque tracking)
+is **not** modelled.
 
 ## Implementation steps (each step is reviewable on its own)
 
 1. Spec and interfaces (header only, no behaviour change).
 2. Linear interpolators in core, plus pybind and unit tests.
-3. `JointPD` and `OSC` in core, plus pybind.
-4. Control hook in `Sim` and MuJoCo backend in `SimRobot`. Sim tests: hold
+3. `PinocchioDynamics` in core, plus pybind. Test: same mass matrix, Coriolis
+   and Jacobian as MuJoCo for the same model file.
+4. `JointPD` and `OSC` in core, plus pybind.
+5. Control hook in `Sim` and MuJoCo backend in `SimRobot`. Sim tests: hold
    under gravity, reach a joint goal, reach a Cartesian goal, switch modes.
-5. `FrankaJointController` / `FrankaOSC` in `rcs_fr3`; `Franka` uses them;
-   delete `LinearPoseTrajInterpolator.h`. Sim test with the FR3 controllers.
+6. `FR3JointController` / `FR3OSC` in core. Sim test with them.
+7. `Franka` uses `PinocchioDynamics` and the FR3 controllers; delete
+   `LinearPoseTrajInterpolator.h`. Before that, a read-only check on the
+   robot that `PinocchioDynamics` matches `franka::Model` on live states.
 
 ## Open questions
 
+- **Model file**: the URDF the robot reports (`getRobotModel()`), Franka's
+  public `franka_description` URDF, or the MJCF in `assets/robots/fr3/`.
+  To be decided by comparing the URDFs of our two FR3s with each other, with
+  the public one and with the MJCF.
 - **Ruckig** (MIT community version) as a jerk-limited interpolator: core or
   an optional extension? It is only an extra `JointInterpolator`, so it can be
   added later without interface changes.
