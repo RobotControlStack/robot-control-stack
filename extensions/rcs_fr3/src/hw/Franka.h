@@ -83,31 +83,28 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool ignore_realtime = false;
-  size_t dof = 7;
-  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
-      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-           // low 7‐tuple
-           -2.3476,
-       -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045,
-       // high 7‐tuple
-       2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045)
-          .finished();
+  // dof and joint_limits are those of RobotConfig, set them per robot (from
+  // rcs.ROBOTS in Python)
 };
 
 struct FR3Config : FrankaConfig {};
 struct PandaConfig : FrankaConfig {
   common::RobotType robot_type = common::RobotType::Panda;
-  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
-      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-           // low 7‐tuple
-           -166. / 180. * M_PI,
-       -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI,
-       -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
-       // high 7‐tuple
-       166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI,
-       -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI,
-       166. / 180. * M_PI)
-          .finished();
+  PandaConfig() {
+    // set the inherited limits; a member of the same name would hide them
+    // from Franka, which works on a FrankaConfig
+    this->joint_limits =
+        (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
+             // low 7‐tuple
+             -166. / 180. * M_PI,
+         -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI,
+         -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
+         // high 7‐tuple
+         166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI,
+         -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI,
+         166. / 180. * M_PI)
+            .finished();
+  }
 };
 
 struct FrankaState : common::RobotState {
