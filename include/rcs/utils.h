@@ -118,6 +118,18 @@ class ThreadSafeFixedBuffer {
   }
 };
 
+// Rotation from `from` to `to` as a rotation vector (axis * angle) in the
+// frame both are expressed in, along the shortest path.
+inline Eigen::Vector3d rotation_between(const Eigen::Quaterniond& from,
+                                        const Eigen::Quaterniond& to) {
+  Eigen::Quaterniond delta = to * from.inverse();
+  if (delta.w() < 0.0) {
+    delta.coeffs() *= -1.0;  // same rotation, shorter way round
+  }
+  Eigen::AngleAxisd angle_axis(delta);
+  return angle_axis.angle() * angle_axis.axis();
+}
+
 }  // namespace common
 }  // namespace rcs
 
