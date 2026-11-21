@@ -185,12 +185,15 @@ class PinocchioDynamics {
     MuJoCo gravity compensation (`body_gravcomp`) is switched off for the
     robot's bodies, and the backend logs that it did (see the gravity
     convention).
-  - `Sim` gets a separate **control hook**: `Sim::step` runs
-    `mj_step1 → control hooks → mj_step2 → callbacks`. Control hooks see
-    `qM`, `qfrc_bias` and kinematics that match the current state, which the
-    existing callbacks (called after integration) don't. That is the same
-    position as robosuite's `step1 → _pre_action → step2`. `mj_step1`/`mj_step2`
-    support every integrator except RK4.
+  - The controller runs in an ordinary `Sim` callback registered with
+    `seconds_between_calls = 0`, i.e. after every integration step. It reads
+    `q`/`dq` of the new state and writes `ctrl`, which the next `mj_step`
+    applies. `Sim` itself doesn't change: the state comes from
+    `PinocchioDynamics`, so nothing depends on MuJoCo's `qM` or `qfrc_bias`
+    being current. `ctrl` is also computed once right away on install, and the
+    callback's `on_restart` (reset, time going backwards) and
+    `set_joints_hard()` reset the controller and recompute `ctrl`, so no step
+    runs with a torque from an old state.
   - State: `q`/`dq` from the robot's joints, then
     `PinocchioDynamics::compute()`.
   - Payload: from the sim robot config, set to the values configured on the
@@ -236,11 +239,13 @@ is **not** modelled.
 
 1. Spec and interfaces (header only, no behaviour change).
 2. Linear interpolators in core, plus pybind and unit tests.
-3. `PinocchioDynamics` in core, plus pybind. Test: same mass matrix, Coriolis
-   and Jacobian as MuJoCo for the same model file.
+3. `PinocchioDynamics` in core, plus pybind. Test: same mass matrix, Coriolis,
+   gravity and Jacobian as MuJoCo for the FR3 model file, with the armature
+   zeroed on both sides.
 4. `JointPD` and `OSC` in core, plus pybind.
-5. Control hook in `Sim` and MuJoCo backend in `SimRobot`. Sim tests: hold
-   under gravity, reach a joint goal, reach a Cartesian goal, switch modes.
+5. MuJoCo backend in `SimRobot`, including the payload default and warning.
+   Sim tests: hold under gravity, reach a joint goal, reach a Cartesian goal,
+   switch modes, configured payload different from the gripper bodies.
 6. `FR3JointController` / `FR3OSC` in core. Sim test with them.
 7. `Franka` uses `PinocchioDynamics` and the FR3 controllers; delete
    `LinearPoseTrajInterpolator.h`. Before that, a read-only check on the
