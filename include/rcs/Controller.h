@@ -9,8 +9,8 @@
 namespace rcs {
 namespace common {
 
-// Everything a torque controller needs to know about one robot. Filled by the
-// backend (MuJoCo or the hardware driver) on every servo tick.
+// Everything a torque controller needs to know about one robot. Computed by
+// PinocchioDynamics from the measured q and dq on every servo tick.
 // Cartesian quantities are in the robot base frame, at the TCP.
 struct ControllerState {
   VectorXd q;
