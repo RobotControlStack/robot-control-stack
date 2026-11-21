@@ -14,6 +14,7 @@
 
 #include "rcs/Camera.h"
 #include "rcs/Controllers.h"
+#include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
 #include "rcs/LinearInterpolator.h"
 #include "rcs/PinocchioDynamics.h"
@@ -530,6 +531,44 @@ Args:
   py::class_<rcs::common::OSC, rcs::common::CartesianController,
              std::shared_ptr<rcs::common::OSC>>(common, "OSC")
       .def(py::init<const rcs::common::OSCConfig&,
+                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
+
+  py::class_<rcs::common::FR3TorqueLimits>(common, "FR3TorqueLimits")
+      .def(py::init<>())
+      .def_readwrite("joint_min", &rcs::common::FR3TorqueLimits::joint_min)
+      .def_readwrite("joint_max", &rcs::common::FR3TorqueLimits::joint_max)
+      .def_readwrite("torque_limit",
+                     &rcs::common::FR3TorqueLimits::torque_limit);
+
+  py::class_<rcs::common::FR3JointControllerConfig>(common,
+                                                    "FR3JointControllerConfig")
+      .def(py::init<>())
+      .def_readwrite("kp", &rcs::common::FR3JointControllerConfig::kp)
+      .def_readwrite("kd", &rcs::common::FR3JointControllerConfig::kd)
+      .def_readwrite("limits", &rcs::common::FR3JointControllerConfig::limits);
+
+  py::class_<rcs::common::FR3JointController, rcs::common::JointController,
+             std::shared_ptr<rcs::common::FR3JointController>>(
+      common, "FR3JointController")
+      .def(py::init<const rcs::common::FR3JointControllerConfig&,
+                    std::shared_ptr<rcs::common::JointInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
+
+  py::class_<rcs::common::FR3OSCConfig>(common, "FR3OSCConfig")
+      .def(py::init<>())
+      .def_readwrite("kp_position", &rcs::common::FR3OSCConfig::kp_position)
+      .def_readwrite("kp_orientation",
+                     &rcs::common::FR3OSCConfig::kp_orientation)
+      .def_readwrite("nullspace_q", &rcs::common::FR3OSCConfig::nullspace_q)
+      .def_readwrite("residual_mass", &rcs::common::FR3OSCConfig::residual_mass)
+      .def_readwrite("avoidance_weights",
+                     &rcs::common::FR3OSCConfig::avoidance_weights)
+      .def_readwrite("limits", &rcs::common::FR3OSCConfig::limits);
+
+  py::class_<rcs::common::FR3OSC, rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::FR3OSC>>(common, "FR3OSC")
+      .def(py::init<const rcs::common::FR3OSCConfig&,
                     std::shared_ptr<rcs::common::CartesianInterpolator>>(),
            py::arg("config"), py::arg("interpolator"));
 
