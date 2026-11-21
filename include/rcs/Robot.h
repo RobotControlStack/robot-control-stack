@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "ControllerConfig.h"
 #include "Kinematics.h"
 #include "Pose.h"
 #include "utils.h"
@@ -76,6 +77,9 @@ struct RobotConfig {
        // high 7‐tuple
        2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045)
           .finished();
+  // The controller to run, see ControllerConfig.h. None: the robot's native
+  // control (MuJoCo actuators in sim, the default controllers on hardware).
+  std::optional<ControllerConfig> controller = std::nullopt;
   virtual ~RobotConfig() {};
 };
 struct RobotState {

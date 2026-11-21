@@ -100,10 +100,17 @@ void SimRobot::init_ids() {
 }
 
 bool SimRobot::set_config(const SimRobotConfig& cfg) {
+  if (this->cfg.controller.has_value() && this->torque_control &&
+      !cfg.controller.has_value()) {
+    throw std::runtime_error("cannot switch back from torque control");
+  }
   this->cfg = cfg;
   this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
   if (this->dynamics) {
     this->configure_dynamics();
+    if (cfg.controller.has_value()) {
+      this->install_configured_controller();
+    }
   }
   if (this->torque_control && cfg.kp.has_value()) {
     throw std::runtime_error("kp/kv have no effect under torque control");
@@ -308,6 +315,29 @@ void SimRobot::set_dynamics(
   }
   this->dynamics = dynamics;
   this->configure_dynamics();
+  if (this->cfg.controller.has_value()) {
+    this->install_configured_controller();
+  }
+}
+
+void SimRobot::install_configured_controller() {
+  SimConfig sim_cfg = this->sim->get_config();
+  if (!sim_cfg.async_control) {
+    // synchronous control steps until the goal is reached, which friction
+    // can prevent under torque control
+    throw std::runtime_error(
+        "a configured controller needs SimConfig::async_control");
+  }
+  common::ControllerPair controller = common::make_controller(
+      this->cfg.controller.value(), 1.0 / sim_cfg.frequency,
+      this->cfg.joint_limits);
+  this->joint_controller = nullptr;
+  this->cartesian_controller = nullptr;
+  if (controller.joint) {
+    this->set_joint_controller(controller.joint);
+  } else {
+    this->set_cartesian_controller(controller.cartesian);
+  }
 }
 
 void SimRobot::configure_dynamics() {

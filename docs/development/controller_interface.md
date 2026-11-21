@@ -191,6 +191,38 @@ class PinocchioDynamics {
 
 ## Backends
 
+### Selecting a controller (`RobotConfig::controller`)
+
+A controller is identified by its config, so one optional field in the
+common `RobotConfig` selects it for any backend:
+
+```python
+robot_cfg.controller = common.FR3OSCConfig()            # FR3OSC
+robot_cfg.controller = common.OSCConfig()               # core OSC
+robot_cfg.controller = common.FR3JointControllerConfig()
+robot_cfg.controller = common.JointPDConfig(kp=..., kd=...)
+robot_cfg.controller = None                             # native control
+```
+
+`make_controller()` (`ControllerConfig.h`) builds it with a linear
+interpolator over one control period (sim: `1 / SimConfig::frequency`,
+FR3: `1 / FrankaConfig::policy_rate`) and the robot's joint limits. A goal of
+the other kind is converted: with a joint controller, Cartesian goals go
+through IK; with a Cartesian controller, joint goals through forward
+kinematics. A configured controller needs asynchronous control (sim:
+`SimConfig::async_control`, FR3: `FrankaConfig::async_control`), because
+synchronous control steps until the goal is reached, which friction can
+prevent under torque control.
+
+- Sim: `SimRobot` installs the configured controller once it also has the
+  dynamics. The env creators set them (`SimEnvCreator.add_robot_env`) from
+  the robot's kinematic model, the same file and site as its IK, so nothing
+  else needs configuring. The sim timestep is `SimConfig::timestep`
+  (default 1 ms).
+- FR3: without a configured controller `Franka` keeps its defaults:
+  `FR3JointController` for joint goals and `FR3OSC` for Cartesian goals,
+  with the gains of `FrankaConfig`.
+
 ### MuJoCo (`SimRobot`)
 
 - New: `set_dynamics(shared_ptr<PinocchioDynamics>)`, then
@@ -256,6 +288,7 @@ class PinocchioDynamics {
   uses of `Franka` don't need a model.
 - By default `Franka` builds an `FR3JointController` / `FR3OSC` from
   `FrankaConfig`, so the Python API and configs are unchanged.
+  `RobotConfig::controller` replaces them (see above).
 
 ### Using the FR3 controllers in sim
 
@@ -280,6 +313,8 @@ is **not** modelled.
 7. `Franka` uses `PinocchioDynamics` and the FR3 controllers; delete
    `LinearPoseTrajInterpolator.h`. Before that, a read-only check on the
    robot that `PinocchioDynamics` matches `franka::Model` on live states.
+8. `RobotConfig::controller` selects the controller in both backends and the
+   env creators; `SimConfig::timestep` defaults to 1 ms.
 
 ## Validation
 

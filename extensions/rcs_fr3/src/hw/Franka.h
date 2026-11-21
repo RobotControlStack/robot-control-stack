@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "rcs/Controller.h"
+#include "rcs/ControllerConfig.h"
 #include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
 #include "rcs/PinocchioDynamics.h"
@@ -46,6 +47,9 @@ struct FrankaConfig : common::RobotConfig {
   // period of the control loop in seconds; libfranka runs it at 1 kHz, so
   // anything else is rejected
   double timestep = 0.001;
+  // The gains and torque limit below are for the default controllers, used
+  // when RobotConfig::controller is not set. A configured controller needs
+  // async_control.
   // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
@@ -119,11 +123,14 @@ class Franka : public common::Robot {
   std::optional<std::thread> control_thread = std::nullopt;
   double controller_time = 0.0;
   // The shared torque controllers (core), stepped in the libfranka control
-  // loop. They are created when a controller thread starts, so the gains and
-  // the interpolation window (1 / policy_rate) stay fixed for its lifetime.
+  // loop: RobotConfig::controller, or without it FR3JointController and
+  // FR3OSC with the gains below. They are created when a controller thread
+  // starts, so the gains and the interpolation window (1 / policy_rate) stay
+  // fixed for its lifetime.
   std::shared_ptr<common::PinocchioDynamics> dynamics;
-  std::shared_ptr<common::FR3JointController> fr3_joint_controller;
-  std::shared_ptr<common::FR3OSC> fr3_osc;
+  std::shared_ptr<common::JointController> torque_joint_controller;
+  std::shared_ptr<common::CartesianController> torque_cartesian_controller;
+  common::ControllerPair make_torque_controller(bool cartesian);
   common::ThreadSafeValue<franka::RobotState> curr_state;
   // guards the controllers between set_goal() and the control loop
   std::mutex interpolator_mutex;

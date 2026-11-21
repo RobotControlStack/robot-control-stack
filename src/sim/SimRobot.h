@@ -92,7 +92,10 @@ class SimRobot : public common::Robot {
   // Torque control with the shared controllers, see
   // docs/development/controller_interface.md. set_dynamics() must come first.
   // Installing a controller switches the arm to torque control for good and
-  // makes it hold the current configuration.
+  // makes it hold the current configuration. A controller in
+  // SimRobotConfig::controller is installed as soon as both it and the
+  // dynamics are set; it needs SimConfig::async_control and spreads each goal
+  // over one control period (1 / SimConfig::frequency).
   void set_dynamics(std::shared_ptr<common::PinocchioDynamics> dynamics);
   void set_joint_controller(
       std::shared_ptr<common::JointController> controller);
@@ -121,6 +124,7 @@ class SimRobot : public common::Robot {
   std::shared_ptr<common::JointController> joint_controller;
   std::shared_ptr<common::CartesianController> cartesian_controller;
   void configure_dynamics();
+  void install_configured_controller();
   void enable_torque_control();
   void activate(ControlMode mode);
   common::ControllerState controller_state(double dt);

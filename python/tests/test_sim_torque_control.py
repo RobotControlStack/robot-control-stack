@@ -15,7 +15,7 @@ KD = np.array([20.0, 20.0, 20.0, 20.0, 7.5, 15.0, 5.0])
 
 
 class Setup:
-    def __init__(self, payload: common.Payload | None = None, friction: bool = True):
+    def __init__(self, payload: common.Payload | None = None, friction: bool = True, async_control: bool = True):
         scene = EmptyWorldFR3()
         cfg = scene.prefixed_cfg(scene.config())
         name = scene.lead_robot_name(cfg)
@@ -25,7 +25,7 @@ class Setup:
         if not friction:
             for joint in model.spec.joints:
                 joint.frictionloss = 0.0
-        self.sim = sim.Sim(model, sim.SimConfig(async_control=True))  # 1 ms timestep by default
+        self.sim = sim.Sim(model, sim.SimConfig(async_control=async_control))  # 1 ms timestep by default
         path, site = scene.kinematics_cfg(cfg)[name]
         ik = common.Pin(path, site, joint_limits=robot_cfg.joint_limits)
         self.robot = sim.SimRobot(self.sim, ik, robot_cfg)

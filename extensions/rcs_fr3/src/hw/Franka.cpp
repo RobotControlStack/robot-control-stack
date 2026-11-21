@@ -30,10 +30,13 @@ common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
 }
 
 namespace {
-void check_timestep(const FrankaConfig& cfg) {
+void check_config(const FrankaConfig& cfg) {
   if (cfg.timestep != 0.001) {
     throw std::invalid_argument(
         "the Franka control loop runs at 1 ms, timestep must be 0.001");
+  }
+  if (cfg.controller.has_value() && !cfg.async_control) {
+    throw std::invalid_argument("a configured controller needs async_control");
   }
 }
 }  // namespace
@@ -44,7 +47,7 @@ Franka::Franka(const FrankaConfig& cfg,
       m_ik(ik),
       robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
                                         : franka::RealtimeConfig::kEnforce) {
-  check_timestep(cfg);
+  check_config(cfg);
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -64,7 +67,7 @@ Franka::~Franka() {
  * otherwise the call will fail
  */
 bool Franka::set_config(const FrankaConfig& cfg) {
-  check_timestep(cfg);
+  check_config(cfg);
   this->m_cfg = cfg;
   this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -143,6 +146,18 @@ common::Pose Franka::get_cartesian_flange_position() {
 
 void Franka::set_joint_position(const common::VectorXd& q) {
   if (this->m_cfg.async_control) {
+    if (this->m_cfg.controller.has_value() &&
+        common::is_cartesian(this->m_cfg.controller.value())) {
+      // only a Cartesian controller: move the TCP to where q would put it
+      // (forward kinematics of the IK model, the dynamics belong to the loop)
+      if (!this->m_ik.has_value()) {
+        throw std::runtime_error(
+            "joint goals for a Cartesian controller need kinematics");
+      }
+      this->osc_set_cartesian_position(
+          this->m_ik.value()->forward(q, this->m_cfg.tcp_offset));
+      return;
+    }
     this->controller_set_joint_position(q);
     return;
   }
@@ -178,17 +193,8 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
     this->controller_time = 0.0;
     this->get_joint_position();
     this->create_dynamics();
-    common::FR3JointControllerConfig config;
-    config.kp = this->m_cfg.kp;
-    config.kd = this->m_cfg.kd;
-    config.torque_limit = this->m_cfg.torque_limit;
-    // a goal per policy step, interpolated over one policy period
-    this->fr3_joint_controller = std::make_shared<common::FR3JointController>(
-        config,
-        std::make_shared<common::LinearJointInterpolator>(
-            1.0 / this->m_cfg.policy_rate),
-        this->m_cfg.joint_limits);
-    this->fr3_joint_controller->reset(
+    this->torque_joint_controller = this->make_torque_controller(false).joint;
+    this->torque_joint_controller->reset(
         this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::jsc) {
     // runtime error
@@ -216,7 +222,7 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
         std::clamp(max_gap / speed, kMinApproachTime, kMaxApproachTime);
   }
 
-  this->fr3_joint_controller->set_goal(
+  this->torque_joint_controller->set_goal(
       desired_q,
       approach_on_start ? std::optional<double>(approach_time) : std::nullopt);
 
@@ -278,17 +284,10 @@ void Franka::osc_set_cartesian_position(
     this->controller_time = 0.0;
     this->curr_state.store(this->robot.readOnce());
     this->create_dynamics();
-    common::FR3OSCConfig config;
-    config.kp_position = this->m_cfg.kp_p;
-    config.kp_orientation = this->m_cfg.kp_r;
-    config.torque_limit = this->m_cfg.torque_limit;
-    // a goal per policy step, interpolated over one policy period
-    this->fr3_osc = std::make_shared<common::FR3OSC>(
-        config,
-        std::make_shared<common::LinearCartesianInterpolator>(
-            1.0 / this->m_cfg.policy_rate),
-        this->m_cfg.joint_limits);
-    this->fr3_osc->reset(this->controller_state(this->curr_state.load(), 0.0));
+    this->torque_cartesian_controller =
+        this->make_torque_controller(true).cartesian;
+    this->torque_cartesian_controller->reset(
+        this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
@@ -323,7 +322,7 @@ void Franka::osc_set_cartesian_position(
                    kMinApproachTime, kMaxApproachTime);
   }
 
-  this->fr3_osc->set_goal(
+  this->torque_cartesian_controller->set_goal(
       desired_pose_EE_in_base_frame,
       approach_on_start ? std::optional<double>(approach_time) : std::nullopt);
 
@@ -384,6 +383,33 @@ void Franka::stop_control_thread() {
   }
 }
 
+common::ControllerPair Franka::make_torque_controller(bool cartesian) {
+  common::ControllerConfig config;
+  if (this->m_cfg.controller.has_value()) {
+    config = this->m_cfg.controller.value();
+    if (common::is_cartesian(config) != cartesian) {
+      throw std::runtime_error(
+          cartesian ? "the configured controller is a joint controller"
+                    : "the configured controller is a Cartesian controller");
+    }
+  } else if (cartesian) {
+    common::FR3OSCConfig osc;
+    osc.kp_position = this->m_cfg.kp_p;
+    osc.kp_orientation = this->m_cfg.kp_r;
+    osc.torque_limit = this->m_cfg.torque_limit;
+    config = osc;
+  } else {
+    common::FR3JointControllerConfig joint;
+    joint.kp = this->m_cfg.kp;
+    joint.kd = this->m_cfg.kd;
+    joint.torque_limit = this->m_cfg.torque_limit;
+    config = joint;
+  }
+  // a goal per policy step, interpolated over one policy period
+  return common::make_controller(config, 1.0 / this->m_cfg.policy_rate,
+                                 this->m_cfg.joint_limits);
+}
+
 void Franka::create_dynamics() {
   if (!this->dynamics) {
     const std::string& path = this->m_cfg.kinematic_model_path;
@@ -440,7 +466,7 @@ void Franka::osc() {
 
       std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
-      common::VectorXd tau = this->fr3_osc->step(
+      common::VectorXd tau = this->torque_cartesian_controller->step(
           this->controller_state(robot_state, period.toSec()));
       std::array<double, 7> tau_array{};
       common::VectorXd::Map(tau_array.data(), 7) = tau;
@@ -480,7 +506,7 @@ void Franka::joint_controller() {
 
       std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
-      common::VectorXd tau = this->fr3_joint_controller->step(
+      common::VectorXd tau = this->torque_joint_controller->step(
           this->controller_state(robot_state, period.toSec()));
       std::array<double, 7> tau_array{};
       common::VectorXd::Map(tau_array.data(), 7) = tau;
@@ -624,6 +650,12 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
   if (this->m_cfg.async_control) {
+    if (this->m_cfg.controller.has_value() &&
+        !common::is_cartesian(this->m_cfg.controller.value())) {
+      // only a joint controller: reach the pose through IK
+      this->set_cartesian_position_ik(x);
+      return;
+    }
     this->osc_set_cartesian_position(x);
     return;
   }

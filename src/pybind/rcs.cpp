@@ -13,6 +13,7 @@
 #include <memory>
 
 #include "rcs/Camera.h"
+#include "rcs/ControllerConfig.h"
 #include "rcs/Controllers.h"
 #include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
@@ -528,6 +529,15 @@ Args:
       .def_readwrite("kp_nullspace", &rcs::common::OSCConfig::kp_nullspace)
       .def_readwrite("nullspace_q", &rcs::common::OSCConfig::nullspace_q);
 
+  py::class_<rcs::common::JointPDConfig>(common, "JointPDConfig")
+      .def(py::init([](const rcs::common::VectorXd& kp,
+                       const rcs::common::VectorXd& kd) {
+             return rcs::common::JointPDConfig{kp, kd};
+           }),
+           py::arg("kp"), py::arg("kd"))
+      .def_readwrite("kp", &rcs::common::JointPDConfig::kp)
+      .def_readwrite("kd", &rcs::common::JointPDConfig::kd);
+
   py::class_<rcs::common::OSC, rcs::common::CartesianController,
              std::shared_ptr<rcs::common::OSC>>(common, "OSC")
       .def(py::init<const rcs::common::OSCConfig&,
@@ -623,7 +633,8 @@ Args:
       .def_readwrite("tcp_offset", &rcs::common::RobotConfig::tcp_offset)
       .def_readwrite("robot_platform",
                      &rcs::common::RobotConfig::robot_platform)
-      .def_readwrite("q_home", &rcs::common::RobotConfig::q_home);
+      .def_readwrite("q_home", &rcs::common::RobotConfig::q_home)
+      .def_readwrite("controller", &rcs::common::RobotConfig::controller);
   py::class_<rcs::common::RobotState>(common, "RobotState").def(py::init<>());
 
   bind_type_class<rcs::common::GripperType>(common, "GripperType")

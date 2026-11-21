@@ -36,6 +36,7 @@ __all__: list[str] = [
     "JointController",
     "JointInterpolator",
     "JointPD",
+    "JointPDConfig",
     "JointSetpoint",
     "Kinematics",
     "LATERAL_GRASP",
@@ -230,6 +231,15 @@ class JointInterpolator:
     ) -> None: ...
     def step(self, dt: float) -> JointSetpoint: ...
 
+class JointPDConfig:
+    kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __init__(
+        self,
+        kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+    ) -> None: ...
+
 class JointSetpoint:
     @property
     def dq(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
@@ -387,6 +397,7 @@ class Robot:
 
 class RobotConfig(typing.Generic[M]):
     attachment_site: str
+    controller: JointPDConfig | OSCConfig | FR3JointControllerConfig | FR3OSCConfig | None
     dof: int
     joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]]
     kinematic_model_path: str

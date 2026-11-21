@@ -478,7 +478,16 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
         ik: rcs.common.Kinematics,
     ):
         # rcs wrapper composition
-        robot = rcs.sim.SimRobot(sim=simulation, ik=ik, cfg=prefixed_cfg.robot_cfgs[robot_name])
+        robot_cfg = prefixed_cfg.robot_cfgs[robot_name]
+        robot = rcs.sim.SimRobot(sim=simulation, ik=ik, cfg=robot_cfg)
+        if robot_cfg.controller is not None:
+            # installs the configured controller (torque control)
+            kinematic_model_path, attachment_site = self.kinematics_cfg(prefixed_cfg)[robot_name]
+            robot.set_dynamics(
+                rcs.common.PinocchioDynamics(
+                    kinematic_model_path, kinematic_model_path.endswith(".urdf"), attachment_site
+                )
+            )
         env = RobotWrapper(env, robot, prefixed_cfg.control_mode, home_on_reset=prefixed_cfg.wrapper_cfg.home_on_reset)
         return RobotSimWrapper(env)
 
