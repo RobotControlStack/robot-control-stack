@@ -947,7 +947,7 @@ Args:
   py::class_<rcs::sim::SimConfig>(sim, "SimConfig")
       .def(py::init([](bool async_control, bool realtime, double frequency,
                        int max_convergence_steps, long long memory,
-                       rcs::sim::RendererBackend renderer) {
+                       rcs::sim::RendererBackend renderer, double timestep) {
              rcs::sim::SimConfig config;
              config.async_control = async_control;
              config.realtime = realtime;
@@ -955,6 +955,7 @@ Args:
              config.max_convergence_steps = max_convergence_steps;
              config.memory = memory;
              config.renderer = renderer;
+             config.timestep = timestep;
              return config;
            }),
            py::arg("async_control") = default_sim_cfg.async_control,
@@ -963,7 +964,8 @@ Args:
            py::arg("max_convergence_steps") =
                default_sim_cfg.max_convergence_steps,
            py::arg("memory") = default_sim_cfg.memory,
-           py::arg("renderer") = default_sim_cfg.renderer)
+           py::arg("renderer") = default_sim_cfg.renderer,
+           py::arg("timestep") = default_sim_cfg.timestep)
       .def_readwrite("async_control", &rcs::sim::SimConfig::async_control)
       .def_readwrite("realtime", &rcs::sim::SimConfig::realtime)
       .def_readwrite("frequency", &rcs::sim::SimConfig::frequency)
@@ -971,6 +973,7 @@ Args:
                      &rcs::sim::SimConfig::max_convergence_steps)
       .def_readwrite("memory", &rcs::sim::SimConfig::memory)
       .def_readwrite("renderer", &rcs::sim::SimConfig::renderer)
+      .def_readwrite("timestep", &rcs::sim::SimConfig::timestep)
       .def("__copy__",
            [](const rcs::sim::SimConfig& self) {
              return rcs::sim::SimConfig(self);

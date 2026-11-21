@@ -75,7 +75,7 @@ class EmptyWorldFR3(SimEnvCreator):
         )
 
         robot_cfgs: dict[str, SimRobotConfig] = {self.robot_prefix_template: robot_cfg}
-        sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=500)
+        sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=1000)
 
         control_mode: ControlMode = ControlMode.CARTESIAN_TQuat
         task_cfg = None
@@ -318,7 +318,7 @@ class EmptyWorldFR3Duo(SimEnvCreator):
         robot_cfg_right.q_home = rcs.HOME_POSITIONS["FR3_DUO_RIGHT"]
 
         robot_cfgs: dict[str, SimRobotConfig] = {"left": robot_cfg, "right": robot_cfg_right}
-        sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=500)
+        sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=1000)
 
         control_mode: ControlMode = ControlMode.CARTESIAN_TQuat
         task_cfg = None
@@ -810,7 +810,7 @@ class EmptyWorldRizon4SDuo(SimEnvCreator):
             robot_cfgs=robot_cfgs,
             gripper_cfgs=gripper_cfgs,
             gripper_offsets={"left": grav_offset, "right": grav_offset},
-            sim_cfg=SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=500),
+            sim_cfg=SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=1000),
             control_mode=ControlMode.CARTESIAN_TQuat,
             scene=SCENE_PATHS["empty_world"],
             robot_frame_objects=robot_frame_objects,

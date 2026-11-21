@@ -112,6 +112,7 @@ class SimConfig:
     memory: int
     realtime: bool
     renderer: RendererBackend
+    timestep: float
     def __copy__(self) -> SimConfig: ...
     def __deepcopy__(self, arg0: dict) -> SimConfig: ...
     def __init__(
@@ -119,9 +120,10 @@ class SimConfig:
         async_control: bool = False,
         realtime: bool = False,
         frequency: float = 30.0,
-        max_convergence_steps: int = 500,
+        max_convergence_steps: int = 1000,
         memory: int = -1,
         renderer: RendererBackend = ...,
+        timestep: float = 0.001,
     ) -> None: ...
 
 class SimGripper(rcs._core.common.Gripper):

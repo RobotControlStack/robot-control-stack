@@ -22,11 +22,10 @@ class Setup:
         robot_cfg = cfg.robot_cfgs[name]
         robot_cfg.payload = payload
         model = scene.create_model(cfg)
-        model.spec.option.timestep = TIMESTEP
         if not friction:
             for joint in model.spec.joints:
                 joint.frictionloss = 0.0
-        self.sim = sim.Sim(model, sim.SimConfig(async_control=True))
+        self.sim = sim.Sim(model, sim.SimConfig(async_control=True))  # 1 ms timestep by default
         path, site = scene.kinematics_cfg(cfg)[name]
         ik = common.Pin(path, site, joint_limits=robot_cfg.joint_limits)
         self.robot = sim.SimRobot(self.sim, ik, robot_cfg)
@@ -51,6 +50,15 @@ def pose_error(a: common.Pose, b: common.Pose) -> tuple[float, float]:
     rotation = a.rotation_m().T @ b.rotation_m()
     angle = np.degrees(np.arccos(np.clip((np.trace(rotation) - 1) / 2, -1, 1)))
     return float(np.linalg.norm(a.translation() - b.translation())), float(angle)
+
+
+def test_sim_config_sets_the_timestep():
+    setup = Setup()
+    assert setup.sim.model.opt.timestep == TIMESTEP
+    setup.sim.set_config(sim.SimConfig(timestep=0.002))
+    assert setup.sim.model.opt.timestep == 0.002
+    with pytest.raises(ValueError):
+        setup.sim.set_config(sim.SimConfig(timestep=0.0))
 
 
 def test_simulated_payload_is_the_gripper():

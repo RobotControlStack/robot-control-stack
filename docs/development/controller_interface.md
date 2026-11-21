@@ -316,8 +316,11 @@ the robot**.
 - **Interpolators**: only linear ones for now. A jerk-limited Ruckig
   interpolator would be one more `JointInterpolator` and can be added later
   without interface changes.
-- **Timestep**: torque-controlled sim scenes use a 1 ms MuJoCo timestep, so
-  the controller runs at 1 kHz as on the FR3 and gains carry over.
+- **Timestep**: `SimConfig::timestep` (default 1 ms) replaces the timestep
+  of the scene, so the controller runs at 1 kHz as on the FR3 and gains carry
+  over. `FrankaConfig::timestep` exists for symmetry and must be 1 ms, the
+  period of the libfranka loop. The default `max_convergence_steps` doubled to
+  1000 so that synchronous control still waits up to 1 s.
 - **Linear interpolator start point**: the current setpoint (see Timing).
   The current FR3 interpolator starts each segment at the previous goal,
   which jumps when a goal arrives early; this is a small, intended behaviour

@@ -79,7 +79,11 @@ Sim::Sim(mjModel* m, mjData* d) : m(m), d(d) {
 };
 
 bool Sim::set_config(const SimConfig& cfg) {
+  if (cfg.timestep <= 0.0) {
+    throw std::invalid_argument("timestep must be positive");
+  }
   this->cfg = cfg;
+  this->m->opt.timestep = cfg.timestep;
   return true;
 }
 

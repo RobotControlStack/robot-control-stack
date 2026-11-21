@@ -22,13 +22,16 @@ struct SimConfig {
   bool async_control = false;
   bool realtime = false;
   double frequency = 30;  // in Hz
-  int max_convergence_steps = 500;
+  int max_convergence_steps = 1000;  // physics steps, 1 s at the default timestep
   // MuJoCo arena (stack + constraint) size in bytes, applied when a scene is
   // compiled from a ModelComposer. -1 keeps the model's <size memory> or
   // MuJoCo's automatic sizing, which can be too small for scenes with many
   // contacts ("mj_stackAlloc: insufficient memory").
   long long memory = -1;
   RendererBackend renderer = RendererBackend::CLASSIC;
+  // physics timestep in seconds, replaces the one of the model; torque
+  // control runs the controllers once per step, as the 1 ms loop of the FR3
+  double timestep = 0.001;
 };
 
 /* Fixed schedule of a callback in simulation time: the k-th call is due at

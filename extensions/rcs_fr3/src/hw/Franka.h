@@ -43,6 +43,9 @@ struct FrankaConfig : common::RobotConfig {
   // Rate (Hz) at which set-point commands are streamed from the Python side.
   // Used to size the interpolation window between successive targets.
   int policy_rate = 20;
+  // period of the control loop in seconds; libfranka runs it at 1 kHz, so
+  // anything else is rejected
+  double timestep = 0.001;
   // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();

@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -28,12 +29,22 @@ common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
   return GetFlangeInBaseFrame(robot_state) * tcp_offset;
 }
 
+namespace {
+void check_timestep(const FrankaConfig& cfg) {
+  if (cfg.timestep != 0.001) {
+    throw std::invalid_argument(
+        "the Franka control loop runs at 1 ms, timestep must be 0.001");
+  }
+}
+}  // namespace
+
 Franka::Franka(const FrankaConfig& cfg,
                std::optional<std::shared_ptr<common::Kinematics>> ik)
     : m_cfg(cfg),
       m_ik(ik),
       robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
                                         : franka::RealtimeConfig::kEnforce) {
+  check_timestep(cfg);
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -53,6 +64,7 @@ Franka::~Franka() {
  * otherwise the call will fail
  */
 bool Franka::set_config(const FrankaConfig& cfg) {
+  check_timestep(cfg);
   this->m_cfg = cfg;
   this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
