@@ -92,11 +92,29 @@ struct CartesianSetpoint { Pose pose; Vector6d twist; };   // twist = [v; w], ba
 
 class JointInterpolator {
   virtual void reset(const VectorXd& q) = 0;           // hold q, no motion
-  virtual void set_goal(const VectorXd& q_goal) = 0;   // start a new segment from the current setpoint
+  virtual void set_goal(const VectorXd& q_goal,        // start a new segment from the current setpoint
+                        std::optional<double> duration = std::nullopt) = 0;
   virtual JointSetpoint step(double dt) = 0;           // advance by dt, return the setpoint
 };
 class CartesianInterpolator { /* same, with Pose */ };
 ```
+
+Timing:
+
+- Every goal starts a segment with a fixed duration, set by the
+  implementation (`LinearJointInterpolator(duration)`), typically one policy
+  period, `1 / policy_rate`. That is today's FR3 behaviour
+  (`traj_interpolation_time_fraction = 1.0`).
+- The interpolator counts time only through the `dt` passed to `step()`;
+  progress is `clamp(elapsed / duration, 0, 1)`. When the segment is finished,
+  the setpoint holds the goal with zero velocity.
+- A new segment starts at the **current setpoint**, never at the previous
+  goal or the measured robot state, so the setpoint doesn't jump when a goal
+  arrives before the previous segment is finished. The measured state is
+  only used through `reset()`, when control (re)starts.
+- The optional `duration` argument overrides the duration for that one goal.
+  The FR3 backend uses it for the slow approach when control starts far from
+  the first goal (`blocking_move_on_start`).
 
 `Controller.h`
 
@@ -113,7 +131,8 @@ struct ControllerState {
 
 class JointController {
   virtual void reset(const ControllerState& state) = 0;   // hold the current configuration
-  virtual void set_goal(const VectorXd& q_goal) = 0;
+  virtual void set_goal(const VectorXd& q_goal,           // forwarded to the interpolator
+                        std::optional<double> duration = std::nullopt) = 0;
   virtual VectorXd step(const ControllerState& state) = 0; // joint torque without gravity
 };
 class CartesianController { /* same, with a Pose goal in the base frame */ };
@@ -169,7 +188,6 @@ class PinocchioDynamics {
 | `OSC` | core | Decoupled operational-space control with null-space posture: `tau = Jpᵀ Λp (Kp_p e_p + Kd_p (v_d - v)) + Joᵀ Λo (Kp_o e_o + Kd_o (w_d - w)) + N (posture term) + coriolis` |
 | `PinocchioDynamics` | core | See above. |
 | `FR3JointController`, `FR3OSC` | core | The current `Franka::joint_controller` / `Franka::osc` maths, ported one to one out of the libfranka lambdas: Coriolis feed-forward, residual mass, null-space posture, joint-limit avoidance and guard, deadband, torque rate limit, torque clip. They need nothing from libfranka: the rate limit (1000 Nm/s per joint, as `franka::limitRate`) is a few lines and uses the controller's own previous output instead of `tau_J_d`. Being in core, the sim can use them without `rcs_fr3` installed. They are separate classes rather than options on `JointPD`/`OSC`, so that `JointPD`/`OSC` stay minimal and the port can be reviewed line by line against the old code. |
-| Ruckig interpolator | open | See open questions. |
 
 ## Backends
 
@@ -253,12 +271,16 @@ is **not** modelled.
 
 ## Open questions
 
-- **Ruckig** (MIT community version) as a jerk-limited interpolator: core or
-  an optional extension? It is only an extra `JointInterpolator`, so it can be
-  added later without interface changes.
-- **Timestep**: FR3 runs at 1 kHz, the sim model at 500 Hz (default 2 ms).
-  Use 1 ms in torque-controlled scenes so gains carry over?
-- **Linear interpolator start point**: the current FR3 interpolator starts
-  each segment at the *previous goal*. The new one starts at the *current
-  setpoint*, which avoids a setpoint jump when a goal arrives before the last
-  segment is finished. That is a small behaviour change for FR3.
+None at the moment.
+
+## Decisions
+
+- **Interpolators**: only linear ones for now. A jerk-limited Ruckig
+  interpolator would be one more `JointInterpolator` and can be added later
+  without interface changes.
+- **Timestep**: torque-controlled sim scenes use a 1 ms MuJoCo timestep, so
+  the controller runs at 1 kHz as on the FR3 and gains carry over.
+- **Linear interpolator start point**: the current setpoint (see Timing).
+  The current FR3 interpolator starts each segment at the previous goal,
+  which jumps when a goal arrives early; this is a small, intended behaviour
+  change for FR3.
