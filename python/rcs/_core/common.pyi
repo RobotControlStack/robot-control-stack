@@ -11,6 +11,7 @@ import pybind11_stubgen.typing_ext
 
 __all__: list[str] = [
     "BaseCameraConfig",
+    "CartesianController",
     "CartesianInterpolator",
     "CartesianSetpoint",
     "ControllerState",
@@ -28,12 +29,16 @@ __all__: list[str] = [
     "IdentityRotMatrix",
     "IdentityRotQuatVec",
     "IdentityTranslation",
+    "JointController",
     "JointInterpolator",
+    "JointPD",
     "JointSetpoint",
     "Kinematics",
     "LATERAL_GRASP",
     "LinearCartesianInterpolator",
     "LinearJointInterpolator",
+    "OSC",
+    "OSCConfig",
     "POWER_GRASP",
     "PRECISION_GRASP",
     "Payload",
@@ -60,6 +65,11 @@ class BaseCameraConfig:
     def __copy__(self) -> BaseCameraConfig: ...
     def __deepcopy__(self, arg0: dict) -> BaseCameraConfig: ...
     def __init__(self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int) -> None: ...
+
+class CartesianController:
+    def reset(self, state: ControllerState) -> None: ...
+    def set_goal(self, pose_goal: Pose, duration: float | None = None) -> None: ...
+    def step(self, state: ControllerState) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
 
 class CartesianInterpolator:
     def reset(self, pose: Pose) -> None: ...
@@ -187,6 +197,13 @@ class HandType:
     @property
     def id(self) -> str: ...
 
+class JointController:
+    def reset(self, state: ControllerState) -> None: ...
+    def set_goal(
+        self, q_goal: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], duration: float | None = None
+    ) -> None: ...
+    def step(self, state: ControllerState) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+
 class JointInterpolator:
     def reset(self, q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]) -> None: ...
     def set_goal(
@@ -206,6 +223,13 @@ class Kinematics:
     def inverse(
         self, pose: Pose, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None: ...
+
+class OSCConfig:
+    kp_nullspace: float
+    kp_orientation: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __init__(self) -> None: ...
 
 class Payload:
     com: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
@@ -422,8 +446,19 @@ class RotVec:
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
+class OSC(CartesianController):
+    def __init__(self, config: OSCConfig, interpolator: CartesianInterpolator) -> None: ...
+
 class LinearCartesianInterpolator(CartesianInterpolator):
     def __init__(self, duration: float) -> None: ...
+
+class JointPD(JointController):
+    def __init__(
+        self,
+        kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        interpolator: JointInterpolator,
+    ) -> None: ...
 
 class LinearJointInterpolator(JointInterpolator):
     def __init__(self, duration: float) -> None: ...

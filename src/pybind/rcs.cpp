@@ -13,6 +13,7 @@
 #include <memory>
 
 #include "rcs/Camera.h"
+#include "rcs/Controllers.h"
 #include "rcs/Kinematics.h"
 #include "rcs/LinearInterpolator.h"
 #include "rcs/PinocchioDynamics.h"
@@ -496,6 +497,41 @@ Args:
       .def("dof", &rcs::common::PinocchioDynamics::dof)
       .def("compute", &rcs::common::PinocchioDynamics::compute, py::arg("q"),
            py::arg("dq"), py::arg("dt") = 0.0);
+
+  py::class_<rcs::common::JointController,
+             std::shared_ptr<rcs::common::JointController>>(common,
+                                                            "JointController")
+      .def("reset", &rcs::common::JointController::reset, py::arg("state"))
+      .def("set_goal", &rcs::common::JointController::set_goal,
+           py::arg("q_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::JointController::step, py::arg("state"));
+
+  py::class_<rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::CartesianController>>(
+      common, "CartesianController")
+      .def("reset", &rcs::common::CartesianController::reset, py::arg("state"))
+      .def("set_goal", &rcs::common::CartesianController::set_goal,
+           py::arg("pose_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::CartesianController::step, py::arg("state"));
+
+  py::class_<rcs::common::JointPD, rcs::common::JointController,
+             std::shared_ptr<rcs::common::JointPD>>(common, "JointPD")
+      .def(py::init<const rcs::common::VectorXd&, const rcs::common::VectorXd&,
+                    std::shared_ptr<rcs::common::JointInterpolator>>(),
+           py::arg("kp"), py::arg("kd"), py::arg("interpolator"));
+
+  py::class_<rcs::common::OSCConfig>(common, "OSCConfig")
+      .def(py::init<>())
+      .def_readwrite("kp_position", &rcs::common::OSCConfig::kp_position)
+      .def_readwrite("kp_orientation", &rcs::common::OSCConfig::kp_orientation)
+      .def_readwrite("kp_nullspace", &rcs::common::OSCConfig::kp_nullspace)
+      .def_readwrite("nullspace_q", &rcs::common::OSCConfig::nullspace_q);
+
+  py::class_<rcs::common::OSC, rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::OSC>>(common, "OSC")
+      .def(py::init<const rcs::common::OSCConfig&,
+                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)
