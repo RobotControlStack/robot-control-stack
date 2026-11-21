@@ -80,6 +80,11 @@ class RCSPandaConfigEnvCreator(RCSEnvCreator[PandaHardwareEnvCreatorConfig]):
         if cfg.hand_cfg is not None:
             hand = rcs.registry.HANDS.get(cfg.hand_cfg.hand_type.id)(cfg.hand_cfg)
             env = HandWrapper(env, hand, binary=cfg.wrapper_cfg.binary_gripper)
+        elif isinstance(cfg.gripper_cfg, hw.FHConfig):
+            # This extension's FHConfig is built from the fr3 sources, so its gripper type defaults to
+            # rcs_fr3's FrankaHand. Its hand is always the panda hand, whatever the type says.
+            gripper = create_panda_gripper(cfg.gripper_cfg)
+            env = GripperWrapper(env, gripper, binary=cfg.wrapper_cfg.binary_gripper)
         elif cfg.gripper_cfg is not None:
             gripper = rcs.registry.GRIPPERS.get(cfg.gripper_cfg.gripper_type.id)(cfg.gripper_cfg)
             env = GripperWrapper(env, gripper, binary=cfg.wrapper_cfg.binary_gripper)
