@@ -473,6 +473,8 @@ Args:
                            &rcs::common::GripperType::Robotiq2F85)
       .def_readonly_static("Robotiq2F85Digit",
                            &rcs::common::GripperType::Robotiq2F85Digit)
+      .def_readonly_static("Robotiq2F85UR",
+                           &rcs::common::GripperType::Robotiq2F85UR)
       .def_readonly_static("SO101", &rcs::common::GripperType::SO101)
       .def_readonly_static("Yam", &rcs::common::GripperType::Yam)
       .def_readonly_static("FlexivGrav", &rcs::common::GripperType::FlexivGrav);

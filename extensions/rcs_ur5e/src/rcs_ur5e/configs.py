@@ -1,4 +1,4 @@
-from rcs._core.common import GripperType, RobotType
+from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
 from rcs_ur5e.creators import RCSUR5eConfigEnvCreator, UR5eHardwareEnvCreatorConfig
 from rcs_ur5e.hw import RobotiQGripperConfig, UR5eConfig
@@ -29,10 +29,7 @@ class DefaultUR5eHardwareEnv(RCSUR5eConfigEnvCreator):
             tcp_offset=rcs.common.Pose(),
         )
 
-        gripper_cfg = RobotiQGripperConfig(
-            ip=self.ip,
-            gripper_type=GripperType.Robotiq2F85,
-        )
+        gripper_cfg = RobotiQGripperConfig(ip=self.ip)
 
         return UR5eHardwareEnvCreatorConfig(
             control_mode=ControlMode.CARTESIAN_TRPY,

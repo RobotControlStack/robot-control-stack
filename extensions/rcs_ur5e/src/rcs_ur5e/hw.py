@@ -64,7 +64,10 @@ class UR5eConfig(common.RobotConfig):
 
 
 class RobotiQGripperConfig(common.GripperConfig):
+    """Robotiq 2F-85 on the UR tool flange, driven through the UR controller (Robotiq URCap, port 63352)."""
+
     def __init__(self, ip: str, **kwargs: typing.Unpack[GripperConfigKwargs]) -> None:
+        kwargs.setdefault("gripper_type", common.GripperType.Robotiq2F85UR)
         super().__init__(**kwargs)
         self.ip = ip
 

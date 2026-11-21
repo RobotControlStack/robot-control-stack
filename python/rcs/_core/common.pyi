@@ -113,6 +113,7 @@ class GripperType:
     PandaHand: typing.ClassVar[GripperType]  # value = <GripperType: PandaHand>
     Robotiq2F85: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85>
     Robotiq2F85Digit: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85Digit>
+    Robotiq2F85UR: typing.ClassVar[GripperType]  # value = <GripperType: Robotiq2F85UR>
     SO101: typing.ClassVar[GripperType]  # value = <GripperType: SO101>
     Yam: typing.ClassVar[GripperType]  # value = <GripperType: Yam>
     @staticmethod

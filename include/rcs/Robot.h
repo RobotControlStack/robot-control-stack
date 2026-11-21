@@ -89,6 +89,7 @@ struct GripperType : public TypeBase<GripperType> {
   static const GripperType PandaHand;
   static const GripperType Robotiq2F85;
   static const GripperType Robotiq2F85Digit;
+  static const GripperType Robotiq2F85UR;
   static const GripperType SO101;
   static const GripperType Yam;
   static const GripperType FlexivGrav;
@@ -97,6 +98,9 @@ inline const GripperType GripperType::FrankaHand{"FrankaHand"};
 inline const GripperType GripperType::PandaHand{"PandaHand"};
 inline const GripperType GripperType::Robotiq2F85{"Robotiq2F85"};
 inline const GripperType GripperType::Robotiq2F85Digit{"Robotiq2F85Digit"};
+// Robotiq 2F-85 on a UR arm, driven through the robot controller (Robotiq
+// URCap)
+inline const GripperType GripperType::Robotiq2F85UR{"Robotiq2F85UR"};
 inline const GripperType GripperType::SO101{"SO101"};
 inline const GripperType GripperType::Yam{"Yam"};
 inline const GripperType GripperType::FlexivGrav{"FlexivGrav"};

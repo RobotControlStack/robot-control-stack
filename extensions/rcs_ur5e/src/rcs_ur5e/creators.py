@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass, field
 
 import gymnasium as gym
-from rcs._core.common import GripperConfig
+from rcs._core.common import Gripper, GripperConfig
 from rcs.camera.hw import HardwareCameraCreatorConfig, create_hardware_camera_set
 from rcs.envs.base import (
     CameraSetWrapper,
@@ -15,7 +15,7 @@ from rcs.envs.base import (
     RobotWrapper,
 )
 from rcs.envs.scenes import RCSEnvCreator, WrapperConfig
-from rcs_ur5e.hw import UR5e, UR5eConfig
+from rcs_ur5e.hw import RobotiQGripper, RobotiQGripperConfig, UR5e, UR5eConfig
 
 import rcs
 
@@ -23,11 +23,21 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def create_robotiq_gripper(cfg: GripperConfig) -> Gripper:
+    """Factory of the `Robotiq2F85UR` gripper type, the Robotiq 2F-85 driven through the UR controller."""
+    if not isinstance(cfg, RobotiQGripperConfig):
+        msg = f"Expected rcs_ur5e RobotiQGripperConfig for the UR robotiq gripper, got {type(cfg).__name__}"
+        raise TypeError(msg)
+    return RobotiQGripper(cfg)
+
+
 @dataclass(kw_only=True)
 class UR5eHardwareEnvCreatorConfig:
     robot_cfg: UR5eConfig
     control_mode: ControlMode
     gripper_cfg: GripperConfig | None = None
+    """None for no gripper, otherwise created through `rcs.registry.GRIPPERS` by its gripper type, e.g. a
+    `RobotiQGripperConfig` for the Robotiq 2F-85 driven through the UR controller (`Robotiq2F85UR`)."""
     camera_cfgs: dict[str, HardwareCameraCreatorConfig] | None = None
     max_relative_movement: float | tuple[float, float] | None = None
     relative_to: RelativeTo = RelativeTo.LAST_STEP
