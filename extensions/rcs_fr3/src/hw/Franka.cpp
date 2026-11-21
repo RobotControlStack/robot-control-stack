@@ -169,11 +169,13 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
     common::FR3JointControllerConfig config;
     config.kp = this->m_cfg.kp;
     config.kd = this->m_cfg.kd;
-    config.limits.torque_limit = this->m_cfg.torque_limit;
+    config.torque_limit = this->m_cfg.torque_limit;
     // a goal per policy step, interpolated over one policy period
     this->fr3_joint_controller = std::make_shared<common::FR3JointController>(
-        config, std::make_shared<common::LinearJointInterpolator>(
-                    1.0 / this->m_cfg.policy_rate));
+        config,
+        std::make_shared<common::LinearJointInterpolator>(
+            1.0 / this->m_cfg.policy_rate),
+        this->m_cfg.joint_limits);
     this->fr3_joint_controller->reset(
         this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::jsc) {
@@ -267,11 +269,13 @@ void Franka::osc_set_cartesian_position(
     common::FR3OSCConfig config;
     config.kp_position = this->m_cfg.kp_p;
     config.kp_orientation = this->m_cfg.kp_r;
-    config.limits.torque_limit = this->m_cfg.torque_limit;
+    config.torque_limit = this->m_cfg.torque_limit;
     // a goal per policy step, interpolated over one policy period
     this->fr3_osc = std::make_shared<common::FR3OSC>(
-        config, std::make_shared<common::LinearCartesianInterpolator>(
-                    1.0 / this->m_cfg.policy_rate));
+        config,
+        std::make_shared<common::LinearCartesianInterpolator>(
+            1.0 / this->m_cfg.policy_rate),
+        this->m_cfg.joint_limits);
     this->fr3_osc->reset(this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(

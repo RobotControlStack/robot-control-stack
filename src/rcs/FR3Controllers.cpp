@@ -28,20 +28,19 @@ Eigen::MatrixXd pseudo_inverse(const Eigen::MatrixXd& M,
   return svd.matrixV() * S_inv * svd.matrixU().transpose();
 }
 
-// The end of both control loops in Franka.cpp: no torque that pushes a joint
-// that is closer than 0.1 rad to its limit further, the torque rate limit,
-// and the per-joint torque clip.
-Vector7d safety_stage(Vector7d tau, const Vector7d& q,
-                      const FR3TorqueLimits& limits, Vector7d& last_tau) {
+// The end of both control loops in Franka.cpp, see FR3Controllers.h.
+Vector7d safety_stage(Vector7d tau, const Vector7d& q, const Vector7d& joint_min,
+                      const Vector7d& joint_max, const Vector7d& torque_limit,
+                      Vector7d& last_tau) {
   for (int i = 0; i < 7; i++) {
-    if (limits.joint_max[i] - q[i] < 0.1 && tau[i] > 0.) tau[i] = 0.;
-    if (q[i] - limits.joint_min[i] < 0.1 && tau[i] < 0.) tau[i] = 0.;
+    if (joint_max[i] - q[i] < 0.1 && tau[i] > 0.) tau[i] = 0.;
+    if (q[i] - joint_min[i] < 0.1 && tau[i] < 0.) tau[i] = 0.;
   }
   for (int i = 0; i < 7; i++) {
     tau[i] = last_tau[i] +
              std::clamp(tau[i] - last_tau[i], -kMaxTorqueStep, kMaxTorqueStep);
     tau[i] =
-        std::clamp(tau[i], -limits.torque_limit[i], limits.torque_limit[i]);
+        std::clamp(tau[i], -torque_limit[i], torque_limit[i]);
   }
   last_tau = tau;
   return tau;
@@ -53,12 +52,22 @@ void check_seven_joints(const ControllerState& state) {
   }
 }
 
+void check_joint_limits(const JointLimits& joint_limits) {
+  if (joint_limits.cols() != 7) {
+    throw std::invalid_argument("FR3 controllers need the limits of 7 joints");
+  }
+}
+
 }  // namespace
 
 FR3JointController::FR3JointController(
     const FR3JointControllerConfig& config,
-    std::shared_ptr<JointInterpolator> interpolator)
+    std::shared_ptr<JointInterpolator> interpolator,
+    const JointLimits& joint_limits)
     : config(config), interpolator(std::move(interpolator)) {
+  check_joint_limits(joint_limits);
+  this->joint_min = joint_limits.row(0).transpose();
+  this->joint_max = joint_limits.row(1).transpose();
   if (!this->interpolator) {
     throw std::invalid_argument("interpolator must not be null");
   }
@@ -84,12 +93,17 @@ VectorXd FR3JointController::step(const ControllerState& state) {
   Vector7d tau = this->config.kp.cwiseProduct(desired_q - q) -
                  this->config.kd.cwiseProduct(dq);
   tau += state.coriolis;
-  return safety_stage(tau, q, this->config.limits, this->last_tau);
+  return safety_stage(tau, q, this->joint_min, this->joint_max,
+                      this->config.torque_limit, this->last_tau);
 }
 
 FR3OSC::FR3OSC(const FR3OSCConfig& config,
-               std::shared_ptr<CartesianInterpolator> interpolator)
+               std::shared_ptr<CartesianInterpolator> interpolator,
+               const JointLimits& joint_limits)
     : config(config), interpolator(std::move(interpolator)) {
+  check_joint_limits(joint_limits);
+  this->joint_min = joint_limits.row(0).transpose();
+  this->joint_max = joint_limits.row(1).transpose();
   if (!this->interpolator) {
     throw std::invalid_argument("interpolator must not be null");
   }
@@ -165,8 +179,8 @@ VectorXd FR3OSC::step(const ControllerState& state) {
   // joint-limit avoidance in the null space
   Vector7d avoidance = Vector7d::Zero();
   for (int i = 0; i < 7; i++) {
-    double to_max = cfg.limits.joint_max[i] - q[i];
-    double to_min = q[i] - cfg.limits.joint_min[i];
+    double to_max = this->joint_max[i] - q[i];
+    double to_min = q[i] - this->joint_min[i];
     if (to_max < 0.25 && to_max > 0.1)
       avoidance[i] += -cfg.avoidance_weights[i] * to_max;
     if (to_min < 0.25 && to_min > 0.1)
@@ -175,7 +189,8 @@ VectorXd FR3OSC::step(const ControllerState& state) {
   tau += Nullspace * avoidance;
 
   tau += state.coriolis;
-  return safety_stage(tau, q, cfg.limits, this->last_tau);
+  return safety_stage(tau, q, this->joint_min, this->joint_max,
+                      cfg.torque_limit, this->last_tau);
 }
 
 }  // namespace common

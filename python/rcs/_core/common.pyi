@@ -19,7 +19,6 @@ __all__: list[str] = [
     "FR3JointControllerConfig",
     "FR3OSC",
     "FR3OSCConfig",
-    "FR3TorqueLimits",
     "FrankaHandTCPOffset",
     "GraspType",
     "Gripper",
@@ -101,21 +100,15 @@ class ControllerState:
 class FR3JointControllerConfig:
     kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    limits: FR3TorqueLimits
+    torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     def __init__(self) -> None: ...
 
 class FR3OSCConfig:
     avoidance_weights: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp_orientation: float
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
-    limits: FR3TorqueLimits
     nullspace_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     residual_mass: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    def __init__(self) -> None: ...
-
-class FR3TorqueLimits:
-    joint_max: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    joint_min: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     def __init__(self) -> None: ...
 
@@ -473,7 +466,12 @@ class RotVec:
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
 class FR3OSC(CartesianController):
-    def __init__(self, config: FR3OSCConfig, interpolator: CartesianInterpolator) -> None: ...
+    def __init__(
+        self,
+        config: FR3OSCConfig,
+        interpolator: CartesianInterpolator,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
+    ) -> None: ...
 
 class OSC(CartesianController):
     def __init__(self, config: OSCConfig, interpolator: CartesianInterpolator) -> None: ...
@@ -482,7 +480,12 @@ class LinearCartesianInterpolator(CartesianInterpolator):
     def __init__(self, duration: float) -> None: ...
 
 class FR3JointController(JointController):
-    def __init__(self, config: FR3JointControllerConfig, interpolator: JointInterpolator) -> None: ...
+    def __init__(
+        self,
+        config: FR3JointControllerConfig,
+        interpolator: JointInterpolator,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
+    ) -> None: ...
 
 class JointPD(JointController):
     def __init__(

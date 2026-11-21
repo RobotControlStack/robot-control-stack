@@ -534,26 +534,21 @@ Args:
                     std::shared_ptr<rcs::common::CartesianInterpolator>>(),
            py::arg("config"), py::arg("interpolator"));
 
-  py::class_<rcs::common::FR3TorqueLimits>(common, "FR3TorqueLimits")
-      .def(py::init<>())
-      .def_readwrite("joint_min", &rcs::common::FR3TorqueLimits::joint_min)
-      .def_readwrite("joint_max", &rcs::common::FR3TorqueLimits::joint_max)
-      .def_readwrite("torque_limit",
-                     &rcs::common::FR3TorqueLimits::torque_limit);
-
   py::class_<rcs::common::FR3JointControllerConfig>(common,
                                                     "FR3JointControllerConfig")
       .def(py::init<>())
       .def_readwrite("kp", &rcs::common::FR3JointControllerConfig::kp)
       .def_readwrite("kd", &rcs::common::FR3JointControllerConfig::kd)
-      .def_readwrite("limits", &rcs::common::FR3JointControllerConfig::limits);
+      .def_readwrite("torque_limit",
+                     &rcs::common::FR3JointControllerConfig::torque_limit);
 
   py::class_<rcs::common::FR3JointController, rcs::common::JointController,
              std::shared_ptr<rcs::common::FR3JointController>>(
       common, "FR3JointController")
       .def(py::init<const rcs::common::FR3JointControllerConfig&,
-                    std::shared_ptr<rcs::common::JointInterpolator>>(),
-           py::arg("config"), py::arg("interpolator"));
+                    std::shared_ptr<rcs::common::JointInterpolator>,
+                    const rcs::common::JointLimits&>(),
+           py::arg("config"), py::arg("interpolator"), py::arg("joint_limits"));
 
   py::class_<rcs::common::FR3OSCConfig>(common, "FR3OSCConfig")
       .def(py::init<>())
@@ -564,13 +559,15 @@ Args:
       .def_readwrite("residual_mass", &rcs::common::FR3OSCConfig::residual_mass)
       .def_readwrite("avoidance_weights",
                      &rcs::common::FR3OSCConfig::avoidance_weights)
-      .def_readwrite("limits", &rcs::common::FR3OSCConfig::limits);
+      .def_readwrite("torque_limit",
+                     &rcs::common::FR3OSCConfig::torque_limit);
 
   py::class_<rcs::common::FR3OSC, rcs::common::CartesianController,
              std::shared_ptr<rcs::common::FR3OSC>>(common, "FR3OSC")
       .def(py::init<const rcs::common::FR3OSCConfig&,
-                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
-           py::arg("config"), py::arg("interpolator"));
+                    std::shared_ptr<rcs::common::CartesianInterpolator>,
+                    const rcs::common::JointLimits&>(),
+           py::arg("config"), py::arg("interpolator"), py::arg("joint_limits"));
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)

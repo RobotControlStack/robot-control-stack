@@ -10,6 +10,7 @@ from rcs import common
 
 DT = 0.001
 Q0 = np.array([0.0, -0.8, 0.0, -2.4, 0.0, 1.6, 0.8])  # away from the joint limits
+JOINT_LIMITS = rcs.ROBOTS[common.RobotType.FR3].joint_limits
 
 
 @pytest.fixture
@@ -19,7 +20,9 @@ def dynamics() -> common.PinocchioDynamics:
 
 
 def joint_controller(state) -> common.FR3JointController:
-    controller = common.FR3JointController(common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05))
+    controller = common.FR3JointController(
+        common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05), JOINT_LIMITS
+    )
     controller.reset(state)
     return controller
 
@@ -28,7 +31,7 @@ def osc(state, **config) -> common.FR3OSC:
     cfg = common.FR3OSCConfig()
     for key, value in config.items():
         setattr(cfg, key, value)
-    controller = common.FR3OSC(cfg, common.LinearCartesianInterpolator(0.05))
+    controller = common.FR3OSC(cfg, common.LinearCartesianInterpolator(0.05), JOINT_LIMITS)
     controller.reset(state)
     return controller
 
@@ -62,13 +65,12 @@ def test_torque_is_clipped(dynamics):
     controller.set_goal(Q0 + 1.0, duration=DT)
     for _ in range(200):
         tau = controller.step(state)
-    np.testing.assert_allclose(np.abs(tau), common.FR3TorqueLimits().torque_limit)
+    np.testing.assert_allclose(np.abs(tau), common.FR3JointControllerConfig().torque_limit)
 
 
 def test_no_torque_towards_a_close_joint_limit(dynamics):
-    limits = common.FR3TorqueLimits()
     q = Q0.copy()
-    q[0] = limits.joint_max[0] - 0.05
+    q[0] = JOINT_LIMITS[1, 0] - 0.05
     state = dynamics.compute(q, np.zeros(7), DT)
     controller = joint_controller(state)
     controller.set_goal(q + 0.3, duration=DT)  # pulls joint 1 into the limit
@@ -76,6 +78,19 @@ def test_no_torque_towards_a_close_joint_limit(dynamics):
         tau = controller.step(state)
     assert tau[0] == 0.0
     assert tau[1] > 0.0
+
+
+def test_guard_uses_the_limits_of_the_robot(dynamics):
+    # the lower limit of joint 6 is 0.44 rad on the FR3 (-0.02 rad on the Panda)
+    q = Q0.copy()
+    q[5] = JOINT_LIMITS[0, 5] + 0.05
+    state = dynamics.compute(q, np.zeros(7), DT)
+    controller = joint_controller(state)
+    controller.set_goal(q - 0.3, duration=DT)  # pulls joint 6 into the limit
+    for _ in range(20):
+        tau = controller.step(state)
+    assert tau[5] == 0.0
+    assert tau[4] < 0.0
 
 
 def test_osc_holds_without_torque_at_its_posture(dynamics):
@@ -102,7 +117,9 @@ def test_fr3_controllers_in_sim(controller):
     setup = Setup()
     if controller == "joint":
         setup.robot.set_joint_controller(
-            common.FR3JointController(common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05))
+            common.FR3JointController(
+                common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05), JOINT_LIMITS
+            )
         )
         goal = setup.robot.get_joint_position() + np.array([0.1, -0.1, 0.1, 0.1, -0.1, 0.1, 0.2])
         setup.robot.set_joint_position(goal)
@@ -112,7 +129,7 @@ def test_fr3_controllers_in_sim(controller):
     else:
         q_home = setup.robot.get_joint_position()
         setup.robot.set_cartesian_controller(
-            common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05))
+            common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05), JOINT_LIMITS)
         )
         start = setup.robot.get_cartesian_position()
         goal = common.Pose(rotation=start.rotation_m(), translation=start.translation() + np.array([0.05, -0.05, 0.0]))
