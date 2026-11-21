@@ -72,11 +72,11 @@ class TestLinearJointInterpolator:
         assert np.allclose(run(interpolator, STEPS).q, self.start)
 
     def test_invalid_use_raises(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="duration"):
             common.LinearJointInterpolator(0.0)
         with pytest.raises(RuntimeError):
             common.LinearJointInterpolator(DURATION).set_goal(self.goal)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="number of joints"):
             self.make().set_goal(np.zeros(6))
 
 
@@ -132,7 +132,7 @@ class TestLinearCartesianInterpolator:
         assert run(interpolator, STEPS).pose.is_close(self.start)
 
     def test_invalid_use_raises(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="duration"):
             common.LinearCartesianInterpolator(-1.0)
         with pytest.raises(RuntimeError):
             common.LinearCartesianInterpolator(DURATION).step(DT)

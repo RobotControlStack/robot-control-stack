@@ -104,5 +104,5 @@ def test_rejects_wrong_sizes_and_unknown_frame():
         common.PinocchioDynamics(fr3_xml(), False, "no_such_frame")
     dynamics = common.PinocchioDynamics(fr3_xml(), False, FLANGE)
     assert dynamics.dof() == 7
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="q and dq"):
         dynamics.compute(np.zeros(6), np.zeros(6))

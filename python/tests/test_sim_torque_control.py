@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 from rcs.envs.configs import EmptyWorldFR3
 
-import rcs
 from rcs import common, sim
 
 TIMESTEP = 0.001
@@ -57,7 +56,7 @@ def test_sim_config_sets_the_timestep():
     assert setup.sim.model.opt.timestep == TIMESTEP
     setup.sim.set_config(sim.SimConfig(timestep=0.002))
     assert setup.sim.model.opt.timestep == 0.002
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="timestep"):
         setup.sim.set_config(sim.SimConfig(timestep=0.0))
 
 
@@ -89,7 +88,7 @@ def test_joint_pd_reaches_goal():
 
 
 @pytest.mark.parametrize(
-    "friction, max_error_m, max_error_deg",
+    ("friction", "max_error_m", "max_error_deg"),
     # joint friction (frictionloss in the MJCF) stops the arm short of the goal,
     # as on the real robot. Without it the position converges exactly; the
     # orientation keeps a small offset because the rotational stiffness at the

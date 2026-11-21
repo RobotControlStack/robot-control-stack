@@ -13,7 +13,7 @@ Q0 = np.array([0.0, -0.8, 0.0, -2.4, 0.0, 1.6, 0.8])  # away from the joint limi
 JOINT_LIMITS = rcs.ROBOTS[common.RobotType.FR3].joint_limits
 
 
-@pytest.fixture
+@pytest.fixture()
 def dynamics() -> common.PinocchioDynamics:
     path = str(rcs.ROBOTS[common.RobotType.FR3].mjcf_model_path)
     return common.PinocchioDynamics(path, False, "attachment_site", common.Pose(translation=np.array([0, 0, 0.1])))

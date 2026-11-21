@@ -29,9 +29,9 @@ Eigen::MatrixXd pseudo_inverse(const Eigen::MatrixXd& M,
 }
 
 // The end of both control loops in Franka.cpp, see FR3Controllers.h.
-Vector7d safety_stage(Vector7d tau, const Vector7d& q, const Vector7d& joint_min,
-                      const Vector7d& joint_max, const Vector7d& torque_limit,
-                      Vector7d& last_tau) {
+Vector7d safety_stage(Vector7d tau, const Vector7d& q,
+                      const Vector7d& joint_min, const Vector7d& joint_max,
+                      const Vector7d& torque_limit, Vector7d& last_tau) {
   for (int i = 0; i < 7; i++) {
     if (joint_max[i] - q[i] < 0.1 && tau[i] > 0.) tau[i] = 0.;
     if (q[i] - joint_min[i] < 0.1 && tau[i] < 0.) tau[i] = 0.;
@@ -39,8 +39,7 @@ Vector7d safety_stage(Vector7d tau, const Vector7d& q, const Vector7d& joint_min
   for (int i = 0; i < 7; i++) {
     tau[i] = last_tau[i] +
              std::clamp(tau[i] - last_tau[i], -kMaxTorqueStep, kMaxTorqueStep);
-    tau[i] =
-        std::clamp(tau[i], -torque_limit[i], torque_limit[i]);
+    tau[i] = std::clamp(tau[i], -torque_limit[i], torque_limit[i]);
   }
   last_tau = tau;
   return tau;

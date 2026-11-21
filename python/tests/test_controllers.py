@@ -10,7 +10,7 @@ DT = 0.001
 Q0 = np.array([0.0, -0.5, 0.0, -2.2, 0.0, 1.8, 0.8])
 
 
-@pytest.fixture
+@pytest.fixture()
 def dynamics() -> common.PinocchioDynamics:
     path = str(rcs.ROBOTS[common.RobotType.FR3].mjcf_model_path)
     return common.PinocchioDynamics(path, False, "attachment_site", common.Pose(translation=np.array([0, 0, 0.1])))
@@ -45,7 +45,7 @@ class TestJointPD:
         np.testing.assert_allclose(controller.step(state), expected, atol=1e-10)
 
     def test_rejects_mismatched_gains(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="same size"):
             common.JointPD(np.ones(7), np.ones(6), common.LinearJointInterpolator(0.05))
 
 

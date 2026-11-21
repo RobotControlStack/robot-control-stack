@@ -119,5 +119,5 @@ def test_no_way_back_to_native_control():
 
 
 def test_joint_pd_config_needs_gains():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="kp and kd"):
         configured(common.JointPDConfig(kp=np.array([]), kd=np.array([])))
