@@ -13,6 +13,7 @@ __all__: list[str] = [
     "BaseCameraConfig",
     "CartesianInterpolator",
     "CartesianSetpoint",
+    "ControllerState",
     "FrankaHandTCPOffset",
     "GraspType",
     "Gripper",
@@ -35,7 +36,9 @@ __all__: list[str] = [
     "LinearJointInterpolator",
     "POWER_GRASP",
     "PRECISION_GRASP",
+    "Payload",
     "Pin",
+    "PinocchioDynamics",
     "Pose",
     "RPY",
     "Robot",
@@ -68,6 +71,17 @@ class CartesianSetpoint:
     def pose(self) -> Pose: ...
     @property
     def twist(self) -> numpy.ndarray[tuple[typing.Literal[6]], numpy.dtype[numpy.float64]]: ...
+
+class ControllerState:
+    coriolis: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    dq: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    dt: float
+    gravity: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    jacobian: numpy.ndarray[tuple[typing.Literal[6], M], numpy.dtype[numpy.float64]]
+    mass: numpy.ndarray[tuple[M, M], numpy.dtype[numpy.float64]]
+    q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    tcp_pose: Pose
+    def __init__(self) -> None: ...
 
 class GraspType:
     """
@@ -192,6 +206,45 @@ class Kinematics:
     def inverse(
         self, pose: Pose, q0: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], tcp_offset: Pose = ...
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None: ...
+
+class Payload:
+    com: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
+    inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]
+    mass: float
+    @typing.overload
+    def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(
+        self,
+        mass: float,
+        com: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]],
+        inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]],
+    ) -> None: ...
+
+class PinocchioDynamics:
+    def __init__(self, model_path: str, urdf: bool, flange_frame: str, tcp_offset: Pose = ...) -> None:
+        """
+        Rigid-body dynamics of one arm, the same quantities as libfranka's franka::Model.
+
+        Args:
+            model_path: MJCF or URDF file containing only the arm, robot base at the model root.
+                Joint armature in the file is ignored.
+            urdf: Load ``model_path`` as URDF instead of MJCF.
+            flange_frame: Frame the payload and the TCP are attached to, e.g. the attachment site.
+            tcp_offset: TCP relative to the flange.
+        """
+
+    def compute(
+        self,
+        q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        dq: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        dt: float = 0.0,
+    ) -> ControllerState: ...
+    def dof(self) -> int: ...
+    def get_payload(self) -> Payload: ...
+    def set_gravity(self, gravity: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]) -> None: ...
+    def set_payload(self, payload: Payload) -> None: ...
+    def set_tcp_offset(self, tcp_offset: Pose) -> None: ...
 
 class Pose:
     def __getstate__(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(16)]: ...

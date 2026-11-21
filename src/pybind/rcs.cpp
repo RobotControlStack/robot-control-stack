@@ -15,6 +15,7 @@
 #include "rcs/Camera.h"
 #include "rcs/Kinematics.h"
 #include "rcs/LinearInterpolator.h"
+#include "rcs/PinocchioDynamics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -445,6 +446,56 @@ Args:
              std::shared_ptr<rcs::common::LinearCartesianInterpolator>>(
       common, "LinearCartesianInterpolator")
       .def(py::init<double>(), py::arg("duration"));
+
+  py::class_<rcs::common::ControllerState>(common, "ControllerState")
+      .def(py::init<>())
+      .def_readwrite("q", &rcs::common::ControllerState::q)
+      .def_readwrite("dq", &rcs::common::ControllerState::dq)
+      .def_readwrite("mass", &rcs::common::ControllerState::mass)
+      .def_readwrite("coriolis", &rcs::common::ControllerState::coriolis)
+      .def_readwrite("gravity", &rcs::common::ControllerState::gravity)
+      .def_readwrite("jacobian", &rcs::common::ControllerState::jacobian)
+      .def_readwrite("tcp_pose", &rcs::common::ControllerState::tcp_pose)
+      .def_readwrite("dt", &rcs::common::ControllerState::dt);
+
+  py::class_<rcs::common::Payload>(common, "Payload")
+      .def(py::init<>())
+      .def(py::init([](double mass, const Eigen::Vector3d& com,
+                       const Eigen::Matrix3d& inertia) {
+             return rcs::common::Payload{mass, com, inertia};
+           }),
+           py::arg("mass"), py::arg("com"), py::arg("inertia"))
+      .def_readwrite("mass", &rcs::common::Payload::mass)
+      .def_readwrite("com", &rcs::common::Payload::com)
+      .def_readwrite("inertia", &rcs::common::Payload::inertia);
+
+  py::class_<rcs::common::PinocchioDynamics,
+             std::shared_ptr<rcs::common::PinocchioDynamics>>(
+      common, "PinocchioDynamics")
+      .def(
+          py::init<const std::string&, bool, const std::string&,
+                   const rcs::common::Pose&>(),
+          R"doc(Rigid-body dynamics of one arm, the same quantities as libfranka's franka::Model.
+
+Args:
+    model_path: MJCF or URDF file containing only the arm, robot base at the model root.
+        Joint armature in the file is ignored.
+    urdf: Load ``model_path`` as URDF instead of MJCF.
+    flange_frame: Frame the payload and the TCP are attached to, e.g. the attachment site.
+    tcp_offset: TCP relative to the flange.
+)doc",
+          py::arg("model_path"), py::arg("urdf"), py::arg("flange_frame"),
+          py::arg("tcp_offset") = rcs::common::Pose::Identity())
+      .def("set_payload", &rcs::common::PinocchioDynamics::set_payload,
+           py::arg("payload"))
+      .def("get_payload", &rcs::common::PinocchioDynamics::get_payload)
+      .def("set_tcp_offset", &rcs::common::PinocchioDynamics::set_tcp_offset,
+           py::arg("tcp_offset"))
+      .def("set_gravity", &rcs::common::PinocchioDynamics::set_gravity,
+           py::arg("gravity"))
+      .def("dof", &rcs::common::PinocchioDynamics::dof)
+      .def("compute", &rcs::common::PinocchioDynamics::compute, py::arg("q"),
+           py::arg("dq"), py::arg("dt") = 0.0);
 
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)
