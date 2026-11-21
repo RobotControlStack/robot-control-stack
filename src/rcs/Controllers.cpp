@@ -59,46 +59,30 @@ VectorXd OSC::step(const ControllerState& state) {
   }
   CartesianSetpoint setpoint = this->interpolator->step(state.dt);
   const Eigen::Index n = state.q.size();
-  const auto Jp = state.jacobian.topRows<3>();
-  const auto Jo = state.jacobian.bottomRows<3>();
+  const auto& J = state.jacobian;
   const Eigen::MatrixXd M_inv =
       state.mass.ldlt().solve(Eigen::MatrixXd::Identity(n, n));
 
-  // desired task-space accelerations
-  Vector6d velocity = state.jacobian * state.dq;
-  Eigen::Vector3d kd_position = 2.0 * this->config.kp_position.cwiseSqrt();
-  Eigen::Vector3d kd_orientation =
-      2.0 * this->config.kp_orientation.cwiseSqrt();
-  Eigen::Vector3d position_error =
-      setpoint.pose.translation() - state.tcp_pose.translation();
-  Eigen::Vector3d rotation_error =
+  // desired TCP acceleration: critically damped spring to the setpoint
+  Vector6d kp;
+  kp << this->config.kp_position, this->config.kp_orientation;
+  Vector6d kd = 2.0 * kp.cwiseSqrt();
+  Vector6d error;
+  error << setpoint.pose.translation() - state.tcp_pose.translation(),
       rotation_between(state.tcp_pose.quaternion(), setpoint.pose.quaternion());
-  Eigen::Vector3d F_position =
-      this->config.kp_position.cwiseProduct(position_error) +
-      kd_position.cwiseProduct(setpoint.twist.head<3>() - velocity.head<3>());
-  Eigen::Vector3d F_orientation =
-      this->config.kp_orientation.cwiseProduct(rotation_error) +
-      kd_orientation.cwiseProduct(setpoint.twist.tail<3>() -
-                                  velocity.tail<3>());
+  Vector6d F =
+      kp.cwiseProduct(error) + kd.cwiseProduct(setpoint.twist - J * state.dq);
 
-  // decoupled task-space inertias
-  Eigen::Matrix3d L_position = (Jp * M_inv * Jp.transpose())
-                                   .completeOrthogonalDecomposition()
-                                   .pseudoInverse();
-  Eigen::Matrix3d L_orientation = (Jo * M_inv * Jo.transpose())
+  // task-space inertia
+  Eigen::Matrix<double, 6, 6> L = (J * M_inv * J.transpose())
                                       .completeOrthogonalDecomposition()
                                       .pseudoInverse();
-  VectorXd tau = Jp.transpose() * (L_position * F_position) +
-                 Jo.transpose() * (L_orientation * F_orientation);
+  VectorXd tau = J.transpose() * (L * F);
 
-  // posture task, projected into the null space of the TCP task
-  Eigen::Matrix<double, 6, 6> L =
-      (state.jacobian * M_inv * state.jacobian.transpose())
-          .completeOrthogonalDecomposition()
-          .pseudoInverse();
-  Eigen::MatrixXd J_bar = M_inv * state.jacobian.transpose() * L;
-  Eigen::MatrixXd N_transposed = Eigen::MatrixXd::Identity(n, n) -
-                                 state.jacobian.transpose() * J_bar.transpose();
+  // posture task, projected into the dynamically consistent null space
+  Eigen::MatrixXd J_bar = M_inv * J.transpose() * L;
+  Eigen::MatrixXd N_transposed =
+      Eigen::MatrixXd::Identity(n, n) - J.transpose() * J_bar.transpose();
   double kd_nullspace = 2.0 * std::sqrt(this->config.kp_nullspace);
   VectorXd tau_posture =
       state.mass * (this->config.kp_nullspace * (this->nullspace_q - state.q) -

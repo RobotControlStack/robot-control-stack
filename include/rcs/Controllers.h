@@ -39,12 +39,14 @@ struct OSCConfig {
   VectorXd nullspace_q;
 };
 
-// Operational-space control (Khatib), position and orientation decoupled,
-// critically damped (kd = 2 sqrt(kp)), with a posture task in the null space:
-//   F    = kp e + kd (v_d - v)                 for position and orientation
-//   tau  = Jp' Lp Fp + Jo' Lo Fo + N' tau_posture + coriolis
-// with Lp = (Jp M^-1 Jp')^-1, Lo likewise, and N the dynamically consistent
-// null-space projector of the full TCP Jacobian.
+// Operational-space control (Khatib), critically damped (kd = 2 sqrt(kp)),
+// with a posture task in the null space:
+//   F    = kp e + kd (v_d - v)          e: position and rotation error
+//   tau  = J' L F + N' tau_posture + coriolis
+// with the task-space inertia L = (J M^-1 J')^-1 and N the dynamically
+// consistent null-space projector. Position and orientation are coupled
+// through L, so the TCP follows the setpoint as a decoupled second-order
+// system when the model is exact.
 class OSC : public CartesianController {
  public:
   OSC(const OSCConfig& config,

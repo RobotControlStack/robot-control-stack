@@ -87,8 +87,7 @@ class TestOSC:
     def test_damps_tcp_velocity(self, dynamics):
         rest = dynamics.compute(Q0, np.zeros(7), DT)
         controller = self.make(rest)
-        # purely linear TCP motion: with position and orientation decoupled, an
-        # angular velocity error would also act on the linear acceleration
+        # purely linear TCP motion
         velocity = np.array([0.1, -0.05, 0.08, 0.0, 0.0, 0.0])
         dq = np.linalg.pinv(rest.jacobian) @ velocity
         state = dynamics.compute(Q0, dq, DT)
