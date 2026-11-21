@@ -783,6 +783,11 @@ Args:
           "kv", &rcs::sim::SimRobotConfig::kv,
           "Per-joint velocity gains; None uses the MuJoCo XML values")
       .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
+      .def_readwrite(
+          "payload", &rcs::sim::SimRobotConfig::payload,
+          "Tool as configured on the real robot, used for gravity "
+          "compensation under torque control; None uses the MJCF bodies "
+          "after the flange")
       .def_readwrite("dof", &rcs::sim::SimRobotConfig::dof)
       .def_readwrite("joint_limits", &rcs::sim::SimRobotConfig::joint_limits)
       .def("__copy__",
@@ -800,6 +805,7 @@ Args:
       .def_readonly("previous_angles",
                     &rcs::sim::SimRobotState::previous_angles)
       .def_readonly("target_angles", &rcs::sim::SimRobotState::target_angles)
+      .def_readonly("target_pose", &rcs::sim::SimRobotState::target_pose)
       .def_readonly("inverse_tcp_offset",
                     &rcs::sim::SimRobotState::inverse_tcp_offset)
       .def_readonly("ik_success", &rcs::sim::SimRobotState::ik_success)
@@ -1002,7 +1008,14 @@ Args:
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("clear_collision_flag", &rcs::sim::SimRobot::clear_collision_flag)
-      .def("get_state", &rcs::sim::SimRobot::get_state);
+      .def("get_state", &rcs::sim::SimRobot::get_state)
+      .def("set_dynamics", &rcs::sim::SimRobot::set_dynamics,
+           py::arg("dynamics"))
+      .def("set_joint_controller", &rcs::sim::SimRobot::set_joint_controller,
+           py::arg("controller"))
+      .def("set_cartesian_controller",
+           &rcs::sim::SimRobot::set_cartesian_controller, py::arg("controller"))
+      .def("get_simulated_payload", &rcs::sim::SimRobot::get_simulated_payload);
 
   // SimTilburgHandState
   py::class_<rcs::sim::SimTilburgHandState, rcs::common::HandState>(

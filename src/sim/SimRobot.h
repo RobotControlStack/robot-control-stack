@@ -1,7 +1,9 @@
 #ifndef RCS_SIMROBOT_H
 #define RCS_SIMROBOT_H
 #include <mujoco/mujoco.h>
+#include <rcs/Controller.h>
 #include <rcs/Kinematics.h>
+#include <rcs/PinocchioDynamics.h>
 #include <rcs/Pose.h>
 #include <rcs/Robot.h>
 #include <rcs/utils.h>
@@ -34,6 +36,10 @@ struct SimRobotConfig : common::RobotConfig {
   std::optional<std::vector<double>> kp;
   std::optional<std::vector<double>> kv;
   std::string base = "base";
+  // Tool as configured on the real robot (for Franka: the end effector set in
+  // Desk), used for gravity compensation and the dynamics in torque control.
+  // None: the MJCF bodies attached after the flange.
+  std::optional<common::Payload> payload;
 
   void add_prefix(const std::string& id) {
     for (auto& s : this->arm_collision_geoms) {
@@ -53,6 +59,7 @@ struct SimRobotConfig : common::RobotConfig {
 struct SimRobotState : common::RobotState {
   common::VectorXd previous_angles;
   common::VectorXd target_angles;
+  common::Pose target_pose;
   common::Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
@@ -82,6 +89,19 @@ class SimRobot : public common::Robot {
   void clear_collision_flag();
   void close() override {};
 
+  // Torque control with the shared controllers, see
+  // docs/development/controller_interface.md. set_dynamics() must come first.
+  // Installing a controller switches the arm to torque control for good and
+  // makes it hold the current configuration.
+  void set_dynamics(std::shared_ptr<common::PinocchioDynamics> dynamics);
+  void set_joint_controller(
+      std::shared_ptr<common::JointController> controller);
+  void set_cartesian_controller(
+      std::shared_ptr<common::CartesianController> controller);
+  // The MJCF bodies attached after the flange, as a payload in the flange
+  // frame.
+  common::Payload get_simulated_payload();
+
  private:
   SimRobotConfig cfg;
   SimRobotState state;
@@ -94,6 +114,17 @@ class SimRobot : public common::Robot {
     std::vector<int> actuators;
     int base;
   } ids;
+  enum class ControlMode { native, joint, cartesian };
+  ControlMode control_mode = ControlMode::native;
+  bool torque_control = false;
+  std::shared_ptr<common::PinocchioDynamics> dynamics;
+  std::shared_ptr<common::JointController> joint_controller;
+  std::shared_ptr<common::CartesianController> cartesian_controller;
+  void configure_dynamics();
+  void enable_torque_control();
+  void activate(ControlMode mode);
+  common::ControllerState controller_state(double dt);
+  void control_step(double dt);
   void is_moving_callback();
   void is_arrived_callback();
   bool collision_callback();

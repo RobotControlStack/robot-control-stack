@@ -193,9 +193,12 @@ class PinocchioDynamics {
 
 ### MuJoCo (`SimRobot`)
 
-- New: `set_joint_controller(shared_ptr<JointController>)` and
+- New: `set_dynamics(shared_ptr<PinocchioDynamics>)`, then
+  `set_joint_controller(shared_ptr<JointController>)` and/or
   `set_cartesian_controller(shared_ptr<CartesianController>)`. Without a
   controller, `SimRobot` behaves exactly as today (native MuJoCo PD).
+  Installing a controller switches the arm to torque control for good and
+  makes it hold its current configuration.
 - With a controller installed:
   - On install, the arm actuators are switched to torque mode at runtime, the
     same way `set_config` already rewrites `gainprm`/`biasprm` (gain 1,
@@ -213,7 +216,10 @@ class PinocchioDynamics {
     `set_joints_hard()` reset the controller and recompute `ctrl`, so no step
     runs with a torque from an old state.
   - State: `q`/`dq` from the robot's joints, then
-    `PinocchioDynamics::compute()`.
+    `PinocchioDynamics::compute()`. Gravity is set in the robot base frame
+    from the base orientation in the world, because arms can be mounted
+    tilted (the right arm of our duo is tilted by about 52°, as fitted from
+    its logged torques).
   - Payload: from the sim robot config, set to the values configured on the
     real robot. If none is configured, it defaults to the MJCF bodies
     attached after the flange (summed mass, centre of mass and inertia),
@@ -226,8 +232,11 @@ class PinocchioDynamics {
     robot.
   - `set_joint_position(q)` goes to the joint controller if one is installed.
     `set_cartesian_position(pose)` goes to the Cartesian controller if one is
-    installed, otherwise IK and the joint path as today. Switching between
-    the two calls `reset()` on the newly active controller.
+    installed, otherwise IK and the joint path as today. With only a
+    Cartesian controller, `set_joint_position(q)` moves the TCP to the pose
+    that `q` gives. Switching between the two calls `reset()` on the newly
+    active controller. `kp`/`kv` in the config are rejected under torque
+    control.
   - The convergence callback (`step_until_convergence`) compares the TCP pose
     instead of joint angles while a Cartesian controller is active.
 
