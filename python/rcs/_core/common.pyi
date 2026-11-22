@@ -659,9 +659,15 @@ class RotVec:
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
 class SafetyConfig:
-    joint_limit_margin: float
+    deceleration: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    limit_damping: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     max_torque_rate: float
+    max_velocity: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    spring_range: float
+    spring_torque: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    velocity_margin: float
+    velocity_offset: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     def __copy__(self) -> typing.Any: ...
     def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     @typing.overload
@@ -669,7 +675,13 @@ class SafetyConfig:
         self,
         torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
         max_torque_rate: float = ...,
-        joint_limit_margin: float = 0.1,
+        max_velocity: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        deceleration: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        velocity_offset: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        limit_damping: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        velocity_margin: float = 0.8,
+        spring_torque: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        spring_range: float = 0.05,
     ) -> None: ...
     @typing.overload
     def __init__(self, other: SafetyConfig) -> None:

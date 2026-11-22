@@ -73,29 +73,37 @@ def test_torque_is_clipped(dynamics):
     np.testing.assert_allclose(np.abs(tau), SAFETY.torque_limit)
 
 
-def test_no_torque_towards_a_close_joint_limit(dynamics):
+def test_soft_end_stop_in_front_of_the_fr3_limits(dynamics):
+    # joint 6 (lower limit 0.44 rad on the FR3, -0.02 rad on the Panda) inside the spring zone in front of its
+    # zero-velocity point: holding there, the stage pushes the joint away from the limit
+    d0 = SAFETY.velocity_offset[5] ** 2 / (2 * SAFETY.deceleration[5])
     q = Q0.copy()
-    q[0] = JOINT_LIMITS[1, 0] - 0.05
+    q[5] = JOINT_LIMITS[0, 5] + d0 + 0.5 * SAFETY.spring_range
     state = dynamics.compute(q, np.zeros(7), DT)
     controller = joint_controller(state)
-    controller.set_goal(q + 0.3, duration=DT)  # pulls joint 1 into the limit
-    for _ in range(20):
+    for _ in range(20):  # let the rate limit settle
         tau = controller.step(state)
-    assert tau[0] == 0.0
-    assert tau[1] > 0.0
+    np.testing.assert_allclose(tau[5], 0.5 * SAFETY.spring_torque[5], rtol=1e-6)
+    np.testing.assert_allclose(tau[[0, 1, 2, 3, 4, 6]], 0.0, atol=1e-6)
 
 
-def test_guard_uses_the_limits_of_the_robot(dynamics):
-    # the lower limit of joint 6 is 0.44 rad on the FR3 (-0.02 rad on the Panda)
+def test_fast_approach_to_an_fr3_limit_is_braked(dynamics):
+    # joint 1 moving at 1 rad/s towards its upper limit, 0.1 rad away: allowed there are 80% of 0.44 rad/s
     q = Q0.copy()
-    q[5] = JOINT_LIMITS[0, 5] + 0.05
-    state = dynamics.compute(q, np.zeros(7), DT)
-    controller = joint_controller(state)
-    controller.set_goal(q - 0.3, duration=DT)  # pulls joint 6 into the limit
-    for _ in range(20):
-        tau = controller.step(state)
-    assert tau[5] == 0.0
-    assert tau[4] < 0.0
+    q[0] = JOINT_LIMITS[1, 0] - 0.1
+    dq = np.zeros(7)
+    dq[0] = 1.0
+    state = dynamics.compute(q, dq, DT)
+    allowed = 0.8 * (np.sqrt(2 * SAFETY.deceleration[0] * 0.1) - SAFETY.velocity_offset[0])
+    stage = common.SafetyStage(SAFETY, JOINT_LIMITS, DT)
+    stage.reset(state)
+    for _ in range(100):  # let the rate limit (1 Nm per step) settle
+        tau = stage.apply(np.zeros(7), state)
+    np.testing.assert_allclose(tau[0], -SAFETY.limit_damping[0] * (1.0 - allowed), rtol=1e-6)
+    # moving away from the limit is not braked
+    state = dynamics.compute(q, -dq, DT)
+    stage.reset(state)
+    assert np.all(stage.apply(np.zeros(7), state) == 0.0)
 
 
 def test_osc_holds_without_torque_at_its_posture(dynamics):

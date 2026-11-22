@@ -56,12 +56,39 @@ def test_reset_starts_from_zero_torque():
     np.testing.assert_allclose(s.apply(np.full(3, 5.0), state()), 1.0)
 
 
-def test_no_torque_towards_a_close_joint_limit():
-    near = state(q=(0.95, -0.95, 0.0))  # 0.05 rad from the upper and the lower limit
-    tau = stage().apply(np.array([1.0, -1.0, 1.0]), near)
-    np.testing.assert_allclose(tau, [0.0, 0.0, 1.0])
-    # away from the limit is allowed
-    np.testing.assert_allclose(stage().apply(np.array([-1.0, 1.0, 1.0]), near), [-1.0, 1.0, 1.0])
+def test_spring_pushes_back_in_front_of_a_limit():
+    s = stage(spring_torque=np.full(3, 2.0), spring_range=0.1)
+    # 0.05 rad from the upper and the lower limit: half way into the spring zone
+    np.testing.assert_allclose(s.apply(np.zeros(3), state(q=(0.95, -0.95, 0.0))), [-1.0, 1.0, 0.0])
+    # outside the zone nothing, at and beyond the limit the full torque
+    np.testing.assert_allclose(
+        stage(spring_torque=np.full(3, 2.0), spring_range=0.1).apply(np.zeros(3), state(q=(0.85, 1.0, 1.2))),
+        [0.0, -2.0, -2.0],
+    )
+
+
+def test_spring_sits_in_front_of_the_zero_velocity_point():
+    # v(d) = sqrt(2 * 2 * d) - 0.2 is zero at d0 = 0.01 rad
+    curve = {"max_velocity": np.full(3, 2.0), "deceleration": np.full(3, 2.0), "velocity_offset": np.full(3, 0.2)}
+    s = stage(spring_torque=np.full(3, 2.0), spring_range=0.1, **curve)
+    np.testing.assert_allclose(s.apply(np.zeros(3), state(q=(1.0 - 0.01 - 0.05, 0.0, 0.0))), [-1.0, 0.0, 0.0])
+
+
+def test_damper_brakes_only_a_too_fast_approach():
+    curve = {"max_velocity": np.full(3, 2.0), "deceleration": np.full(3, 2.0), "limit_damping": np.full(3, 10.0)}
+    near = state(q=(0.9, -0.9, 0.0))  # 0.1 rad from the upper / the lower limit: allowed 0.8 * sqrt(0.4)
+    allowed = 0.8 * np.sqrt(0.4)
+    near.dq = np.array([1.0, -1.0, 1.0])  # towards both limits, joint 3 far from any limit
+    np.testing.assert_allclose(stage(**curve).apply(np.zeros(3), near), [-10 * (1 - allowed), 10 * (1 - allowed), 0.0])
+    near.dq = np.array([0.3, -0.3, 0.0])  # slow enough
+    np.testing.assert_allclose(stage(**curve).apply(np.zeros(3), near), 0.0)
+    near.dq = np.array([-1.0, 1.0, 0.0])  # away from the limits
+    np.testing.assert_allclose(stage(**curve).apply(np.zeros(3), near), 0.0)
+
+
+def test_damper_needs_the_velocity_curve():
+    with pytest.raises(ValueError, match="max_velocity and deceleration"):
+        common.SafetyStage(common.SafetyConfig(limit_damping=np.ones(3)), LIMITS, DT)
 
 
 def test_torque_limit_needs_one_entry_per_joint():
@@ -100,3 +127,24 @@ def test_robot_config_safety_wraps_the_configured_controller():
     setup.robot.set_joint_position(setup.robot.get_joint_position() + 0.5)
     setup.run(0.1)
     assert np.max(np.abs(controller_torque(setup))) <= 2.0 + 0.05
+
+
+@pytest.mark.parametrize("seconds", [4.0, 0.5])
+def test_fr3_guard_stops_joint_4_in_front_of_its_limit(seconds):
+    # a joint goal 0.15 rad beyond the lower limit of joint 4, streamed slowly or fast at 20 Hz: the joint stops in
+    # front of the limit (the FR3's zero-velocity point is 0.016 rad in front of it) and never reaches it
+    setup = configured(common.JointPDConfig(kp=KP, kd=KD))  # the scene sets the FR3 safety stage
+    lower = setup.robot.get_config().joint_limits[0, 3]
+    q0 = np.array(setup.robot.get_joint_position())
+    goal = q0.copy()
+    goal[3] = lower - 0.15
+    steps = int(seconds / 0.05)
+    closest = np.inf
+    for k in range(steps + 40):
+        setup.robot.set_joint_position(q0 + (goal - q0) * min(1.0, (k + 1) / steps))
+        for _ in range(50):
+            setup.sim.step(1)
+            closest = min(closest, setup.robot.get_joint_position()[3] - lower)
+    rest = setup.robot.get_joint_position()[3] - lower
+    assert closest > 0.01
+    assert 0.016 < rest < 0.05

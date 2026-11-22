@@ -584,19 +584,40 @@ Args:
   rcs::common::SafetyConfig default_safety_config;
   py::class_<rcs::common::SafetyConfig>(common, "SafetyConfig")
       .def(py::init([](const rcs::common::VectorXd& torque_limit,
-                       double max_torque_rate, double joint_limit_margin) {
-             return rcs::common::SafetyConfig{torque_limit, max_torque_rate,
-                                              joint_limit_margin};
+                       double max_torque_rate,
+                       const rcs::common::VectorXd& max_velocity,
+                       const rcs::common::VectorXd& deceleration,
+                       const rcs::common::VectorXd& velocity_offset,
+                       const rcs::common::VectorXd& limit_damping,
+                       double velocity_margin,
+                       const rcs::common::VectorXd& spring_torque,
+                       double spring_range) {
+             return rcs::common::SafetyConfig{
+                 torque_limit,    max_torque_rate, max_velocity,
+                 deceleration,    velocity_offset, limit_damping,
+                 velocity_margin, spring_torque,   spring_range};
            }),
            py::arg("torque_limit") = default_safety_config.torque_limit,
            py::arg("max_torque_rate") = default_safety_config.max_torque_rate,
-           py::arg("joint_limit_margin") =
-               default_safety_config.joint_limit_margin)
+           py::arg("max_velocity") = default_safety_config.max_velocity,
+           py::arg("deceleration") = default_safety_config.deceleration,
+           py::arg("velocity_offset") = default_safety_config.velocity_offset,
+           py::arg("limit_damping") = default_safety_config.limit_damping,
+           py::arg("velocity_margin") = default_safety_config.velocity_margin,
+           py::arg("spring_torque") = default_safety_config.spring_torque,
+           py::arg("spring_range") = default_safety_config.spring_range)
       .def_readwrite("torque_limit", &rcs::common::SafetyConfig::torque_limit)
       .def_readwrite("max_torque_rate",
                      &rcs::common::SafetyConfig::max_torque_rate)
-      .def_readwrite("joint_limit_margin",
-                     &rcs::common::SafetyConfig::joint_limit_margin);
+      .def_readwrite("max_velocity", &rcs::common::SafetyConfig::max_velocity)
+      .def_readwrite("deceleration", &rcs::common::SafetyConfig::deceleration)
+      .def_readwrite("velocity_offset",
+                     &rcs::common::SafetyConfig::velocity_offset)
+      .def_readwrite("limit_damping", &rcs::common::SafetyConfig::limit_damping)
+      .def_readwrite("velocity_margin",
+                     &rcs::common::SafetyConfig::velocity_margin)
+      .def_readwrite("spring_torque", &rcs::common::SafetyConfig::spring_torque)
+      .def_readwrite("spring_range", &rcs::common::SafetyConfig::spring_range);
 
   py::class_<rcs::common::SafetyStage>(common, "SafetyStage")
       .def(py::init<const rcs::common::SafetyConfig&,

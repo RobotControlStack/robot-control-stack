@@ -1,7 +1,9 @@
 #include "rcs/SafetyStage.h"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace rcs {
@@ -13,10 +15,26 @@ SafetyStage::SafetyStage(const SafetyConfig& config,
   if (!(timestep > 0.0)) {
     throw std::invalid_argument("timestep must be positive");
   }
-  if (config.torque_limit.size() != 0 &&
-      config.torque_limit.size() != joint_limits.cols()) {
+  const Eigen::Index n = joint_limits.cols();
+  for (const auto& [name, v] : {std::pair<const char*, const VectorXd&>{
+                                    "torque_limit", config.torque_limit},
+                                {"max_velocity", config.max_velocity},
+                                {"deceleration", config.deceleration},
+                                {"velocity_offset", config.velocity_offset},
+                                {"limit_damping", config.limit_damping},
+                                {"spring_torque", config.spring_torque}}) {
+    if (v.size() != 0 && v.size() != n) {
+      throw std::invalid_argument(std::string(name) +
+                                  " needs one entry per joint of joint_limits");
+    }
+  }
+  if (config.limit_damping.size() != 0 &&
+      (config.max_velocity.size() == 0 || config.deceleration.size() == 0)) {
     throw std::invalid_argument(
-        "torque_limit needs one entry per joint of joint_limits");
+        "limit_damping needs max_velocity and deceleration");
+  }
+  if (config.spring_torque.size() != 0 && !(config.spring_range > 0.0)) {
+    throw std::invalid_argument("spring_range must be positive");
   }
 }
 
@@ -33,13 +51,42 @@ VectorXd SafetyStage::apply(const VectorXd& tau_in,
     throw std::logic_error("call reset() before apply()");
   }
   VectorXd tau = tau_in;
-  const double margin = this->config.joint_limit_margin;
   const double max_step = this->config.max_torque_rate * this->timestep;
+  const SafetyConfig& c = this->config;
   for (Eigen::Index i = 0; i < tau.size(); i++) {
-    if (this->joint_limits(1, i) - state.q[i] < margin && tau[i] > 0.)
-      tau[i] = 0.;
-    if (state.q[i] - this->joint_limits(0, i) < margin && tau[i] < 0.)
-      tau[i] = 0.;
+    const double offset = c.velocity_offset.size() ? c.velocity_offset[i] : 0.0;
+    // distances to the upper and the lower limit
+    const double d_upper = this->joint_limits(1, i) - state.q[i];
+    const double d_lower = state.q[i] - this->joint_limits(0, i);
+    if (c.limit_damping.size()) {
+      auto allowed = [&](double d) {
+        return c.velocity_margin *
+               std::min(c.max_velocity[i],
+                        std::max(0.0, std::sqrt(2.0 * c.deceleration[i] *
+                                                std::max(d, 0.0)) -
+                                          offset));
+      };
+      const double towards_upper = state.dq[i] - allowed(d_upper);
+      const double towards_lower = -state.dq[i] - allowed(d_lower);
+      if (towards_upper > 0.0) tau[i] -= c.limit_damping[i] * towards_upper;
+      if (towards_lower > 0.0) tau[i] += c.limit_damping[i] * towards_lower;
+    }
+    if (c.spring_torque.size()) {
+      const double d0 = c.deceleration.size() && c.deceleration[i] > 0.0
+                            ? offset * offset / (2.0 * c.deceleration[i])
+                            : 0.0;
+      // how deep the joint is in the zone in front of the zero-velocity point
+      auto depth = [&](double d) {
+        return std::clamp((c.spring_range - (d - d0)) / c.spring_range, 0.0,
+                          1.0);
+      };
+      // the controller's torque towards the limit fades out over the zone, so
+      // that the spring always wins at the zero-velocity point
+      if (tau_in[i] > 0.0) tau[i] -= tau_in[i] * depth(d_upper);
+      if (tau_in[i] < 0.0) tau[i] -= tau_in[i] * depth(d_lower);
+      tau[i] -= c.spring_torque[i] * depth(d_upper);
+      tau[i] += c.spring_torque[i] * depth(d_lower);
+    }
   }
   for (Eigen::Index i = 0; i < tau.size(); i++) {
     tau[i] = this->last_tau[i] +

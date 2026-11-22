@@ -19,13 +19,36 @@ struct SafetyConfig {
   VectorXd torque_limit;
   // per-joint torque rate limit in Nm/s (franka::limitRate on the FR3)
   double max_torque_rate = std::numeric_limits<double>::infinity();
-  // no torque that pushes a joint closer than this to its limit (rad)
-  double joint_limit_margin = 0.1;
+
+  // Joint-limit guard, in joint space, per joint (an empty vector switches
+  // that part off). The velocity allowed towards a limit at distance d is
+  //   v(d) = min(max_velocity, max(0, sqrt(2 deceleration d) -
+  //   velocity_offset))
+  // as Franka's position based velocity limits (the robot's URDF has the
+  // parameters); velocity_offset empty means 0, the plain sqrt(2 a d). v is
+  // zero at d0 = velocity_offset^2 / (2 deceleration), the zero-velocity
+  // point in front of the limit.
+  VectorXd max_velocity;
+  VectorXd deceleration;
+  VectorXd velocity_offset;
+  // damper: damping (Nm s/rad) on the velocity towards a limit above
+  // velocity_margin * v(d); slower motion and motion away from a limit are
+  // not affected
+  VectorXd limit_damping;
+  double velocity_margin = 0.8;
+  // spring: torque away from a limit, growing from 0 at spring_range (rad) in
+  // front of the zero-velocity point to spring_torque (Nm) at it; over the
+  // same zone the controller's torque towards the limit fades out to 0, so
+  // that no controller can push a joint past the zero-velocity point
+  VectorXd spring_torque;
+  double spring_range = 0.05;
 };
 
-// The safety stage of Franka.cpp, for any robot and controller. In this order:
-// 1. joint-limit guard: a joint closer than joint_limit_margin to a limit gets
-//    no torque towards it,
+// Limits on the torques of any robot and controller. In this order:
+// 1. joint-limit guard (see SafetyConfig): the damper slows a joint that
+//    approaches a limit faster than allowed there; in a small zone in front of
+//    the limit the controller's torque towards it fades out and a spring
+//    pushes back, like a soft end stop,
 // 2. rate limit: each joint torque changes by at most
 //    max_torque_rate * timestep from the previous output per step (starting
 //    from zero after reset). timestep is the nominal period of the control
