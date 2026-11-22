@@ -477,8 +477,7 @@ class RobotWrapper(ActObsInfoWrapper):
         q_home = np.array(cfg.q_home, copy=True)
         home = ik.forward(q_home, cfg.end_effector.tcp_offset)
         low, high = np.asarray(cfg.joint_limits)
-        # stay out of the joint-limit guard of the safety stage, and at least 0.05 rad from a limit
-        margin = max(cfg.safety.joint_limit_margin if cfg.safety is not None else 0.0, 0.05)
+        margin = np.maximum(self._guard_zone(cfg), 0.05)
         for _ in range(attempts):
             rng = self._home_rng if self._home_rng is not None else self.np_random
             n = rng.uniform(-self.home_noise, self.home_noise)
@@ -495,6 +494,18 @@ class RobotWrapper(ActObsInfoWrapper):
                 return np.asarray(q)
         _logger.warning("no reachable noisy home pose after %d samples, moving to the plain home pose", attempts)
         return None
+
+    @staticmethod
+    def _guard_zone(cfg: common.RobotConfig) -> np.ndarray:
+        """Per joint, how far in front of a limit the joint-limit guard of the safety stage starts (the spring zone in
+        front of the zero-velocity point), 0 without a guard."""
+        safety = cfg.safety
+        if safety is None or len(safety.spring_torque) == 0:
+            return np.zeros(cfg.dof)
+        d0 = np.zeros(cfg.dof)
+        if len(safety.deceleration) and len(safety.velocity_offset):
+            d0 = np.asarray(safety.velocity_offset) ** 2 / (2 * np.asarray(safety.deceleration))
+        return d0 + safety.spring_range
 
     @contextlib.contextmanager
     def _home_override(self, q: np.ndarray | None):
