@@ -48,3 +48,17 @@ def test_sim_robot_needs_a_joint_and_actuator_per_dof():
 def test_platform_is_set_by_the_config_class():
     assert sim.SimRobotConfig().robot_platform == common.RobotPlatform.SIMULATION
 
+
+def test_fr3_config_takes_its_values_from_rcs_robots():
+    hw = pytest.importorskip("rcs_fr3.hw")
+    meta = rcs.ROBOTS[common.RobotType.FR3]
+    cfg = hw.FR3Config(ip="192.168.1.11", async_control=True, policy_rate=15)
+    assert cfg.robot_type == common.RobotType.FR3
+    assert cfg.robot_platform == common.RobotPlatform.HARDWARE
+    assert cfg.dof == meta.dof
+    np.testing.assert_array_equal(cfg.joint_limits, meta.joint_limits)
+    assert cfg.ip == "192.168.1.11"
+    assert cfg.async_control
+    assert cfg.policy_rate == 15
+    with pytest.raises(TypeError, match="no field"):
+        hw.FR3Config(ip="192.168.1.11", asynch_control=True)  # typo

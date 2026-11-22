@@ -3,7 +3,7 @@ import copy
 import numpy as np
 from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_panda._core import hw
+from rcs_panda import hw
 from rcs_panda.creators import (
     PandaHardwareEnvCreatorConfig,
     PandaMultiHardwareEnvCreatorConfig,
@@ -19,7 +19,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
     ip = "192.168.4.100"
 
     def config(self) -> PandaHardwareEnvCreatorConfig:
-        robot_cfg = rcs.ROBOTS[RobotType.Panda].apply(hw.PandaConfig(ip=self.ip))
+        robot_cfg = hw.PandaConfig(ip=self.ip)
         robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
         robot_cfg.speed_factor = 0.1
         robot_cfg.ik_solver = hw.IKSolver.rcs_ik

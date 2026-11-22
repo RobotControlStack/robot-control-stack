@@ -3,7 +3,7 @@ from typing import Any, SupportsFloat, cast
 
 import gymnasium as gym
 from rcs._core.common import RobotPlatform
-from rcs_panda._core import hw
+from rcs_panda import hw
 
 _logger = logging.getLogger(__name__)
 

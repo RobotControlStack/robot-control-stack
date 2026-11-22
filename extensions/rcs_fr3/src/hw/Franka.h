@@ -90,9 +90,6 @@ struct FrankaConfig : common::RobotConfig {
   // robot (in Python with rcs.ROBOTS[robot_type].apply(cfg))
 };
 
-struct FR3Config : FrankaConfig {};
-struct PandaConfig : FrankaConfig {};
-
 struct FrankaState : common::RobotState {
   franka::RobotState robot_state;
 };

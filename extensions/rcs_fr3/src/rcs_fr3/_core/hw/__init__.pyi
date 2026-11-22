@@ -15,14 +15,12 @@ from . import exceptions
 __all__: list[str] = [
     "FHConfig",
     "FHState",
-    "FR3Config",
     "Franka",
     "FrankaConfig",
     "FrankaHand",
     "FrankaLoad",
     "FrankaState",
     "IKSolver",
-    "PandaConfig",
     "RobotMode",
     "RobotState",
     "exceptions",
@@ -125,6 +123,7 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     timestep: float
     torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
+    def __init__(self) -> None: ...
 
 class FrankaHand(rcs._core.common.Gripper):
     def __init__(self, cfg: FHConfig) -> None: ...
@@ -304,48 +303,6 @@ class RobotState:
     def tau_ext_hat_filtered(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
     @property
     def theta(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
-
-class FR3Config(FrankaConfig):
-    def __init__(
-        self,
-        ip: str,
-        ik_solver: IKSolver = ...,
-        speed_factor: float = 0.2,
-        kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
-        kp_r: float = 250.0,
-        load_parameters: FrankaLoad | None = None,
-        world_to_robot: rcs._core.common.Pose | None = None,
-        async_control: bool = False,
-        ignore_realtime: bool = False,
-        tcp_offset: rcs._core.common.Pose = ...,
-        attachment_site: str = "",
-        kinematic_model_path: str = "",
-        torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        allow_high_collision: bool = False,
-    ) -> None: ...
-
-class PandaConfig(FrankaConfig):
-    def __init__(
-        self,
-        ip: str,
-        ik_solver: IKSolver = ...,
-        speed_factor: float = 0.2,
-        kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] = ...,
-        kp_r: float = 250.0,
-        load_parameters: FrankaLoad | None = None,
-        world_to_robot: rcs._core.common.Pose | None = None,
-        async_control: bool = False,
-        ignore_realtime: bool = False,
-        tcp_offset: rcs._core.common.Pose = ...,
-        attachment_site: str = "",
-        kinematic_model_path: str = "",
-        torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
-        allow_high_collision: bool = False,
-    ) -> None: ...
 
 class FrankaState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...

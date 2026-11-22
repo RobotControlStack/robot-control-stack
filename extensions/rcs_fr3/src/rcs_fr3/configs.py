@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_fr3._core import hw
+from rcs_fr3 import hw
 from rcs_fr3.creators import (
     FR3HardwareEnvCreatorConfig,
     FR3MultiHardwareEnvCreatorConfig,
@@ -19,7 +19,6 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
     ip = "192.168.101.1"
 
     def config(self) -> FR3HardwareEnvCreatorConfig:
-        fr3 = rcs.ROBOTS[common.RobotType.FR3]
         robot_cfg = hw.FR3Config(
             ip=self.ip,
             ik_solver=hw.IKSolver.rcs_ik,
@@ -28,7 +27,6 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
             ignore_realtime=False,
             tcp_offset=common.Pose(common.FrankaHandTCPOffset()),
         )
-        fr3.apply(robot_cfg)
 
         gripper_cfg = hw.FHConfig(
             ip=self.ip,

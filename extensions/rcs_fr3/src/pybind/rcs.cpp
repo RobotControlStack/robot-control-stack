@@ -126,6 +126,9 @@ PYBIND11_MODULE(_core, m) {
   py::object robot_config =
       (py::object)py::module_::import("rcs").attr("common").attr("RobotConfig");
   py::class_<rcs::hw::FrankaConfig>(hw, "FrankaConfig", robot_config)
+      // the robot specific subclasses (FR3Config, PandaConfig) are defined in
+      // Python, they fill in the values from rcs.ROBOTS
+      .def(py::init<>())
       .def_readwrite("ik_solver", &rcs::hw::FrankaConfig::ik_solver)
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
       .def_readwrite("policy_rate", &rcs::hw::FrankaConfig::policy_rate)
@@ -160,109 +163,6 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::hw::FrankaConfig::approach_rotation_speed)
       .def_readwrite("ignore_realtime", &rcs::hw::FrankaConfig::ignore_realtime)
       .def_readwrite("ip", &rcs::hw::FrankaConfig::ip);
-
-  rcs::hw::FR3Config default_fr3_config;
-  py::class_<rcs::hw::FR3Config, rcs::hw::FrankaConfig>(hw, "FR3Config")
-      .def(
-          py::init([](const std::string& ip, rcs::hw::IKSolver ik_solver,
-                      double speed_factor, const rcs::common::Vector7d& kp,
-                      const rcs::common::Vector7d& kd,
-                      const Eigen::Vector3d& kp_p, double kp_r,
-                      std::optional<rcs::hw::FrankaLoad> load_parameters,
-                      std::optional<rcs::common::Pose> world_to_robot,
-                      bool async_control, bool ignore_realtime,
-                      rcs::common::Pose tcp_offset, std::string attachment_site,
-                      std::string kinematic_model_path,
-                      const rcs::common::Vector7d& torque_limit,
-                      bool allow_high_collision) {
-            rcs::hw::FR3Config cfg;
-            cfg.ik_solver = ik_solver;
-            cfg.speed_factor = speed_factor;
-            cfg.kp = kp;
-            cfg.kd = kd;
-            cfg.torque_limit = torque_limit;
-            cfg.allow_high_collision = allow_high_collision;
-            cfg.kp_p = kp_p;
-            cfg.kp_r = kp_r;
-            cfg.load_parameters = load_parameters;
-            cfg.world_to_robot = world_to_robot;
-            cfg.async_control = async_control;
-            cfg.ignore_realtime = ignore_realtime;
-            cfg.ip = ip;
-            cfg.tcp_offset = tcp_offset;
-            cfg.tcp_offset_explicit = true;
-            cfg.attachment_site = attachment_site;
-            cfg.kinematic_model_path = kinematic_model_path;
-            return cfg;
-          }),
-          py::arg("ip"), py::arg("ik_solver") = default_fr3_config.ik_solver,
-          py::arg("speed_factor") = default_fr3_config.speed_factor,
-          py::arg("kp") = default_fr3_config.kp,
-          py::arg("kd") = default_fr3_config.kd,
-          py::arg("kp_p") = default_fr3_config.kp_p,
-          py::arg("kp_r") = default_fr3_config.kp_r,
-          py::arg("load_parameters") = default_fr3_config.load_parameters,
-          py::arg("world_to_robot") = default_fr3_config.world_to_robot,
-          py::arg("async_control") = default_fr3_config.async_control,
-          py::arg("ignore_realtime") = default_fr3_config.ignore_realtime,
-          py::arg("tcp_offset") = default_fr3_config.tcp_offset,
-          py::arg("attachment_site") = default_fr3_config.attachment_site,
-          py::arg("kinematic_model_path") =
-              default_fr3_config.kinematic_model_path,
-          py::arg("torque_limit") = default_fr3_config.torque_limit,
-          py::arg("allow_high_collision") =
-              default_fr3_config.allow_high_collision);
-  rcs::hw::PandaConfig default_panda_config;
-  py::class_<rcs::hw::PandaConfig, rcs::hw::FrankaConfig>(hw, "PandaConfig")
-      .def(
-          py::init([](const std::string& ip, rcs::hw::IKSolver ik_solver,
-                      double speed_factor, const rcs::common::Vector7d& kp,
-                      const rcs::common::Vector7d& kd,
-                      const Eigen::Vector3d& kp_p, double kp_r,
-                      std::optional<rcs::hw::FrankaLoad> load_parameters,
-                      std::optional<rcs::common::Pose> world_to_robot,
-                      bool async_control, bool ignore_realtime,
-                      rcs::common::Pose tcp_offset, std::string attachment_site,
-                      std::string kinematic_model_path,
-                      const rcs::common::Vector7d& torque_limit,
-                      bool allow_high_collision) {
-            rcs::hw::PandaConfig cfg;
-            cfg.ik_solver = ik_solver;
-            cfg.speed_factor = speed_factor;
-            cfg.kp = kp;
-            cfg.kd = kd;
-            cfg.torque_limit = torque_limit;
-            cfg.allow_high_collision = allow_high_collision;
-            cfg.kp_p = kp_p;
-            cfg.kp_r = kp_r;
-            cfg.load_parameters = load_parameters;
-            cfg.world_to_robot = world_to_robot;
-            cfg.async_control = async_control;
-            cfg.ignore_realtime = ignore_realtime;
-            cfg.ip = ip;
-            cfg.tcp_offset = tcp_offset;
-            cfg.tcp_offset_explicit = true;
-            cfg.attachment_site = attachment_site;
-            cfg.kinematic_model_path = kinematic_model_path;
-            return cfg;
-          }),
-          py::arg("ip"), py::arg("ik_solver") = default_panda_config.ik_solver,
-          py::arg("speed_factor") = default_panda_config.speed_factor,
-          py::arg("kp") = default_panda_config.kp,
-          py::arg("kd") = default_panda_config.kd,
-          py::arg("kp_p") = default_panda_config.kp_p,
-          py::arg("kp_r") = default_panda_config.kp_r,
-          py::arg("load_parameters") = default_panda_config.load_parameters,
-          py::arg("world_to_robot") = default_panda_config.world_to_robot,
-          py::arg("async_control") = default_panda_config.async_control,
-          py::arg("ignore_realtime") = default_panda_config.ignore_realtime,
-          py::arg("tcp_offset") = default_panda_config.tcp_offset,
-          py::arg("attachment_site") = default_panda_config.attachment_site,
-          py::arg("kinematic_model_path") =
-              default_panda_config.kinematic_model_path,
-          py::arg("torque_limit") = default_panda_config.torque_limit,
-          py::arg("allow_high_collision") =
-              default_panda_config.allow_high_collision);
 
   py::object gripper_config =
       (py::object)py::module_::import("rcs").attr("common").attr(
