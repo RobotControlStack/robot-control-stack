@@ -1,5 +1,6 @@
-"""The FR3 controllers ported from Franka.cpp: control laws, safety stage, and
-their use in the torque-controlled sim."""
+"""The FR3 controllers ported from Franka.cpp: control laws, with the FR3's
+safety stage (from rcs.ROBOTS) as on the robot, and their use in the
+torque-controlled sim."""
 
 import numpy as np
 import pytest
@@ -11,6 +12,8 @@ from rcs import common
 DT = 0.001
 Q0 = np.array([0.0, -0.8, 0.0, -2.4, 0.0, 1.6, 0.8])  # away from the joint limits
 JOINT_LIMITS = rcs.ROBOTS[common.RobotType.FR3].joint_limits
+# the FR3's safety stage, as RobotConfig.safety gets it from rcs.ROBOTS
+SAFETY = rcs.ROBOTS[common.RobotType.FR3].apply(common.RobotConfig()).safety
 
 
 @pytest.fixture()
@@ -19,19 +22,21 @@ def dynamics() -> common.PinocchioDynamics:
     return common.PinocchioDynamics(path, False, "attachment_site", common.Pose(translation=np.array([0, 0, 0.1])))
 
 
-def joint_controller(state) -> common.FR3JointController:
-    controller = common.FR3JointController(
-        common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05), JOINT_LIMITS
-    )
+def joint_controller(state, safety=True) -> common.JointController:
+    controller = common.FR3JointController(common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05))
+    if safety:
+        controller = common.SafeJointController(controller, SAFETY, JOINT_LIMITS, DT)
     controller.reset(state)
     return controller
 
 
-def osc(state, **config) -> common.FR3OSC:
+def osc(state, safety=True, **config) -> common.CartesianController:
     cfg = common.FR3OSCConfig()
     for key, value in config.items():
         setattr(cfg, key, value)
     controller = common.FR3OSC(cfg, common.LinearCartesianInterpolator(0.05), JOINT_LIMITS)
+    if safety:
+        controller = common.SafeCartesianController(controller, SAFETY, JOINT_LIMITS, DT)
     controller.reset(state)
     return controller
 
@@ -65,7 +70,7 @@ def test_torque_is_clipped(dynamics):
     controller.set_goal(Q0 + 1.0, duration=DT)
     for _ in range(200):
         tau = controller.step(state)
-    np.testing.assert_allclose(np.abs(tau), common.FR3JointControllerConfig().torque_limit)
+    np.testing.assert_allclose(np.abs(tau), SAFETY.torque_limit)
 
 
 def test_no_torque_towards_a_close_joint_limit(dynamics):
@@ -117,8 +122,11 @@ def test_fr3_controllers_in_sim(controller):
     setup = Setup()
     if controller == "joint":
         setup.robot.set_joint_controller(
-            common.FR3JointController(
-                common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05), JOINT_LIMITS
+            common.SafeJointController(
+                common.FR3JointController(common.FR3JointControllerConfig(), common.LinearJointInterpolator(0.05)),
+                SAFETY,
+                JOINT_LIMITS,
+                DT,
             )
         )
         goal = setup.robot.get_joint_position() + np.array([0.1, -0.1, 0.1, 0.1, -0.1, 0.1, 0.2])
@@ -129,7 +137,12 @@ def test_fr3_controllers_in_sim(controller):
     else:
         q_home = setup.robot.get_joint_position()
         setup.robot.set_cartesian_controller(
-            common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05), JOINT_LIMITS)
+            common.SafeCartesianController(
+                common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05), JOINT_LIMITS),
+                SAFETY,
+                JOINT_LIMITS,
+                DT,
+            )
         )
         start = setup.robot.get_cartesian_position()
         goal = common.Pose(rotation=start.rotation_m(), translation=start.translation() + np.array([0.05, -0.05, 0.0]))

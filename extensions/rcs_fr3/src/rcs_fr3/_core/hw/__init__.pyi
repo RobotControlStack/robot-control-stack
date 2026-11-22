@@ -121,7 +121,6 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     tcp_offset: rcs._core.common.Pose
     tcp_offset_explicit: bool
     timestep: float
-    torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     world_to_robot: rcs._core.common.Pose | None
     def __init__(self) -> None: ...
 

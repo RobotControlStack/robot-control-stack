@@ -1,7 +1,6 @@
 #include "rcs/FR3Controllers.h"
 
 #include <Eigen/Dense>
-#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -9,10 +8,6 @@ namespace rcs {
 namespace common {
 
 namespace {
-
-// franka::limitRate with franka::kMaxTorqueRate: at most (1000 - 1e-3) Nm/s
-// per joint, for the fixed 1 ms cycle libfranka assumes.
-constexpr double kMaxTorqueStep = (1000.0 - 1e-3) * 1e-3;
 
 // PInverse from Franka.cpp: SVD pseudo-inverse, singular values below
 // epsilon are dropped.
@@ -26,23 +21,6 @@ Eigen::MatrixXd pseudo_inverse(const Eigen::MatrixXd& M,
     S_inv(i, i) = s < epsilon ? 0.0 : 1.0 / s;
   }
   return svd.matrixV() * S_inv * svd.matrixU().transpose();
-}
-
-// The end of both control loops in Franka.cpp, see FR3Controllers.h.
-Vector7d safety_stage(Vector7d tau, const Vector7d& q,
-                      const Vector7d& joint_min, const Vector7d& joint_max,
-                      const Vector7d& torque_limit, Vector7d& last_tau) {
-  for (int i = 0; i < 7; i++) {
-    if (joint_max[i] - q[i] < 0.1 && tau[i] > 0.) tau[i] = 0.;
-    if (q[i] - joint_min[i] < 0.1 && tau[i] < 0.) tau[i] = 0.;
-  }
-  for (int i = 0; i < 7; i++) {
-    tau[i] = last_tau[i] +
-             std::clamp(tau[i] - last_tau[i], -kMaxTorqueStep, kMaxTorqueStep);
-    tau[i] = std::clamp(tau[i], -torque_limit[i], torque_limit[i]);
-  }
-  last_tau = tau;
-  return tau;
 }
 
 void check_seven_joints(const ControllerState& state) {
@@ -61,12 +39,8 @@ void check_joint_limits(const JointLimits& joint_limits) {
 
 FR3JointController::FR3JointController(
     const FR3JointControllerConfig& config,
-    std::shared_ptr<JointInterpolator> interpolator,
-    const JointLimits& joint_limits)
+    std::shared_ptr<JointInterpolator> interpolator)
     : config(config), interpolator(std::move(interpolator)) {
-  check_joint_limits(joint_limits);
-  this->joint_min = joint_limits.row(0).transpose();
-  this->joint_max = joint_limits.row(1).transpose();
   if (!this->interpolator) {
     throw std::invalid_argument("interpolator must not be null");
   }
@@ -75,7 +49,6 @@ FR3JointController::FR3JointController(
 void FR3JointController::reset(const ControllerState& state) {
   check_seven_joints(state);
   this->interpolator->reset(state.q);
-  this->last_tau.setZero();
 }
 
 void FR3JointController::set_goal(const VectorXd& q_goal,
@@ -92,8 +65,7 @@ VectorXd FR3JointController::step(const ControllerState& state) {
   Vector7d tau = this->config.kp.cwiseProduct(desired_q - q) -
                  this->config.kd.cwiseProduct(dq);
   tau += state.coriolis;
-  return safety_stage(tau, q, this->joint_min, this->joint_max,
-                      this->config.torque_limit, this->last_tau);
+  return tau;
 }
 
 FR3OSC::FR3OSC(const FR3OSCConfig& config,
@@ -111,7 +83,6 @@ FR3OSC::FR3OSC(const FR3OSCConfig& config,
 void FR3OSC::reset(const ControllerState& state) {
   check_seven_joints(state);
   this->interpolator->reset(state.tcp_pose);
-  this->last_tau.setZero();
 }
 
 void FR3OSC::set_goal(const Pose& pose_goal, std::optional<double> duration) {
@@ -188,8 +159,7 @@ VectorXd FR3OSC::step(const ControllerState& state) {
   tau += Nullspace * avoidance;
 
   tau += state.coriolis;
-  return safety_stage(tau, q, this->joint_min, this->joint_max,
-                      cfg.torque_limit, this->last_tau);
+  return tau;
 }
 
 }  // namespace common

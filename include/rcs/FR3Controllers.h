@@ -21,29 +21,23 @@ namespace common {
 // - Dynamics come from the ControllerState (PinocchioDynamics) instead of
 //   franka::Model, which computes the same quantities.
 
-// Safety stage shared by both controllers, applied after the control law: no
-// torque that pushes a joint closer than 0.1 rad to its limit further, the
-// torque rate limit and the per-joint torque clip. The joint limits are those
-// of the robot (RobotConfig::joint_limits, lower limits in the first row),
-// passed to the constructors.
+// - The safety stage at the end of both loops (joint-limit guard, torque rate
+//   limit, torque clip) is not part of the controllers, it is the SafetyStage
+//   that RobotConfig::safety adds to any controller (see SafetyStage.h).
 
 struct FR3JointControllerConfig {
   Vector7d kp =
       (Vector7d() << 100.0, 100.0, 100.0, 100.0, 75.0, 150.0, 50.0).finished();
   Vector7d kd =
       (Vector7d() << 20.0, 20.0, 20.0, 20.0, 7.5, 15.0, 5.0).finished();
-  // per-joint torque clip, FrankaConfig::torque_limit
-  Vector7d torque_limit =
-      (Vector7d() << 87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0).finished();
 };
 
-// Joint impedance: tau = kp (q_d - q) - kd dq + coriolis, then the safety
-// stage. Note: no setpoint velocity feed-forward, as on the robot.
+// Joint impedance: tau = kp (q_d - q) - kd dq + coriolis. Note: no setpoint
+// velocity feed-forward, as on the robot.
 class FR3JointController : public JointController {
  public:
   FR3JointController(const FR3JointControllerConfig& config,
-                     std::shared_ptr<JointInterpolator> interpolator,
-                     const JointLimits& joint_limits);
+                     std::shared_ptr<JointInterpolator> interpolator);
   void reset(const ControllerState& state) override;
   void set_goal(const VectorXd& q_goal,
                 std::optional<double> duration = std::nullopt) override;
@@ -52,8 +46,6 @@ class FR3JointController : public JointController {
  private:
   FR3JointControllerConfig config;
   std::shared_ptr<JointInterpolator> interpolator;
-  Vector7d joint_min, joint_max;
-  Vector7d last_tau = Vector7d::Zero();
 };
 
 struct FR3OSCConfig {
@@ -71,15 +63,13 @@ struct FR3OSCConfig {
   // null-space push away from joints that are 0.1 to 0.25 rad from a limit
   Vector7d avoidance_weights =
       (Vector7d() << 1.0, 1.0, 1.0, 1.0, 1.0, 10.0, 10.0).finished();
-  // per-joint torque clip, FrankaConfig::torque_limit
-  Vector7d torque_limit =
-      (Vector7d() << 87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0).finished();
 };
 
 // Decoupled operational-space control as on the FR3 (deoxys): separate
 // position and orientation task inertias, damping on the TCP velocity only,
 // orientation error from the quaternion vector part, small errors cut off,
-// posture and joint-limit avoidance in the null space, then the safety stage.
+// posture and joint-limit avoidance in the null space. The joint limits are
+// the robot's (RobotConfig::joint_limits), for the avoidance.
 class FR3OSC : public CartesianController {
  public:
   FR3OSC(const FR3OSCConfig& config,
@@ -94,7 +84,6 @@ class FR3OSC : public CartesianController {
   FR3OSCConfig config;
   std::shared_ptr<CartesianInterpolator> interpolator;
   Vector7d joint_min, joint_max;
-  Vector7d last_tau = Vector7d::Zero();
 };
 
 }  // namespace common

@@ -46,17 +46,15 @@ struct FrankaConfig : common::RobotConfig {
   // period of the control loop in seconds; libfranka runs it at 1 kHz, so
   // anything else is rejected
   double timestep = 0.001;
-  // The gains and torque limit below are for the default controllers, used
-  // when RobotConfig::controller is not set. A configured controller needs
-  // async_control.
+  // The gains below are for the default controllers, used when
+  // RobotConfig::controller is not set. A configured controller needs
+  // async_control. Async (torque) control needs RobotConfig::safety, the torque
+  // limits come from there.
   // values from deoxys/config/joint-impedance-controller.yml
   common::Vector7d kp =
       (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
   common::Vector7d kd =
       (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
-  // FR3/Panda joint torque limits (Nm) from the Franka robot specification
-  common::Vector7d torque_limit =
-      (common::Vector7d() << 87., 87., 87., 87., 12., 12., 12.).finished();
   bool allow_high_collision = false;
   // values from deoxys/config/osc-position-controller.yml
   Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();

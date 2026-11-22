@@ -28,8 +28,8 @@ ControllerPair make_controller(const ControllerConfig& config,
   } else if (auto* c = std::get_if<OSCConfig>(&config)) {
     controller.cartesian = std::make_shared<OSC>(*c, cartesian_interpolator());
   } else if (auto* c = std::get_if<FR3JointControllerConfig>(&config)) {
-    controller.joint = std::make_shared<FR3JointController>(
-        *c, joint_interpolator(), joint_limits);
+    controller.joint =
+        std::make_shared<FR3JointController>(*c, joint_interpolator());
   } else if (auto* c = std::get_if<FR3OSCConfig>(&config)) {
     controller.cartesian =
         std::make_shared<FR3OSC>(*c, cartesian_interpolator(), joint_limits);

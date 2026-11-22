@@ -62,3 +62,13 @@ def test_fr3_config_takes_its_values_from_rcs_robots():
     assert cfg.policy_rate == 15
     with pytest.raises(TypeError, match="no field"):
         hw.FR3Config(ip="192.168.1.11", asynch_control=True)  # typo
+
+
+def test_apply_sets_the_safety_stage_of_the_franka_robots_only():
+    for robot_type in rcs.ROBOTS:
+        safety = rcs.ROBOTS[robot_type].apply(sim.SimRobotConfig()).safety
+        if robot_type in (common.RobotType.FR3, common.RobotType.Panda):
+            np.testing.assert_allclose(safety.torque_limit, [87.0] * 4 + [12.0] * 3)
+            assert safety.max_torque_rate == pytest.approx(1000.0 - 1e-3)
+        else:
+            assert safety is None

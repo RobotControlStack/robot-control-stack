@@ -135,9 +135,13 @@ class RobotMetaConfig:
     """hard joint limits of this robot, shape (2, N)"""
     attachment_site: str = "attachment_site"
     """mjcf site to use for IK"""
+    torque_limit: np.ndarray | None = None
+    """joint torque limits in Nm for the safety stage of torque controllers, shape (N,), None: no safety stage"""
+    max_torque_rate: float = float("inf")
+    """joint torque rate limit in Nm/s for the safety stage"""
 
     def apply(self, cfg: common.RobotConfig) -> common.RobotConfig:
-        """Sets the robot specific fields of cfg (type, model, IK site, dof, joint limits, home pose).
+        """Sets the robot specific fields of cfg (type, model, IK site, dof, joint limits, home pose, safety).
 
         The C++ configs leave them empty, so that the values live only here. Returns cfg.
         """
@@ -147,6 +151,11 @@ class RobotMetaConfig:
         cfg.dof = self.dof
         cfg.joint_limits = self.joint_limits.copy()
         cfg.q_home = self.q_home.copy()
+        cfg.safety = (
+            common.SafetyConfig(torque_limit=self.torque_limit.copy(), max_torque_rate=self.max_torque_rate)
+            if self.torque_limit is not None
+            else None
+        )
         return cfg
 
 
@@ -162,6 +171,9 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
                 [2.9007, 1.8361, 2.9007, -0.1169, 2.8763, 4.6216, 3.0508],
             ]
         ),
+        # Franka robot specification; the rate limit is franka::limitRate (kMaxTorqueRate - kLimitEps)
+        torque_limit=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]),
+        max_torque_rate=1000.0 - 1e-3,
     ),
     common.RobotType.Panda: RobotMetaConfig(
         robot_type=common.RobotType.Panda,
@@ -190,6 +202,9 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
                 ],
             ]
         ),
+        # Franka robot specification; the rate limit is franka::limitRate (kMaxTorqueRate - kLimitEps)
+        torque_limit=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]),
+        max_torque_rate=1000.0 - 1e-3,
     ),
     common.RobotType.XArm7: RobotMetaConfig(
         robot_type=common.RobotType.XArm7,

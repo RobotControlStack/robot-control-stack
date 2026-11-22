@@ -135,7 +135,6 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("timestep", &rcs::hw::FrankaConfig::timestep)
       .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
       .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
-      .def_readwrite("torque_limit", &rcs::hw::FrankaConfig::torque_limit)
       .def_readwrite("allow_high_collision",
                      &rcs::hw::FrankaConfig::allow_high_collision)
       .def_readwrite("kp_p", &rcs::hw::FrankaConfig::kp_p)

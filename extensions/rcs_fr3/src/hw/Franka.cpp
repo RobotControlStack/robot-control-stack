@@ -39,6 +39,12 @@ void check_config(const FrankaConfig& cfg) {
   if (cfg.controller.has_value() && !cfg.async_control) {
     throw std::invalid_argument("a configured controller needs async_control");
   }
+  // async control runs a torque controller, never without the safety stage
+  if (cfg.async_control && !cfg.safety.has_value()) {
+    throw std::invalid_argument(
+        "async_control needs safety (torque limits), FR3Config and "
+        "PandaConfig set it from rcs.ROBOTS");
+  }
 }
 }  // namespace
 
@@ -397,13 +403,11 @@ common::ControllerPair Franka::make_torque_controller(bool cartesian) {
     common::FR3OSCConfig osc;
     osc.kp_position = this->m_cfg.kp_p;
     osc.kp_orientation = this->m_cfg.kp_r;
-    osc.torque_limit = this->m_cfg.torque_limit;
     config = osc;
   } else {
     common::FR3JointControllerConfig joint;
     joint.kp = this->m_cfg.kp;
     joint.kd = this->m_cfg.kd;
-    joint.torque_limit = this->m_cfg.torque_limit;
     config = joint;
   }
   // a goal per policy step, interpolated over one policy period

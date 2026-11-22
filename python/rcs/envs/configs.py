@@ -33,10 +33,7 @@ class EmptyWorldFR3(SimEnvCreator):
         q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
         q_home[-1] = np.pi / 4
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
-            robot_type=RobotType.FR3,
             tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.FrankaHand],
-            attachment_site=rcs.ROBOTS[RobotType.FR3].attachment_site,
-            kinematic_model_path=rcs.ROBOTS[RobotType.FR3].mjcf_model_path,
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,
             trajectory_trace=False,
@@ -69,10 +66,10 @@ class EmptyWorldFR3(SimEnvCreator):
                 "fr3_joint7",
             ],
             base="base",
-            dof=rcs.ROBOTS[RobotType.FR3].dof,
-            joint_limits=rcs.ROBOTS[RobotType.FR3].joint_limits,
-            q_home=q_home,
         )
+        # type, model, dof, limits and the safety stage of torque control
+        rcs.ROBOTS[RobotType.FR3].apply(robot_cfg)
+        robot_cfg.q_home = q_home
 
         robot_cfgs: dict[str, SimRobotConfig] = {self.robot_prefix_template: robot_cfg}
         sim_cfg: SimConfig = SimConfig(async_control=False, realtime=True, frequency=1, max_convergence_steps=1000)
@@ -275,9 +272,6 @@ class EmptyWorldFR3Duo(SimEnvCreator):
     def config(self) -> SimEnvCreatorConfig:
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
             tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85],
-            robot_type=RobotType.FR3,
-            attachment_site=rcs.ROBOTS[RobotType.FR3].attachment_site,
-            kinematic_model_path=rcs.ROBOTS[RobotType.FR3].mjcf_model_path,
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,
             trajectory_trace=False,
@@ -310,10 +304,10 @@ class EmptyWorldFR3Duo(SimEnvCreator):
                 "fr3_joint7",
             ],
             base="base",
-            dof=rcs.ROBOTS[RobotType.FR3].dof,
-            joint_limits=rcs.ROBOTS[RobotType.FR3].joint_limits,
-            q_home=rcs.HOME_POSITIONS["FR3_DUO_LEFT"],
         )
+        # type, model, dof, limits and the safety stage of torque control
+        rcs.ROBOTS[RobotType.FR3].apply(robot_cfg)
+        robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DUO_LEFT"]
         robot_cfg_right: SimRobotConfig[Literal[7]] = copy.deepcopy(robot_cfg)
         robot_cfg_right.q_home = rcs.HOME_POSITIONS["FR3_DUO_RIGHT"]
 

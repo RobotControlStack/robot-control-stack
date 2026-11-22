@@ -105,7 +105,6 @@ class ControllerState:
 class FR3JointControllerConfig:
     kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     def __init__(self) -> None: ...
 
 class FR3OSCConfig:
@@ -114,7 +113,6 @@ class FR3OSCConfig:
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     nullspace_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     residual_mass: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     def __init__(self) -> None: ...
 
 class GraspType:
@@ -530,12 +528,7 @@ class LinearCartesianInterpolator(CartesianInterpolator):
     def __init__(self, duration: float) -> None: ...
 
 class FR3JointController(JointController):
-    def __init__(
-        self,
-        config: FR3JointControllerConfig,
-        interpolator: JointInterpolator,
-        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
-    ) -> None: ...
+    def __init__(self, config: FR3JointControllerConfig, interpolator: JointInterpolator) -> None: ...
 
 class JointPD(JointController):
     def __init__(
