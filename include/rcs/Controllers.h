@@ -47,16 +47,18 @@ struct OSCConfig {
   // 0.1 / 0.5 / 0.5 to joints 5-7 only, with which this OSC turns joints 1, 3
   // and 5 for a rotation about the tool axis.)
   VectorXd residual_mass;
-  // Damp towards the setpoint velocity of the interpolator (true) or towards
-  // zero velocity (false, as the FR3 OSC). With streamed teleop goals the
-  // setpoint velocity jumps with every goal (hand jitter over one period), so
-  // the feed-forward kicks the torques at the goal rate.
-  bool velocity_feedforward = true;
+  // Damp towards zero velocity (false, as the FR3 OSC) or towards the setpoint
+  // velocity of the interpolator (true: tighter tracking of smooth goals).
+  // With streamed teleop goals the setpoint velocity jumps with every goal
+  // (hand jitter over one period), so the feed-forward kicks the torques at
+  // the goal rate.
+  bool velocity_feedforward = false;
 };
 
 // Operational-space control (Khatib), critically damped (kd = 2 sqrt(kp)),
 // with a posture task in the null space:
-//   F    = kp e + kd (v_d - v)          e: position and rotation error
+//   F    = kp e + kd (v_d - v)          e: position and rotation error,
+//                                       v_d: 0 or the setpoint velocity
 //   tau  = J' L F + N' tau_posture + coriolis
 // with the task-space inertia L = (J M^-1 J')^-1 and N the dynamically
 // consistent null-space projector. Position and orientation are coupled
