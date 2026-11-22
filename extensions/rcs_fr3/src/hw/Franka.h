@@ -36,9 +36,8 @@ enum IKSolver { franka_ik = 0, rcs_ik };
 // control
 enum Controller { none = 0, jsc, osc, ztc };
 struct FrankaConfig : common::RobotConfig {
+  FrankaConfig() { this->robot_platform = common::RobotPlatform::HARDWARE; }
   std::string ip;
-  common::RobotType robot_type = common::RobotType::FR3;
-  common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   // Rate (Hz) at which set-point commands are streamed from the Python side.
@@ -93,10 +92,10 @@ struct FrankaConfig : common::RobotConfig {
 
 struct FR3Config : FrankaConfig {};
 struct PandaConfig : FrankaConfig {
-  common::RobotType robot_type = common::RobotType::Panda;
   PandaConfig() {
-    // set the inherited limits; a member of the same name would hide them
+    // set the inherited fields; members of the same name would hide them
     // from Franka, which works on a FrankaConfig
+    this->robot_type = common::RobotType::Panda;
     this->joint_limits =
         (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
              // low 7‐tuple

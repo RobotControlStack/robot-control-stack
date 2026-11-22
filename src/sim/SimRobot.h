@@ -16,7 +16,6 @@ namespace rcs {
 namespace sim {
 
 struct SimRobotConfig : common::RobotConfig {
-  common::RobotPlatform robot_platform = common::RobotPlatform::SIMULATION;
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
