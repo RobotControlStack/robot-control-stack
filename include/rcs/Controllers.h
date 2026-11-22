@@ -37,6 +37,16 @@ struct OSCConfig {
   // the configuration of the last reset().
   double kp_nullspace = 10.0;
   VectorXd nullspace_q;
+  // Added to the diagonal of the mass matrix (kg m^2 per joint), empty: none.
+  // The rigid-body model has no motor inertia, so the wrist joints look almost
+  // weightless (FR3 joint 7: 0.0007 kg m^2) and the OSC commands too little
+  // torque there to overcome friction: a rotation about the tool axis is not
+  // realized. The motor inertias keep the joints in proportion (the coupled
+  // OSC moves the joints with the least inertia): for the FR3 the armature of
+  // its MJCF, 0.195 on joints 1-4 and 0.074 on joints 5-7. (The FR3 OSC adds
+  // 0.1 / 0.5 / 0.5 to joints 5-7 only, with which this OSC turns joints 1, 3
+  // and 5 for a rotation about the tool axis.)
+  VectorXd residual_mass;
 };
 
 // Operational-space control (Khatib), critically damped (kd = 2 sqrt(kp)),

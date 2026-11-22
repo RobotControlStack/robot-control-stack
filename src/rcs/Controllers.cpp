@@ -60,8 +60,14 @@ VectorXd OSC::step(const ControllerState& state) {
   CartesianSetpoint setpoint = this->interpolator->step(state.dt);
   const Eigen::Index n = state.q.size();
   const auto& J = state.jacobian;
-  const Eigen::MatrixXd M_inv =
-      state.mass.ldlt().solve(Eigen::MatrixXd::Identity(n, n));
+  Eigen::MatrixXd M = state.mass;
+  if (this->config.residual_mass.size() != 0) {
+    if (this->config.residual_mass.size() != n) {
+      throw std::invalid_argument("residual_mass needs one entry per joint");
+    }
+    M.diagonal() += this->config.residual_mass;
+  }
+  const Eigen::MatrixXd M_inv = M.ldlt().solve(Eigen::MatrixXd::Identity(n, n));
 
   // desired TCP acceleration: critically damped spring to the setpoint
   Vector6d kp;
@@ -85,8 +91,8 @@ VectorXd OSC::step(const ControllerState& state) {
       Eigen::MatrixXd::Identity(n, n) - J.transpose() * J_bar.transpose();
   double kd_nullspace = 2.0 * std::sqrt(this->config.kp_nullspace);
   VectorXd tau_posture =
-      state.mass * (this->config.kp_nullspace * (this->nullspace_q - state.q) -
-                    kd_nullspace * state.dq);
+      M * (this->config.kp_nullspace * (this->nullspace_q - state.q) -
+           kd_nullspace * state.dq);
   tau += N_transposed * tau_posture;
 
   return tau + state.coriolis;

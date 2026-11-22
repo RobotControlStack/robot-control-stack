@@ -121,3 +121,29 @@ def test_no_way_back_to_native_control():
 def test_joint_pd_config_needs_gains():
     with pytest.raises(ValueError, match="kp and kd"):
         configured(common.JointPDConfig(kp=np.array([]), kd=np.array([])))
+
+
+# motor inertia of the FR3 as the armature of its MJCF
+FR3_ARMATURE = np.array([0.195, 0.195, 0.195, 0.195, 0.074, 0.074, 0.074])
+
+
+@pytest.mark.parametrize("residual_mass", [None, FR3_ARMATURE])
+def test_osc_rotates_about_the_tool_axis_only_with_residual_mass(residual_mass):
+    # the model has no motor inertia: joint 7 weighs 0.0007 kg m^2, so without residual mass the OSC's torque for a
+    # rotation about the tool axis stays below the joint friction (as seen on the real FR3); with the motor inertia
+    # the rotation is done by joint 7, as it should
+    cfg = common.OSCConfig()
+    cfg.kp_orientation = np.full(3, 125.0)
+    if residual_mass is not None:
+        cfg.residual_mass = residual_mass
+    setup = configured(cfg)
+    q0 = np.array(setup.robot.get_joint_position())
+    yaw = common.Pose(rpy_vector=np.array([0.0, 0.0, np.radians(30)]), translation=np.zeros(3))
+    setup.robot.set_cartesian_position(setup.robot.get_cartesian_position() * yaw)
+    setup.run(3.0)
+    turned = np.degrees(np.array(setup.robot.get_joint_position()) - q0)
+    if residual_mass is None:
+        assert abs(turned[6]) < 5.0
+    else:
+        assert turned[6] > 25.0
+        assert np.max(np.abs(turned[:6])) < 5.0
