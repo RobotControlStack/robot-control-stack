@@ -89,9 +89,10 @@ class Franka : public common::Robot {
   double controller_time = 0.0;
   // The shared torque controllers (core), stepped in the libfranka control
   // loop: RobotConfig::controller, or without it FR3JointController and
-  // FR3OSC with the gains below. They are created when a controller thread
-  // starts, so the gains and the interpolation window (1 / policy_rate) stay
-  // fixed for its lifetime.
+  // FR3OSC with their default configs, behind the SafetyStage of
+  // RobotConfig::safety. They are created when a controller thread starts, so
+  // the gains and the interpolation window (1 / policy_rate) stay fixed for
+  // its lifetime.
   std::shared_ptr<common::PinocchioDynamics> dynamics;
   std::shared_ptr<common::JointController> torque_joint_controller;
   std::shared_ptr<common::CartesianController> torque_cartesian_controller;
