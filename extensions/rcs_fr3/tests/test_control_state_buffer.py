@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-hw = pytest.importorskip("rcs_fr3._core").hw
+hw = pytest.importorskip("rcs_fr3.hw")
 
 
 def test_drain_shapes_and_order():

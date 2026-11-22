@@ -118,8 +118,8 @@ def test_collect_records_episodes_with_snapshot(interface):
         assert np.all(np.diff(ts) > 0)
         states = ep_rows[-1]["info"]["right"]["control_states"]
         n = states["num_samples"]
-        # 30 Hz env with a 2 ms physics step
-        assert n == round(1 / 30 / 0.002)
+        # 30 Hz env with a 1 ms physics step (SimConfig.timestep)
+        assert n == round(1 / 30 / 0.001)
         assert np.asarray(states["q"]).reshape(states["q_shape"]).shape == (n, 7)
         assert "wrist" in ep_rows[-1]["obs"]["frames"]
     assert sorted(labels) == [False, True]
@@ -170,7 +170,7 @@ def test_viewer_relabel_and_delete(interface):
     assert len(robot["step"]["joints"]) == ep["steps"]
     assert len(robot["step"]["joints"][0]) == 7
     assert "env_action.tquat" in robot["step"]
-    assert robot["control"]["num_samples"] == ep["steps"] * round(1 / 30 / 0.002)
+    assert robot["control"]["num_samples"] == ep["steps"] * round(1 / 30 / 0.001)  # 1 ms physics step
     assert len(robot["control"]["tau_J"][0]) == 7
     jpeg = call(base, f"/api/sessions/{session}/episodes/{first}/frames/wrist/3.jpg")
     assert jpeg[:2] == b"\xff\xd8"

@@ -35,7 +35,7 @@ def test_config_round_trip(creator):
     assert restored.control_mode == cfg.control_mode
     name = next(iter(cfg.robot_cfgs))
     assert np.allclose(restored.robot_cfgs[name].q_home, cfg.robot_cfgs[name].q_home)
-    assert restored.robot_cfgs[name].tcp_offset.is_close(cfg.robot_cfgs[name].tcp_offset)
+    assert restored.robot_cfgs[name].end_effector.tcp_offset.is_close(cfg.robot_cfgs[name].end_effector.tcp_offset)
 
 
 def test_fr3_hardware_config_round_trip():
