@@ -3,7 +3,7 @@ import copy
 import numpy as np
 from rcs._core.common import RobotType
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_panda._core import hw
+from rcs_panda import hw
 from rcs_panda.creators import (
     PandaHardwareEnvCreatorConfig,
     PandaMultiHardwareEnvCreatorConfig,
@@ -20,11 +20,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
 
     def config(self) -> PandaHardwareEnvCreatorConfig:
         robot_cfg = hw.PandaConfig(ip=self.ip)
-        robot_cfg.robot_type = RobotType.Panda
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[RobotType.Panda].mjcf_model_path
-        robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
-        robot_cfg.attachment_site = rcs.ROBOTS[RobotType.Panda].attachment_site
-        robot_cfg.joint_limits = rcs.ROBOTS[RobotType.Panda].joint_limits
+        robot_cfg.end_effector.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
         robot_cfg.speed_factor = 0.1
         robot_cfg.ik_solver = hw.IKSolver.rcs_ik
         robot_cfg.async_control = False
@@ -62,7 +58,7 @@ class DROIDEnv(RCSPandaMultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
+        cfg.robot_cfg.end_effector.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
         cfg.robot_cfg.q_home = rcs.ROBOTS[RobotType.Panda].q_home
 
         return PandaMultiHardwareEnvCreatorConfig(

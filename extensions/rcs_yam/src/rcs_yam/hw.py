@@ -173,13 +173,13 @@ class Yam(common.Robot):
     def get_cartesian_position(self) -> common.Pose:
         # `Kinematics.forward` applies the inverse of the offset it is handed, so the TCP is composed
         # here instead, to match the pose `SimRobot::get_cartesian_position` reports in simulation.
-        return self.get_cartesian_flange_position() * self._config.tcp_offset
+        return self.get_cartesian_flange_position() * self._config.end_effector.tcp_offset
 
     def get_cartesian_flange_position(self) -> common.Pose:
         return self.ik.forward(self.get_joint_position(), common.Pose())
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
-        q = self.ik.inverse(pose, self.get_joint_position(), self._config.tcp_offset)
+        q = self.ik.inverse(pose, self.get_joint_position(), self._config.end_effector.tcp_offset)
         if q is None:
             print("IK failed")
             return

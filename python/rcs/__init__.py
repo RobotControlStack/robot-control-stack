@@ -123,10 +123,10 @@ RCS_PREFIX = get_prefix(
 @dataclass(kw_only=True)
 class RobotMetaConfig:
 
+    robot_type: common.RobotType
+    """Type of the robot. Checkout all registered types by RobotType.get_all()"""
     mjcf_model_path: str
     """Path to the Mujoco XML file that describes the kinematics."""
-    # robot_type: common.RobotType
-    # """Type of the robot. Checkout all registered types by RobotType.get_all()"""
     dof: int
     "Number of degree of freedom of the robot arm"
     q_home: np.ndarray
@@ -135,10 +135,53 @@ class RobotMetaConfig:
     """hard joint limits of this robot, shape (2, N)"""
     attachment_site: str = "attachment_site"
     """mjcf site to use for IK"""
+    torque_limit: np.ndarray | None = None
+    """joint torque limits in Nm for the safety stage of torque controllers, shape (N,), None: no safety stage"""
+    max_torque_rate: float = float("inf")
+    """joint torque rate limit in Nm/s for the safety stage"""
+    max_joint_velocity: np.ndarray | None = None
+    """joint-limit guard of the safety stage (see common.SafetyConfig): allowed velocity towards a limit at distance
+    d is min(max_joint_velocity, sqrt(2 joint_deceleration d) - joint_velocity_offset), shape (N,)"""
+    joint_deceleration: np.ndarray | None = None
+    joint_velocity_offset: np.ndarray | None = None
+    limit_damping: np.ndarray | None = None
+    """Nm s/rad on the velocity towards a limit above 80% of the allowed one, None: no damper"""
+    limit_spring_torque: np.ndarray | None = None
+    """Nm of the soft end stop at the zero-velocity point in front of each limit, None: no spring"""
+
+    def apply(self, cfg: common.RobotConfig) -> common.RobotConfig:
+        """Sets the robot specific fields of cfg (type, model, IK site, dof, joint limits, home pose, safety).
+
+        The C++ configs leave them empty, so that the values live only here. Returns cfg.
+        """
+        cfg.robot_type = self.robot_type
+        cfg.kinematic_model_path = self.mjcf_model_path
+        cfg.attachment_site = self.attachment_site
+        cfg.dof = self.dof
+        cfg.joint_limits = self.joint_limits.copy()
+        cfg.q_home = self.q_home.copy()
+        def array(value: np.ndarray | None) -> np.ndarray:
+            return np.empty(0) if value is None else np.asarray(value, dtype=np.float64).copy()
+
+        cfg.safety = (
+            common.SafetyConfig(
+                torque_limit=array(self.torque_limit),
+                max_torque_rate=self.max_torque_rate,
+                max_velocity=array(self.max_joint_velocity),
+                deceleration=array(self.joint_deceleration),
+                velocity_offset=array(self.joint_velocity_offset),
+                limit_damping=array(self.limit_damping),
+                spring_torque=array(self.limit_spring_torque),
+            )
+            if self.torque_limit is not None
+            else None
+        )
+        return cfg
 
 
 ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     common.RobotType.FR3: RobotMetaConfig(
+        robot_type=common.RobotType.FR3,
         mjcf_model_path="assets/robots/fr3/fr3.xml",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
@@ -148,8 +191,20 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
                 [2.9007, 1.8361, 2.9007, -0.1169, 2.8763, 4.6216, 3.0508],
             ]
         ),
+        # Franka robot specification; the rate limit is franka::limitRate (kMaxTorqueRate - kLimitEps)
+        torque_limit=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]),
+        max_torque_rate=1000.0 - 1e-3,
+        # position based velocity limits from the URDF the FR3s report (velocity, deceleration_limit and
+        # velocity_offset of position_based_velocity_limits), as libfranka's getUpperJointVelocityLimits
+        max_joint_velocity=np.array([2.62, 2.62, 2.62, 2.62, 5.26, 4.18, 5.26]),
+        joint_deceleration=np.array([6.0, 2.585, 3.5, 4.0, 17.0, 5.5, 17.0]),
+        joint_velocity_offset=np.array([0.652, 0.25, 0.2005, 0.3542, 0.5738, 0.4885, 0.4592]),
+        # enough to brake a fast approach of the arm before the limit in sim, see test_safety_stage.py
+        limit_damping=np.array([100.0, 100.0, 100.0, 100.0, 20.0, 20.0, 20.0]),
+        limit_spring_torque=np.array([10.0, 10.0, 10.0, 10.0, 3.0, 3.0, 3.0]),
     ),
     common.RobotType.Panda: RobotMetaConfig(
+        robot_type=common.RobotType.Panda,
         mjcf_model_path="assets/robots/panda/panda.xml",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
@@ -175,8 +230,18 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
                 ],
             ]
         ),
+        # Franka robot specification; the rate limit is franka::limitRate (kMaxTorqueRate - kLimitEps)
+        torque_limit=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]),
+        max_torque_rate=1000.0 - 1e-3,
+        # no position based velocity limits: the plain sqrt(2 a d) with the specified velocity and acceleration
+        max_joint_velocity=np.array([2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61]),
+        joint_deceleration=np.array([15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0]),
+        # enough to brake a fast approach of the arm before the limit in sim, see test_safety_stage.py
+        limit_damping=np.array([100.0, 100.0, 100.0, 100.0, 20.0, 20.0, 20.0]),
+        limit_spring_torque=np.array([10.0, 10.0, 10.0, 10.0, 3.0, 3.0, 3.0]),
     ),
     common.RobotType.XArm7: RobotMetaConfig(
+        robot_type=common.RobotType.XArm7,
         mjcf_model_path="assets/robots/xarm7/xarm7.xml",
         dof=7,
         q_home=np.array([0, -45.0 / 180.0 * np.pi, 0, 15.0 / 180.0 * np.pi, 0, -25.0 / 180.0 * np.pi, 0]),
@@ -188,6 +253,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.UR5e: RobotMetaConfig(
+        robot_type=common.RobotType.UR5e,
         mjcf_model_path="assets/robots/ur5e/ur5e.xml",
         dof=6,
         q_home=np.array([0.0, -2.02711196, 1.64630026, -1.18999615, -1.57079762, 0.0]),
@@ -199,6 +265,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.SO101: RobotMetaConfig(
+        robot_type=common.RobotType.SO101,
         mjcf_model_path="assets/robots/so101/so101.xml",
         dof=5,
         q_home=np.array([-0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926]),
@@ -217,6 +284,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         attachment_site="gripper",
     ),
     common.RobotType.Yam: RobotMetaConfig(
+        robot_type=common.RobotType.Yam,
         mjcf_model_path="assets/robots/yam/yam.xml",
         dof=6,
         q_home=np.array([0.0, 1.047, 1.047, 0.0, 0.0, 0.0]),
@@ -229,6 +297,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         attachment_site="tcp_site",
     ),
     common.RobotType.Rizon4S: RobotMetaConfig(
+        robot_type=common.RobotType.Rizon4S,
         mjcf_model_path="assets/robots/rizon4s/rizon4s.xml",
         dof=7,
         # flange pointing straight down (joint2 - joint4 + joint6 = -pi/2), about 0.56 m in front of

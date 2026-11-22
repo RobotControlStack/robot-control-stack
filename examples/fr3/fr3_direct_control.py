@@ -103,7 +103,7 @@ def main():
             default_env.ip = ROBOT_IP
             env_cfg = default_env.config()
             fr3_cfg = env_cfg.robot_cfg
-            fr3_cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+            fr3_cfg.end_effector.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
             ik = rcs.common.Pin(
                 fr3_cfg.kinematic_model_path,
                 fr3_cfg.attachment_site,

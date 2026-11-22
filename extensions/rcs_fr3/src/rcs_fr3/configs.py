@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 from rcs.envs.base import ControlMode, RelativeTo
-from rcs_fr3._core import hw
+from rcs_fr3 import hw
 from rcs_fr3.creators import (
     FR3HardwareEnvCreatorConfig,
     FR3MultiHardwareEnvCreatorConfig,
@@ -19,21 +19,14 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
     ip = "192.168.101.1"
 
     def config(self) -> FR3HardwareEnvCreatorConfig:
-        fr3 = rcs.ROBOTS[common.RobotType.FR3]
         robot_cfg = hw.FR3Config(
             ip=self.ip,
             ik_solver=hw.IKSolver.rcs_ik,
             speed_factor=0.1,
             async_control=False,
             ignore_realtime=False,
-            tcp_offset=common.Pose(common.FrankaHandTCPOffset()),
-            attachment_site="attachment_site",
-            kinematic_model_path=fr3.mjcf_model_path,
+            end_effector=common.EndEffectorConfig(tcp_offset=common.Pose(common.FrankaHandTCPOffset())),
         )
-        robot_cfg.robot_type = common.RobotType.FR3
-        robot_cfg.q_home = fr3.q_home
-        robot_cfg.joint_limits = fr3.joint_limits
-        robot_cfg.dof = fr3.dof
 
         gripper_cfg = hw.FHConfig(
             ip=self.ip,
@@ -118,7 +111,7 @@ class DROIDEnv(RCSFR3MultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
+        cfg.robot_cfg.end_effector.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
         cfg.robot_cfg.q_home = rcs.HOME_POSITIONS["FR3_DROID"]
 
         return FR3MultiHardwareEnvCreatorConfig(
@@ -208,8 +201,8 @@ class FrankaDuoEnv(DefaultFR3DualMultiHardwareEnv):
 
         cfg = super().config()
         cfg.camera_cfgs = None
-        cfg.robot_cfgs["left"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
-        cfg.robot_cfgs["right"].tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
+        cfg.robot_cfgs["left"].end_effector.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
+        cfg.robot_cfgs["right"].end_effector.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
         cfg.robot_cfgs["left"].q_home = rcs.HOME_POSITIONS["FR3_DUO_LEFT"]
         cfg.robot_cfgs["right"].q_home = rcs.HOME_POSITIONS["FR3_DUO_RIGHT"]
         cfg.gripper_cfgs = {

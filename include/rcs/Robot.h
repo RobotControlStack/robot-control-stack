@@ -4,9 +4,12 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "ControllerConfig.h"
+#include "EndEffector.h"
 #include "Kinematics.h"
 #include "Pose.h"
 #include "utils.h"
@@ -25,6 +28,9 @@ struct TypeBase {
     static std::set<std::string> _registry;
     return _registry;
   }
+
+  // empty id, not registered: a config whose type is not set yet
+  TypeBase() = default;
 
   // Constructor automatically registers the instance
   TypeBase(std::string id_) : id(std::move(id_)) { registry().insert(id); }
@@ -60,24 +66,39 @@ inline const RobotType RobotType::SO101{"SO101"};
 inline const RobotType RobotType::Yam{"Yam"};
 inline const RobotType RobotType::Rizon4S{"Rizon4S"};
 
+// The robot specific fields (type, model, dof, joint limits, home pose) have
+// no robot specific defaults, set them per robot (in Python with
+// rcs.ROBOTS[robot_type].apply(cfg)). check_robot_config() rejects a config
+// where they are missing.
 struct RobotConfig {
-  RobotType robot_type = RobotType::FR3;
+  RobotType robot_type;
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
-  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
-  std::string attachment_site = "attachment_site";
-  std::string kinematic_model_path = "assets/scenes/fr3_empty_world/robot.xml";
+  // the tool after the attachment site: TCP offset and payload
+  EndEffectorConfig end_effector;
+  std::string attachment_site;
+  std::string kinematic_model_path;
   std::optional<VectorXd> q_home = std::nullopt;
-  size_t dof = 7;
+  size_t dof = 0;
+  // lower limits in row 0, upper limits in row 1, one column per joint
   Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
-      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-           // low 7‐tuple
-           -2.3476,
-       -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045,
-       // high 7‐tuple
-       2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045)
-          .finished();
+      Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 0);
+  // The controller to run, see ControllerConfig.h. None: the robot's native
+  // control (MuJoCo actuators in sim, the default controllers on hardware).
+  std::optional<ControllerConfig> controller = std::nullopt;
+  // Limits on the torques of the controller (SafetyStage), from rcs.ROBOTS.
+  // None: the torques go to the robot as the controller computes them.
+  std::optional<SafetyConfig> safety = std::nullopt;
   virtual ~RobotConfig() {};
 };
+
+inline void check_robot_config(const RobotConfig& cfg) {
+  if (cfg.robot_type.id.empty() || cfg.dof == 0 ||
+      cfg.joint_limits.cols() != static_cast<Eigen::Index>(cfg.dof)) {
+    throw std::invalid_argument(
+        "robot_type, dof and joint_limits (2 x dof) must be set, e.g. with "
+        "rcs.ROBOTS[robot_type].apply(cfg)");
+  }
+}
 struct RobotState {
   virtual ~RobotState() {};
 };

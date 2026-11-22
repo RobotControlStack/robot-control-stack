@@ -1,7 +1,9 @@
 #ifndef RCS_SIMROBOT_H
 #define RCS_SIMROBOT_H
 #include <mujoco/mujoco.h>
+#include <rcs/Controller.h>
 #include <rcs/Kinematics.h>
+#include <rcs/PinocchioDynamics.h>
 #include <rcs/Pose.h>
 #include <rcs/Robot.h>
 #include <rcs/utils.h>
@@ -13,24 +15,18 @@
 namespace rcs {
 namespace sim {
 
+// The MJCF names (joints, actuators, collision geoms) have no defaults, they
+// belong to the robot model of the scene.
 struct SimRobotConfig : common::RobotConfig {
-  common::RobotPlatform robot_platform = common::RobotPlatform::SIMULATION;
+  SimRobotConfig() { this->robot_platform = common::RobotPlatform::SIMULATION; }
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
   bool trajectory_trace = false;
-  std::vector<std::string> arm_collision_geoms{
-      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
-      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
-      "fr3_link6_collision", "fr3_link7_collision"};
-  std::vector<std::string> joints = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-  std::vector<std::string> actuators = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
+  std::vector<std::string> arm_collision_geoms;
+  // one joint and one actuator per degree of freedom
+  std::vector<std::string> joints;
+  std::vector<std::string> actuators;
   std::optional<std::vector<double>> kp;
   std::optional<std::vector<double>> kv;
   std::string base = "base";
@@ -53,6 +49,7 @@ struct SimRobotConfig : common::RobotConfig {
 struct SimRobotState : common::RobotState {
   common::VectorXd previous_angles;
   common::VectorXd target_angles;
+  common::Pose target_pose;
   common::Pose inverse_tcp_offset;
   bool ik_success = true;
   bool collision = false;
@@ -82,6 +79,22 @@ class SimRobot : public common::Robot {
   void clear_collision_flag();
   void close() override {};
 
+  // Torque control with the shared controllers, see
+  // docs/development/controller_interface.md. set_dynamics() must come first.
+  // Installing a controller switches the arm to torque control for good and
+  // makes it hold the current configuration. A controller in
+  // SimRobotConfig::controller is installed as soon as both it and the
+  // dynamics are set; it needs SimConfig::async_control and spreads each goal
+  // over one control period (1 / SimConfig::frequency).
+  void set_dynamics(std::shared_ptr<common::PinocchioDynamics> dynamics);
+  void set_joint_controller(
+      std::shared_ptr<common::JointController> controller);
+  void set_cartesian_controller(
+      std::shared_ptr<common::CartesianController> controller);
+  // The MJCF bodies attached after the flange, as a payload in the flange
+  // frame.
+  common::Payload get_simulated_payload();
+
  private:
   SimRobotConfig cfg;
   SimRobotState state;
@@ -94,6 +107,18 @@ class SimRobot : public common::Robot {
     std::vector<int> actuators;
     int base;
   } ids;
+  enum class ControlMode { native, joint, cartesian };
+  ControlMode control_mode = ControlMode::native;
+  bool torque_control = false;
+  std::shared_ptr<common::PinocchioDynamics> dynamics;
+  std::shared_ptr<common::JointController> joint_controller;
+  std::shared_ptr<common::CartesianController> cartesian_controller;
+  void configure_dynamics();
+  void install_configured_controller();
+  void enable_torque_control();
+  void activate(ControlMode mode);
+  common::ControllerState controller_state(double dt);
+  void control_step(double dt);
   void is_moving_callback();
   void is_arrived_callback();
   bool collision_callback();

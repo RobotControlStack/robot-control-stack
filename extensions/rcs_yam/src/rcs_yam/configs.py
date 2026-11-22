@@ -32,7 +32,7 @@ class DefaultYamHardwareEnv(RCSYamConfigEnvCreator):
             joint_limits=rcs.ROBOTS[robot_type].joint_limits,
             q_home=rcs.ROBOTS[robot_type].q_home,
             # The gripper is part of the arm's mjcf, so this is the flange to grasp point offset.
-            tcp_offset=rcs.GRIPPER_TCP_OFFSETS[gripper_type],
+            end_effector=rcs.common.EndEffectorConfig(tcp_offset=rcs.GRIPPER_TCP_OFFSETS[gripper_type]),
         )
 
         gripper_cfg = GripperConfig(gripper_type=gripper_type)

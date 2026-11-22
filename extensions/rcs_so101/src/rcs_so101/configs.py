@@ -22,7 +22,7 @@ class DefaultSO101HardwareEnv(RCSSO101ConfigEnvCreator):
             dof=rcs.ROBOTS[RobotType.SO101].dof,
             joint_limits=rcs.ROBOTS[RobotType.SO101].joint_limits,
             q_home=rcs.ROBOTS[RobotType.SO101].q_home,
-            tcp_offset=rcs.common.Pose(),
+            end_effector=rcs.common.EndEffectorConfig(tcp_offset=rcs.common.Pose()),
         )
 
         return SO101HardwareEnvCreatorConfig(

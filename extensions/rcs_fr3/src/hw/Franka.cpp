@@ -2,8 +2,6 @@
 
 #include <franka/duration.h>
 #include <franka/exception.h>
-#include <franka/model.h>
-#include <franka/rate_limiting.h>
 #include <franka/robot.h>
 
 #include <Eigen/Core>
@@ -11,10 +9,12 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
 #include "FrankaMotionGenerator.h"
+#include "rcs/LinearInterpolator.h"
 #include "rcs/Pose.h"
 
 namespace rcs {
@@ -29,12 +29,66 @@ common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
   return GetFlangeInBaseFrame(robot_state) * tcp_offset;
 }
 
+namespace {
+void check_config(const FrankaConfig& cfg) {
+  common::check_robot_config(cfg);
+  if (cfg.timestep != 0.001) {
+    throw std::invalid_argument(
+        "the Franka control loop runs at 1 ms, timestep must be 0.001");
+  }
+  if (cfg.controller.has_value() && !cfg.async_control) {
+    throw std::invalid_argument("a configured controller needs async_control");
+  }
+  // async control runs a torque controller, never without the safety stage
+  if (cfg.async_control && !cfg.safety.has_value()) {
+    throw std::invalid_argument(
+        "async_control needs safety (torque limits), FR3Config and "
+        "PandaConfig set it from rcs.ROBOTS");
+  }
+}
+
+// Desk's end effector settings (F_T_EE, and the mass properties the robot
+// reports, including a load set with setLoad) are not used by RCS: the TCP
+// comes from end_effector.tcp_offset, the dynamics take the reported mass
+// properties. Warn when Desk and the config disagree, sim would then differ.
+void warn_if_desk_differs(const FrankaConfig& cfg,
+                          const franka::RobotState& state) {
+  const common::Pose desk_tcp(state.F_T_EE);
+  const common::Pose& tcp = cfg.end_effector.tcp_offset;
+  const double distance = (desk_tcp.translation() - tcp.translation()).norm();
+  const double angle =
+      Eigen::AngleAxisd(desk_tcp.quaternion().inverse() * tcp.quaternion())
+          .angle();
+  if (distance > 1e-3 || angle > 1.0 / 180.0 * M_PI) {
+    std::cerr << "Warning: the end effector in Desk (F_T_EE translation "
+              << desk_tcp.translation().transpose()
+              << ") differs from end_effector.tcp_offset (translation "
+              << tcp.translation().transpose() << ") by " << distance * 1000
+              << " mm and " << angle * 180.0 / M_PI << " deg." << std::endl;
+  }
+  if (cfg.end_effector.payload.has_value()) {
+    const common::Payload& payload = cfg.end_effector.payload.value();
+    const Eigen::Vector3d desk_com(state.F_x_Ctotal.data());
+    if (std::abs(state.m_total - payload.mass) > 0.05 ||
+        (desk_com - payload.com).norm() > 0.01) {
+      std::cerr << "Warning: the payload the robot reports (Desk end effector "
+                   "and load: "
+                << state.m_total << " kg, CoM " << desk_com.transpose()
+                << ") differs from end_effector.payload (" << payload.mass
+                << " kg, CoM " << payload.com.transpose() << ")." << std::endl;
+    }
+  }
+}
+}  // namespace
+
 Franka::Franka(const FrankaConfig& cfg,
                std::optional<std::shared_ptr<common::Kinematics>> ik)
     : m_cfg(cfg),
       m_ik(ik),
       robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
                                         : franka::RealtimeConfig::kEnforce) {
+  check_config(cfg);
+  warn_if_desk_differs(cfg, this->robot.readOnce());
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -54,6 +108,7 @@ Franka::~Franka() {
  * otherwise the call will fail
  */
 bool Franka::set_config(const FrankaConfig& cfg) {
+  check_config(cfg);
   this->m_cfg = cfg;
   this->m_cfg.speed_factor = std::min(std::max(cfg.speed_factor, 0.0), 1.0);
 
@@ -71,6 +126,10 @@ bool Franka::set_config(const FrankaConfig& cfg) {
         common::eigen2array<3, 1>(load_value->f_x_cload.value()),
         common::eigen2array<3, 3>(load_value->load_inertia.value()));
   }
+  warn_if_desk_differs(this->m_cfg,
+                       this->running_controller.load() == Controller::none
+                           ? this->robot.readOnce()
+                           : this->curr_state.load());
   return true;
 }
 
@@ -115,7 +174,7 @@ common::Pose Franka::get_cartesian_position() {
   } else {
     robot_state = this->curr_state.load();
   }
-  return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
+  return GetTCPInBaseFrame(robot_state, this->m_cfg.end_effector.tcp_offset);
 }
 
 common::Pose Franka::get_cartesian_flange_position() {
@@ -132,6 +191,18 @@ common::Pose Franka::get_cartesian_flange_position() {
 
 void Franka::set_joint_position(const common::VectorXd& q) {
   if (this->m_cfg.async_control) {
+    if (this->m_cfg.controller.has_value() &&
+        common::is_cartesian(this->m_cfg.controller.value())) {
+      // only a Cartesian controller: move the TCP to where q would put it
+      // (forward kinematics of the IK model, the dynamics belong to the loop)
+      if (!this->m_ik.has_value()) {
+        throw std::runtime_error(
+            "joint goals for a Cartesian controller need kinematics");
+      }
+      this->osc_set_cartesian_position(
+          this->m_ik.value()->forward(q, this->m_cfg.end_effector.tcp_offset));
+      return;
+    }
     this->controller_set_joint_position(q);
     return;
   }
@@ -158,51 +229,18 @@ void Franka::set_guiding_mode(bool x, bool y, bool z, bool roll, bool pitch,
   this->robot.setGuidingMode(activated, elbow);
 }
 
-void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
-              double epsilon = 0.00025) {
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-      M, Eigen::ComputeFullU | Eigen::ComputeFullV);
-  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType singular_vals =
-      svd.singularValues();
-
-  Eigen::MatrixXd S_inv = M;
-  S_inv.setZero();
-  for (int i = 0; i < singular_vals.size(); i++) {
-    if (singular_vals(i) < epsilon) {
-      S_inv(i, i) = 0.;
-    } else {
-      S_inv(i, i) = 1. / singular_vals(i);
-    }
-  }
-  M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
-}
-
-void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array,
-                         const common::Vector7d& torque_limit) {
-  for (size_t i = 0; i < tau_d_array.size(); i++) {
-    if (tau_d_array[i] < -torque_limit[i]) {
-      tau_d_array[i] = -torque_limit[i];
-    } else if (tau_d_array[i] > torque_limit[i]) {
-      tau_d_array[i] = torque_limit[i];
-    }
-  }
-}
-
 void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
   this->check_for_background_errors();
-  // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 1.0;  // in s
-  // form deoxys/config/charmander.yml
-  int traj_rate = 500;
-
   const bool starting_fresh =
       this->running_controller.load() == Controller::none;
 
   if (starting_fresh) {
     this->controller_time = 0.0;
-    this->m_active_policy_rate = this->m_cfg.policy_rate;
     this->get_joint_position();
-    this->joint_interpolator = common::LinearJointPositionTrajInterpolator();
+    this->create_dynamics();
+    this->torque_joint_controller = this->make_torque_controller(false).joint;
+    this->torque_joint_controller->reset(
+        this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::jsc) {
     // runtime error
     throw std::runtime_error(
@@ -229,9 +267,9 @@ void Franka::controller_set_joint_position(const common::Vector7d& desired_q) {
         std::clamp(max_gap / speed, kMinApproachTime, kMaxApproachTime);
   }
 
-  this->joint_interpolator.reset(
-      this->controller_time, q_now, desired_q, this->m_active_policy_rate,
-      traj_rate, traj_interpolation_time_fraction, approach_time);
+  this->torque_joint_controller->set_goal(
+      desired_q,
+      approach_on_start ? std::optional<double>(approach_time) : std::nullopt);
 
   // if not thread is running, then start
   if (starting_fresh) {
@@ -284,19 +322,17 @@ void Franka::clear_background_error() {
 void Franka::osc_set_cartesian_position(
     const common::Pose& desired_pose_EE_in_base_frame) {
   this->check_for_background_errors();
-  // from deoxys/config/osc-position-controller.yml
-  double traj_interpolation_time_fraction = 1.0;
-  // form deoxys/config/charmander.yml
-  int traj_rate = 500;
-
   const bool starting_fresh =
       this->running_controller.load() == Controller::none;
 
   if (starting_fresh) {
     this->controller_time = 0.0;
-    this->m_active_policy_rate = this->m_cfg.policy_rate;
     this->curr_state.store(this->robot.readOnce());
-    this->traj_interpolator = common::LinearPoseTrajInterpolator();
+    this->create_dynamics();
+    this->torque_cartesian_controller =
+        this->make_torque_controller(true).cartesian;
+    this->torque_cartesian_controller->reset(
+        this->controller_state(this->curr_state.load(), 0.0));
   } else if (this->running_controller.load() != Controller::osc) {
     throw std::runtime_error(
         "Controller type must but osc but is " +
@@ -306,8 +342,8 @@ void Franka::osc_set_cartesian_position(
     this->interpolator_mutex.lock();
   }
 
-  common::Pose curr_pose =
-      GetTCPInBaseFrame(this->curr_state.load(), this->m_cfg.tcp_offset);
+  common::Pose curr_pose = GetTCPInBaseFrame(
+      this->curr_state.load(), this->m_cfg.end_effector.tcp_offset);
 
   const bool approach_on_start =
       starting_fresh && this->m_cfg.blocking_move_on_start;
@@ -331,11 +367,9 @@ void Franka::osc_set_cartesian_position(
                    kMinApproachTime, kMaxApproachTime);
   }
 
-  this->traj_interpolator.reset(
-      this->controller_time, curr_pose.translation(), curr_pose.quaternion(),
-      desired_pose_EE_in_base_frame.translation(),
-      desired_pose_EE_in_base_frame.quaternion(), this->m_active_policy_rate,
-      traj_rate, traj_interpolation_time_fraction, approach_time);
+  this->torque_cartesian_controller->set_goal(
+      desired_pose_EE_in_base_frame,
+      approach_on_start ? std::optional<double>(approach_time) : std::nullopt);
 
   // if not thread is running, then start
   if (starting_fresh) {
@@ -362,7 +396,7 @@ void Franka::osc_set_cartesian_position(
       franka::RobotState state = this->curr_state.load();
       const common::Vector7d dq = Eigen::Map<common::Vector7d>(state.dq.data());
       const common::Pose meas_pose =
-          GetTCPInBaseFrame(state, this->m_cfg.tcp_offset);
+          GetTCPInBaseFrame(state, this->m_cfg.end_effector.tcp_offset);
       const double pos_err = (target_p - meas_pose.translation()).norm();
       double dot = std::abs(meas_pose.quaternion().normalized().dot(target_q));
       dot = std::min(1.0, dot);
@@ -394,11 +428,56 @@ void Franka::stop_control_thread() {
   }
 }
 
+common::ControllerPair Franka::make_torque_controller(bool cartesian) {
+  common::ControllerConfig config;
+  if (this->m_cfg.controller.has_value()) {
+    config = this->m_cfg.controller.value();
+    if (common::is_cartesian(config) != cartesian) {
+      throw std::runtime_error(
+          cartesian ? "the configured controller is a joint controller"
+                    : "the configured controller is a Cartesian controller");
+    }
+  } else if (cartesian) {
+    config = common::FR3OSCConfig();
+  } else {
+    config = common::FR3JointControllerConfig();
+  }
+  // a goal per policy step, interpolated over one policy period
+  return common::make_controller(config, 1.0 / this->m_cfg.policy_rate,
+                                 this->m_cfg.joint_limits, this->m_cfg.safety,
+                                 this->m_cfg.timestep);
+}
+
+void Franka::create_dynamics() {
+  if (!this->dynamics) {
+    const std::string& path = this->m_cfg.kinematic_model_path;
+    const bool urdf = path.size() >= 5 && path.ends_with(".urdf");
+    this->dynamics = std::make_shared<common::PinocchioDynamics>(
+        path, urdf, this->m_cfg.attachment_site);
+  }
+  this->dynamics->set_tcp_offset(this->m_cfg.end_effector.tcp_offset);
+}
+
+common::ControllerState Franka::controller_state(
+    const franka::RobotState& robot_state, double dt) {
+  // the end effector and load configured in Desk, as franka::Model uses them
+  common::Payload payload;
+  payload.mass = robot_state.m_total;
+  payload.com =
+      Eigen::Map<const Eigen::Vector3d>(robot_state.F_x_Ctotal.data());
+  payload.inertia =
+      Eigen::Map<const Eigen::Matrix3d>(robot_state.I_total.data());
+  common::Payload current = this->dynamics->get_payload();
+  if (payload.mass != current.mass || payload.com != current.com ||
+      payload.inertia != current.inertia) {
+    this->dynamics->set_payload(payload);
+  }
+  return this->dynamics->compute(
+      Eigen::Map<const common::Vector7d>(robot_state.q.data()),
+      Eigen::Map<const common::Vector7d>(robot_state.dq.data()), dt);
+}
+
 void Franka::osc() {
-  franka::Model model = this->robot.loadModel();
-  const Eigen::Vector3d kp_p_cfg = this->m_cfg.kp_p;
-  const double kp_r_cfg = this->m_cfg.kp_r;
-  const common::Vector7d torque_limit = this->m_cfg.torque_limit;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
 
   this->controller_time = 0.0;
@@ -415,212 +494,21 @@ void Franka::osc() {
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
   }
 
-  // from bench mark
-  // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
-  // ([60.0, 150.0, 150.0], 250.0), // kd_translation, kd_rotation
-
-  // from config file
-  // Kp:
-  // translation: [150.0, 150.0, 150.0]
-  // rotation: 250.0
-
-  Eigen::Matrix<double, 3, 3> Kp_p = Eigen::Matrix3d::Zero();
-  Eigen::Matrix<double, 3, 3> Kp_r = Eigen::Matrix3d::Zero();
-  Eigen::Matrix<double, 3, 3> Kd_p = Eigen::Matrix3d::Zero();
-  Eigen::Matrix<double, 3, 3> Kd_r = Eigen::Matrix3d::Zero();
-  Eigen::Matrix<double, 7, 1> static_q_task_;
-  Eigen::Matrix<double, 7, 1> residual_mass_vec_;
-  Eigen::Array<double, 7, 1> joint_max_;
-  Eigen::Array<double, 7, 1> joint_min_;
-  Eigen::Array<double, 7, 1> avoidance_weights_;
-
-  Kp_p.diagonal() << kp_p_cfg;
-  Kp_r.diagonal() << kp_r_cfg, kp_r_cfg, kp_r_cfg;
-
-  Kd_p << Kp_p.cwiseSqrt() * 2.0;
-  Kd_r << Kp_r.cwiseSqrt() * 2.0;
-
-  static_q_task_ << 0.09017809387254755, -0.9824203501652151,
-      0.030509718397568178, -2.694229634937343, 0.057700675144720104,
-      1.860298714876101, 0.8713759453244422;
-
-  // The manual residual mass matrix to add on the internal mass matrix
-  residual_mass_vec_ << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5;
-
-  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
-  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
-  avoidance_weights_ << 1., 1., 1., 1., 1., 10., 10.;
-
   try {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
-      std::chrono::high_resolution_clock::time_point t1 =
-          std::chrono::high_resolution_clock::now();
-
-      // torques handler
       if (this->running_controller.load() == Controller::none) {
         return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
-      // TO BE replaced
-      // if (!this->control_thread_running && dq.maxCoeff() < 0.0001) {
-      //   return franka::MotionFinished(franka::Torques(tau_d_array));
-      // }
-
-      Eigen::Vector3d desired_pos_EE_in_base_frame;
-      Eigen::Quaterniond desired_quat_EE_in_base_frame;
-
-      // form deoxys/config/charmander.yml
-      int policy_rate = 20;
-      int traj_rate = 500;
-
       this->curr_state.store(robot_state);
 
-      this->interpolator_mutex.lock();
+      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
-      this->traj_interpolator.next_step(this->controller_time,
-                                        desired_pos_EE_in_base_frame,
-                                        desired_quat_EE_in_base_frame);
-      this->interpolator_mutex.unlock();
-
-      // end torques handler
-
-      Eigen::Matrix<double, 7, 1> tau_d;
-
-      std::array<double, 49> mass_array = model.mass(robot_state);
-      Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-
-      M = M + Eigen::Matrix<double, 7, 7>(residual_mass_vec_.asDiagonal());
-
-      // coriolis and gravity
-      std::array<double, 7> coriolis_array = model.coriolis(robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
-          coriolis_array.data());
-
-      std::array<double, 7> gravity_array = model.gravity(robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
-          gravity_array.data());
-
-      std::array<double, 42> jacobian_array = model.zeroJacobian(
-          franka::Frame::kEndEffector, robot_state.q,
-          this->m_cfg.tcp_offset.affine_array(), robot_state.EE_T_K);
-      Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
-          jacobian_array.data());
-
-      Eigen::MatrixXd jacobian_pos(3, 7);
-      Eigen::MatrixXd jacobian_ori(3, 7);
-      jacobian_pos << jacobian.block(0, 0, 3, 7);
-      jacobian_ori << jacobian.block(3, 0, 3, 7);
-
-      // Express OSC feedback in the same TCP frame exposed by the public
-      // Cartesian API.
-      common::Pose T_EE_in_base_frame_pose =
-          GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
-      Eigen::Affine3d T_EE_in_base_frame =
-          T_EE_in_base_frame_pose.affine_matrix();
-
-      Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
-      Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
-
-      // Nullspace goal
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
-
-      // Joint velocity
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
-
-      if (desired_quat_EE_in_base_frame.coeffs().dot(
-              quat_EE_in_base_frame.coeffs()) < 0.0) {
-        quat_EE_in_base_frame.coeffs() << -quat_EE_in_base_frame.coeffs();
-      }
-
-      Eigen::Vector3d pos_error;
-
-      pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
-      Eigen::Quaterniond quat_error(desired_quat_EE_in_base_frame.inverse() *
-                                    quat_EE_in_base_frame);
-      Eigen::Vector3d ori_error;
-      ori_error << quat_error.x(), quat_error.y(), quat_error.z();
-      ori_error << -T_EE_in_base_frame.linear() * ori_error;
-
-      // Compute matrices
-      Eigen::Matrix<double, 7, 7> M_inv(M.inverse());
-      Eigen::MatrixXd Lambda_inv(6, 6);
-      Lambda_inv << jacobian * M_inv * jacobian.transpose();
-      Eigen::MatrixXd Lambda(6, 6);
-      PInverse(Lambda_inv, Lambda);
-
-      Eigen::Matrix<double, 7, 6> J_inv;
-      J_inv << M_inv * jacobian.transpose() * Lambda;
-      Eigen::Matrix<double, 7, 7> Nullspace;
-      Nullspace << Eigen::MatrixXd::Identity(7, 7) -
-                       jacobian.transpose() * J_inv.transpose();
-
-      // Decoupled mass matrices
-      Eigen::MatrixXd Lambda_pos_inv(3, 3);
-      Lambda_pos_inv << jacobian_pos * M_inv * jacobian_pos.transpose();
-      Eigen::MatrixXd Lambda_ori_inv(3, 3);
-      Lambda_ori_inv << jacobian_ori * M_inv * jacobian_ori.transpose();
-
-      Eigen::MatrixXd Lambda_pos(3, 3);
-      Eigen::MatrixXd Lambda_ori(3, 3);
-      PInverse(Lambda_pos_inv, Lambda_pos);
-      PInverse(Lambda_ori_inv, Lambda_ori);
-
-      pos_error = pos_error.unaryExpr(
-          [](double x) { return (abs(x) < 1e-4) ? 0. : x; });
-      ori_error = ori_error.unaryExpr(
-          [](double x) { return (abs(x) < 5e-3) ? 0. : x; });
-
-      tau_d << jacobian_pos.transpose() *
-                       (Lambda_pos *
-                        (Kp_p * pos_error - Kd_p * (jacobian_pos * dq))) +
-                   jacobian_ori.transpose() *
-                       (Lambda_ori *
-                        (Kp_r * ori_error - Kd_r * (jacobian_ori * dq)));
-
-      // nullspace control
-      tau_d << tau_d + Nullspace * (static_q_task_ - q);
-
-      // Add joint avoidance potential
-      Eigen::Matrix<double, 7, 1> avoidance_force;
-      avoidance_force.setZero();
-      Eigen::Matrix<double, 7, 1> dist2joint_max;
-      Eigen::Matrix<double, 7, 1> dist2joint_min;
-
-      dist2joint_max = joint_max_.matrix() - q;
-      dist2joint_min = q - joint_min_.matrix();
-
-      for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.25 && dist2joint_max[i] > 0.1)
-          avoidance_force[i] += -avoidance_weights_[i] * dist2joint_max[i];
-        if (dist2joint_min[i] < 0.25 && dist2joint_min[i] > 0.1)
-          avoidance_force[i] += avoidance_weights_[i] * dist2joint_min[i];
-      }
-      tau_d << tau_d + Nullspace * avoidance_force;
-
-      // Coriolis feed-forward: libfranka compensates gravity, not Coriolis /
-      // centrifugal torques (see the impedance examples of libfranka)
-      tau_d << tau_d + coriolis;
-
-      for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-      }
-
-      std::array<double, 7> tau_d_array{};
-      Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
-
-      // end of controller
-      std::chrono::high_resolution_clock::time_point t2 =
-          std::chrono::high_resolution_clock::now();
-      auto time =
-          std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-
-      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
-
-      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
-
-      return tau_d_rate_limited;
+      common::VectorXd tau = this->torque_cartesian_controller->step(
+          this->controller_state(robot_state, period.toSec()));
+      std::array<double, 7> tau_array{};
+      common::VectorXd::Map(tau_array.data(), 7) = tau;
+      return tau_array;
     });
   } catch (...) {
     this->background_exception.store(std::current_exception());
@@ -631,10 +519,6 @@ void Franka::osc() {
 }
 
 void Franka::joint_controller() {
-  franka::Model model = this->robot.loadModel();
-  const common::Vector7d Kp = this->m_cfg.kp;
-  const common::Vector7d Kd = this->m_cfg.kd;
-  const common::Vector7d torque_limit = this->m_cfg.torque_limit;
   const bool allow_high_collision = this->m_cfg.allow_high_collision;
   this->controller_time = 0.0;
 
@@ -650,80 +534,21 @@ void Franka::joint_controller() {
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
   }
 
-  Eigen::Array<double, 7, 1> joint_max_;
-  Eigen::Array<double, 7, 1> joint_min_;
-
-  joint_max_ << 2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
-  joint_min_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
-
   try {
     this->robot.control([&](const franka::RobotState& robot_state,
                             franka::Duration period) -> franka::Torques {
-      std::chrono::high_resolution_clock::time_point t1 =
-          std::chrono::high_resolution_clock::now();
-
-      // torques handler
       if (this->running_controller.load() == Controller::none) {
         return franka::MotionFinished(franka::Torques(robot_state.tau_J_d));
       }
-
-      common::Vector7d desired_q;
-
       this->curr_state.store(robot_state);
 
-      this->interpolator_mutex.lock();
+      std::lock_guard<std::mutex> lock(this->interpolator_mutex);
       this->controller_time += period.toSec();
-      this->joint_interpolator.next_step(this->controller_time, desired_q);
-      this->interpolator_mutex.unlock();
-      // end torques handler
-
-      Eigen::Matrix<double, 7, 1> tau_d;
-
-      // Current joint velocity
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
-
-      // Current joint position
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
-
-      Eigen::MatrixXd joint_pos_error(7, 1);
-
-      joint_pos_error << desired_q - q;
-
-      tau_d << Kp.cwiseProduct(joint_pos_error) - Kd.cwiseProduct(dq);
-
-      // Coriolis feed-forward: libfranka compensates gravity, not Coriolis /
-      // centrifugal torques (see the impedance examples of libfranka)
-      std::array<double, 7> coriolis_array = model.coriolis(robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
-          coriolis_array.data());
-      tau_d << tau_d + coriolis;
-
-      Eigen::Matrix<double, 7, 1> dist2joint_max;
-      Eigen::Matrix<double, 7, 1> dist2joint_min;
-
-      dist2joint_max = joint_max_.matrix() - q;
-      dist2joint_min = q - joint_min_.matrix();
-
-      for (int i = 0; i < 7; i++) {
-        if (dist2joint_max[i] < 0.1 && tau_d[i] > 0.) tau_d[i] = 0.;
-        if (dist2joint_min[i] < 0.1 && tau_d[i] < 0.) tau_d[i] = 0.;
-      }
-
-      std::array<double, 7> tau_d_array{};
-      Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
-
-      // end of controller
-      std::chrono::high_resolution_clock::time_point t2 =
-          std::chrono::high_resolution_clock::now();
-      auto time =
-          std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-
-      std::array<double, 7> tau_d_rate_limited = franka::limitRate(
-          franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
-
-      TorqueSafetyGuardFn(tau_d_rate_limited, torque_limit);
-
-      return tau_d_rate_limited;
+      common::VectorXd tau = this->torque_joint_controller->step(
+          this->controller_state(robot_state, period.toSec()));
+      std::array<double, 7> tau_array{};
+      common::VectorXd::Map(tau_array.data(), 7) = tau;
+      return tau_array;
     });
   } catch (...) {
     this->background_exception.store(std::current_exception());
@@ -863,13 +688,20 @@ std::optional<std::shared_ptr<common::Kinematics>> Franka::get_ik() {
 void Franka::set_cartesian_position(const common::Pose& x) {
   // pose is assumed to be in the robots coordinate frame
   if (this->m_cfg.async_control) {
+    if (this->m_cfg.controller.has_value() &&
+        !common::is_cartesian(this->m_cfg.controller.value())) {
+      // only a joint controller: reach the pose through IK
+      this->set_cartesian_position_ik(x);
+      return;
+    }
     this->osc_set_cartesian_position(x);
     return;
   }
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
     const franka::RobotState robot_state = this->robot.readOnce();
     const common::Pose target_pose =
-        x * this->m_cfg.tcp_offset.inverse() * common::Pose(robot_state.F_T_EE);
+        x * this->m_cfg.end_effector.tcp_offset.inverse() *
+        common::Pose(robot_state.F_T_EE);
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
 
@@ -884,8 +716,8 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
         "position.");
   }
-  auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
-                                            this->m_cfg.tcp_offset);
+  auto joints = this->m_ik.value()->inverse(
+      pose, this->get_joint_position(), this->m_cfg.end_effector.tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());

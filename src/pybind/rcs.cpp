@@ -13,8 +13,14 @@
 #include <memory>
 
 #include "rcs/Camera.h"
+#include "rcs/ControllerConfig.h"
+#include "rcs/Controllers.h"
+#include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
+#include "rcs/LinearInterpolator.h"
+#include "rcs/PinocchioDynamics.h"
 #include "rcs/Pose.h"
+#include "rcs/PyCopy.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
 
@@ -279,15 +285,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("resolution_width",
                      &rcs::common::BaseCameraConfig::resolution_width)
       .def_readwrite("resolution_height",
-                     &rcs::common::BaseCameraConfig::resolution_height)
-      .def("__copy__",
-           [](const rcs::common::BaseCameraConfig& self) {
-             return rcs::common::BaseCameraConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::common::BaseCameraConfig& self, py::dict) {
-             return rcs::common::BaseCameraConfig(self);
-           });
+                     &rcs::common::BaseCameraConfig::resolution_height);
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -409,6 +407,253 @@ Args:
           py::arg("base_frame") = std::nullopt,
           py::arg("joint_limits") = std::nullopt);
 
+  py::class_<rcs::common::JointSetpoint>(common, "JointSetpoint")
+      .def_readonly("q", &rcs::common::JointSetpoint::q)
+      .def_readonly("dq", &rcs::common::JointSetpoint::dq);
+
+  py::class_<rcs::common::CartesianSetpoint>(common, "CartesianSetpoint")
+      .def_readonly("pose", &rcs::common::CartesianSetpoint::pose)
+      .def_readonly("twist", &rcs::common::CartesianSetpoint::twist);
+
+  py::class_<rcs::common::JointInterpolator,
+             std::shared_ptr<rcs::common::JointInterpolator>>(
+      common, "JointInterpolator")
+      .def("reset", &rcs::common::JointInterpolator::reset, py::arg("q"))
+      .def("set_goal", &rcs::common::JointInterpolator::set_goal,
+           py::arg("q_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::JointInterpolator::step, py::arg("dt"));
+
+  py::class_<rcs::common::LinearJointInterpolator,
+             rcs::common::JointInterpolator,
+             std::shared_ptr<rcs::common::LinearJointInterpolator>>(
+      common, "LinearJointInterpolator")
+      .def(py::init<double>(), py::arg("duration"));
+
+  py::class_<rcs::common::CartesianInterpolator,
+             std::shared_ptr<rcs::common::CartesianInterpolator>>(
+      common, "CartesianInterpolator")
+      .def("reset", &rcs::common::CartesianInterpolator::reset, py::arg("pose"))
+      .def("set_goal", &rcs::common::CartesianInterpolator::set_goal,
+           py::arg("pose_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::CartesianInterpolator::step, py::arg("dt"));
+
+  py::class_<rcs::common::LinearCartesianInterpolator,
+             rcs::common::CartesianInterpolator,
+             std::shared_ptr<rcs::common::LinearCartesianInterpolator>>(
+      common, "LinearCartesianInterpolator")
+      .def(py::init<double>(), py::arg("duration"));
+
+  py::class_<rcs::common::ControllerState>(common, "ControllerState")
+      .def(py::init<>())
+      .def_readwrite("q", &rcs::common::ControllerState::q)
+      .def_readwrite("dq", &rcs::common::ControllerState::dq)
+      .def_readwrite("mass", &rcs::common::ControllerState::mass)
+      .def_readwrite("coriolis", &rcs::common::ControllerState::coriolis)
+      .def_readwrite("gravity", &rcs::common::ControllerState::gravity)
+      .def_readwrite("jacobian", &rcs::common::ControllerState::jacobian)
+      .def_readwrite("tcp_pose", &rcs::common::ControllerState::tcp_pose)
+      .def_readwrite("dt", &rcs::common::ControllerState::dt);
+
+  py::class_<rcs::common::Payload>(common, "Payload")
+      .def(py::init<>())
+      .def(py::init([](double mass, const Eigen::Vector3d& com,
+                       const Eigen::Matrix3d& inertia) {
+             return rcs::common::Payload{mass, com, inertia};
+           }),
+           py::arg("mass"), py::arg("com"), py::arg("inertia"))
+      .def_readwrite("mass", &rcs::common::Payload::mass)
+      .def_readwrite("com", &rcs::common::Payload::com)
+      .def_readwrite("inertia", &rcs::common::Payload::inertia);
+
+  py::class_<rcs::common::EndEffectorConfig>(common, "EndEffectorConfig")
+      .def(py::init([](const rcs::common::Pose& tcp_offset,
+                       std::optional<rcs::common::Payload> payload) {
+             return rcs::common::EndEffectorConfig{tcp_offset, payload};
+           }),
+           py::arg("tcp_offset") = rcs::common::Pose::Identity(),
+           py::arg("payload") = std::nullopt)
+      .def_readwrite("tcp_offset", &rcs::common::EndEffectorConfig::tcp_offset,
+                     "TCP relative to the flange (attachment site)")
+      .def_readwrite(
+          "payload", &rcs::common::EndEffectorConfig::payload,
+          "Mass properties after the flange for torque control. None: sim "
+          "uses the MJCF bodies, hardware what the robot reports (Desk). "
+          "Set: sim compensates gravity with it, hardware warns if Desk "
+          "differs.");
+
+  py::class_<rcs::common::PinocchioDynamics,
+             std::shared_ptr<rcs::common::PinocchioDynamics>>(
+      common, "PinocchioDynamics")
+      .def(
+          py::init<const std::string&, bool, const std::string&,
+                   const rcs::common::Pose&>(),
+          R"doc(Rigid-body dynamics of one arm, the same quantities as libfranka's franka::Model.
+
+Args:
+    model_path: MJCF or URDF file containing only the arm, robot base at the model root.
+        Joint armature in the file is ignored.
+    urdf: Load ``model_path`` as URDF instead of MJCF.
+    flange_frame: Frame the payload and the TCP are attached to, e.g. the attachment site.
+    tcp_offset: TCP relative to the flange.
+)doc",
+          py::arg("model_path"), py::arg("urdf"), py::arg("flange_frame"),
+          py::arg("tcp_offset") = rcs::common::Pose::Identity())
+      .def("set_payload", &rcs::common::PinocchioDynamics::set_payload,
+           py::arg("payload"))
+      .def("get_payload", &rcs::common::PinocchioDynamics::get_payload)
+      .def("set_tcp_offset", &rcs::common::PinocchioDynamics::set_tcp_offset,
+           py::arg("tcp_offset"))
+      .def("set_gravity", &rcs::common::PinocchioDynamics::set_gravity,
+           py::arg("gravity"))
+      .def("dof", &rcs::common::PinocchioDynamics::dof)
+      .def("compute", &rcs::common::PinocchioDynamics::compute, py::arg("q"),
+           py::arg("dq"), py::arg("dt") = 0.0);
+
+  py::class_<rcs::common::JointController,
+             std::shared_ptr<rcs::common::JointController>>(common,
+                                                            "JointController")
+      .def("reset", &rcs::common::JointController::reset, py::arg("state"))
+      .def("set_goal", &rcs::common::JointController::set_goal,
+           py::arg("q_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::JointController::step, py::arg("state"));
+
+  py::class_<rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::CartesianController>>(
+      common, "CartesianController")
+      .def("reset", &rcs::common::CartesianController::reset, py::arg("state"))
+      .def("set_goal", &rcs::common::CartesianController::set_goal,
+           py::arg("pose_goal"), py::arg("duration") = std::nullopt)
+      .def("step", &rcs::common::CartesianController::step, py::arg("state"));
+
+  py::class_<rcs::common::JointPD, rcs::common::JointController,
+             std::shared_ptr<rcs::common::JointPD>>(common, "JointPD")
+      .def(py::init<const rcs::common::VectorXd&, const rcs::common::VectorXd&,
+                    std::shared_ptr<rcs::common::JointInterpolator>, bool>(),
+           py::arg("kp"), py::arg("kd"), py::arg("interpolator"),
+           py::arg("velocity_feedforward") = false);
+
+  py::class_<rcs::common::OSCConfig>(common, "OSCConfig")
+      .def(py::init<>())
+      .def_readwrite("kp_position", &rcs::common::OSCConfig::kp_position)
+      .def_readwrite("kp_orientation", &rcs::common::OSCConfig::kp_orientation)
+      .def_readwrite("kp_nullspace", &rcs::common::OSCConfig::kp_nullspace)
+      .def_readwrite("nullspace_q", &rcs::common::OSCConfig::nullspace_q)
+      .def_readwrite("residual_mass", &rcs::common::OSCConfig::residual_mass)
+      .def_readwrite("velocity_feedforward",
+                     &rcs::common::OSCConfig::velocity_feedforward);
+
+  py::class_<rcs::common::JointPDConfig>(common, "JointPDConfig")
+      .def(py::init([](const rcs::common::VectorXd& kp,
+                       const rcs::common::VectorXd& kd,
+                       bool velocity_feedforward) {
+             return rcs::common::JointPDConfig{kp, kd, velocity_feedforward};
+           }),
+           py::arg("kp"), py::arg("kd"),
+           py::arg("velocity_feedforward") = false)
+      .def_readwrite("kp", &rcs::common::JointPDConfig::kp)
+      .def_readwrite("kd", &rcs::common::JointPDConfig::kd)
+      .def_readwrite("velocity_feedforward",
+                     &rcs::common::JointPDConfig::velocity_feedforward);
+
+  py::class_<rcs::common::OSC, rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::OSC>>(common, "OSC")
+      .def(py::init<const rcs::common::OSCConfig&,
+                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
+
+  py::class_<rcs::common::FR3JointControllerConfig>(common,
+                                                    "FR3JointControllerConfig")
+      .def(py::init<>())
+      .def_readwrite("kp", &rcs::common::FR3JointControllerConfig::kp)
+      .def_readwrite("kd", &rcs::common::FR3JointControllerConfig::kd);
+
+  py::class_<rcs::common::FR3JointController, rcs::common::JointController,
+             std::shared_ptr<rcs::common::FR3JointController>>(
+      common, "FR3JointController")
+      .def(py::init<const rcs::common::FR3JointControllerConfig&,
+                    std::shared_ptr<rcs::common::JointInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
+
+  py::class_<rcs::common::FR3OSCConfig>(common, "FR3OSCConfig")
+      .def(py::init<>())
+      .def_readwrite("kp_position", &rcs::common::FR3OSCConfig::kp_position)
+      .def_readwrite("kp_orientation",
+                     &rcs::common::FR3OSCConfig::kp_orientation)
+      .def_readwrite("nullspace_q", &rcs::common::FR3OSCConfig::nullspace_q)
+      .def_readwrite("residual_mass",
+                     &rcs::common::FR3OSCConfig::residual_mass);
+
+  py::class_<rcs::common::FR3OSC, rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::FR3OSC>>(common, "FR3OSC")
+      .def(py::init<const rcs::common::FR3OSCConfig&,
+                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
+
+  rcs::common::SafetyConfig default_safety_config;
+  py::class_<rcs::common::SafetyConfig>(common, "SafetyConfig")
+      .def(py::init([](const rcs::common::VectorXd& torque_limit,
+                       double max_torque_rate,
+                       const rcs::common::VectorXd& max_velocity,
+                       const rcs::common::VectorXd& deceleration,
+                       const rcs::common::VectorXd& velocity_offset,
+                       const rcs::common::VectorXd& limit_damping,
+                       double velocity_margin,
+                       const rcs::common::VectorXd& spring_torque,
+                       double spring_range) {
+             return rcs::common::SafetyConfig{
+                 torque_limit,    max_torque_rate, max_velocity,
+                 deceleration,    velocity_offset, limit_damping,
+                 velocity_margin, spring_torque,   spring_range};
+           }),
+           py::arg("torque_limit") = default_safety_config.torque_limit,
+           py::arg("max_torque_rate") = default_safety_config.max_torque_rate,
+           py::arg("max_velocity") = default_safety_config.max_velocity,
+           py::arg("deceleration") = default_safety_config.deceleration,
+           py::arg("velocity_offset") = default_safety_config.velocity_offset,
+           py::arg("limit_damping") = default_safety_config.limit_damping,
+           py::arg("velocity_margin") = default_safety_config.velocity_margin,
+           py::arg("spring_torque") = default_safety_config.spring_torque,
+           py::arg("spring_range") = default_safety_config.spring_range)
+      .def_readwrite("torque_limit", &rcs::common::SafetyConfig::torque_limit)
+      .def_readwrite("max_torque_rate",
+                     &rcs::common::SafetyConfig::max_torque_rate)
+      .def_readwrite("max_velocity", &rcs::common::SafetyConfig::max_velocity)
+      .def_readwrite("deceleration", &rcs::common::SafetyConfig::deceleration)
+      .def_readwrite("velocity_offset",
+                     &rcs::common::SafetyConfig::velocity_offset)
+      .def_readwrite("limit_damping", &rcs::common::SafetyConfig::limit_damping)
+      .def_readwrite("velocity_margin",
+                     &rcs::common::SafetyConfig::velocity_margin)
+      .def_readwrite("spring_torque", &rcs::common::SafetyConfig::spring_torque)
+      .def_readwrite("spring_range", &rcs::common::SafetyConfig::spring_range);
+
+  py::class_<rcs::common::SafetyStage>(common, "SafetyStage")
+      .def(py::init<const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("config"), py::arg("joint_limits"), py::arg("timestep"))
+      .def("reset", &rcs::common::SafetyStage::reset, py::arg("state"))
+      .def("apply", &rcs::common::SafetyStage::apply, py::arg("tau"),
+           py::arg("state"));
+
+  py::class_<rcs::common::SafeJointController, rcs::common::JointController,
+             std::shared_ptr<rcs::common::SafeJointController>>(
+      common, "SafeJointController")
+      .def(py::init<std::shared_ptr<rcs::common::JointController>,
+                    const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("controller"), py::arg("config"), py::arg("joint_limits"),
+           py::arg("timestep"));
+
+  py::class_<rcs::common::SafeCartesianController,
+             rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::SafeCartesianController>>(
+      common, "SafeCartesianController")
+      .def(py::init<std::shared_ptr<rcs::common::CartesianController>,
+                    const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("controller"), py::arg("config"), py::arg("joint_limits"),
+           py::arg("timestep"));
+
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)
       .def_readonly_static("Panda", &rcs::common::RobotType::Panda)
@@ -429,14 +674,14 @@ Args:
                        const Eigen::Matrix<double, 2, Eigen::Dynamic,
                                            Eigen::ColMajor>& joint_limits,
                        rcs::common::RobotPlatform robot_platform,
-                       const rcs::common::Pose& tcp_offset,
+                       const rcs::common::EndEffectorConfig& end_effector,
                        const std::string& attachment_site,
                        const std::string& kinematic_model_path,
                        std::optional<rcs::common::VectorXd> q_home) {
              rcs::common::RobotConfig config;
              config.robot_type = robot_type;
              config.robot_platform = robot_platform;
-             config.tcp_offset = tcp_offset;
+             config.end_effector = end_effector;
              config.attachment_site = attachment_site;
              config.kinematic_model_path = kinematic_model_path;
              config.q_home = q_home;
@@ -448,7 +693,7 @@ Args:
            py::arg("dof") = default_robot_config.dof,
            py::arg("joint_limits") = default_robot_config.joint_limits,
            py::arg("robot_platform") = default_robot_config.robot_platform,
-           py::arg("tcp_offset") = default_robot_config.tcp_offset,
+           py::arg("end_effector") = default_robot_config.end_effector,
            py::arg("attachment_site") = default_robot_config.attachment_site,
            py::arg("kinematic_model_path") =
                default_robot_config.kinematic_model_path,
@@ -460,10 +705,12 @@ Args:
                      &rcs::common::RobotConfig::kinematic_model_path)
       .def_readwrite("attachment_site",
                      &rcs::common::RobotConfig::attachment_site)
-      .def_readwrite("tcp_offset", &rcs::common::RobotConfig::tcp_offset)
+      .def_readwrite("end_effector", &rcs::common::RobotConfig::end_effector)
       .def_readwrite("robot_platform",
                      &rcs::common::RobotConfig::robot_platform)
-      .def_readwrite("q_home", &rcs::common::RobotConfig::q_home);
+      .def_readwrite("q_home", &rcs::common::RobotConfig::q_home)
+      .def_readwrite("controller", &rcs::common::RobotConfig::controller)
+      .def_readwrite("safety", &rcs::common::RobotConfig::safety);
   py::class_<rcs::common::RobotState>(common, "RobotState").def(py::init<>());
 
   bind_type_class<rcs::common::GripperType>(common, "GripperType")
@@ -587,60 +834,60 @@ Args:
   rcs::sim::SimRobotConfig default_simrobot_cfg = rcs::sim::SimRobotConfig();
   py::class_<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(
       sim, "SimRobotConfig")
-      .def(
-          py::init([](rcs::common::RobotType robot_type,
-                      rcs::common::Pose tcp_offset, std::string attachment_site,
-                      std::string kinematic_model_path,
-                      double joint_rotational_tolerance,
-                      double seconds_between_callbacks, bool trajectory_trace,
-                      std::vector<std::string> arm_collision_geoms,
-                      std::vector<std::string> joints,
-                      std::optional<rcs::common::VectorXd> q_home,
-                      std::vector<std::string> actuators,
-                      std::optional<std::vector<double>> kp,
-                      std::optional<std::vector<double>> kv, std::string base,
-                      size_t dof,
-                      const Eigen::Matrix<double, 2, Eigen::Dynamic,
-                                          Eigen::ColMajor>& joint_limits) {
-            rcs::sim::SimRobotConfig config;
-            config.robot_type = robot_type;
-            config.robot_platform = rcs::common::RobotPlatform::SIMULATION;
-            config.tcp_offset = tcp_offset;
-            config.attachment_site = attachment_site;
-            config.kinematic_model_path = kinematic_model_path;
-            config.joint_rotational_tolerance = joint_rotational_tolerance;
-            config.seconds_between_callbacks = seconds_between_callbacks;
-            config.trajectory_trace = trajectory_trace;
-            config.arm_collision_geoms = arm_collision_geoms;
-            config.joints = joints;
-            config.actuators = actuators;
-            config.kp = kp;
-            config.kv = kv;
-            config.base = base;
-            config.dof = dof;
-            config.joint_limits = joint_limits;
-            config.q_home = q_home;
-            return config;
-          }),
-          py::arg("robot_type") = default_simrobot_cfg.robot_type,
-          py::arg("tcp_offset") = default_simrobot_cfg.tcp_offset,
-          py::arg("attachment_site") = default_simrobot_cfg.attachment_site,
-          py::arg("kinematic_model_path") =
-              default_simrobot_cfg.kinematic_model_path,
-          py::arg("joint_rotational_tolerance") =
-              default_simrobot_cfg.joint_rotational_tolerance,
-          py::arg("seconds_between_callbacks") =
-              default_simrobot_cfg.seconds_between_callbacks,
-          py::arg("trajectory_trace") = default_simrobot_cfg.trajectory_trace,
-          py::arg("arm_collision_geoms") =
-              default_simrobot_cfg.arm_collision_geoms,
-          py::arg("joints") = default_simrobot_cfg.joints,
-          py::arg("q_home") = default_simrobot_cfg.q_home,
-          py::arg("actuators") = default_simrobot_cfg.actuators,
-          py::arg("kp") = std::nullopt, py::arg("kv") = std::nullopt,
-          py::arg("base") = default_simrobot_cfg.base,
-          py::arg("dof") = default_simrobot_cfg.dof,
-          py::arg("joint_limits") = default_simrobot_cfg.joint_limits)
+      .def(py::init([](rcs::common::RobotType robot_type,
+                       rcs::common::EndEffectorConfig end_effector,
+                       std::string attachment_site,
+                       std::string kinematic_model_path,
+                       double joint_rotational_tolerance,
+                       double seconds_between_callbacks, bool trajectory_trace,
+                       std::vector<std::string> arm_collision_geoms,
+                       std::vector<std::string> joints,
+                       std::optional<rcs::common::VectorXd> q_home,
+                       std::vector<std::string> actuators,
+                       std::optional<std::vector<double>> kp,
+                       std::optional<std::vector<double>> kv, std::string base,
+                       size_t dof,
+                       const Eigen::Matrix<double, 2, Eigen::Dynamic,
+                                           Eigen::ColMajor>& joint_limits) {
+             rcs::sim::SimRobotConfig config;
+             config.robot_type = robot_type;
+             config.robot_platform = rcs::common::RobotPlatform::SIMULATION;
+             config.end_effector = end_effector;
+             config.attachment_site = attachment_site;
+             config.kinematic_model_path = kinematic_model_path;
+             config.joint_rotational_tolerance = joint_rotational_tolerance;
+             config.seconds_between_callbacks = seconds_between_callbacks;
+             config.trajectory_trace = trajectory_trace;
+             config.arm_collision_geoms = arm_collision_geoms;
+             config.joints = joints;
+             config.actuators = actuators;
+             config.kp = kp;
+             config.kv = kv;
+             config.base = base;
+             config.dof = dof;
+             config.joint_limits = joint_limits;
+             config.q_home = q_home;
+             return config;
+           }),
+           py::arg("robot_type") = default_simrobot_cfg.robot_type,
+           py::arg("end_effector") = default_simrobot_cfg.end_effector,
+           py::arg("attachment_site") = default_simrobot_cfg.attachment_site,
+           py::arg("kinematic_model_path") =
+               default_simrobot_cfg.kinematic_model_path,
+           py::arg("joint_rotational_tolerance") =
+               default_simrobot_cfg.joint_rotational_tolerance,
+           py::arg("seconds_between_callbacks") =
+               default_simrobot_cfg.seconds_between_callbacks,
+           py::arg("trajectory_trace") = default_simrobot_cfg.trajectory_trace,
+           py::arg("arm_collision_geoms") =
+               default_simrobot_cfg.arm_collision_geoms,
+           py::arg("joints") = default_simrobot_cfg.joints,
+           py::arg("q_home") = default_simrobot_cfg.q_home,
+           py::arg("actuators") = default_simrobot_cfg.actuators,
+           py::arg("kp") = std::nullopt, py::arg("kv") = std::nullopt,
+           py::arg("base") = default_simrobot_cfg.base,
+           py::arg("dof") = default_simrobot_cfg.dof,
+           py::arg("joint_limits") = default_simrobot_cfg.joint_limits)
 
       .def_readwrite("joint_rotational_tolerance",
                      &rcs::sim::SimRobotConfig::joint_rotational_tolerance)
@@ -661,14 +908,6 @@ Args:
       .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
       .def_readwrite("dof", &rcs::sim::SimRobotConfig::dof)
       .def_readwrite("joint_limits", &rcs::sim::SimRobotConfig::joint_limits)
-      .def("__copy__",
-           [](const rcs::sim::SimRobotConfig& self) {
-             return rcs::sim::SimRobotConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimRobotConfig& self, py::dict) {
-             return rcs::sim::SimRobotConfig(self);
-           })
       .def("add_prefix", &rcs::sim::SimRobotConfig::add_prefix, py::arg("id"));
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
@@ -676,6 +915,7 @@ Args:
       .def_readonly("previous_angles",
                     &rcs::sim::SimRobotState::previous_angles)
       .def_readonly("target_angles", &rcs::sim::SimRobotState::target_angles)
+      .def_readonly("target_pose", &rcs::sim::SimRobotState::target_pose)
       .def_readonly("inverse_tcp_offset",
                     &rcs::sim::SimRobotState::inverse_tcp_offset)
       .def_readonly("ik_success", &rcs::sim::SimRobotState::ik_success)
@@ -753,14 +993,6 @@ Args:
       .def_readwrite("min_actuator_width",
                      &rcs::sim::SimGripperConfig::min_actuator_width)
       .def_readwrite("gripper_type", &rcs::sim::SimGripperConfig::gripper_type)
-      .def("__copy__",
-           [](const rcs::sim::SimGripperConfig& self) {
-             return rcs::sim::SimGripperConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimGripperConfig& self, py::dict) {
-             return rcs::sim::SimGripperConfig(self);
-           })
       .def("add_prefix", &rcs::sim::SimGripperConfig::add_prefix,
            py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
@@ -781,7 +1013,7 @@ Args:
   py::class_<rcs::sim::SimConfig>(sim, "SimConfig")
       .def(py::init([](bool async_control, bool realtime, double frequency,
                        int max_convergence_steps, long long memory,
-                       rcs::sim::RendererBackend renderer) {
+                       rcs::sim::RendererBackend renderer, double timestep) {
              rcs::sim::SimConfig config;
              config.async_control = async_control;
              config.realtime = realtime;
@@ -789,6 +1021,7 @@ Args:
              config.max_convergence_steps = max_convergence_steps;
              config.memory = memory;
              config.renderer = renderer;
+             config.timestep = timestep;
              return config;
            }),
            py::arg("async_control") = default_sim_cfg.async_control,
@@ -797,7 +1030,8 @@ Args:
            py::arg("max_convergence_steps") =
                default_sim_cfg.max_convergence_steps,
            py::arg("memory") = default_sim_cfg.memory,
-           py::arg("renderer") = default_sim_cfg.renderer)
+           py::arg("renderer") = default_sim_cfg.renderer,
+           py::arg("timestep") = default_sim_cfg.timestep)
       .def_readwrite("async_control", &rcs::sim::SimConfig::async_control)
       .def_readwrite("realtime", &rcs::sim::SimConfig::realtime)
       .def_readwrite("frequency", &rcs::sim::SimConfig::frequency)
@@ -805,13 +1039,7 @@ Args:
                      &rcs::sim::SimConfig::max_convergence_steps)
       .def_readwrite("memory", &rcs::sim::SimConfig::memory)
       .def_readwrite("renderer", &rcs::sim::SimConfig::renderer)
-      .def("__copy__",
-           [](const rcs::sim::SimConfig& self) {
-             return rcs::sim::SimConfig(self);
-           })
-      .def("__deepcopy__", [](const rcs::sim::SimConfig& self, py::dict) {
-        return rcs::sim::SimConfig(self);
-      });
+      .def_readwrite("timestep", &rcs::sim::SimConfig::timestep);
 
   py::class_<rcs::sim::DynamicJointSchema>(sim, "DynamicJointSchema")
       .def(py::init<>())
@@ -878,7 +1106,14 @@ Args:
       .def("set_joints_hard", &rcs::sim::SimRobot::set_joints_hard,
            py::arg("q"))
       .def("clear_collision_flag", &rcs::sim::SimRobot::clear_collision_flag)
-      .def("get_state", &rcs::sim::SimRobot::get_state);
+      .def("get_state", &rcs::sim::SimRobot::get_state)
+      .def("set_dynamics", &rcs::sim::SimRobot::set_dynamics,
+           py::arg("dynamics"))
+      .def("set_joint_controller", &rcs::sim::SimRobot::set_joint_controller,
+           py::arg("controller"))
+      .def("set_cartesian_controller",
+           &rcs::sim::SimRobot::set_cartesian_controller, py::arg("controller"))
+      .def("get_simulated_payload", &rcs::sim::SimRobot::get_simulated_payload);
 
   // SimTilburgHandState
   py::class_<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
@@ -946,15 +1181,7 @@ Args:
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimTilburgHandConfig::seconds_between_callbacks)
       .def("add_prefix", &rcs::sim::SimTilburgHandConfig::add_prefix,
-           py::arg("id"))
-      .def("__copy__",
-           [](const rcs::sim::SimTilburgHandConfig& self) {
-             return rcs::sim::SimTilburgHandConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimTilburgHandConfig& self, py::dict) {
-             return rcs::sim::SimTilburgHandConfig(self);
-           });
+           py::arg("id"));
   // SimTilburgHand
   py::class_<rcs::sim::SimTilburgHand, rcs::common::Hand,
              std::shared_ptr<rcs::sim::SimTilburgHand>>(sim, "SimTilburgHand")
@@ -979,4 +1206,67 @@ Args:
              self.set_model_and_data((mjModel*)m, (mjData*)d);
            })
       .def("sync", &rcs::sim::GuiClient::sync);
+
+  // copy support (copy constructor, __copy__, __deepcopy__) for the value
+  // types; Pose and RPY copy through pickling. Objects that own a simulation,
+  // a robot connection or other objects (Sim, robots, grippers, controllers,
+  // kinematics, dynamics) are not copyable.
+  rcs::common::def_copy<rcs::common::BaseCameraConfig>(
+      common.attr("BaseCameraConfig"));
+  rcs::common::def_copy<rcs::common::RotVec>(common.attr("RotVec"));
+  rcs::common::def_copy<rcs::common::JointSetpoint>(
+      common.attr("JointSetpoint"));
+  rcs::common::def_copy<rcs::common::CartesianSetpoint>(
+      common.attr("CartesianSetpoint"));
+  rcs::common::def_copy<rcs::common::ControllerState>(
+      common.attr("ControllerState"));
+  rcs::common::def_copy<rcs::common::Payload>(common.attr("Payload"));
+  rcs::common::def_copy<rcs::common::EndEffectorConfig>(
+      common.attr("EndEffectorConfig"));
+  rcs::common::def_copy<rcs::common::OSCConfig>(common.attr("OSCConfig"));
+  rcs::common::def_copy<rcs::common::JointPDConfig>(
+      common.attr("JointPDConfig"));
+  rcs::common::def_copy<rcs::common::FR3JointControllerConfig>(
+      common.attr("FR3JointControllerConfig"));
+  rcs::common::def_copy<rcs::common::FR3OSCConfig>(common.attr("FR3OSCConfig"));
+  rcs::common::def_copy<rcs::common::SafetyConfig>(common.attr("SafetyConfig"));
+  rcs::common::def_copy<rcs::common::SafetyStage>(common.attr("SafetyStage"));
+  rcs::common::def_copy<rcs::common::RobotType>(common.attr("RobotType"));
+  rcs::common::def_copy<rcs::common::GripperType>(common.attr("GripperType"));
+  rcs::common::def_copy<rcs::common::HandType>(common.attr("HandType"));
+  rcs::common::def_copy<rcs::common::RobotConfig>(common.attr("RobotConfig"));
+  rcs::common::def_copy<rcs::common::RobotState>(common.attr("RobotState"));
+  rcs::common::def_copy<rcs::common::GripperConfig>(
+      common.attr("GripperConfig"));
+  rcs::common::def_copy<rcs::common::GripperState>(common.attr("GripperState"));
+  rcs::common::def_copy<rcs::common::HandConfig>(common.attr("HandConfig"));
+  rcs::common::def_copy<rcs::common::HandState>(common.attr("HandState"));
+  rcs::common::def_copy<rcs::common::LinearJointInterpolator,
+                        rcs::common::JointInterpolator,
+                        std::shared_ptr<rcs::common::LinearJointInterpolator>>(
+      common.attr("LinearJointInterpolator"));
+  rcs::common::def_copy<
+      rcs::common::LinearCartesianInterpolator,
+      rcs::common::CartesianInterpolator,
+      std::shared_ptr<rcs::common::LinearCartesianInterpolator>>(
+      common.attr("LinearCartesianInterpolator"));
+  rcs::common::def_copy<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(
+      sim.attr("SimRobotConfig"));
+  rcs::common::def_copy<rcs::sim::SimRobotState, rcs::common::RobotState>(
+      sim.attr("SimRobotState"));
+  rcs::common::def_copy<rcs::sim::SimGripperConfig, rcs::common::GripperConfig>(
+      sim.attr("SimGripperConfig"));
+  rcs::common::def_copy<rcs::sim::SimGripperState, rcs::common::GripperState>(
+      sim.attr("SimGripperState"));
+  rcs::common::def_copy<rcs::sim::SimConfig>(sim.attr("SimConfig"));
+  rcs::common::def_copy<rcs::sim::DynamicJointSchema>(
+      sim.attr("DynamicJointSchema"));
+  rcs::common::def_copy<rcs::sim::DynamicJointState>(
+      sim.attr("DynamicJointState"));
+  rcs::common::def_copy<rcs::sim::CapturedState>(sim.attr("CapturedState"));
+  rcs::common::def_copy<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
+      sim.attr("SimTilburgHandState"));
+  rcs::common::def_copy<rcs::sim::SimTilburgHandConfig,
+                        rcs::common::HandConfig>(
+      sim.attr("SimTilburgHandConfig"));
 }

@@ -12,8 +12,11 @@
 #include <string>
 #include <thread>
 
+#include "rcs/Controller.h"
+#include "rcs/ControllerConfig.h"
+#include "rcs/FR3Controllers.h"
 #include "rcs/Kinematics.h"
-#include "rcs/LinearPoseTrajInterpolator.h"
+#include "rcs/PinocchioDynamics.h"
 #include "rcs/Pose.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
@@ -33,31 +36,22 @@ enum IKSolver { franka_ik = 0, rcs_ik };
 // control
 enum Controller { none = 0, jsc, osc, ztc };
 struct FrankaConfig : common::RobotConfig {
+  FrankaConfig() { this->robot_platform = common::RobotPlatform::HARDWARE; }
   std::string ip;
-  common::RobotType robot_type = common::RobotType::FR3;
-  common::RobotPlatform robot_platform = common::RobotPlatform::HARDWARE;
   IKSolver ik_solver = IKSolver::rcs_ik;
   double speed_factor = DEFAULT_SPEED_FACTOR;
   // Rate (Hz) at which set-point commands are streamed from the Python side.
   // Used to size the interpolation window between successive targets.
   int policy_rate = 20;
-  // values from deoxys/config/joint-impedance-controller.yml
-  common::Vector7d kp =
-      (common::Vector7d() << 100., 100., 100., 100., 75., 150., 50.).finished();
-  common::Vector7d kd =
-      (common::Vector7d() << 20., 20., 20., 20., 7.5, 15.0, 5.0).finished();
-  // FR3/Panda joint torque limits (Nm) from the Franka robot specification
-  common::Vector7d torque_limit =
-      (common::Vector7d() << 87., 87., 87., 87., 12., 12., 12.).finished();
+  // period of the control loop in seconds; libfranka runs it at 1 kHz, so
+  // anything else is rejected
+  double timestep = 0.001;
+  // Without RobotConfig::controller, async control runs FR3JointController
+  // for joint goals and FR3OSC for Cartesian goals, with their default configs
+  // (deoxys gains). Async (torque) control needs RobotConfig::safety.
   bool allow_high_collision = false;
-  // values from deoxys/config/osc-position-controller.yml
-  Eigen::Vector3d kp_p = (Eigen::Vector3d() << 150., 150., 150.).finished();
-  double kp_r = 250.0;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
-  common::Pose tcp_offset = common::Pose::Identity();
-  // Indicates that Cartesian control uses tcp_offset.
-  bool tcp_offset_explicit = false;
   bool async_control = false;
   // When true, on every (re)start of the joint controller the controller first
   // holds the current measured position (~zero error) and ramps its target to
@@ -78,31 +72,8 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool ignore_realtime = false;
-  size_t dof = 7;
-  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
-      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-           // low 7‐tuple
-           -2.3476,
-       -1.5454, -2.4937, -2.7714, -2.5100, 0.7773, -2.7045,
-       // high 7‐tuple
-       2.3476, 1.5454, 2.4937, -0.4226, 2.5100, 4.2841, 2.7045)
-          .finished();
-};
-
-struct FR3Config : FrankaConfig {};
-struct PandaConfig : FrankaConfig {
-  common::RobotType robot_type = common::RobotType::Panda;
-  Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor> joint_limits =
-      (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-           // low 7‐tuple
-           -166. / 180. * M_PI,
-       -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI,
-       -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
-       // high 7‐tuple
-       166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI,
-       -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI,
-       166. / 180. * M_PI)
-          .finished();
+  // robot_type, dof, joint_limits etc. are those of RobotConfig, set them per
+  // robot (in Python with rcs.ROBOTS[robot_type].apply(cfg))
 };
 
 struct FrankaState : common::RobotState {
@@ -115,18 +86,27 @@ class Franka : public common::Robot {
   FrankaConfig m_cfg;
   std::optional<std::shared_ptr<common::Kinematics>> m_ik;
   std::optional<std::thread> control_thread = std::nullopt;
-  common::LinearPoseTrajInterpolator traj_interpolator;
   double controller_time = 0.0;
-  // Snapshot of m_cfg.policy_rate taken when a controller thread is started, so
-  // the interpolation window stays consistent for the controller's lifetime.
-  int m_active_policy_rate = 20;
-  common::LinearJointPositionTrajInterpolator joint_interpolator;
+  // The shared torque controllers (core), stepped in the libfranka control
+  // loop: RobotConfig::controller, or without it FR3JointController and
+  // FR3OSC with their default configs, behind the SafetyStage of
+  // RobotConfig::safety. They are created when a controller thread starts, so
+  // the gains and the interpolation window (1 / policy_rate) stay fixed for
+  // its lifetime.
+  std::shared_ptr<common::PinocchioDynamics> dynamics;
+  std::shared_ptr<common::JointController> torque_joint_controller;
+  std::shared_ptr<common::CartesianController> torque_cartesian_controller;
+  common::ControllerPair make_torque_controller(bool cartesian);
   common::ThreadSafeValue<franka::RobotState> curr_state;
+  // guards the controllers between set_goal() and the control loop
   std::mutex interpolator_mutex;
   std::atomic<Controller> running_controller{Controller::none};
   common::ThreadSafeValue<std::exception_ptr> background_exception;
   void osc();
   void joint_controller();
+  void create_dynamics();
+  common::ControllerState controller_state(const franka::RobotState& state,
+                                           double dt);
   void zero_torque_controller();
   void check_for_background_errors();
   void clear_background_error();

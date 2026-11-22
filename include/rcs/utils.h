@@ -17,6 +17,8 @@ typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
 typedef Eigen::Matrix<double, 16, 1, Eigen::ColMajor> Vector16d;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::ColMajor> VectorXd;
 typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
+// joint limits of a robot: lower limits in row 0, upper limits in row 1
+using JointLimits = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>;
 
 /***
  * @brief convert between eigen and flattened array (col major as required by
@@ -117,6 +119,18 @@ class ThreadSafeFixedBuffer {
     return std::vector<T>(deque_.begin(), deque_.end());
   }
 };
+
+// Rotation from `from` to `to` as a rotation vector (axis * angle) in the
+// frame both are expressed in, along the shortest path.
+inline Eigen::Vector3d rotation_between(const Eigen::Quaterniond& from,
+                                        const Eigen::Quaterniond& to) {
+  Eigen::Quaterniond delta = to * from.inverse();
+  if (delta.w() < 0.0) {
+    delta.coeffs() *= -1.0;  // same rotation, shorter way round
+  }
+  Eigen::AngleAxisd angle_axis(delta);
+  return angle_axis.angle() * angle_axis.axis();
+}
 
 }  // namespace common
 }  // namespace rcs

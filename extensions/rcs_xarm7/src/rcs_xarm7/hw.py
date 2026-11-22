@@ -96,7 +96,9 @@ class XArm7(common.Robot):
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
         if not self._config.use_internal_ik:
-            target_joints = self.ik.inverse(pose=pose, q0=self.get_joint_position(), tcp_offset=self._config.tcp_offset)
+            target_joints = self.ik.inverse(
+                pose=pose, q0=self.get_joint_position(), tcp_offset=self._config.end_effector.tcp_offset
+            )
             if target_joints is not None:
                 self.set_joint_position(target_joints)
             return

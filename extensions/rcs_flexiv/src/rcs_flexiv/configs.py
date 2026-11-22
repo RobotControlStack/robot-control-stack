@@ -38,7 +38,7 @@ class DefaultRizon4SHardwareEnv(RCSFlexivConfigEnvCreator):
             dof=rcs.ROBOTS[robot_type].dof,
             joint_limits=rcs.ROBOTS[robot_type].joint_limits,
             q_home=rcs.ROBOTS[robot_type].q_home,
-            tcp_offset=rcs.GRIPPER_TCP_OFFSETS[gripper_type],
+            end_effector=rcs.common.EndEffectorConfig(tcp_offset=rcs.GRIPPER_TCP_OFFSETS[gripper_type]),
         )
 
         gripper_cfg = FlexivGripperConfig(

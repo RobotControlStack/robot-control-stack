@@ -66,16 +66,17 @@ Common examples in the repository are:
 
 If you are unsure which frame a robot uses, check its config or the relevant example scene in `python/rcs/envs/configs.py`.
 
-### Tool frame: `tcp_offset`
+### Tool frame: `end_effector.tcp_offset`
 
-`tcp_offset` is applied on top of the attachment site to define the actual tool center point (TCP) used by motion commands and IK.
+`end_effector.tcp_offset` is applied on top of the attachment site to define the actual tool center point (TCP) used by motion commands and IK.
 
 In practice:
 
 - `attachment_site` = frame coming from the robot model
-- `tcp_offset` = extra transform from that frame to the tool you actually want to control
+- `end_effector.tcp_offset` = extra transform from that frame to the tool you actually want to control
+- `end_effector.payload` = optional mass properties of the tool, used by torque control (see the controller docs)
 
-A typical example is a wrist-mounted gripper where the tool center point is slightly in front of the model's attachment site.
+A typical example is a wrist-mounted gripper where the tool center point is slightly in front of the model's attachment site. On a Franka, Desk's end effector settings describe the same tool; RCS does not take them over but warns when they differ from `end_effector`.
 
 ## Pose representations
 
@@ -213,7 +214,7 @@ When something looks wrong, check these first:
 1. Are you working in **world frame** or **robot/base frame**?
 2. Does your robot/base frame follow **x forward, y left, z up**?
 3. Is your end-effector frame the correct `attachment_site`?
-4. Did you apply the right `tcp_offset`?
+4. Did you apply the right `end_effector.tcp_offset`?
 5. Are your quaternions **xyzw** in RCS?
 6. Are you accidentally feeding **MuJoCo `wxyz`** into an RCS API?
 7. Are your Euler angles ordered as **roll, pitch, yaw** around **x, y, z**?
