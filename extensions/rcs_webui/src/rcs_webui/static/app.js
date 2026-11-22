@@ -302,6 +302,8 @@ $("#reload-configs").addEventListener("click", () => loadConfigCatalog().catch((
 $("#diff-prev").addEventListener("click", () => editor.step(-1));
 $("#diff-next").addEventListener("click", () => editor.step(1));
 $("#diff-revert-all").addEventListener("click", () => editor.revertAll());
+$("#fold-all").addEventListener("click", () => editor.foldAll());
+$("#unfold-all").addEventListener("click", () => editor.unfoldAll());
 
 function parseEditor() {
   const text = editor.value().trim();

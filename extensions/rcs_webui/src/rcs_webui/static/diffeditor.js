@@ -110,7 +110,32 @@ function formatJson(value, indent = "") {
   return JSON.stringify(value);
 }
 
-// Editor: a textarea with a gutter of line numbers and diff marks against a base text.
+// Index of the line that closes the bracket opened at the end of lines[i], -1 if there is none. Brackets inside
+// JSON strings are ignored.
+function matchClose(lines, i) {
+  let depth = 0;
+  for (let k = i; k < lines.length; k++) {
+    let inStr = false;
+    const line = lines[k];
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (inStr) {
+        if (ch === "\\") c++;
+        else if (ch === '"') inStr = false;
+      } else if (ch === '"') inStr = true;
+      else if (ch === "{" || ch === "[") depth++;
+      else if (ch === "}" || ch === "]") depth--;
+    }
+    if (k > i && depth <= 0) return depth === 0 ? k : -1;
+  }
+  return -1;
+}
+
+const opensBlock = (line) => /[{[]\s*$/.test(line);
+
+// Editor: a textarea with a gutter of line numbers, diff marks against a base text and folding of JSON blocks.
+// A folded block is one placeholder line in the textarea (read only, unfold it to edit), value() and the diff
+// always use the complete text; the gutter shows the line numbers of the complete text.
 class DiffEditor {
   constructor(root, { onChange } = {}) {
     this.root = root;
@@ -119,6 +144,9 @@ class DiffEditor {
     this.peek = root.querySelector(".peek");
     this.base = "";
     this.hunks = [];
+    this.folds = new Map(); // placeholder line -> the folded lines (header to closing line, may hold placeholders)
+    this._starts = [0]; // first line of the complete text for every textarea line
+    this._spans = [1]; // number of lines of the complete text for every textarea line
     this.current = -1;
     this.onChange = onChange || (() => {});
     this._timer = null;
@@ -135,6 +163,8 @@ class DiffEditor {
       if (e.key === "Escape") this.closePeek();
     });
     this.gutter.addEventListener("click", (e) => {
+      const fold = e.target.closest("[data-fold]");
+      if (fold) return this.toggleFold(+fold.dataset.fold);
       const mark = e.target.closest("[data-hunk]");
       if (mark) this.openPeek(+mark.dataset.hunk);
     });
@@ -149,40 +179,165 @@ class DiffEditor {
   }
 
   set(base, text = base) {
+    if (text === this.value() && this.text.value) {
+      // same content (e.g. a refreshed catalog entry): keep the folds and the scroll position
+      this.base = base;
+      this.refresh();
+      return;
+    }
     this.base = base;
+    this.folds.clear();
     this.text.value = text;
     this.text.scrollTop = 0;
     this.closePeek();
     this.refresh();
   }
 
+  // complete text of the textarea lines, with the first line and number of lines of each textarea line
+  _expand(display) {
+    const lines = [];
+    const starts = [];
+    const spans = [];
+    const flat = (line, depth) => {
+      const hidden = depth < 64 ? this.folds.get(line) : undefined;
+      if (!hidden) return [line];
+      return hidden.flatMap((l) => flat(l, depth + 1));
+    };
+    for (const line of display) {
+      const full = flat(line, 0);
+      starts.push(lines.length);
+      spans.push(full.length);
+      lines.push(...full);
+    }
+    return { lines, starts, spans };
+  }
+
   value() {
-    return this.text.value;
+    return this.folds.size ? this._expand(this.text.value.split("\n")).lines.join("\n") : this.text.value;
   }
 
   dirty() {
-    return this.text.value !== this.base;
+    return this.value() !== this.base;
+  }
+
+  // textarea line that shows line `full` of the complete text
+  _displayLine(full) {
+    let lo = 0;
+    let hi = this._starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (this._starts[mid] <= full) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  }
+
+  _setDisplay(display) {
+    const top = this.text.scrollTop;
+    this.text.value = display.join("\n");
+    this.text.scrollTop = top;
+    this.refresh();
+  }
+
+  toggleFold(i) {
+    const display = this.text.value.split("\n");
+    const line = display[i];
+    if (line === undefined) return;
+    if (this.folds.has(line)) {
+      const hidden = this.folds.get(line);
+      this.folds.delete(line);
+      display.splice(i, 1, ...hidden);
+      return this._setDisplay(display);
+    }
+    if (!this._fold(display, i)) return;
+    this._setDisplay(display);
+  }
+
+  _fold(display, i) {
+    if (!opensBlock(display[i]) || this.folds.has(display[i])) return false;
+    const j = matchClose(display, i);
+    if (j < 0) return false;
+    const hidden = display.slice(i, j + 1);
+    const n = this._expand(hidden).lines.length - 2;
+    let ph = `${display[i].replace(/\s+$/, "")} \u2026 ${n} line${n === 1 ? "" : "s"} \u2026 ${display[j].trim()}`;
+    while (this.folds.has(ph)) ph += "\u200b"; // invisible, keeps equal looking placeholders apart
+    this.folds.set(ph, hidden);
+    display.splice(i, j - i + 1, ph);
+    return true;
+  }
+
+  // fold every block below the first `keep` nesting levels, innermost first (unfolding shows the next level)
+  foldAll(keep = 2) {
+    const display = this.text.value.split("\n");
+    const indentOf = (l) => l.length - l.trimStart().length;
+    const levels = [...new Set(display.filter(opensBlock).map(indentOf))].sort((x, y) => y - x);
+    const minIndent = 2 * keep;
+    for (const lvl of levels) {
+      if (lvl < minIndent) break;
+      for (let i = display.length - 1; i >= 0; i--) if (indentOf(display[i]) === lvl) this._fold(display, i);
+    }
+    this._setDisplay(display);
+  }
+
+  unfoldAll() {
+    if (!this.folds.size) return;
+    const text = this.value();
+    this.folds.clear();
+    const top = this.text.scrollTop;
+    this.text.value = text;
+    this.text.scrollTop = top;
+    this.refresh();
   }
 
   refresh() {
+    const display = this.text.value.split("\n");
+    // drop folds whose placeholder line was deleted or edited
+    if (this.folds.size) {
+      const present = new Set(display);
+      const keep = new Set();
+      const visit = (l) => {
+        if (keep.has(l) || !this.folds.has(l)) return;
+        keep.add(l);
+        this.folds.get(l).forEach(visit);
+      };
+      present.forEach(visit);
+      for (const k of [...this.folds.keys()]) if (!keep.has(k)) this.folds.delete(k);
+    }
+    const { lines: b, starts, spans } = this._expand(display);
+    this._starts = starts;
+    this._spans = spans;
     const a = this.base ? this.base.split("\n") : [];
-    const b = this.text.value.split("\n");
     this.hunks = this.base ? diffLines(a, b) : [];
     const marks = new Array(b.length).fill(null);
     const delBefore = new Map();
     this.hunks.forEach((h, i) => {
-      if (h.kind === "del") delBefore.set(Math.min(h.bStart, b.length), i);
-      else for (let j = h.bStart; j < h.bStart + h.bLines.length; j++) marks[j] = [h.kind, i];
+      if (h.kind === "del") {
+        const d = h.bStart >= b.length ? display.length : this._displayLine(h.bStart);
+        if (!delBefore.has(d)) delBefore.set(d, i);
+      } else for (let j = h.bStart; j < h.bStart + h.bLines.length; j++) marks[j] = [h.kind, i];
     });
     const rows = [];
-    for (let i = 0; i < b.length; i++) {
-      const m = marks[i];
+    for (let i = 0; i < display.length; i++) {
+      let m = null;
+      for (let j = starts[i]; j < starts[i] + spans[i]; j++) {
+        if (marks[j]) {
+          m = spans[i] > 1 ? ["mod", marks[j][1]] : marks[j];
+          break;
+        }
+      }
       const del = delBefore.has(i) ? `<span class="del-mark" data-hunk="${delBefore.get(i)}" title="deleted lines, click to show"></span>` : "";
       const cls = m ? `mark ${m[0]}` : "mark";
-      const attr = m ? ` data-hunk="${m[1]}" title="${m[0] === "add" ? "added" : "changed"}, click to show"` : "";
-      rows.push(`<div class="ln">${del}<span class="${cls}"${attr}></span><span class="num">${i + 1}</span></div>`);
+      const what = spans[i] > 1 ? "changes in the folded lines" : m && m[0] === "add" ? "added" : "changed";
+      const attr = m ? ` data-hunk="${m[1]}" title="${what}, click to show"` : "";
+      const folded = this.folds.has(display[i]);
+      const fold = folded
+        ? `<span class="fold folded" data-fold="${i}" title="unfold ${spans[i]} lines">&#9656;</span>`
+        : opensBlock(display[i])
+          ? `<span class="fold" data-fold="${i}" title="fold">&#9662;</span>`
+          : "";
+      rows.push(`<div class="ln">${del}<span class="${cls}"${attr}></span>${fold}<span class="num">${starts[i] + 1}</span></div>`);
     }
-    if (delBefore.has(b.length)) rows.push(`<div class="ln"><span class="del-mark" data-hunk="${delBefore.get(b.length)}"></span></div>`);
+    if (delBefore.has(display.length)) rows.push(`<div class="ln"><span class="del-mark" data-hunk="${delBefore.get(display.length)}"></span></div>`);
     this.gutter.innerHTML = rows.join("");
     if (this.current >= this.hunks.length) this.closePeek();
     else if (!this.peek.hidden) this.openPeek(this.current);
@@ -203,7 +358,7 @@ class DiffEditor {
     const h = this.hunks[this.current];
     if (!h) return;
     const pad = parseFloat(getComputedStyle(this.text).paddingTop) || 0;
-    const line = h.bStart + Math.max(h.bLines.length, 1);
+    const line = this._displayLine(h.bStart + Math.max(h.bLines.length, 1) - 1) + 1;
     const top = pad + line * this._lineHeight() - this.text.scrollTop;
     this.peek.style.top = `${Math.max(0, Math.min(top, this.root.clientHeight - 40))}px`;
   }
@@ -211,6 +366,7 @@ class DiffEditor {
   openPeek(i) {
     const h = this.hunks[i];
     if (!h) return;
+    this._unfoldAt(h);
     this.current = i;
     const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
     const removed = h.aLines.map((l) => `<div class="old">- ${esc(l)}</div>`).join("");
@@ -235,16 +391,36 @@ class DiffEditor {
     if (!this.hunks.length) return;
     const next = this.current < 0 ? (dir > 0 ? 0 : this.hunks.length - 1) : (this.current + dir + this.hunks.length) % this.hunks.length;
     const h = this.hunks[next];
-    this.text.scrollTop = Math.max(0, h.bStart * this._lineHeight() - this.text.clientHeight / 3);
+    this._unfoldAt(h);
+    this.text.scrollTop = Math.max(0, this._displayLine(h.bStart) * this._lineHeight() - this.text.clientHeight / 3);
     this.openPeek(next);
+  }
+
+  // unfold the blocks that hide lines of a change, so that it can be shown and edited
+  _unfoldAt(h) {
+    for (let guard = 0; guard < 64; guard++) {
+      const first = this._displayLine(h.bStart);
+      const last = this._displayLine(h.bStart + Math.max(h.bLines.length, 1) - 1);
+      const display = this.text.value.split("\n");
+      let i = -1;
+      for (let d = first; d <= last && d < display.length; d++) if (this.folds.has(display[d])) i = d;
+      if (i < 0) return;
+      const line = display[i];
+      display.splice(i, 1, ...this.folds.get(line));
+      this.folds.delete(line);
+      this.text.value = display.join("\n");
+      this.refresh();
+    }
   }
 
   revert(i) {
     const h = this.hunks[i];
     if (!h) return;
-    const lines = this.text.value.split("\n");
+    this._unfoldAt(h);
+    const lines = this.value().split("\n");
     lines.splice(h.bStart, h.bLines.length, ...h.aLines);
     const top = this.text.scrollTop;
+    this.folds.clear();
     this.text.value = lines.join("\n");
     this.text.scrollTop = top;
     this.closePeek();
@@ -253,6 +429,7 @@ class DiffEditor {
 
   revertAll() {
     const top = this.text.scrollTop;
+    this.folds.clear();
     this.text.value = this.base;
     this.text.scrollTop = top;
     this.closePeek();

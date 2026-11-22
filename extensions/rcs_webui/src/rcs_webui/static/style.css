@@ -119,6 +119,9 @@ label.check input { width: auto; }
 .editor .mark.add:hover, .editor .mark.mod:hover { width: 12px; }
 .editor .del-mark { position: absolute; left: 0; top: -5px; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid var(--diff-del); cursor: pointer; z-index: 1; }
 .editor .del-mark:hover { border-left-width: 13px; }
+.editor .fold { position: absolute; left: 11px; top: 0; width: 14px; text-align: center; cursor: pointer; color: var(--muted); font-size: 11px; line-height: 18px; user-select: none; }
+.editor .fold:hover { color: var(--text); }
+.editor .fold.folded { color: var(--text); }
 .editor textarea { flex: 1; border: 0; border-radius: 0; margin: 0; padding: 8px 10px; resize: none; white-space: pre; overflow: auto; background: transparent; color: var(--text); tab-size: 2; outline: none; }
 .editor .peek { position: absolute; left: 58px; right: 0; z-index: 3; background: var(--card); border-top: 2px solid var(--diff-mod); border-bottom: 2px solid var(--diff-mod); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); max-height: 45%; display: flex; flex-direction: column; }
 .editor .peek-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px; font-size: 12px; border-bottom: 1px solid var(--border); }
