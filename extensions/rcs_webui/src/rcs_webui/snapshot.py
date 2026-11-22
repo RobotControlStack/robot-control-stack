@@ -221,8 +221,18 @@ def _child(node: Any, part: str, path: str) -> Any:
 
 def _git(args: list[str], cwd: Path) -> str | None:
     try:
-        out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
+        # explicit utf-8: with an ASCII locale a non-ASCII character in a diff raised UnicodeDecodeError
+        out = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     return out.stdout
 
