@@ -23,7 +23,7 @@ class DefaultXArm7HardwareEnv(RCSXArm7ConfigEnvCreator):
             dof=rcs.ROBOTS[robot_type].dof,
             joint_limits=rcs.ROBOTS[robot_type].joint_limits,
             q_home=rcs.ROBOTS[robot_type].q_home,
-            tcp_offset=rcs.common.Pose(),
+            end_effector=rcs.common.EndEffectorConfig(tcp_offset=rcs.common.Pose()),
         )
 
         return XArm7HardwareEnvCreatorConfig(

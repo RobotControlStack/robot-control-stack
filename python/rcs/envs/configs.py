@@ -33,7 +33,9 @@ class EmptyWorldFR3(SimEnvCreator):
         q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
         q_home[-1] = np.pi / 4
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
-            tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.FrankaHand],
+            end_effector=rcs.common.EndEffectorConfig(
+                tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.FrankaHand]
+            ),
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,
             trajectory_trace=False,
@@ -176,7 +178,7 @@ class EmptyWorldDroid(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
+        robot_cfg.end_effector.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         robot_cfg.q_home = rcs.ROBOTS[RobotType.FR3].q_home.copy()
 
         assert cfg.gripper_cfgs is not None
@@ -271,7 +273,9 @@ class EmptyWorldFR3Duo(SimEnvCreator):
 
     def config(self) -> SimEnvCreatorConfig:
         robot_cfg: SimRobotConfig[Literal[7]] = SimRobotConfig(
-            tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85],
+            end_effector=rcs.common.EndEffectorConfig(
+                tcp_offset=GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
+            ),
             joint_rotational_tolerance=0.05 * (np.pi / 180.0),
             seconds_between_callbacks=0.1,
             trajectory_trace=False,
@@ -440,7 +444,7 @@ class EmptyWorldUR5e(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         rcs.ROBOTS[rt].apply(robot_cfg)
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
+        robot_cfg.end_effector.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = [
             "shoulder_pan_joint",
@@ -482,7 +486,7 @@ class EmptyWorldXArm7(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         rcs.ROBOTS[rt].apply(robot_cfg)
-        robot_cfg.tcp_offset = rcs.common.Pose()
+        robot_cfg.end_effector.tcp_offset = rcs.common.Pose()
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = [
             "joint1",
@@ -523,7 +527,7 @@ class EmptyWorldSO101(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         rcs.ROBOTS[rt].apply(robot_cfg)
-        robot_cfg.tcp_offset = rcs.common.Pose()
+        robot_cfg.end_effector.tcp_offset = rcs.common.Pose()
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["1", "2", "3", "4", "5"]
         robot_cfg.actuators = ["1", "2", "3", "4", "5"]
@@ -559,7 +563,7 @@ class EmptyWorldYam(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         rcs.ROBOTS[rt].apply(robot_cfg)
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.Yam]
+        robot_cfg.end_effector.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.Yam]
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
         robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
@@ -595,7 +599,7 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
         rcs.ROBOTS[rt].apply(robot_cfg)
-        robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.FlexivGrav]
+        robot_cfg.end_effector.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.FlexivGrav]
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]

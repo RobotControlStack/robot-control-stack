@@ -39,7 +39,7 @@ When building an RCS sim scene, it helps to think about five frames:
    - Low-level kinematics and Cartesian commands are expressed here.
 
 5. **i-th robot `attachment_site`**
-   - The end-effector mounting frame for that robot, before any optional `tcp_offset`.
+   - The end-effector mounting frame for that robot, before any optional `end_effector.tcp_offset`.
    - Use this for wrist-mounted objects, cameras, and tools.
 
 A good rule of thumb is:
@@ -128,7 +128,7 @@ Each robot entry usually defines things such as:
 - robot type
 - kinematic model path
 - `attachment_site`
-- `tcp_offset`
+- `end_effector` (`tcp_offset`, optional `payload`)
 - joint names and actuator names
 - base link name
 - degrees of freedom, joint limits, and `q_home`

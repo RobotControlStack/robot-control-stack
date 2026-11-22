@@ -1,5 +1,7 @@
 """The robot specific fields of RobotConfig come from rcs.ROBOTS, not from C++ defaults."""
 
+import copy
+
 import numpy as np
 import pytest
 from test_sim_torque_control import Setup
@@ -72,3 +74,14 @@ def test_apply_sets_the_safety_stage_of_the_franka_robots_only():
             assert safety.max_torque_rate == pytest.approx(1000.0 - 1e-3)
         else:
             assert safety is None
+
+
+def test_end_effector_holds_the_tcp_offset_and_the_payload():
+    cfg = sim.SimRobotConfig()
+    assert cfg.end_effector.payload is None
+    np.testing.assert_allclose(cfg.end_effector.tcp_offset.pose_matrix(), np.eye(4))
+    cfg.end_effector.tcp_offset = common.Pose(translation=np.array([0.0, 0.0, 0.1493]))
+    cfg.end_effector.payload = common.Payload(mass=0.9, com=np.array([0.0, 0.0, 0.057]), inertia=np.eye(3) * 1e-3)
+    copied = copy.deepcopy(cfg)
+    np.testing.assert_allclose(copied.end_effector.tcp_offset.translation(), [0.0, 0.0, 0.1493])
+    assert copied.end_effector.payload.mass == pytest.approx(0.9)

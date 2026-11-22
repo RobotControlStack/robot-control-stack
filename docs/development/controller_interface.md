@@ -253,8 +253,8 @@ prevent under torque control.
     from the base orientation in the world, because arms can be mounted
     tilted (the right arm of our duo is tilted by about 52°, as fitted from
     its logged torques).
-  - Payload: from the sim robot config, set to the values configured on the
-    real robot. If none is configured, it defaults to the MJCF bodies
+  - Payload: `end_effector.payload` of the robot config, set to the values
+    configured on the real robot. If none is configured, it defaults to the MJCF bodies
     attached after the flange (summed mass, centre of mass and inertia),
     i.e. a perfectly configured tool. The backend warns when the configured
     payload differs noticeably from those bodies, because then either the
@@ -281,9 +281,11 @@ prevent under torque control.
 - The bodies of the two `robot.control(...)` lambdas become: take `q`/`dq`
   from `RobotState`, `PinocchioDynamics::compute()`, `controller->step()`,
   return the torque. The payload is set from `RobotState` (`I_total`,
-  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does.
-  `FrankaConfig` has no tool payload to compare it with, so there is no
-  warning on hardware (a possible follow-up).
+  `m_total`, `F_x_Ctotal`) whenever it changes, as libfranka does. When
+  connecting and in `set_config()`, the backend warns if Desk's end effector
+  differs from `end_effector`: `F_T_EE` from `tcp_offset` (1 mm, 1°) and,
+  if `payload` is set, the reported mass and centre of mass from it (50 g,
+  1 cm). RCS itself uses `tcp_offset`, not `F_T_EE`.
 - `PinocchioDynamics` is built from `kinematic_model_path` and
   `attachment_site` of `FrankaConfig` when a controller starts, so Desk-only
   uses of `Franka` don't need a model.

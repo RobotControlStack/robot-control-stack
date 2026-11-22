@@ -22,7 +22,7 @@ class RobotConfigKwargs(TypedDict, total=False):
     dof: int
     joint_limits: numpy.ndarray
     robot_platform: common.RobotPlatform
-    tcp_offset: common.Pose
+    end_effector: common.EndEffectorConfig
     attachment_site: str
     kinematic_model_path: str
     q_home: numpy.ndarray | None

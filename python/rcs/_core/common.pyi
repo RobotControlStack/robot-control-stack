@@ -15,6 +15,7 @@ __all__: list[str] = [
     "CartesianInterpolator",
     "CartesianSetpoint",
     "ControllerState",
+    "EndEffectorConfig",
     "FR3JointController",
     "FR3JointControllerConfig",
     "FR3OSC",
@@ -101,6 +102,25 @@ class ControllerState:
     q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     tcp_pose: Pose
     def __init__(self) -> None: ...
+
+class EndEffectorConfig:
+    def __init__(self, tcp_offset: Pose = ..., payload: Payload | None = None) -> None: ...
+    @property
+    def payload(self) -> Payload | None:
+        """
+        Mass properties after the flange for torque control. None: sim uses the MJCF bodies, hardware what the robot reports (Desk). Set: sim compensates gravity with it, hardware warns if Desk differs.
+        """
+
+    @payload.setter
+    def payload(self, arg0: Payload | None) -> None: ...
+    @property
+    def tcp_offset(self) -> Pose:
+        """
+        TCP relative to the flange (attachment site)
+        """
+
+    @tcp_offset.setter
+    def tcp_offset(self, arg0: Pose) -> None: ...
 
 class FR3JointControllerConfig:
     kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
@@ -401,20 +421,20 @@ class RobotConfig(typing.Generic[M]):
     attachment_site: str
     controller: JointPDConfig | OSCConfig | FR3JointControllerConfig | FR3OSCConfig | None
     dof: int
+    end_effector: EndEffectorConfig
     joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]]
     kinematic_model_path: str
     q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None
     robot_platform: RobotPlatform
     robot_type: RobotType
     safety: SafetyConfig | None
-    tcp_offset: Pose
     def __init__(
         self,
         robot_type: RobotType = ...,
         dof: int = 0,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
         robot_platform: RobotPlatform = ...,
-        tcp_offset: Pose = ...,
+        end_effector: EndEffectorConfig = ...,
         attachment_site: str = "",
         kinematic_model_path: str = "",
         q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None = None,

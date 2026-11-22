@@ -129,7 +129,7 @@ int test_sim() {
                                                "attachment_site_" + id, false);
   auto tcp_offset = rcs::common::Pose(rcs::common::FrankaHandTCPOffset());
   rcs::sim::SimRobotConfig fr3_config;
-  fr3_config.tcp_offset = tcp_offset;
+  fr3_config.end_effector.tcp_offset = tcp_offset;
   fr3_config.seconds_between_callbacks = 0.05;  // 20hz
   fr3_config.add_prefix(id);
   auto fr3 = rcs::sim::SimRobot(sim, ik, fr3_config);

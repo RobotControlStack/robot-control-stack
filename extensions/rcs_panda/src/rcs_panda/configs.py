@@ -20,7 +20,7 @@ class DefaultPandaHardwareEnv(RCSPandaConfigEnvCreator):
 
     def config(self) -> PandaHardwareEnvCreatorConfig:
         robot_cfg = hw.PandaConfig(ip=self.ip)
-        robot_cfg.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
+        robot_cfg.end_effector.tcp_offset = common.Pose(common.FrankaHandTCPOffset())
         robot_cfg.speed_factor = 0.1
         robot_cfg.ik_solver = hw.IKSolver.rcs_ik
         robot_cfg.async_control = False
@@ -58,7 +58,7 @@ class DROIDEnv(RCSPandaMultiConfigEnvCreator):
         cfg = base.config()
         cfg.robot_cfg.async_control = True
         cfg.robot_cfg.ip = self.robot_ip
-        cfg.robot_cfg.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
+        cfg.robot_cfg.end_effector.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[common.GripperType.Robotiq2F85]
         cfg.robot_cfg.q_home = rcs.ROBOTS[RobotType.Panda].q_home
 
         return PandaMultiHardwareEnvCreatorConfig(

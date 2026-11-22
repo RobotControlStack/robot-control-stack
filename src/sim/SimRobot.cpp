@@ -117,7 +117,7 @@ bool SimRobot::set_config(const SimRobotConfig& cfg) {
     throw std::runtime_error("cannot switch back from torque control");
   }
   this->cfg = cfg;
-  this->state.inverse_tcp_offset = cfg.tcp_offset.inverse();
+  this->state.inverse_tcp_offset = cfg.end_effector.tcp_offset.inverse();
   if (this->dynamics) {
     this->configure_dynamics();
     if (cfg.controller.has_value()) {
@@ -159,7 +159,7 @@ SimRobotState* SimRobot::get_state() {
 }
 
 common::Pose SimRobot::get_cartesian_position() {
-  return this->get_cartesian_flange_position() * cfg.tcp_offset;
+  return this->get_cartesian_flange_position() * cfg.end_effector.tcp_offset;
 }
 
 common::Pose SimRobot::get_cartesian_flange_position() {
@@ -226,7 +226,7 @@ void SimRobot::set_cartesian_position(const common::Pose& pose) {
     return;
   }
   auto joint_vals = this->m_ik->inverse(pose, this->get_joint_position(),
-                                        this->cfg.tcp_offset);
+                                        this->cfg.end_effector.tcp_offset);
   if (joint_vals.has_value()) {
     this->state.ik_success = true;
     this->set_joint_position(joint_vals.value());
@@ -353,18 +353,18 @@ void SimRobot::install_configured_controller() {
 }
 
 void SimRobot::configure_dynamics() {
-  this->dynamics->set_tcp_offset(this->cfg.tcp_offset);
+  this->dynamics->set_tcp_offset(this->cfg.end_effector.tcp_offset);
   common::Payload simulated = this->get_simulated_payload();  // runs kinematics
   // gravity in the robot base frame, for robots that are mounted tilted
   Eigen::Map<Eigen::Vector3d> gravity_world(this->sim->m->opt.gravity);
   this->dynamics->set_gravity(
       this->get_base_pose_in_world_coordinates().rotation_m().transpose() *
       gravity_world);
-  if (!this->cfg.payload.has_value()) {
+  if (!this->cfg.end_effector.payload.has_value()) {
     this->dynamics->set_payload(simulated);
     return;
   }
-  const common::Payload& configured = this->cfg.payload.value();
+  const common::Payload& configured = this->cfg.end_effector.payload.value();
   this->dynamics->set_payload(configured);
   // a gap acts on the arm like a wrong tool configuration on the real robot
   if (std::abs(configured.mass - simulated.mass) > 0.05 ||

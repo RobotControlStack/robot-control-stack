@@ -36,8 +36,6 @@ class PandaConfig(FrankaConfig):
         super().__init__()
         rcs.ROBOTS[common.RobotType.Panda].apply(self)
         self.ip = ip
-        # Cartesian control uses tcp_offset (identity unless given), as before
-        self.tcp_offset_explicit = True
         for key, value in kwargs.items():
             if not hasattr(self, key):
                 msg = f"PandaConfig has no field {key}"

@@ -207,7 +207,7 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
     def __init__(
         self,
         robot_type: rcs._core.common.RobotType = ...,
-        tcp_offset: rcs._core.common.Pose = ...,
+        end_effector: rcs._core.common.EndEffectorConfig = ...,
         attachment_site: str = "",
         kinematic_model_path: str = "",
         joint_rotational_tolerance: float = 0.0008726646259971648,
@@ -240,14 +240,6 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
 
     @kv.setter
     def kv(self, arg0: list[float] | None) -> None: ...
-    @property
-    def payload(self) -> rcs._core.common.Payload | None:
-        """
-        Tool as configured on the real robot, used for gravity compensation under torque control; None uses the MJCF bodies after the flange
-        """
-
-    @payload.setter
-    def payload(self, arg0: rcs._core.common.Payload | None) -> None: ...
 
 class SimRobotState(rcs._core.common.RobotState):
     def __init__(self) -> None: ...

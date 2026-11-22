@@ -46,6 +46,39 @@ void check_config(const FrankaConfig& cfg) {
         "PandaConfig set it from rcs.ROBOTS");
   }
 }
+
+// Desk's end effector settings (F_T_EE, and the mass properties the robot
+// reports, including a load set with setLoad) are not used by RCS: the TCP
+// comes from end_effector.tcp_offset, the dynamics take the reported mass
+// properties. Warn when Desk and the config disagree, sim would then differ.
+void warn_if_desk_differs(const FrankaConfig& cfg,
+                          const franka::RobotState& state) {
+  const common::Pose desk_tcp(state.F_T_EE);
+  const common::Pose& tcp = cfg.end_effector.tcp_offset;
+  const double distance = (desk_tcp.translation() - tcp.translation()).norm();
+  const double angle =
+      Eigen::AngleAxisd(desk_tcp.quaternion().inverse() * tcp.quaternion())
+          .angle();
+  if (distance > 1e-3 || angle > 1.0 / 180.0 * M_PI) {
+    std::cerr << "Warning: the end effector in Desk (F_T_EE translation "
+              << desk_tcp.translation().transpose()
+              << ") differs from end_effector.tcp_offset (translation "
+              << tcp.translation().transpose() << ") by " << distance * 1000
+              << " mm and " << angle * 180.0 / M_PI << " deg." << std::endl;
+  }
+  if (cfg.end_effector.payload.has_value()) {
+    const common::Payload& payload = cfg.end_effector.payload.value();
+    const Eigen::Vector3d desk_com(state.F_x_Ctotal.data());
+    if (std::abs(state.m_total - payload.mass) > 0.05 ||
+        (desk_com - payload.com).norm() > 0.01) {
+      std::cerr << "Warning: the payload the robot reports (Desk end effector "
+                   "and load: "
+                << state.m_total << " kg, CoM " << desk_com.transpose()
+                << ") differs from end_effector.payload (" << payload.mass
+                << " kg, CoM " << payload.com.transpose() << ")." << std::endl;
+    }
+  }
+}
 }  // namespace
 
 Franka::Franka(const FrankaConfig& cfg,
@@ -55,6 +88,7 @@ Franka::Franka(const FrankaConfig& cfg,
       robot(cfg.ip, cfg.ignore_realtime ? franka::RealtimeConfig::kIgnore
                                         : franka::RealtimeConfig::kEnforce) {
   check_config(cfg);
+  warn_if_desk_differs(cfg, this->robot.readOnce());
   // set collision behavior and impedance
   this->set_default_robot_behavior();
   this->set_guiding_mode(true, true, true, true, true, true, true);
@@ -92,6 +126,10 @@ bool Franka::set_config(const FrankaConfig& cfg) {
         common::eigen2array<3, 1>(load_value->f_x_cload.value()),
         common::eigen2array<3, 3>(load_value->load_inertia.value()));
   }
+  warn_if_desk_differs(this->m_cfg,
+                       this->running_controller.load() == Controller::none
+                           ? this->robot.readOnce()
+                           : this->curr_state.load());
   return true;
 }
 
@@ -136,7 +174,7 @@ common::Pose Franka::get_cartesian_position() {
   } else {
     robot_state = this->curr_state.load();
   }
-  return GetTCPInBaseFrame(robot_state, this->m_cfg.tcp_offset);
+  return GetTCPInBaseFrame(robot_state, this->m_cfg.end_effector.tcp_offset);
 }
 
 common::Pose Franka::get_cartesian_flange_position() {
@@ -162,7 +200,7 @@ void Franka::set_joint_position(const common::VectorXd& q) {
             "joint goals for a Cartesian controller need kinematics");
       }
       this->osc_set_cartesian_position(
-          this->m_ik.value()->forward(q, this->m_cfg.tcp_offset));
+          this->m_ik.value()->forward(q, this->m_cfg.end_effector.tcp_offset));
       return;
     }
     this->controller_set_joint_position(q);
@@ -304,8 +342,8 @@ void Franka::osc_set_cartesian_position(
     this->interpolator_mutex.lock();
   }
 
-  common::Pose curr_pose =
-      GetTCPInBaseFrame(this->curr_state.load(), this->m_cfg.tcp_offset);
+  common::Pose curr_pose = GetTCPInBaseFrame(
+      this->curr_state.load(), this->m_cfg.end_effector.tcp_offset);
 
   const bool approach_on_start =
       starting_fresh && this->m_cfg.blocking_move_on_start;
@@ -358,7 +396,7 @@ void Franka::osc_set_cartesian_position(
       franka::RobotState state = this->curr_state.load();
       const common::Vector7d dq = Eigen::Map<common::Vector7d>(state.dq.data());
       const common::Pose meas_pose =
-          GetTCPInBaseFrame(state, this->m_cfg.tcp_offset);
+          GetTCPInBaseFrame(state, this->m_cfg.end_effector.tcp_offset);
       const double pos_err = (target_p - meas_pose.translation()).norm();
       double dot = std::abs(meas_pose.quaternion().normalized().dot(target_q));
       dot = std::min(1.0, dot);
@@ -417,7 +455,7 @@ void Franka::create_dynamics() {
     this->dynamics = std::make_shared<common::PinocchioDynamics>(
         path, urdf, this->m_cfg.attachment_site);
   }
-  this->dynamics->set_tcp_offset(this->m_cfg.tcp_offset);
+  this->dynamics->set_tcp_offset(this->m_cfg.end_effector.tcp_offset);
 }
 
 common::ControllerState Franka::controller_state(
@@ -662,7 +700,8 @@ void Franka::set_cartesian_position(const common::Pose& x) {
   if (this->m_cfg.ik_solver == IKSolver::franka_ik) {
     const franka::RobotState robot_state = this->robot.readOnce();
     const common::Pose target_pose =
-        x * this->m_cfg.tcp_offset.inverse() * common::Pose(robot_state.F_T_EE);
+        x * this->m_cfg.end_effector.tcp_offset.inverse() *
+        common::Pose(robot_state.F_T_EE);
     this->set_cartesian_position_internal(target_pose, 1.0, std::nullopt,
                                           std::nullopt);
 
@@ -677,8 +716,8 @@ void Franka::set_cartesian_position_ik(const common::Pose& pose) {
         "No inverse kinematics was provided. Cannot use IK to set cartesian "
         "position.");
   }
-  auto joints = this->m_ik.value()->inverse(pose, this->get_joint_position(),
-                                            this->m_cfg.tcp_offset);
+  auto joints = this->m_ik.value()->inverse(
+      pose, this->get_joint_position(), this->m_cfg.end_effector.tcp_offset);
 
   if (joints.has_value()) {
     this->set_joint_position(joints.value());

@@ -137,16 +137,6 @@ PYBIND11_MODULE(_core, m) {
                      &rcs::hw::FrankaConfig::allow_high_collision)
       .def_readwrite("load_parameters", &rcs::hw::FrankaConfig::load_parameters)
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
-      .def_property(
-          "tcp_offset",
-          [](const rcs::hw::FrankaConfig& config) { return config.tcp_offset; },
-          [](rcs::hw::FrankaConfig& config,
-             const rcs::common::Pose& tcp_offset) {
-            config.tcp_offset = tcp_offset;
-            config.tcp_offset_explicit = true;
-          })
-      .def_readwrite("tcp_offset_explicit",
-                     &rcs::hw::FrankaConfig::tcp_offset_explicit)
       .def_readwrite("async_control", &rcs::hw::FrankaConfig::async_control)
       .def_readwrite("blocking_move_on_start",
                      &rcs::hw::FrankaConfig::blocking_move_on_start)

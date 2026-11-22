@@ -70,7 +70,7 @@ targets, so RCS never has to stream at 1 kHz.
 
 In the joint modes, RCS's Cartesian control modes go through the Pinocchio IK of the RCS robot
 model, exactly like in simulation. In `CARTESIAN_IMPEDANCE` the target pose is handed to the
-robot's own Cartesian controller instead; RCS converts its TCP (`tcp_offset`) to the TCP of the
+robot's own Cartesian controller instead; RCS converts its TCP (`end_effector.tcp_offset`) to the TCP of the
 active tool for that. Joint targets and `move_home` temporarily switch to joint impedance in that
 mode, mode switches stop the arm.
 

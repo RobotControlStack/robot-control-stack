@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "ControllerConfig.h"
+#include "EndEffector.h"
 #include "Kinematics.h"
 #include "Pose.h"
 #include "utils.h"
@@ -72,7 +73,8 @@ inline const RobotType RobotType::Rizon4S{"Rizon4S"};
 struct RobotConfig {
   RobotType robot_type;
   RobotPlatform robot_platform = RobotPlatform::SIMULATION;
-  rcs::common::Pose tcp_offset = rcs::common::Pose::Identity();
+  // the tool after the attachment site: TCP offset and payload
+  EndEffectorConfig end_effector;
   std::string attachment_site;
   std::string kinematic_model_path;
   std::optional<VectorXd> q_home = std::nullopt;

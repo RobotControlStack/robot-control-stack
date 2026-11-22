@@ -52,9 +52,6 @@ struct FrankaConfig : common::RobotConfig {
   bool allow_high_collision = false;
   std::optional<FrankaLoad> load_parameters = std::nullopt;
   std::optional<common::Pose> world_to_robot = std::nullopt;
-  common::Pose tcp_offset = common::Pose::Identity();
-  // Indicates that Cartesian control uses tcp_offset.
-  bool tcp_offset_explicit = false;
   bool async_control = false;
   // When true, on every (re)start of the joint controller the controller first
   // holds the current measured position (~zero error) and ramps its target to

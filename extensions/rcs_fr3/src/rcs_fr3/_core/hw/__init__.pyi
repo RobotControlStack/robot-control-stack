@@ -114,8 +114,6 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     load_parameters: FrankaLoad | None
     policy_rate: int
     speed_factor: float
-    tcp_offset: rcs._core.common.Pose
-    tcp_offset_explicit: bool
     timestep: float
     world_to_robot: rcs._core.common.Pose | None
     def __init__(self) -> None: ...

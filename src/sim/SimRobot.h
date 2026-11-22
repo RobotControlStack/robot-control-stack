@@ -30,10 +30,6 @@ struct SimRobotConfig : common::RobotConfig {
   std::optional<std::vector<double>> kp;
   std::optional<std::vector<double>> kv;
   std::string base = "base";
-  // Tool as configured on the real robot (for Franka: the end effector set in
-  // Desk), used for gravity compensation and the dynamics in torque control.
-  // None: the MJCF bodies attached after the flange.
-  std::optional<common::Payload> payload;
 
   void add_prefix(const std::string& id) {
     for (auto& s : this->arm_collision_geoms) {

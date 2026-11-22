@@ -36,8 +36,6 @@ class FR3Config(FrankaConfig):
         super().__init__()
         rcs.ROBOTS[common.RobotType.FR3].apply(self)
         self.ip = ip
-        # Cartesian control uses tcp_offset (identity unless given), as before
-        self.tcp_offset_explicit = True
         for key, value in kwargs.items():
             if not hasattr(self, key):
                 msg = f"FR3Config has no field {key}"

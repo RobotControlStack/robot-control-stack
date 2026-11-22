@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Controller.h"
+#include "EndEffector.h"
 #include "Pose.h"
 #include "pinocchio/multibody/data.hpp"
 #include "pinocchio/multibody/model.hpp"
@@ -12,14 +13,6 @@
 
 namespace rcs {
 namespace common {
-
-// Load fixed to the flange, e.g. a gripper, expressed in the flange frame.
-// Same meaning as libfranka's m_total, F_x_Ctotal and I_total.
-struct Payload {
-  double mass = 0.0;
-  Eigen::Vector3d com = Eigen::Vector3d::Zero();
-  Eigen::Matrix3d inertia = Eigen::Matrix3d::Zero();  // about the CoM
-};
 
 // Rigid-body dynamics of one arm, used by sim and real alike to fill the
 // ControllerState. Computes the same quantities as libfranka's franka::Model,

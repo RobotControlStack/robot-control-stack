@@ -266,7 +266,7 @@ class Flexiv(common.Robot):
         return self.ik.forward(self.get_joint_position(), common.Pose())
 
     def get_cartesian_position(self) -> common.Pose:
-        return self.get_cartesian_flange_position() * self._config.tcp_offset
+        return self.get_cartesian_flange_position() * self._config.end_effector.tcp_offset
 
     def set_joint_position(self, q: np.ndarray[tuple[typing.Any], np.dtype[np.float64]]) -> None:
         q = np.asarray(q, dtype=np.float64)
@@ -279,7 +279,7 @@ class Flexiv(common.Robot):
 
     def set_cartesian_position(self, pose: common.Pose) -> None:
         if self._config.control_mode != FlexivControlMode.CARTESIAN_IMPEDANCE:
-            q = self.ik.inverse(pose, self.get_joint_position(), self._config.tcp_offset)
+            q = self.ik.inverse(pose, self.get_joint_position(), self._config.end_effector.tcp_offset)
             if q is None:
                 logger.warning("IK failed for %s", pose)
                 return
@@ -289,7 +289,7 @@ class Flexiv(common.Robot):
         self._ensure_mode(FlexivControlMode.CARTESIAN_IMPEDANCE)
         # The RDK tracks the pose of the active tool's TCP in its world frame, RCS commands the pose of its own
         # TCP offset in the base frame.
-        rdk_target = self._world_from_base * pose * self._config.tcp_offset.inverse() * self._tool_tcp
+        rdk_target = self._world_from_base * pose * self._config.end_effector.tcp_offset.inverse() * self._tool_tcp
         self._robot.SendCartesianMotionForce(
             _pose_to_rdk(rdk_target),
             [0.0] * 6,

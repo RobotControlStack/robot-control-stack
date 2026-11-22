@@ -73,8 +73,9 @@ simulation = sim.Sim(rcs.SCENE_PATHS["empty_world"])
 ik = rcs.common.Pin(robot_meta.mjcf_model_path, robot_meta.attachment_site, joint_limits=robot_meta.joint_limits)
 
 # Configure robot
-cfg = sim.SimRobotConfig()
-cfg.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
+cfg = robot_meta.apply(sim.SimRobotConfig())  # type, model, dof, joint limits, home pose
+cfg.joints = cfg.actuators = [f"fr3_joint{i}" for i in range(1, 8)]
+cfg.end_effector.tcp_offset = rcs.common.Pose(rcs.common.FrankaHandTCPOffset())
 robot = rcs.sim.SimRobot(simulation, ik, cfg)
 
 # Configure gripper

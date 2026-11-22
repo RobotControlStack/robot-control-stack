@@ -19,7 +19,7 @@ class Setup:
         cfg = scene.prefixed_cfg(scene.config())
         name = scene.lead_robot_name(cfg)
         robot_cfg = cfg.robot_cfgs[name]
-        robot_cfg.payload = payload
+        robot_cfg.end_effector.payload = payload
         model = scene.create_model(cfg)
         if not friction:
             for joint in model.spec.joints:
