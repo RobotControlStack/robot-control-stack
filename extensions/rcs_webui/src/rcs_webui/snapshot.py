@@ -95,6 +95,8 @@ def to_jsonable(value: Any) -> Any:
         return {"__items__": [[to_jsonable(k), to_jsonable(v)] for k, v in value.items()]}
     if isinstance(value, tuple):
         return {"__tuple__": [to_jsonable(v) for v in value]}
+    if isinstance(value, set | frozenset):
+        return {"__set__": [to_jsonable(v) for v in sorted(value, key=repr)]}
     if isinstance(value, list):
         return [to_jsonable(v) for v in value]
     if _is_pybind_enum(value):
@@ -147,6 +149,8 @@ def from_jsonable(value: Any) -> Any:
         return _import(value["__type__"])
     if "__tuple__" in value:
         return tuple(from_jsonable(v) for v in value["__tuple__"])
+    if "__set__" in value:
+        return {from_jsonable(v) for v in value["__set__"]}
     if "__items__" in value:
         return {from_jsonable(k): from_jsonable(v) for k, v in value["__items__"]}
     if "__dataclass__" in value:
