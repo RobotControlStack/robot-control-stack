@@ -7,19 +7,9 @@ in C++.
 
 from typing import Any
 
-from rcs_fr3._core.hw import (
-    FHConfig,
-    FHState,
-    Franka,
-    FrankaConfig,
-    FrankaHand,
-    FrankaLoad,
-    FrankaState,
-    IKSolver,
-    RobotMode,
-    RobotState,
-    exceptions,
-)
+from rcs_fr3._core import hw as _core_hw
+from rcs_fr3._core.hw import *  # noqa: F403 (all classes of the C++ module)
+from rcs_fr3._core.hw import FrankaConfig
 
 import rcs
 from rcs import common
@@ -43,17 +33,4 @@ class FR3Config(FrankaConfig):
             setattr(self, key, value)
 
 
-__all__ = [
-    "FHConfig",
-    "FHState",
-    "Franka",
-    "FrankaConfig",
-    "FrankaHand",
-    "FrankaLoad",
-    "FrankaState",
-    "FR3Config",
-    "IKSolver",
-    "RobotMode",
-    "RobotState",
-    "exceptions",
-]
+__all__ = [name for name in dir(_core_hw) if not name.startswith("_")] + ["FR3Config"]
