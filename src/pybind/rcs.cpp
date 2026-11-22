@@ -20,6 +20,7 @@
 #include "rcs/LinearInterpolator.h"
 #include "rcs/PinocchioDynamics.h"
 #include "rcs/Pose.h"
+#include "rcs/PyCopy.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
 
@@ -284,15 +285,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("resolution_width",
                      &rcs::common::BaseCameraConfig::resolution_width)
       .def_readwrite("resolution_height",
-                     &rcs::common::BaseCameraConfig::resolution_height)
-      .def("__copy__",
-           [](const rcs::common::BaseCameraConfig& self) {
-             return rcs::common::BaseCameraConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::common::BaseCameraConfig& self, py::dict) {
-             return rcs::common::BaseCameraConfig(self);
-           });
+                     &rcs::common::BaseCameraConfig::resolution_height);
   py::class_<rcs::common::RPY>(common, "RPY")
       .def(py::init<double, double, double>(), py::arg("roll") = 0.0,
            py::arg("pitch") = 0.0, py::arg("yaw") = 0.0)
@@ -605,14 +598,7 @@ Args:
       .def_readwrite("max_torque_rate",
                      &rcs::common::SafetyConfig::max_torque_rate)
       .def_readwrite("joint_limit_margin",
-                     &rcs::common::SafetyConfig::joint_limit_margin)
-      .def("__copy__",
-           [](const rcs::common::SafetyConfig& self) {
-             return rcs::common::SafetyConfig(self);
-           })
-      .def("__deepcopy__", [](const rcs::common::SafetyConfig& self, py::dict) {
-        return rcs::common::SafetyConfig(self);
-      });
+                     &rcs::common::SafetyConfig::joint_limit_margin);
 
   py::class_<rcs::common::SafetyStage>(common, "SafetyStage")
       .def(py::init<const rcs::common::SafetyConfig&,
@@ -895,14 +881,6 @@ Args:
       .def_readwrite("base", &rcs::sim::SimRobotConfig::base)
       .def_readwrite("dof", &rcs::sim::SimRobotConfig::dof)
       .def_readwrite("joint_limits", &rcs::sim::SimRobotConfig::joint_limits)
-      .def("__copy__",
-           [](const rcs::sim::SimRobotConfig& self) {
-             return rcs::sim::SimRobotConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimRobotConfig& self, py::dict) {
-             return rcs::sim::SimRobotConfig(self);
-           })
       .def("add_prefix", &rcs::sim::SimRobotConfig::add_prefix, py::arg("id"));
   py::class_<rcs::sim::SimRobotState, rcs::common::RobotState>(sim,
                                                                "SimRobotState")
@@ -988,14 +966,6 @@ Args:
       .def_readwrite("min_actuator_width",
                      &rcs::sim::SimGripperConfig::min_actuator_width)
       .def_readwrite("gripper_type", &rcs::sim::SimGripperConfig::gripper_type)
-      .def("__copy__",
-           [](const rcs::sim::SimGripperConfig& self) {
-             return rcs::sim::SimGripperConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimGripperConfig& self, py::dict) {
-             return rcs::sim::SimGripperConfig(self);
-           })
       .def("add_prefix", &rcs::sim::SimGripperConfig::add_prefix,
            py::arg("id"));
   py::class_<rcs::sim::SimGripperState, rcs::common::GripperState>(
@@ -1042,14 +1012,7 @@ Args:
                      &rcs::sim::SimConfig::max_convergence_steps)
       .def_readwrite("memory", &rcs::sim::SimConfig::memory)
       .def_readwrite("renderer", &rcs::sim::SimConfig::renderer)
-      .def_readwrite("timestep", &rcs::sim::SimConfig::timestep)
-      .def("__copy__",
-           [](const rcs::sim::SimConfig& self) {
-             return rcs::sim::SimConfig(self);
-           })
-      .def("__deepcopy__", [](const rcs::sim::SimConfig& self, py::dict) {
-        return rcs::sim::SimConfig(self);
-      });
+      .def_readwrite("timestep", &rcs::sim::SimConfig::timestep);
 
   py::class_<rcs::sim::DynamicJointSchema>(sim, "DynamicJointSchema")
       .def(py::init<>())
@@ -1191,15 +1154,7 @@ Args:
       .def_readwrite("seconds_between_callbacks",
                      &rcs::sim::SimTilburgHandConfig::seconds_between_callbacks)
       .def("add_prefix", &rcs::sim::SimTilburgHandConfig::add_prefix,
-           py::arg("id"))
-      .def("__copy__",
-           [](const rcs::sim::SimTilburgHandConfig& self) {
-             return rcs::sim::SimTilburgHandConfig(self);
-           })
-      .def("__deepcopy__",
-           [](const rcs::sim::SimTilburgHandConfig& self, py::dict) {
-             return rcs::sim::SimTilburgHandConfig(self);
-           });
+           py::arg("id"));
   // SimTilburgHand
   py::class_<rcs::sim::SimTilburgHand, rcs::common::Hand,
              std::shared_ptr<rcs::sim::SimTilburgHand>>(sim, "SimTilburgHand")
@@ -1224,4 +1179,67 @@ Args:
              self.set_model_and_data((mjModel*)m, (mjData*)d);
            })
       .def("sync", &rcs::sim::GuiClient::sync);
+
+  // copy support (copy constructor, __copy__, __deepcopy__) for the value
+  // types; Pose and RPY copy through pickling. Objects that own a simulation,
+  // a robot connection or other objects (Sim, robots, grippers, controllers,
+  // kinematics, dynamics) are not copyable.
+  rcs::common::def_copy<rcs::common::BaseCameraConfig>(
+      common.attr("BaseCameraConfig"));
+  rcs::common::def_copy<rcs::common::RotVec>(common.attr("RotVec"));
+  rcs::common::def_copy<rcs::common::JointSetpoint>(
+      common.attr("JointSetpoint"));
+  rcs::common::def_copy<rcs::common::CartesianSetpoint>(
+      common.attr("CartesianSetpoint"));
+  rcs::common::def_copy<rcs::common::ControllerState>(
+      common.attr("ControllerState"));
+  rcs::common::def_copy<rcs::common::Payload>(common.attr("Payload"));
+  rcs::common::def_copy<rcs::common::EndEffectorConfig>(
+      common.attr("EndEffectorConfig"));
+  rcs::common::def_copy<rcs::common::OSCConfig>(common.attr("OSCConfig"));
+  rcs::common::def_copy<rcs::common::JointPDConfig>(
+      common.attr("JointPDConfig"));
+  rcs::common::def_copy<rcs::common::FR3JointControllerConfig>(
+      common.attr("FR3JointControllerConfig"));
+  rcs::common::def_copy<rcs::common::FR3OSCConfig>(common.attr("FR3OSCConfig"));
+  rcs::common::def_copy<rcs::common::SafetyConfig>(common.attr("SafetyConfig"));
+  rcs::common::def_copy<rcs::common::SafetyStage>(common.attr("SafetyStage"));
+  rcs::common::def_copy<rcs::common::RobotType>(common.attr("RobotType"));
+  rcs::common::def_copy<rcs::common::GripperType>(common.attr("GripperType"));
+  rcs::common::def_copy<rcs::common::HandType>(common.attr("HandType"));
+  rcs::common::def_copy<rcs::common::RobotConfig>(common.attr("RobotConfig"));
+  rcs::common::def_copy<rcs::common::RobotState>(common.attr("RobotState"));
+  rcs::common::def_copy<rcs::common::GripperConfig>(
+      common.attr("GripperConfig"));
+  rcs::common::def_copy<rcs::common::GripperState>(common.attr("GripperState"));
+  rcs::common::def_copy<rcs::common::HandConfig>(common.attr("HandConfig"));
+  rcs::common::def_copy<rcs::common::HandState>(common.attr("HandState"));
+  rcs::common::def_copy<rcs::common::LinearJointInterpolator,
+                        rcs::common::JointInterpolator,
+                        std::shared_ptr<rcs::common::LinearJointInterpolator>>(
+      common.attr("LinearJointInterpolator"));
+  rcs::common::def_copy<
+      rcs::common::LinearCartesianInterpolator,
+      rcs::common::CartesianInterpolator,
+      std::shared_ptr<rcs::common::LinearCartesianInterpolator>>(
+      common.attr("LinearCartesianInterpolator"));
+  rcs::common::def_copy<rcs::sim::SimRobotConfig, rcs::common::RobotConfig>(
+      sim.attr("SimRobotConfig"));
+  rcs::common::def_copy<rcs::sim::SimRobotState, rcs::common::RobotState>(
+      sim.attr("SimRobotState"));
+  rcs::common::def_copy<rcs::sim::SimGripperConfig, rcs::common::GripperConfig>(
+      sim.attr("SimGripperConfig"));
+  rcs::common::def_copy<rcs::sim::SimGripperState, rcs::common::GripperState>(
+      sim.attr("SimGripperState"));
+  rcs::common::def_copy<rcs::sim::SimConfig>(sim.attr("SimConfig"));
+  rcs::common::def_copy<rcs::sim::DynamicJointSchema>(
+      sim.attr("DynamicJointSchema"));
+  rcs::common::def_copy<rcs::sim::DynamicJointState>(
+      sim.attr("DynamicJointState"));
+  rcs::common::def_copy<rcs::sim::CapturedState>(sim.attr("CapturedState"));
+  rcs::common::def_copy<rcs::sim::SimTilburgHandState, rcs::common::HandState>(
+      sim.attr("SimTilburgHandState"));
+  rcs::common::def_copy<rcs::sim::SimTilburgHandConfig,
+                        rcs::common::HandConfig>(
+      sim.attr("SimTilburgHandConfig"));
 }

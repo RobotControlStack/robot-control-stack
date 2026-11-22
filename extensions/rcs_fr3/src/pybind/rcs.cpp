@@ -12,6 +12,7 @@
 
 #include "rcs/Kinematics.h"
 #include "rcs/Pose.h"
+#include "rcs/PyCopy.h"
 #include "rcs/Robot.h"
 #include "rcs/utils.h"
 
@@ -265,4 +266,12 @@ PYBIND11_MODULE(_core, m) {
       hw_except, "FrankaRealtimeException", PyExc_RuntimeError);
   py::register_exception<franka::InvalidOperationException>(
       hw_except, "FrankaInvalidOperationException", PyExc_RuntimeError);
+
+  // copy support for the value types (see rcs/PyCopy.h)
+  rcs::common::def_copy<franka::RobotState>(hw.attr("RobotState"));
+  rcs::common::def_copy<rcs::hw::FrankaState>(hw.attr("FrankaState"));
+  rcs::common::def_copy<rcs::hw::FrankaLoad>(hw.attr("FrankaLoad"));
+  rcs::common::def_copy<rcs::hw::FrankaConfig>(hw.attr("FrankaConfig"));
+  rcs::common::def_copy<rcs::hw::FHConfig>(hw.attr("FHConfig"));
+  rcs::common::def_copy<rcs::hw::FHState>(hw.attr("FHState"));
 }

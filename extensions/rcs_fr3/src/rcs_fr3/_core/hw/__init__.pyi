@@ -43,6 +43,9 @@ class FHConfig(rcs._core.common.GripperConfig):
     grasping_width: float
     ip: str
     speed: float
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         ip: str,
@@ -53,9 +56,23 @@ class FHConfig(rcs._core.common.GripperConfig):
         epsilon_outer: float = 0.005,
         async_control: bool = False,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: FHConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class FHState(rcs._core.common.GripperState):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FHState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def bool_state(self) -> bool: ...
     @property
@@ -116,7 +133,15 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     speed_factor: float
     timestep: float
     world_to_robot: rcs._core.common.Pose | None
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FrankaConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class FrankaHand(rcs._core.common.Gripper):
     def __init__(self, cfg: FHConfig) -> None: ...
@@ -131,7 +156,15 @@ class FrankaLoad:
     f_x_cload: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]] | None
     load_mass: float
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FrankaLoad) -> None:
+        """
+        Copy of other.
+        """
 
 class IKSolver:
     """
@@ -207,7 +240,16 @@ class RobotMode:
     def value(self) -> int: ...
 
 class RobotState:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: RobotState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def EE_T_K(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(16)]: ...
     @property
@@ -298,7 +340,16 @@ class RobotState:
     def theta(self) -> typing.Annotated[list[float], pybind11_stubgen.typing_ext.FixedSize(7)]: ...
 
 class FrankaState(rcs._core.common.RobotState):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FrankaState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def robot_state(self) -> RobotState: ...
 

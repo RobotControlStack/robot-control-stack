@@ -72,9 +72,15 @@ class BaseCameraConfig:
     identifier: str
     resolution_height: int
     resolution_width: int
-    def __copy__(self) -> BaseCameraConfig: ...
-    def __deepcopy__(self, arg0: dict) -> BaseCameraConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, identifier: str, frame_rate: int, resolution_width: int, resolution_height: int) -> None: ...
+    @typing.overload
+    def __init__(self, other: BaseCameraConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class CartesianController:
     def reset(self, state: ControllerState) -> None: ...
@@ -87,6 +93,13 @@ class CartesianInterpolator:
     def step(self, dt: float) -> CartesianSetpoint: ...
 
 class CartesianSetpoint:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    def __init__(self, other: CartesianSetpoint) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def pose(self) -> Pose: ...
     @property
@@ -101,10 +114,27 @@ class ControllerState:
     mass: numpy.ndarray[tuple[M, M], numpy.dtype[numpy.float64]]
     q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     tcp_pose: Pose
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: ControllerState) -> None:
+        """
+        Copy of other.
+        """
 
 class EndEffectorConfig:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, tcp_offset: Pose = ..., payload: Payload | None = None) -> None: ...
+    @typing.overload
+    def __init__(self, other: EndEffectorConfig) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def payload(self) -> Payload | None:
         """
@@ -125,7 +155,15 @@ class EndEffectorConfig:
 class FR3JointControllerConfig:
     kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FR3JointControllerConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class FR3OSCConfig:
     avoidance_weights: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
@@ -133,7 +171,15 @@ class FR3OSCConfig:
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     nullspace_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     residual_mass: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: FR3OSCConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class GraspType:
     """
@@ -185,10 +231,26 @@ class Gripper:
 
 class GripperConfig:
     gripper_type: GripperType
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, gripper_type: GripperType = ...) -> None: ...
+    @typing.overload
+    def __init__(self, other: GripperConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class GripperState:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: GripperState) -> None:
+        """
+        Copy of other.
+        """
 
 class GripperType:
     FlexivGrav: typing.ClassVar[GripperType]  # value = <GripperType: FlexivGrav>
@@ -201,9 +263,18 @@ class GripperType:
     Yam: typing.ClassVar[GripperType]  # value = <GripperType: Yam>
     @staticmethod
     def get_all() -> list[GripperType]: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     def __eq__(self, arg0: typing.Any) -> bool: ...
     def __hash__(self) -> int: ...
+    @typing.overload
     def __init__(self, arg0: str) -> None: ...
+    @typing.overload
+    def __init__(self, other: GripperType) -> None:
+        """
+        Copy of other.
+        """
+
     def __repr__(self) -> str: ...
     @property
     def id(self) -> str: ...
@@ -223,18 +294,43 @@ class Hand:
 
 class HandConfig:
     hand_type: HandType
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, hand_type: HandType = ...) -> None: ...
+    @typing.overload
+    def __init__(self, other: HandConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class HandState:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: HandState) -> None:
+        """
+        Copy of other.
+        """
 
 class HandType:
     TilburgHand: typing.ClassVar[HandType]  # value = <HandType: TilburgHand>
     @staticmethod
     def get_all() -> list[HandType]: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     def __eq__(self, arg0: typing.Any) -> bool: ...
     def __hash__(self) -> int: ...
+    @typing.overload
     def __init__(self, arg0: str) -> None: ...
+    @typing.overload
+    def __init__(self, other: HandType) -> None:
+        """
+        Copy of other.
+        """
+
     def __repr__(self) -> str: ...
     @property
     def id(self) -> str: ...
@@ -256,13 +352,28 @@ class JointInterpolator:
 class JointPDConfig:
     kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: JointPDConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class JointSetpoint:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    def __init__(self, other: JointSetpoint) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def dq(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
     @property
@@ -280,12 +391,22 @@ class OSCConfig:
     kp_orientation: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: OSCConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class Payload:
     com: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]
     mass: float
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     @typing.overload
     def __init__(self) -> None: ...
     @typing.overload
@@ -295,6 +416,11 @@ class Payload:
         com: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]],
         inertia: numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]],
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: Payload) -> None:
+        """
+        Copy of other.
+        """
 
 class PinocchioDynamics:
     def __init__(self, model_path: str, urdf: bool, flange_frame: str, tcp_offset: Pose = ...) -> None:
@@ -428,6 +554,9 @@ class RobotConfig(typing.Generic[M]):
     robot_platform: RobotPlatform
     robot_type: RobotType
     safety: SafetyConfig | None
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         robot_type: RobotType = ...,
@@ -439,6 +568,11 @@ class RobotConfig(typing.Generic[M]):
         kinematic_model_path: str = "",
         q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None = None,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: RobotConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class RobotPlatform:
     """
@@ -470,7 +604,15 @@ class RobotPlatform:
     def value(self) -> int: ...
 
 class RobotState:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: RobotState) -> None:
+        """
+        Copy of other.
+        """
 
 class RobotType:
     FR3: typing.ClassVar[RobotType]  # value = <RobotType: FR3>
@@ -482,15 +624,33 @@ class RobotType:
     Yam: typing.ClassVar[RobotType]  # value = <RobotType: Yam>
     @staticmethod
     def get_all() -> list[RobotType]: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     def __eq__(self, arg0: typing.Any) -> bool: ...
     def __hash__(self) -> int: ...
+    @typing.overload
     def __init__(self, arg0: str) -> None: ...
+    @typing.overload
+    def __init__(self, other: RobotType) -> None:
+        """
+        Copy of other.
+        """
+
     def __repr__(self) -> str: ...
     @property
     def id(self) -> str: ...
 
 class RotVec:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, vec: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]) -> None: ...
+    @typing.overload
+    def __init__(self, other: RotVec) -> None:
+        """
+        Copy of other.
+        """
+
     def __str__(self) -> str: ...
     def as_quaternion_vector(self) -> numpy.ndarray[tuple[typing.Literal[4]], numpy.dtype[numpy.float64]]: ...
     def as_vector(self) -> numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
@@ -503,22 +663,37 @@ class SafetyConfig:
     joint_limit_margin: float
     max_torque_rate: float
     torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
-    def __copy__(self) -> SafetyConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SafetyConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
         max_torque_rate: float = ...,
         joint_limit_margin: float = 0.1,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SafetyConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class SafetyStage:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         config: SafetyConfig,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
         timestep: float,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SafetyStage) -> None:
+        """
+        Copy of other.
+        """
+
     def apply(
         self, tau: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], state: ControllerState
     ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
@@ -545,7 +720,15 @@ class SafeCartesianController(CartesianController):
     ) -> None: ...
 
 class LinearCartesianInterpolator(CartesianInterpolator):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, duration: float) -> None: ...
+    @typing.overload
+    def __init__(self, other: LinearCartesianInterpolator) -> None:
+        """
+        Copy of other.
+        """
 
 class FR3JointController(JointController):
     def __init__(self, config: FR3JointControllerConfig, interpolator: JointInterpolator) -> None: ...
@@ -568,7 +751,15 @@ class SafeJointController(JointController):
     ) -> None: ...
 
 class LinearJointInterpolator(JointInterpolator):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self, duration: float) -> None: ...
+    @typing.overload
+    def __init__(self, other: LinearJointInterpolator) -> None:
+        """
+        Copy of other.
+        """
 
 class Pin(Kinematics):
     def __init__(

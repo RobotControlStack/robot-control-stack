@@ -34,6 +34,13 @@ __all__: list[str] = [
 M = typing.TypeVar("M", bound=int)
 
 class CapturedState:
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    def __init__(self, other: CapturedState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def state(self) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
     @property
@@ -44,12 +51,28 @@ class DynamicJointSchema:
     joint_types: list[int]
     qpos_sizes: list[int]
     qvel_sizes: list[int]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: DynamicJointSchema) -> None:
+        """
+        Copy of other.
+        """
 
 class DynamicJointState(typing.Generic[M]):
     qpos: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     qvel: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: DynamicJointState) -> None:
+        """
+        Copy of other.
+        """
 
 class GuiClient:
     def __init__(self, id: str) -> None: ...
@@ -113,8 +136,9 @@ class SimConfig:
     realtime: bool
     renderer: RendererBackend
     timestep: float
-    def __copy__(self) -> SimConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         async_control: bool = False,
@@ -125,6 +149,11 @@ class SimConfig:
         renderer: RendererBackend = ...,
         timestep: float = 0.001,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimConfig) -> None:
+        """
+        Copy of other.
+        """
 
 class SimGripper(rcs._core.common.Gripper):
     def __init__(self, sim: Sim, cfg: SimGripperConfig) -> None: ...
@@ -147,8 +176,9 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
     min_actuator_width: float
     min_joint_width: float
     seconds_between_callbacks: float
-    def __copy__(self) -> SimGripperConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimGripperConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         epsilon_inner: float = 0.005,
@@ -165,10 +195,25 @@ class SimGripperConfig(rcs._core.common.GripperConfig):
         min_actuator_width: float = 0.0,
         gripper_type: rcs._core.common.GripperType = ...,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimGripperConfig) -> None:
+        """
+        Copy of other.
+        """
+
     def add_prefix(self, id: str) -> None: ...
 
 class SimGripperState(rcs._core.common.GripperState):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimGripperState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def collision(self) -> bool: ...
     @property
@@ -202,8 +247,9 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
     joints: list[str]
     seconds_between_callbacks: float
     trajectory_trace: bool
-    def __copy__(self) -> SimRobotConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimRobotConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         robot_type: rcs._core.common.RobotType = ...,
@@ -223,6 +269,12 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
         dof: int = 0,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimRobotConfig) -> None:
+        """
+        Copy of other.
+        """
+
     def add_prefix(self, id: str) -> None: ...
     @property
     def kp(self) -> list[float] | None:
@@ -242,7 +294,16 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
     def kv(self, arg0: list[float] | None) -> None: ...
 
 class SimRobotState(rcs._core.common.RobotState):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimRobotState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def collision(self) -> bool: ...
     @property
@@ -276,8 +337,9 @@ class SimTilburgHandConfig(rcs._core.common.HandConfig):
     max_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]]
     min_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]]
     seconds_between_callbacks: float
-    def __copy__(self) -> SimTilburgHandConfig: ...
-    def __deepcopy__(self, arg0: dict) -> SimTilburgHandConfig: ...
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(
         self,
         grasp_type: rcs._core.common.GraspType = ...,
@@ -324,10 +386,25 @@ class SimTilburgHandConfig(rcs._core.common.HandConfig):
         max_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]] = ...,
         min_joint_position: numpy.ndarray[tuple[typing.Literal[16]], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimTilburgHandConfig) -> None:
+        """
+        Copy of other.
+        """
+
     def add_prefix(self, id: str) -> None: ...
 
 class SimTilburgHandState(rcs._core.common.HandState):
+    def __copy__(self) -> typing.Any: ...
+    def __deepcopy__(self, arg0: dict) -> typing.Any: ...
+    @typing.overload
     def __init__(self) -> None: ...
+    @typing.overload
+    def __init__(self, other: SimTilburgHandState) -> None:
+        """
+        Copy of other.
+        """
+
     @property
     def collision(self) -> bool: ...
     @property
