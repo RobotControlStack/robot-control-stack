@@ -351,6 +351,7 @@ class JointInterpolator:
 class JointPDConfig:
     kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    velocity_feedforward: bool
     def __copy__(self) -> typing.Any: ...
     def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     @typing.overload
@@ -358,6 +359,7 @@ class JointPDConfig:
         self,
         kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
+        velocity_feedforward: bool = False,
     ) -> None: ...
     @typing.overload
     def __init__(self, other: JointPDConfig) -> None:
@@ -747,6 +749,7 @@ class JointPD(JointController):
         kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         interpolator: JointInterpolator,
+        velocity_feedforward: bool = False,
     ) -> None: ...
 
 class SafeJointController(JointController):

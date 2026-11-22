@@ -25,8 +25,10 @@ class TestJointPD:
     kp = np.full(7, 100.0)
     kd = np.full(7, 20.0)
 
-    def make(self, state) -> common.JointPD:
-        controller = common.JointPD(self.kp, self.kd, common.LinearJointInterpolator(0.05))
+    def make(self, state, velocity_feedforward=False) -> common.JointPD:
+        controller = common.JointPD(
+            self.kp, self.kd, common.LinearJointInterpolator(0.05), velocity_feedforward=velocity_feedforward
+        )
         controller.reset(state)
         return controller
 
@@ -34,14 +36,17 @@ class TestJointPD:
         state = dynamics.compute(Q0, np.zeros(7), DT)
         np.testing.assert_allclose(self.make(state).step(state), 0.0, atol=1e-12)
 
-    def test_pd_law_with_setpoint_velocity_and_coriolis(self, dynamics):
-        controller = self.make(dynamics.compute(Q0, np.zeros(7), DT))
+    @pytest.mark.parametrize("feedforward", [False, True])
+    def test_pd_law_with_coriolis(self, dynamics, feedforward):
+        # by default the damping is towards zero velocity, with velocity_feedforward towards the setpoint velocity
+        controller = self.make(dynamics.compute(Q0, np.zeros(7), DT), velocity_feedforward=feedforward)
         goal = Q0 + 0.1
         controller.set_goal(goal)
         dq = np.full(7, 0.3)
         state = dynamics.compute(Q0, dq, DT)
         velocity = (goal - Q0) / 0.05
-        expected = self.kp * (Q0 + velocity * DT - Q0) + self.kd * (velocity - dq) + state.coriolis
+        dq_desired = velocity if feedforward else 0.0
+        expected = self.kp * (Q0 + velocity * DT - Q0) + self.kd * (dq_desired - dq) + state.coriolis
         np.testing.assert_allclose(controller.step(state), expected, atol=1e-10)
 
     def test_rejects_mismatched_gains(self):

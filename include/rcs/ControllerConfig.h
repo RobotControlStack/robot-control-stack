@@ -17,6 +17,8 @@ struct JointPDConfig {
   // one gain per joint, no defaults as they depend on the robot
   VectorXd kp;
   VectorXd kd;
+  // damp towards the setpoint velocity instead of zero, see JointPD
+  bool velocity_feedforward = false;
 };
 
 // A controller, identified by its config. RobotConfig::controller holds one;

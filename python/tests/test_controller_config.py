@@ -172,3 +172,20 @@ def test_osc_without_velocity_feedforward_is_smooth_with_jittery_goals():
                 taus.append(setup.sim.data.actuator_force[:7].copy())
         rate_p99[feedforward] = np.percentile(np.abs(np.diff(np.array(taus)[:, :4], axis=0)) * 1000, 99)
     assert rate_p99[False] < 0.3 * rate_p99[True]
+
+
+def test_joint_pd_without_velocity_feedforward_is_smooth_with_jittery_goals():
+    # 30 Hz joint goals with jitter: as for the OSC, the feed-forward of the setpoint velocity kicks the torques
+    rng = np.random.default_rng(0)
+    rate_p99 = {}
+    for feedforward in (True, False):
+        setup = configured(common.JointPDConfig(kp=KP, kd=KD, velocity_feedforward=feedforward))
+        q0 = np.array(setup.robot.get_joint_position())
+        taus = []
+        for _ in range(45):  # 1.5 s at 30 Hz
+            setup.robot.set_joint_position(q0 + 0.002 * rng.normal(size=7))
+            for _ in range(33):
+                setup.sim.step(1)
+                taus.append(setup.sim.data.actuator_force[:7].copy())
+        rate_p99[feedforward] = np.percentile(np.abs(np.diff(np.array(taus)[:, :4], axis=0)) * 1000, 99)
+    assert rate_p99[False] < 0.3 * rate_p99[True]

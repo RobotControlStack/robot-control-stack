@@ -528,8 +528,9 @@ Args:
   py::class_<rcs::common::JointPD, rcs::common::JointController,
              std::shared_ptr<rcs::common::JointPD>>(common, "JointPD")
       .def(py::init<const rcs::common::VectorXd&, const rcs::common::VectorXd&,
-                    std::shared_ptr<rcs::common::JointInterpolator>>(),
-           py::arg("kp"), py::arg("kd"), py::arg("interpolator"));
+                    std::shared_ptr<rcs::common::JointInterpolator>, bool>(),
+           py::arg("kp"), py::arg("kd"), py::arg("interpolator"),
+           py::arg("velocity_feedforward") = false);
 
   py::class_<rcs::common::OSCConfig>(common, "OSCConfig")
       .def(py::init<>())
@@ -543,12 +544,16 @@ Args:
 
   py::class_<rcs::common::JointPDConfig>(common, "JointPDConfig")
       .def(py::init([](const rcs::common::VectorXd& kp,
-                       const rcs::common::VectorXd& kd) {
-             return rcs::common::JointPDConfig{kp, kd};
+                       const rcs::common::VectorXd& kd,
+                       bool velocity_feedforward) {
+             return rcs::common::JointPDConfig{kp, kd, velocity_feedforward};
            }),
-           py::arg("kp"), py::arg("kd"))
+           py::arg("kp"), py::arg("kd"),
+           py::arg("velocity_feedforward") = false)
       .def_readwrite("kp", &rcs::common::JointPDConfig::kp)
-      .def_readwrite("kd", &rcs::common::JointPDConfig::kd);
+      .def_readwrite("kd", &rcs::common::JointPDConfig::kd)
+      .def_readwrite("velocity_feedforward",
+                     &rcs::common::JointPDConfig::velocity_feedforward);
 
   py::class_<rcs::common::OSC, rcs::common::CartesianController,
              std::shared_ptr<rcs::common::OSC>>(common, "OSC")

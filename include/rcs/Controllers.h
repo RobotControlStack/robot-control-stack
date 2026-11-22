@@ -15,10 +15,15 @@ namespace common {
 
 // Joint-space PD around the interpolated setpoint:
 //   tau = kp (q_d - q) + kd (dq_d - dq) + coriolis
+// dq_d is 0 by default (velocity_feedforward false, as the FR3 joint
+// controller and libfranka's joint impedance example): with streamed goals
+// the setpoint velocity of the interpolator jumps with every goal and the
+// feed-forward kicks the torques at the goal rate.
 class JointPD : public JointController {
  public:
   JointPD(const VectorXd& kp, const VectorXd& kd,
-          std::shared_ptr<JointInterpolator> interpolator);
+          std::shared_ptr<JointInterpolator> interpolator,
+          bool velocity_feedforward = false);
   void reset(const ControllerState& state) override;
   void set_goal(const VectorXd& q_goal,
                 std::optional<double> duration = std::nullopt) override;
@@ -28,6 +33,7 @@ class JointPD : public JointController {
   VectorXd kp;
   VectorXd kd;
   std::shared_ptr<JointInterpolator> interpolator;
+  bool velocity_feedforward;
 };
 
 struct OSCConfig {

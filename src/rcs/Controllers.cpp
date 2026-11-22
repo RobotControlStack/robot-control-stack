@@ -8,8 +8,12 @@ namespace rcs {
 namespace common {
 
 JointPD::JointPD(const VectorXd& kp, const VectorXd& kd,
-                 std::shared_ptr<JointInterpolator> interpolator)
-    : kp(kp), kd(kd), interpolator(std::move(interpolator)) {
+                 std::shared_ptr<JointInterpolator> interpolator,
+                 bool velocity_feedforward)
+    : kp(kp),
+      kd(kd),
+      interpolator(std::move(interpolator)),
+      velocity_feedforward(velocity_feedforward) {
   if (kp.size() != kd.size()) {
     throw std::invalid_argument("kp and kd must have the same size");
   }
@@ -31,8 +35,10 @@ VectorXd JointPD::step(const ControllerState& state) {
     throw std::invalid_argument("state has the wrong number of joints");
   }
   JointSetpoint setpoint = this->interpolator->step(state.dt);
+  const VectorXd dq_desired =
+      this->velocity_feedforward ? setpoint.dq : VectorXd::Zero(state.q.size());
   return this->kp.cwiseProduct(setpoint.q - state.q) +
-         this->kd.cwiseProduct(setpoint.dq - state.dq) + state.coriolis;
+         this->kd.cwiseProduct(dq_desired - state.dq) + state.coriolis;
 }
 
 OSC::OSC(const OSCConfig& config,

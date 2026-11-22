@@ -23,8 +23,8 @@ ControllerPair make_controller(const ControllerConfig& config,
     if (c->kp.size() == 0 || c->kd.size() == 0) {
       throw std::invalid_argument("JointPDConfig needs kp and kd");
     }
-    controller.joint =
-        std::make_shared<JointPD>(c->kp, c->kd, joint_interpolator());
+    controller.joint = std::make_shared<JointPD>(
+        c->kp, c->kd, joint_interpolator(), c->velocity_feedforward);
   } else if (auto* c = std::get_if<OSCConfig>(&config)) {
     controller.cartesian = std::make_shared<OSC>(*c, cartesian_interpolator());
   } else if (auto* c = std::get_if<FR3JointControllerConfig>(&config)) {
