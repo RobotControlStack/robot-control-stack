@@ -111,10 +111,6 @@ class FrankaConfig(rcs._core.common.RobotConfig):
     ignore_realtime: bool
     ik_solver: IKSolver
     ip: str
-    kd: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    kp: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
-    kp_p: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
-    kp_r: float
     load_parameters: FrankaLoad | None
     policy_rate: int
     speed_factor: float

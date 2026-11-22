@@ -400,15 +400,9 @@ common::ControllerPair Franka::make_torque_controller(bool cartesian) {
                     : "the configured controller is a Cartesian controller");
     }
   } else if (cartesian) {
-    common::FR3OSCConfig osc;
-    osc.kp_position = this->m_cfg.kp_p;
-    osc.kp_orientation = this->m_cfg.kp_r;
-    config = osc;
+    config = common::FR3OSCConfig();
   } else {
-    common::FR3JointControllerConfig joint;
-    joint.kp = this->m_cfg.kp;
-    joint.kd = this->m_cfg.kd;
-    config = joint;
+    config = common::FR3JointControllerConfig();
   }
   // a goal per policy step, interpolated over one policy period
   return common::make_controller(config, 1.0 / this->m_cfg.policy_rate,

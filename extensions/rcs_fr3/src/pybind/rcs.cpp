@@ -133,12 +133,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("speed_factor", &rcs::hw::FrankaConfig::speed_factor)
       .def_readwrite("policy_rate", &rcs::hw::FrankaConfig::policy_rate)
       .def_readwrite("timestep", &rcs::hw::FrankaConfig::timestep)
-      .def_readwrite("kp", &rcs::hw::FrankaConfig::kp)
-      .def_readwrite("kd", &rcs::hw::FrankaConfig::kd)
       .def_readwrite("allow_high_collision",
                      &rcs::hw::FrankaConfig::allow_high_collision)
-      .def_readwrite("kp_p", &rcs::hw::FrankaConfig::kp_p)
-      .def_readwrite("kp_r", &rcs::hw::FrankaConfig::kp_r)
       .def_readwrite("load_parameters", &rcs::hw::FrankaConfig::load_parameters)
       .def_readwrite("world_to_robot", &rcs::hw::FrankaConfig::world_to_robot)
       .def_property(
