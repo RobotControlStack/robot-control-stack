@@ -537,7 +537,9 @@ Args:
       .def_readwrite("kp_orientation", &rcs::common::OSCConfig::kp_orientation)
       .def_readwrite("kp_nullspace", &rcs::common::OSCConfig::kp_nullspace)
       .def_readwrite("nullspace_q", &rcs::common::OSCConfig::nullspace_q)
-      .def_readwrite("residual_mass", &rcs::common::OSCConfig::residual_mass);
+      .def_readwrite("residual_mass", &rcs::common::OSCConfig::residual_mass)
+      .def_readwrite("velocity_feedforward",
+                     &rcs::common::OSCConfig::velocity_feedforward);
 
   py::class_<rcs::common::JointPDConfig>(common, "JointPDConfig")
       .def(py::init([](const rcs::common::VectorXd& kp,

@@ -147,3 +147,28 @@ def test_osc_rotates_about_the_tool_axis_only_with_residual_mass(residual_mass):
     else:
         assert turned[6] > 25.0
         assert np.max(np.abs(turned[:6])) < 5.0
+
+
+def test_osc_without_velocity_feedforward_is_smooth_with_jittery_goals():
+    # 30 Hz goals with hand jitter: the setpoint velocity jumps with every goal, which the feed-forward turns into
+    # torque kicks at the goal rate; damping towards zero velocity (as the FR3 OSC) does not
+    rng = np.random.default_rng(0)
+    rate_p99 = {}
+    for feedforward in (True, False):
+        cfg = common.OSCConfig()
+        cfg.kp_orientation = np.full(3, 125.0)
+        cfg.residual_mass = FR3_ARMATURE
+        cfg.velocity_feedforward = feedforward
+        setup = configured(cfg)
+        start = setup.robot.get_cartesian_position()
+        taus = []
+        for _ in range(45):  # 1.5 s at 30 Hz
+            goal = common.Pose(
+                rotation=start.rotation_m(), translation=start.translation() + 0.001 * rng.normal(size=3)
+            )
+            setup.robot.set_cartesian_position(goal)
+            for _ in range(33):
+                setup.sim.step(1)
+                taus.append(setup.sim.data.actuator_force[:7].copy())
+        rate_p99[feedforward] = np.percentile(np.abs(np.diff(np.array(taus)[:, :4], axis=0)) * 1000, 99)
+    assert rate_p99[False] < 0.3 * rate_p99[True]

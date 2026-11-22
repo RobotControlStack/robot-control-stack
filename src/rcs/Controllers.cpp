@@ -76,8 +76,10 @@ VectorXd OSC::step(const ControllerState& state) {
   Vector6d error;
   error << setpoint.pose.translation() - state.tcp_pose.translation(),
       rotation_between(state.tcp_pose.quaternion(), setpoint.pose.quaternion());
+  const Vector6d v_desired =
+      this->config.velocity_feedforward ? setpoint.twist : Vector6d::Zero();
   Vector6d F =
-      kp.cwiseProduct(error) + kd.cwiseProduct(setpoint.twist - J * state.dq);
+      kp.cwiseProduct(error) + kd.cwiseProduct(v_desired - J * state.dq);
 
   // task-space inertia
   Eigen::Matrix<double, 6, 6> L = (J * M_inv * J.transpose())

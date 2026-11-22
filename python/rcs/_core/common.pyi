@@ -391,6 +391,7 @@ class OSCConfig:
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     nullspace_q: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
     residual_mass: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    velocity_feedforward: bool
     def __copy__(self) -> typing.Any: ...
     def __deepcopy__(self, arg0: dict) -> typing.Any: ...
     @typing.overload
