@@ -346,7 +346,7 @@ class SessionRunner(threading.Thread):
             source["default_config_of"] = spec.env
         if spec.overrides:
             cfg = snapshot.from_jsonable(snapshot.apply_overrides(snapshot.to_jsonable(cfg), spec.overrides))
-        return envs.normalize_config(cfg), name, source
+        return envs.normalize_config(cfg, self.settings.frequency), name, source
 
     def _close_operator(self):
         if self._fixed_operator:

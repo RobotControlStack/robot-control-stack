@@ -115,10 +115,11 @@ Try it in simulation first: pick e.g. `rcs/fr3` or `duobench/pick_place_red_on_g
    (the robot moves home) after each episode. Ctrl+C stops the interface after flushing the recording, a second
    Ctrl+C exits immediately.
 
-Default configs are adapted for recording: `wrapper_cfg.record_control_states=True`, async control at the
-default config rate (15 Hz, also the controller interpolation window `policy_rate`), and in collect mode the
-action space of the Quest (`tquat` relative to the configured origin). Config files and previous recordings are
-used as stored.
+The control rate of the page (15 Hz by default) is the rate of every env it starts, whatever the config says: the
+env's `frequency` (hardware: rate limited steps; sim: `sim_cfg.frequency`) and the robots' `policy_rate`, i.e. the
+controller's interpolation window. Default configs are also adapted for recording:
+`wrapper_cfg.record_control_states=True`, async control, and in collect mode the action space of the Quest (`tquat`
+relative to the configured origin). Otherwise config files and previous recordings are used as stored.
 
 ### 6. Where the data lands
 

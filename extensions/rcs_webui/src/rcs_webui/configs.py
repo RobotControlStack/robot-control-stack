@@ -31,9 +31,9 @@ def unwrap(data: Any, env: str | None = None) -> tuple[str, Any]:
     return envs.infer_creator(snapshot.from_jsonable(data)), data
 
 
-def normalized(creator: str, cfg_json: Any) -> dict[str, Any]:
+def normalized(creator: str, cfg_json: Any, frequency: float | None = None) -> dict[str, Any]:
     """Wrapped config after :func:`rcs_webui.envs.normalize_config`, with a summary for the interface."""
-    cfg = envs.normalize_config(snapshot.from_jsonable(cfg_json))
+    cfg = envs.normalize_config(snapshot.from_jsonable(cfg_json), frequency)
     return {**wrap(creator, snapshot.to_jsonable(cfg)), "summary": envs.describe(cfg, creator)}
 
 
@@ -106,7 +106,7 @@ def catalog(config_dirs: list[Path], data_root: Path) -> list[dict[str, Any]]:
 def load_entry(entry_id: str, *, config_dirs: list[Path], data_root: Path, **default_kwargs: Any) -> dict[str, Any]:
     """Returns the wrapped and normalized config of a catalog entry with its summary."""
     wrapped = _load_entry(entry_id, config_dirs=config_dirs, data_root=data_root, **default_kwargs)
-    return normalized(wrapped["creator"], wrapped["config"])
+    return normalized(wrapped["creator"], wrapped["config"], default_kwargs.get("frequency"))
 
 
 def _load_entry(entry_id: str, *, config_dirs: list[Path], data_root: Path, **default_kwargs: Any) -> dict[str, Any]:

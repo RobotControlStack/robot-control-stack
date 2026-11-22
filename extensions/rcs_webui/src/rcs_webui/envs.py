@@ -143,9 +143,11 @@ def _robot_platform_hardware(cfg: Any) -> Any:
     return cfg
 
 
-def normalize_config(cfg: Any) -> Any:
-    """Applied to every config the interface shows or starts, whatever its source."""
-    return _robot_platform_hardware(cfg)
+def normalize_config(cfg: Any, frequency: float | None = None) -> Any:
+    """Applied to every config the interface shows or starts, whatever its source: the control rate of the
+    interface (``frequency``, see :func:`apply_frequency`) replaces the one in the config."""
+    cfg = _robot_platform_hardware(cfg)
+    return cfg if frequency is None else apply_frequency(cfg, frequency)
 
 
 def describe(cfg: Any, creator: str) -> dict[str, Any]:
@@ -192,8 +194,7 @@ def prepare_config(
     Applied only to default configs (a config loaded from a previous recording is used as stored):
 
     - the forwarding of the controller rate robot states is switched on (``wrapper_cfg.record_control_states``)
-    - the env runs at ``frequency`` (sim: async control in realtime, hardware: rate limited steps and the
-      controller interpolation window), asynchronous control so that the controller thread runs
+    - asynchronous control so that the controller thread runs (sim: in realtime), at ``frequency``
     - the action space matches the operator (e.g. Quest: tquat relative to the configured origin)
     """
     if hasattr(cfg, "wrapper_cfg"):
@@ -208,13 +209,24 @@ def prepare_config(
     if is_sim_config(cfg):
         cfg.sim_cfg.async_control = True
         cfg.sim_cfg.realtime = True
-        cfg.sim_cfg.frequency = frequency
         cfg.headless = headless
     else:
-        if dataclasses.is_dataclass(cfg) and hasattr(cfg, "frequency"):
-            cfg.frequency = frequency
         for robot_cfg in _robot_cfgs(cfg):
-            for attr, value in (("async_control", True), ("policy_rate", int(round(frequency)))):
-                if hasattr(robot_cfg, attr):
-                    setattr(robot_cfg, attr, value)
+            if hasattr(robot_cfg, "async_control"):
+                robot_cfg.async_control = True
+    return apply_frequency(cfg, frequency)
+
+
+def apply_frequency(cfg: Any, frequency: float) -> Any:
+    """Sets the control rate of the env, the "control rate" of the interface: the rate of the env steps and of the
+    goals for the controller, whose interpolation window is one period (sim: ``sim_cfg.frequency``, hardware: the
+    env's ``frequency`` and the robots' ``policy_rate``)."""
+    if is_sim_config(cfg):
+        cfg.sim_cfg.frequency = frequency
+        return cfg
+    if dataclasses.is_dataclass(cfg) and hasattr(cfg, "frequency"):
+        cfg.frequency = frequency
+    for robot_cfg in _robot_cfgs(cfg):
+        if hasattr(robot_cfg, "policy_rate"):
+            robot_cfg.policy_rate = int(round(frequency))
     return cfg

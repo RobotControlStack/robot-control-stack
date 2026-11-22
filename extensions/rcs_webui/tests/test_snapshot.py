@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 from rcs.envs.base import ControlMode
 from rcs.envs.configs import EmptyWorldDroid, EmptyWorldFR3, EmptyWorldFR3Duo
+
 from rcs_webui import snapshot
 
 
@@ -121,11 +122,11 @@ def test_config_file_formats(tmp_path):
     ):
         cfg, name, _ = runner._resolve_config(spec)
         assert name == "rcs.envs.configs:EmptyWorldFR3"
-        assert cfg.sim_cfg.frequency == EmptyWorldFR3().config().sim_cfg.frequency
+        assert cfg.sim_cfg.frequency == runner.settings.frequency  # the control rate of the interface
     # without env: the generic creator of the config type
     cfg, name, _ = runner._resolve_config(EnvSpec(config_file=bare))
     assert name == "rcs_webui.envs:ConfigSimEnvCreator"
-    assert cfg.sim_cfg.frequency == EmptyWorldFR3().config().sim_cfg.frequency
+    assert cfg.sim_cfg.frequency == runner.settings.frequency
 
 
 def test_changed_paths():
@@ -149,6 +150,7 @@ def test_hardware_config_without_creator():
     pytest.importorskip("rcs_robotiq2f85")
     from rcs._core.common import RobotPlatform
     from rcs_fr3.configs import DROIDEnv
+
     from rcs_webui import configs, envs
 
     cfg_json = snapshot.to_jsonable(DROIDEnv().config())
@@ -179,3 +181,24 @@ def test_snapshot_logs_the_packages_of_creator_and_config(tmp_path):
         assert len(duobench["commit"]) == 40
         assert (tmp_path / "s" / duobench["diff_file"]).exists()
     assert duobench["version"]
+
+
+def test_control_rate_replaces_the_rate_of_every_config():
+    from rcs_webui import configs
+
+    sim_json = snapshot.to_jsonable(EmptyWorldFR3().config())
+    entry = configs.normalized("rcs.envs.configs:EmptyWorldFR3", sim_json, frequency=20.0)
+    assert snapshot.from_jsonable(entry["config"]).sim_cfg.frequency == 20.0
+    assert entry["summary"]["frequency"] == 20.0
+
+    hw_configs = pytest.importorskip("rcs_fr3.configs")
+    cfg = hw_configs.DefaultFR3HardwareEnv().config()
+    cfg.frequency = 10.0
+    cfg.robot_cfg.policy_rate = 10
+    entry = configs.normalized("rcs_fr3.configs:DefaultFR3HardwareEnv", snapshot.to_jsonable(cfg), frequency=15.0)
+    restored = snapshot.from_jsonable(entry["config"])
+    assert restored.frequency == 15.0
+    assert restored.robot_cfg.policy_rate == 15
+    # without a control rate the config keeps its own
+    kept = snapshot.from_jsonable(configs.normalized("x", snapshot.to_jsonable(cfg))["config"])
+    assert kept.frequency == 10.0

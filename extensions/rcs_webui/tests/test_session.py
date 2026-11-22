@@ -132,7 +132,8 @@ def test_restart_from_recording_uses_stored_config(interface):
     wait_for(lambda: runner.status()["session_dir"] != str(first) and runner.status()["state"] == "ready")
     second = Path(runner.status()["session_dir"])
     cfg, meta = snapshot.load_session_config(second)
-    assert cfg.sim_cfg.frequency == 20
+    # the control rate of the interface wins over the recording and the override
+    assert cfg.sim_cfg.frequency == runner.settings.frequency
     assert meta["source"]["from_recording"] == str(first)
     # everything else is taken over
     cfg_first, _ = snapshot.load_session_config(first)
@@ -213,7 +214,7 @@ def test_config_catalog_edit_and_start(interface):
     cfg = call(base, "/api/configs/entry?id=" + urllib.parse.quote(file_id))
 
     # edit and validate
-    cfg["config"]["fields"]["sim_cfg"]["fields"]["frequency"] = 20.0
+    cfg["config"]["fields"]["camera_cfgs"]["wrist"]["fields"]["resolution_width"] = 48
     assert call(base, "/api/configs/validate", cfg)["ok"]
     broken = json.loads(json.dumps(cfg))
     broken["config"]["fields"]["control_mode"]["name"] = "NOT_A_MODE"
@@ -226,7 +227,8 @@ def test_config_catalog_edit_and_start(interface):
     wait_for(lambda: runner.status()["session_dir"] != str(first) and runner.status()["state"] == "ready")
     second = Path(runner.status()["session_dir"])
     stored, meta = snapshot.load_session_config(second)
-    assert stored.sim_cfg.frequency == 20.0
+    assert stored.camera_cfgs["wrist"].resolution_width == 48
+    assert stored.sim_cfg.frequency == runner.settings.frequency  # the control rate of the interface
     assert meta["creator"] == "rcs.envs.configs:EmptyWorldFR3"
 
 
