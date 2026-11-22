@@ -32,7 +32,7 @@ ControllerPair make_controller(const ControllerConfig& config,
         std::make_shared<FR3JointController>(*c, joint_interpolator());
   } else if (auto* c = std::get_if<FR3OSCConfig>(&config)) {
     controller.cartesian =
-        std::make_shared<FR3OSC>(*c, cartesian_interpolator(), joint_limits);
+        std::make_shared<FR3OSC>(*c, cartesian_interpolator());
   }
   if (safety.has_value()) {
     if (controller.joint) {

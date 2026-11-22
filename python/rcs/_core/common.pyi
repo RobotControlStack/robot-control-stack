@@ -166,7 +166,6 @@ class FR3JointControllerConfig:
         """
 
 class FR3OSCConfig:
-    avoidance_weights: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
     kp_orientation: float
     kp_position: numpy.ndarray[tuple[typing.Literal[3]], numpy.dtype[numpy.float64]]
     nullspace_q: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]]
@@ -700,12 +699,7 @@ class SafetyStage:
     def reset(self, state: ControllerState) -> None: ...
 
 class FR3OSC(CartesianController):
-    def __init__(
-        self,
-        config: FR3OSCConfig,
-        interpolator: CartesianInterpolator,
-        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
-    ) -> None: ...
+    def __init__(self, config: FR3OSCConfig, interpolator: CartesianInterpolator) -> None: ...
 
 class OSC(CartesianController):
     def __init__(self, config: OSCConfig, interpolator: CartesianInterpolator) -> None: ...

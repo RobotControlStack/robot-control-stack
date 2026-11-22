@@ -60,21 +60,17 @@ struct FR3OSCConfig {
   // added to the diagonal of the mass matrix
   Vector7d residual_mass =
       (Vector7d() << 0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5).finished();
-  // null-space push away from joints that are 0.1 to 0.25 rad from a limit
-  Vector7d avoidance_weights =
-      (Vector7d() << 1.0, 1.0, 1.0, 1.0, 1.0, 10.0, 10.0).finished();
 };
 
 // Decoupled operational-space control as on the FR3 (deoxys): separate
 // position and orientation task inertias, damping on the TCP velocity only,
 // orientation error from the quaternion vector part, small errors cut off,
-// posture and joint-limit avoidance in the null space. The joint limits are
-// the robot's (RobotConfig::joint_limits), for the avoidance.
+// posture in the null space. Unlike deoxys, no joint-limit avoidance in the
+// null space: joint limits are the joint-space guard of the SafetyStage.
 class FR3OSC : public CartesianController {
  public:
   FR3OSC(const FR3OSCConfig& config,
-         std::shared_ptr<CartesianInterpolator> interpolator,
-         const JointLimits& joint_limits);
+         std::shared_ptr<CartesianInterpolator> interpolator);
   void reset(const ControllerState& state) override;
   void set_goal(const Pose& pose_goal,
                 std::optional<double> duration = std::nullopt) override;
@@ -83,7 +79,6 @@ class FR3OSC : public CartesianController {
  private:
   FR3OSCConfig config;
   std::shared_ptr<CartesianInterpolator> interpolator;
-  Vector7d joint_min, joint_max;
 };
 
 }  // namespace common

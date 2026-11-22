@@ -572,16 +572,14 @@ Args:
       .def_readwrite("kp_orientation",
                      &rcs::common::FR3OSCConfig::kp_orientation)
       .def_readwrite("nullspace_q", &rcs::common::FR3OSCConfig::nullspace_q)
-      .def_readwrite("residual_mass", &rcs::common::FR3OSCConfig::residual_mass)
-      .def_readwrite("avoidance_weights",
-                     &rcs::common::FR3OSCConfig::avoidance_weights);
+      .def_readwrite("residual_mass",
+                     &rcs::common::FR3OSCConfig::residual_mass);
 
   py::class_<rcs::common::FR3OSC, rcs::common::CartesianController,
              std::shared_ptr<rcs::common::FR3OSC>>(common, "FR3OSC")
       .def(py::init<const rcs::common::FR3OSCConfig&,
-                    std::shared_ptr<rcs::common::CartesianInterpolator>,
-                    const rcs::common::JointLimits&>(),
-           py::arg("config"), py::arg("interpolator"), py::arg("joint_limits"));
+                    std::shared_ptr<rcs::common::CartesianInterpolator>>(),
+           py::arg("config"), py::arg("interpolator"));
 
   rcs::common::SafetyConfig default_safety_config;
   py::class_<rcs::common::SafetyConfig>(common, "SafetyConfig")

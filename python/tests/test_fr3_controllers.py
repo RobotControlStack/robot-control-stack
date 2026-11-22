@@ -34,7 +34,7 @@ def osc(state, safety=True, **config) -> common.CartesianController:
     cfg = common.FR3OSCConfig()
     for key, value in config.items():
         setattr(cfg, key, value)
-    controller = common.FR3OSC(cfg, common.LinearCartesianInterpolator(0.05), JOINT_LIMITS)
+    controller = common.FR3OSC(cfg, common.LinearCartesianInterpolator(0.05))
     if safety:
         controller = common.SafeCartesianController(controller, SAFETY, JOINT_LIMITS, DT)
     controller.reset(state)
@@ -138,7 +138,7 @@ def test_fr3_controllers_in_sim(controller):
         q_home = setup.robot.get_joint_position()
         setup.robot.set_cartesian_controller(
             common.SafeCartesianController(
-                common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05), JOINT_LIMITS),
+                common.FR3OSC(common.FR3OSCConfig(), common.LinearCartesianInterpolator(0.05)),
                 SAFETY,
                 JOINT_LIMITS,
                 DT,

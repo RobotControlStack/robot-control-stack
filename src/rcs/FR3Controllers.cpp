@@ -29,12 +29,6 @@ void check_seven_joints(const ControllerState& state) {
   }
 }
 
-void check_joint_limits(const JointLimits& joint_limits) {
-  if (joint_limits.cols() != 7) {
-    throw std::invalid_argument("FR3 controllers need the limits of 7 joints");
-  }
-}
-
 }  // namespace
 
 FR3JointController::FR3JointController(
@@ -69,12 +63,8 @@ VectorXd FR3JointController::step(const ControllerState& state) {
 }
 
 FR3OSC::FR3OSC(const FR3OSCConfig& config,
-               std::shared_ptr<CartesianInterpolator> interpolator,
-               const JointLimits& joint_limits)
+               std::shared_ptr<CartesianInterpolator> interpolator)
     : config(config), interpolator(std::move(interpolator)) {
-  check_joint_limits(joint_limits);
-  this->joint_min = joint_limits.row(0).transpose();
-  this->joint_max = joint_limits.row(1).transpose();
   if (!this->interpolator) {
     throw std::invalid_argument("interpolator must not be null");
   }
@@ -145,18 +135,6 @@ VectorXd FR3OSC::step(const ControllerState& state) {
 
   // posture in the null space
   tau += Nullspace * (cfg.nullspace_q - q);
-
-  // joint-limit avoidance in the null space
-  Vector7d avoidance = Vector7d::Zero();
-  for (int i = 0; i < 7; i++) {
-    double to_max = this->joint_max[i] - q[i];
-    double to_min = q[i] - this->joint_min[i];
-    if (to_max < 0.25 && to_max > 0.1)
-      avoidance[i] += -cfg.avoidance_weights[i] * to_max;
-    if (to_min < 0.25 && to_min > 0.1)
-      avoidance[i] += cfg.avoidance_weights[i] * to_min;
-  }
-  tau += Nullspace * avoidance;
 
   tau += state.coriolis;
   return tau;
