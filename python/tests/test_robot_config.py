@@ -35,3 +35,16 @@ def test_sim_robot_rejects_a_config_without_robot_specific_fields():
     setup = Setup()
     with pytest.raises(ValueError, match="apply"):
         setup.robot.set_config(sim.SimRobotConfig())
+
+
+def test_sim_robot_needs_a_joint_and_actuator_per_dof():
+    setup = Setup()
+    cfg = setup.robot.get_config()
+    cfg.actuators = cfg.actuators[:-1]
+    with pytest.raises(ValueError, match="per dof"):
+        setup.robot.set_config(cfg)
+
+
+def test_platform_is_set_by_the_config_class():
+    assert sim.SimRobotConfig().robot_platform == common.RobotPlatform.SIMULATION
+

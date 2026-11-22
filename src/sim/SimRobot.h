@@ -15,23 +15,18 @@
 namespace rcs {
 namespace sim {
 
+// The MJCF names (joints, actuators, collision geoms) have no defaults, they
+// belong to the robot model of the scene.
 struct SimRobotConfig : common::RobotConfig {
+  SimRobotConfig() { this->robot_platform = common::RobotPlatform::SIMULATION; }
   double joint_rotational_tolerance =
       .05 * (std::numbers::pi / 180.0);    // 0.05 degree
   double seconds_between_callbacks = 0.1;  // 10 Hz
   bool trajectory_trace = false;
-  std::vector<std::string> arm_collision_geoms{
-      "fr3_link0_collision", "fr3_link1_collision", "fr3_link2_collision",
-      "fr3_link3_collision", "fr3_link4_collision", "fr3_link5_collision",
-      "fr3_link6_collision", "fr3_link7_collision"};
-  std::vector<std::string> joints = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
-  std::vector<std::string> actuators = {
-      "fr3_joint1", "fr3_joint2", "fr3_joint3", "fr3_joint4",
-      "fr3_joint5", "fr3_joint6", "fr3_joint7",
-  };
+  std::vector<std::string> arm_collision_geoms;
+  // one joint and one actuator per degree of freedom
+  std::vector<std::string> joints;
+  std::vector<std::string> actuators;
   std::optional<std::vector<double>> kp;
   std::optional<std::vector<double>> kv;
   std::string base = "base";

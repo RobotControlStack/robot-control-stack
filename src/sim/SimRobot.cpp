@@ -24,10 +24,21 @@ namespace sim {
 
 // TODO: check dof contraints
 // TODO: use C++11 feature to call one constructor from another
+namespace {
+void check_config(const SimRobotConfig& cfg) {
+  common::check_robot_config(cfg);
+  if (cfg.joints.size() != cfg.dof || cfg.actuators.size() != cfg.dof) {
+    throw std::invalid_argument(
+        "SimRobotConfig needs one joint and one actuator name per dof");
+  }
+}
+}  // namespace
+
 SimRobot::SimRobot(std::shared_ptr<Sim> sim,
                    std::shared_ptr<common::Kinematics> ik, SimRobotConfig cfg,
                    bool register_convergence_callback)
     : sim{sim}, cfg{cfg}, state{}, m_ik(ik) {
+  check_config(cfg);
   this->init_ids();
   this->set_config(cfg);
   if (register_convergence_callback) {
@@ -100,7 +111,7 @@ void SimRobot::init_ids() {
 }
 
 bool SimRobot::set_config(const SimRobotConfig& cfg) {
-  common::check_robot_config(cfg);
+  check_config(cfg);
   if (this->cfg.controller.has_value() && this->torque_control &&
       !cfg.controller.has_value()) {
     throw std::runtime_error("cannot switch back from torque control");
