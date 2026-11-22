@@ -123,10 +123,10 @@ RCS_PREFIX = get_prefix(
 @dataclass(kw_only=True)
 class RobotMetaConfig:
 
+    robot_type: common.RobotType
+    """Type of the robot. Checkout all registered types by RobotType.get_all()"""
     mjcf_model_path: str
     """Path to the Mujoco XML file that describes the kinematics."""
-    # robot_type: common.RobotType
-    # """Type of the robot. Checkout all registered types by RobotType.get_all()"""
     dof: int
     "Number of degree of freedom of the robot arm"
     q_home: np.ndarray
@@ -136,9 +136,23 @@ class RobotMetaConfig:
     attachment_site: str = "attachment_site"
     """mjcf site to use for IK"""
 
+    def apply(self, cfg: common.RobotConfig) -> common.RobotConfig:
+        """Sets the robot specific fields of cfg (type, model, IK site, dof, joint limits, home pose).
+
+        The C++ configs leave them empty, so that the values live only here. Returns cfg.
+        """
+        cfg.robot_type = self.robot_type
+        cfg.kinematic_model_path = self.mjcf_model_path
+        cfg.attachment_site = self.attachment_site
+        cfg.dof = self.dof
+        cfg.joint_limits = self.joint_limits.copy()
+        cfg.q_home = self.q_home.copy()
+        return cfg
+
 
 ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
     common.RobotType.FR3: RobotMetaConfig(
+        robot_type=common.RobotType.FR3,
         mjcf_model_path="assets/robots/fr3/fr3.xml",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
@@ -150,6 +164,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.Panda: RobotMetaConfig(
+        robot_type=common.RobotType.Panda,
         mjcf_model_path="assets/robots/panda/panda.xml",
         dof=7,
         q_home=np.array([0.0, -np.pi / 4, 0.0, -3 * np.pi / 4, 0.0, np.pi / 2, 0.0]),
@@ -177,6 +192,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.XArm7: RobotMetaConfig(
+        robot_type=common.RobotType.XArm7,
         mjcf_model_path="assets/robots/xarm7/xarm7.xml",
         dof=7,
         q_home=np.array([0, -45.0 / 180.0 * np.pi, 0, 15.0 / 180.0 * np.pi, 0, -25.0 / 180.0 * np.pi, 0]),
@@ -188,6 +204,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.UR5e: RobotMetaConfig(
+        robot_type=common.RobotType.UR5e,
         mjcf_model_path="assets/robots/ur5e/ur5e.xml",
         dof=6,
         q_home=np.array([0.0, -2.02711196, 1.64630026, -1.18999615, -1.57079762, 0.0]),
@@ -199,6 +216,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         ),
     ),
     common.RobotType.SO101: RobotMetaConfig(
+        robot_type=common.RobotType.SO101,
         mjcf_model_path="assets/robots/so101/so101.xml",
         dof=5,
         q_home=np.array([-0.01914898, -1.90521916, 1.56476701, 1.04783839, -1.40323926]),
@@ -217,6 +235,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         attachment_site="gripper",
     ),
     common.RobotType.Yam: RobotMetaConfig(
+        robot_type=common.RobotType.Yam,
         mjcf_model_path="assets/robots/yam/yam.xml",
         dof=6,
         q_home=np.array([0.0, 1.047, 1.047, 0.0, 0.0, 0.0]),
@@ -229,6 +248,7 @@ ROBOTS: dict[common.RobotType, RobotMetaConfig] = {
         attachment_site="tcp_site",
     ),
     common.RobotType.Rizon4S: RobotMetaConfig(
+        robot_type=common.RobotType.Rizon4S,
         mjcf_model_path="assets/robots/rizon4s/rizon4s.xml",
         dof=7,
         # flange pointing straight down (joint2 - joint4 + joint6 = -pi/2), about 0.56 m in front of

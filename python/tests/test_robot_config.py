@@ -1,0 +1,37 @@
+"""The robot specific fields of RobotConfig come from rcs.ROBOTS, not from C++ defaults."""
+
+import numpy as np
+import pytest
+from test_sim_torque_control import Setup
+
+import rcs
+from rcs import common, sim
+
+
+def test_robot_config_has_no_robot_specific_defaults():
+    cfg = sim.SimRobotConfig()
+    assert cfg.robot_type.id == ""
+    assert cfg.dof == 0
+    assert cfg.joint_limits.shape == (2, 0)
+    assert cfg.kinematic_model_path == ""
+    assert cfg.q_home is None
+    # an unset type is not registered as a robot type
+    assert "" not in [t.id for t in common.RobotType.get_all()]
+
+
+@pytest.mark.parametrize("robot_type", list(rcs.ROBOTS))
+def test_apply_sets_the_robot_specific_fields(robot_type):
+    meta = rcs.ROBOTS[robot_type]
+    cfg = meta.apply(sim.SimRobotConfig())
+    assert cfg.robot_type == robot_type
+    assert cfg.dof == meta.dof
+    np.testing.assert_array_equal(cfg.joint_limits, meta.joint_limits)
+    np.testing.assert_array_equal(cfg.q_home, meta.q_home)
+    assert cfg.kinematic_model_path == meta.mjcf_model_path
+    assert cfg.attachment_site == meta.attachment_site
+
+
+def test_sim_robot_rejects_a_config_without_robot_specific_fields():
+    setup = Setup()
+    with pytest.raises(ValueError, match="apply"):
+        setup.robot.set_config(sim.SimRobotConfig())

@@ -31,6 +31,7 @@ common::Pose GetTCPInBaseFrame(const franka::RobotState& robot_state,
 
 namespace {
 void check_config(const FrankaConfig& cfg) {
+  common::check_robot_config(cfg);
   if (cfg.timestep != 0.001) {
     throw std::invalid_argument(
         "the Franka control loop runs at 1 ms, timestep must be 0.001");

@@ -27,13 +27,8 @@ class DefaultFR3HardwareEnv(RCSFR3ConfigEnvCreator):
             async_control=False,
             ignore_realtime=False,
             tcp_offset=common.Pose(common.FrankaHandTCPOffset()),
-            attachment_site="attachment_site",
-            kinematic_model_path=fr3.mjcf_model_path,
         )
-        robot_cfg.robot_type = common.RobotType.FR3
-        robot_cfg.q_home = fr3.q_home
-        robot_cfg.joint_limits = fr3.joint_limits
-        robot_cfg.dof = fr3.dof
+        fr3.apply(robot_cfg)
 
         gripper_cfg = hw.FHConfig(
             ip=self.ip,

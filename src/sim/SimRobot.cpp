@@ -100,6 +100,7 @@ void SimRobot::init_ids() {
 }
 
 bool SimRobot::set_config(const SimRobotConfig& cfg) {
+  common::check_robot_config(cfg);
   if (this->cfg.controller.has_value() && this->torque_control &&
       !cfg.controller.has_value()) {
     throw std::runtime_error("cannot switch back from torque control");

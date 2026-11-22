@@ -208,8 +208,8 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
         self,
         robot_type: rcs._core.common.RobotType = ...,
         tcp_offset: rcs._core.common.Pose = ...,
-        attachment_site: str = "attachment_site",
-        kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        attachment_site: str = "",
+        kinematic_model_path: str = "",
         joint_rotational_tolerance: float = 0.0008726646259971648,
         seconds_between_callbacks: float = 0.1,
         trajectory_trace: bool = False,
@@ -245,7 +245,7 @@ class SimRobotConfig(rcs._core.common.RobotConfig[M]):
         kp: list[float] | None = None,
         kv: list[float] | None = None,
         base: str = "base",
-        dof: int = 7,
+        dof: int = 0,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
     ) -> None: ...
     def add_prefix(self, id: str) -> None: ...

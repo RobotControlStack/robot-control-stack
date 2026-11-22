@@ -445,9 +445,8 @@ class EmptyWorldUR5e(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
+        rcs.ROBOTS[rt].apply(robot_cfg)
         robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[rcs.common.GripperType.Robotiq2F85]
-        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = [
             "shoulder_pan_joint",
@@ -458,9 +457,6 @@ class EmptyWorldUR5e(EmptyWorldFR3):
             "wrist_3_joint",
         ]
         robot_cfg.actuators = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
-        robot_cfg.dof = rcs.ROBOTS[rt].dof
-        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
-        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
         robot_cfg.base = "base"
 
         assert cfg.gripper_cfgs is not None
@@ -491,10 +487,8 @@ class EmptyWorldXArm7(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.robot_type = rt
+        rcs.ROBOTS[rt].apply(robot_cfg)
         robot_cfg.tcp_offset = rcs.common.Pose()
-        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = [
             "joint1",
@@ -514,9 +508,6 @@ class EmptyWorldXArm7(EmptyWorldFR3):
             "act6",
             "act7",
         ]
-        robot_cfg.dof = rcs.ROBOTS[rt].dof
-        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
-        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
         robot_cfg.base = "base"
 
         cfg.gripper_cfgs = None
@@ -537,16 +528,11 @@ class EmptyWorldSO101(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.robot_type = rt
+        rcs.ROBOTS[rt].apply(robot_cfg)
         robot_cfg.tcp_offset = rcs.common.Pose()
-        robot_cfg.attachment_site = "gripper"
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["1", "2", "3", "4", "5"]
         robot_cfg.actuators = ["1", "2", "3", "4", "5"]
-        robot_cfg.dof = rcs.ROBOTS[rt].dof
-        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
-        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
         robot_cfg.base = "base"
 
         assert cfg.gripper_cfgs is not None
@@ -578,16 +564,11 @@ class EmptyWorldYam(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.robot_type = rt
+        rcs.ROBOTS[rt].apply(robot_cfg)
         robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.Yam]
-        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
         robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
-        robot_cfg.dof = rcs.ROBOTS[rt].dof
-        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
-        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
         robot_cfg.base = "arm"
 
         assert cfg.gripper_cfgs is not None
@@ -619,16 +600,11 @@ class EmptyWorldRizon4S(EmptyWorldFR3):
         lead_robot_name = self.lead_robot_name(cfg)
 
         robot_cfg = cfg.robot_cfgs[lead_robot_name]
-        robot_cfg.robot_type = rt
+        rcs.ROBOTS[rt].apply(robot_cfg)
         robot_cfg.tcp_offset = GRIPPER_TCP_OFFSETS[GripperType.FlexivGrav]
-        robot_cfg.attachment_site = rcs.ROBOTS[rt].attachment_site
-        robot_cfg.kinematic_model_path = rcs.ROBOTS[rt].mjcf_model_path
         robot_cfg.arm_collision_geoms = []
         robot_cfg.joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
         robot_cfg.actuators = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
-        robot_cfg.dof = rcs.ROBOTS[rt].dof
-        robot_cfg.joint_limits = rcs.ROBOTS[rt].joint_limits
-        robot_cfg.q_home = rcs.ROBOTS[rt].q_home
         robot_cfg.base = "base"
 
         assert cfg.gripper_cfgs is not None

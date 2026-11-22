@@ -86,29 +86,12 @@ struct FrankaConfig : common::RobotConfig {
   double approach_cartesian_speed = 0.1;
   double approach_rotation_speed = 0.5;
   bool ignore_realtime = false;
-  // dof and joint_limits are those of RobotConfig, set them per robot (from
-  // rcs.ROBOTS in Python)
+  // robot_type, dof, joint_limits etc. are those of RobotConfig, set them per
+  // robot (in Python with rcs.ROBOTS[robot_type].apply(cfg))
 };
 
 struct FR3Config : FrankaConfig {};
-struct PandaConfig : FrankaConfig {
-  PandaConfig() {
-    // set the inherited fields; members of the same name would hide them
-    // from Franka, which works on a FrankaConfig
-    this->robot_type = common::RobotType::Panda;
-    this->joint_limits =
-        (Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>(2, 7) <<
-             // low 7‐tuple
-             -166. / 180. * M_PI,
-         -101. / 180. * M_PI, -166. / 180. * M_PI, -176. / 180. * M_PI,
-         -166. / 180. * M_PI, -1. / 180. * M_PI, -166. / 180. * M_PI,
-         // high 7‐tuple
-         166. / 180. * M_PI, 101. / 180. * M_PI, 166. / 180. * M_PI,
-         -4. / 180. * M_PI, 166. / 180. * M_PI, 215. / 180. * M_PI,
-         166. / 180. * M_PI)
-            .finished();
-  }
-};
+struct PandaConfig : FrankaConfig {};
 
 struct FrankaState : common::RobotState {
   franka::RobotState robot_state;

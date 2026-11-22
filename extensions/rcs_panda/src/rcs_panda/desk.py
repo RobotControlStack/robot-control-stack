@@ -17,6 +17,8 @@ from rcs_panda.configs import DefaultPandaHardwareEnv
 from requests.packages import urllib3  # type: ignore[attr-defined]
 from websockets.sync.client import connect
 
+import rcs
+
 _logger = logging.getLogger("desk")
 
 TOKEN_PATH = "~/.rcs/token.conf"
@@ -70,7 +72,7 @@ def gripper(ip: str, close_gripper: bool):
 
 
 def info(ip: str, include_hand: bool = False):
-    robot_cfg = rcs_panda.hw.PandaConfig(ip=ip)
+    robot_cfg = rcs.ROBOTS[rcs.common.RobotType.Panda].apply(rcs_panda.hw.PandaConfig(ip=ip))
     robot_cfg.speed_factor = 0.2
     robot_cfg.ignore_realtime = True
     f = rcs_panda.hw.Franka(robot_cfg)

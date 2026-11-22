@@ -408,12 +408,12 @@ class RobotConfig(typing.Generic[M]):
     def __init__(
         self,
         robot_type: RobotType = ...,
-        dof: int = 7,
+        dof: int = 0,
         joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]] = ...,
         robot_platform: RobotPlatform = ...,
         tcp_offset: Pose = ...,
-        attachment_site: str = "attachment_site",
-        kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        attachment_site: str = "",
+        kinematic_model_path: str = "",
         q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None = None,
     ) -> None: ...
 

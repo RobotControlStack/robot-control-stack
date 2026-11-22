@@ -320,8 +320,8 @@ class FR3Config(FrankaConfig):
         async_control: bool = False,
         ignore_realtime: bool = False,
         tcp_offset: rcs._core.common.Pose = ...,
-        attachment_site: str = "attachment_site",
-        kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        attachment_site: str = "",
+        kinematic_model_path: str = "",
         torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
         allow_high_collision: bool = False,
     ) -> None: ...
@@ -341,8 +341,8 @@ class PandaConfig(FrankaConfig):
         async_control: bool = False,
         ignore_realtime: bool = False,
         tcp_offset: rcs._core.common.Pose = ...,
-        attachment_site: str = "attachment_site",
-        kinematic_model_path: str = "assets/scenes/fr3_empty_world/robot.xml",
+        attachment_site: str = "",
+        kinematic_model_path: str = "",
         torque_limit: numpy.ndarray[tuple[typing.Literal[7]], numpy.dtype[numpy.float64]] = ...,
         allow_high_collision: bool = False,
     ) -> None: ...
