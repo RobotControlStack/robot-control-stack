@@ -350,3 +350,34 @@ def delete_episode(session_dir: Path, uuid: str) -> int:
         else:
             _write_atomic(f, keep)
     return len(files)
+
+
+# ---------------------------------------------------------------- correction marks (sidecar, parquet untouched)
+MARKS_FILE = "marks.json"
+MARK_KINDS = ("missed grasp", "bad grasp", "bad placement", "other")
+_marks_lock = threading.Lock()
+
+
+def read_marks(session_dir: Path) -> dict[str, dict[str, Any]]:
+    """Per episode uuid: where the correction of a recovery demo starts (``correction_step``), its ``kind``,
+    ``source`` (auto = proposed by a detection pass, manual = set in the viewer) and an optional ``note``.
+    Stored in ``<session>/marks.json`` next to the data, the parquet files are not changed."""
+    path = Path(session_dir) / MARKS_FILE
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text()).get("episodes", {})
+
+
+def set_mark(session_dir: Path, uuid: str, mark: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Sets (or with ``None`` removes) the mark of one episode, atomically. Returns all marks of the session."""
+    path = Path(session_dir) / MARKS_FILE
+    with _marks_lock:
+        marks = read_marks(session_dir)
+        if mark is None:
+            marks.pop(uuid, None)
+        else:
+            marks[uuid] = mark
+        tmp = path.with_name(f".{path.name}.tmp")
+        tmp.write_text(json.dumps({"episodes": marks}, indent=2, sort_keys=True) + "\n")
+        os.replace(tmp, path)
+    return marks

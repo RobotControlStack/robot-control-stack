@@ -5,6 +5,9 @@ let viewerSession = null;
 let viewerEpisode = null;
 let cursorTime = 0;
 let playTimer = null;
+let viewerMarks = {};
+let markKinds = ["missed grasp", "bad grasp", "bad placement", "other"];
+let marksAvailable = false;
 
 function fmtDuration(s) {
   return `${s.toFixed(1)} s`;
@@ -30,12 +33,15 @@ async function loadEpisodes(name) {
   const meta = window._sessions[name] || {};
   $("#session-meta").textContent = `${meta.mode || ""} · ${meta.creator || ""} · ${meta.created || ""}`;
   const { episodes: all } = await api(`/api/sessions/${encodeURIComponent(name)}/episodes`);
+  await loadMarks(name);
   const filter = $("#episode-filter").value;
   const episodes = all.filter((ep) =>
     filter === "intervention" ? ep.intervention_steps > 0
     : filter === "no-intervention" ? !ep.intervention_steps
     : filter === "successful" ? ep.success
     : filter === "unsuccessful" ? !ep.success
+    : filter === "marked" ? !!viewerMarks[ep.uuid]
+    : filter === "unmarked" ? !viewerMarks[ep.uuid]
     : true
   );
   $("#episode-count").textContent = `${episodes.length} of ${all.length} episodes`;
@@ -43,7 +49,7 @@ async function loadEpisodes(name) {
     .map(
       (ep, i) => `<tr class="clickable" data-uuid="${ep.uuid}">
         <td>${i + 1}</td><td><code>${ep.uuid.slice(0, 8)}</code></td><td>${ep.steps}</td>
-        <td>${fmtDuration(ep.duration)}</td><td>${labelPill(ep)}</td>
+        <td>${fmtDuration(ep.duration)}</td><td>${labelPill(ep)} ${markPill(ep.uuid)}</td>
         <td>${controllerPills(ep)}${ep.intervention_steps ? ` <span class="pill warn" title="steps of human intervention">${ep.intervention_steps} intervention steps</span>` : ""}</td>
         <td>${esc(ep.instruction)}</td>
         <td class="row">
@@ -105,6 +111,7 @@ async function loadEpisode(uuid) {
   $("#scrub").max = ep.steps - 1;
   $("#scrub").value = 0;
   buildPlots(ep);
+  renderMarkBar();
   showStep(0);
 }
 
@@ -286,6 +293,7 @@ function showStep(step) {
     line.setAttribute("x1", xx);
     line.setAttribute("x2", xx);
   });
+  drawMarkLines();
 }
 
 function stopPlay() {
@@ -333,3 +341,91 @@ window.addEventListener("tab", (e) => {
   if (e.detail === "data") loadSessions().catch((err) => alert(err.message));
 });
 if ((location.hash || "").slice(1) === "data") loadSessions();
+
+
+// ---------------------------------------------------------------- correction marks of recovery demos (marks.json)
+async function loadMarks(name) {
+  try {
+    const res = await api(`/api/sessions/${encodeURIComponent(name)}/marks`);
+    viewerMarks = res.marks || {};
+    if (res.kinds) markKinds = res.kinds;
+    marksAvailable = true;
+  } catch (err) {
+    viewerMarks = {}; // server without marks support (restart rcs-webui to get it)
+    marksAvailable = false;
+  }
+}
+
+function markPill(uuid) {
+  const m = viewerMarks[uuid];
+  if (!m) return "";
+  const tip = `${m.source || ""} mark${m.note ? ": " + m.note : ""}`;
+  return `<span class="pill mark ${m.source === "auto" ? "auto" : ""}" title="${esc(tip)}">${esc(m.kind)} @ ${m.correction_step}${m.source === "auto" ? " (auto)" : ""}</span>`;
+}
+
+function renderMarkBar() {
+  const bar = $("#mark-bar");
+  if (!viewerEpisode) { bar.innerHTML = ""; return; }
+  if (!marksAvailable) {
+    bar.innerHTML = '<span class="muted">correction marks: not supported by this server, restart rcs-webui</span>';
+    return;
+  }
+  const m = viewerMarks[viewerEpisode.uuid];
+  const kind = m ? m.kind : "missed grasp";
+  bar.innerHTML = `<span><b>correction</b> ${m ? `starts at step ${m.correction_step} (${esc(m.source)})` : '<span class="muted">none (normal demo)</span>'}</span>
+    <select id="mark-kind">${markKinds.map((k) => `<option${k === kind ? " selected" : ""}>${esc(k)}</option>`).join("")}</select>
+    <button class="btn small" id="mark-set" title="the correction starts at the step shown now">set at current step</button>
+    ${m ? '<button class="btn small" id="mark-jump">jump to it</button><button class="btn small" id="mark-ok" title="keep the step, mark as reviewed">confirm</button><button class="btn small" id="mark-clear">clear</button>' : ""}`;
+  $("#mark-set").addEventListener("click", () => saveMark(+$("#scrub").value));
+  if (m) {
+    $("#mark-jump").addEventListener("click", () => { stopPlay(); $("#scrub").value = m.correction_step; showStep(m.correction_step); });
+    $("#mark-ok").addEventListener("click", () => saveMark(m.correction_step));
+    $("#mark-clear").addEventListener("click", () => saveMark(null));
+  }
+}
+
+async function saveMark(step) {
+  const uuid = viewerEpisode.uuid;
+  const old = viewerMarks[uuid];
+  try {
+    const res = await api(`/api/sessions/${encodeURIComponent(viewerSession)}/episodes/${uuid}/mark`, {
+      correction_step: step,
+      kind: $("#mark-kind") ? $("#mark-kind").value : "other",
+      note: old && old.note ? old.note : "",
+    });
+    viewerMarks = res.marks || {};
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  renderMarkBar();
+  drawMarkLines();
+  const row = document.querySelector(`#episodes tr[data-uuid="${uuid}"] td:nth-child(5)`);
+  if (row) row.innerHTML = `${labelPill(viewerEpisode)} ${markPill(uuid)}`;
+}
+
+function drawMarkLines() {
+  const ep = viewerEpisode;
+  if (!ep) return;
+  const m = viewerMarks[ep.uuid];
+  document.querySelectorAll("#plots svg").forEach((svg) => {
+    let line = svg.querySelector(".markline");
+    if (!m) { if (line) line.remove(); return; }
+    const cursor = svg.querySelector(".cursor");
+    if (!line) {
+      line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("class", "markline");
+      line.setAttribute("stroke", "#c2410c");
+      line.setAttribute("stroke-width", "2");
+      line.setAttribute("stroke-dasharray", "5 3");
+      line.setAttribute("y1", cursor.getAttribute("y1"));
+      line.setAttribute("y2", cursor.getAttribute("y2"));
+      svg.appendChild(line);
+    }
+    const t = ep.time[Math.min(m.correction_step, ep.time.length - 1)] ?? 0;
+    const tmin = +svg.dataset.tmin, tmax = +svg.dataset.tmax, L = +svg.dataset.l, R = +svg.dataset.r, W = +svg.dataset.w;
+    const xx = L + ((t - tmin) / (tmax - tmin || 1)) * (W - L - R);
+    line.setAttribute("x1", xx);
+    line.setAttribute("x2", xx);
+  });
+}

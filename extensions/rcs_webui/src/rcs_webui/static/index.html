@@ -149,6 +149,8 @@
           <option value="no-intervention">without intervention</option>
           <option value="successful">successful</option>
           <option value="unsuccessful">unsuccessful</option>
+          <option value="marked">with correction mark</option>
+          <option value="unmarked">without correction mark</option>
         </select>
       </label>
       <button id="reload-sessions" class="btn small">reload</button>
@@ -168,6 +170,7 @@
       <input id="scrub" type="range" min="0" value="0" style="flex:1">
       <span id="scrub-label" class="muted"></span>
     </div>
+    <div id="mark-bar" class="row mark-bar"></div>
     <div id="episode-cameras" class="cameras"></div>
     <div id="plots" class="plots"></div>
   </div>

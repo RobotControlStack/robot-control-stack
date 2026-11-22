@@ -134,6 +134,23 @@ class App:
             self._check_not_recording(m["uuid"], self._session(m))
             return {"files": data.delete_episode(self._session(m), m["uuid"])}
 
+        @self.get(r"/api/sessions/(?P<session>[^/]+)/marks")
+        def marks(_h, m, _q):
+            return {"marks": data.read_marks(self._session(m)), "kinds": list(data.MARK_KINDS)}
+
+        @self.post(r"/api/sessions/(?P<session>[^/]+)/episodes/(?P<uuid>[0-9a-f]+)/mark")
+        def mark(_h, m, body):
+            step = body.get("correction_step")
+            if step is None:
+                return {"marks": data.set_mark(self._session(m), m["uuid"], None)}
+            if not isinstance(step, int) or step < 0:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "correction_step must be a step index >= 0 or null")
+            kind = body.get("kind") or "other"
+            if kind not in data.MARK_KINDS:
+                raise ApiError(HTTPStatus.BAD_REQUEST, f"kind must be one of {list(data.MARK_KINDS)}")
+            mark = {"correction_step": step, "kind": kind, "source": "manual", "note": str(body.get("note") or "")}
+            return {"marks": data.set_mark(self._session(m), m["uuid"], mark)}
+
         @self.get(r"/api/live/(?P<camera>[^/]+)\.jpg")
         def live_frame(h, m, _q):
             frame = self._need_runner().latest_frame(unquote(m["camera"]))

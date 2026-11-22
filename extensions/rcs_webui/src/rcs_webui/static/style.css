@@ -142,3 +142,8 @@ label.check input { width: auto; }
   header { gap: 10px; }
   .plots { grid-template-columns: 1fr; }
 }
+
+.mark-bar { gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.pill.mark { background: #c2410c; color: #fff; }
+.pill.mark.auto { background: #fdba74; color: #431407; }
+.mark-bar select { width: auto; flex: 0 0 auto; }
