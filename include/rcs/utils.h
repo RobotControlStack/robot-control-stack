@@ -17,6 +17,8 @@ typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
 typedef Eigen::Matrix<double, 16, 1, Eigen::ColMajor> Vector16d;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::ColMajor> VectorXd;
 typedef Eigen::Matrix<int, 7, 1, Eigen::ColMajor> Vector7i;
+// joint limits of a robot: lower limits in row 0, upper limits in row 1
+using JointLimits = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>;
 
 /***
  * @brief convert between eigen and flattened array (col major as required by

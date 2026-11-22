@@ -9,7 +9,9 @@ namespace common {
 
 ControllerPair make_controller(const ControllerConfig& config,
                                double interpolation_time,
-                               const JointLimits& joint_limits) {
+                               const JointLimits& joint_limits,
+                               const std::optional<SafetyConfig>& safety,
+                               double timestep) {
   auto joint_interpolator = [&] {
     return std::make_shared<LinearJointInterpolator>(interpolation_time);
   };
@@ -31,6 +33,15 @@ ControllerPair make_controller(const ControllerConfig& config,
   } else if (auto* c = std::get_if<FR3OSCConfig>(&config)) {
     controller.cartesian =
         std::make_shared<FR3OSC>(*c, cartesian_interpolator(), joint_limits);
+  }
+  if (safety.has_value()) {
+    if (controller.joint) {
+      controller.joint = std::make_shared<SafeJointController>(
+          controller.joint, *safety, joint_limits, timestep);
+    } else {
+      controller.cartesian = std::make_shared<SafeCartesianController>(
+          controller.cartesian, *safety, joint_limits, timestep);
+    }
   }
   return controller;
 }

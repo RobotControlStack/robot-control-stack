@@ -578,6 +578,57 @@ Args:
                     const rcs::common::JointLimits&>(),
            py::arg("config"), py::arg("interpolator"), py::arg("joint_limits"));
 
+  rcs::common::SafetyConfig default_safety_config;
+  py::class_<rcs::common::SafetyConfig>(common, "SafetyConfig")
+      .def(py::init([](const rcs::common::VectorXd& torque_limit,
+                       double max_torque_rate, double joint_limit_margin) {
+             return rcs::common::SafetyConfig{torque_limit, max_torque_rate,
+                                              joint_limit_margin};
+           }),
+           py::arg("torque_limit") = default_safety_config.torque_limit,
+           py::arg("max_torque_rate") = default_safety_config.max_torque_rate,
+           py::arg("joint_limit_margin") =
+               default_safety_config.joint_limit_margin)
+      .def_readwrite("torque_limit", &rcs::common::SafetyConfig::torque_limit)
+      .def_readwrite("max_torque_rate",
+                     &rcs::common::SafetyConfig::max_torque_rate)
+      .def_readwrite("joint_limit_margin",
+                     &rcs::common::SafetyConfig::joint_limit_margin)
+      .def("__copy__",
+           [](const rcs::common::SafetyConfig& self) {
+             return rcs::common::SafetyConfig(self);
+           })
+      .def("__deepcopy__", [](const rcs::common::SafetyConfig& self, py::dict) {
+        return rcs::common::SafetyConfig(self);
+      });
+
+  py::class_<rcs::common::SafetyStage>(common, "SafetyStage")
+      .def(py::init<const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("config"), py::arg("joint_limits"), py::arg("timestep"))
+      .def("reset", &rcs::common::SafetyStage::reset, py::arg("state"))
+      .def("apply", &rcs::common::SafetyStage::apply, py::arg("tau"),
+           py::arg("state"));
+
+  py::class_<rcs::common::SafeJointController, rcs::common::JointController,
+             std::shared_ptr<rcs::common::SafeJointController>>(
+      common, "SafeJointController")
+      .def(py::init<std::shared_ptr<rcs::common::JointController>,
+                    const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("controller"), py::arg("config"), py::arg("joint_limits"),
+           py::arg("timestep"));
+
+  py::class_<rcs::common::SafeCartesianController,
+             rcs::common::CartesianController,
+             std::shared_ptr<rcs::common::SafeCartesianController>>(
+      common, "SafeCartesianController")
+      .def(py::init<std::shared_ptr<rcs::common::CartesianController>,
+                    const rcs::common::SafetyConfig&,
+                    const rcs::common::JointLimits&, double>(),
+           py::arg("controller"), py::arg("config"), py::arg("joint_limits"),
+           py::arg("timestep"));
+
   bind_type_class<rcs::common::RobotType>(common, "RobotType")
       .def_readonly_static("FR3", &rcs::common::RobotType::FR3)
       .def_readonly_static("Panda", &rcs::common::RobotType::Panda)
@@ -633,7 +684,8 @@ Args:
       .def_readwrite("robot_platform",
                      &rcs::common::RobotConfig::robot_platform)
       .def_readwrite("q_home", &rcs::common::RobotConfig::q_home)
-      .def_readwrite("controller", &rcs::common::RobotConfig::controller);
+      .def_readwrite("controller", &rcs::common::RobotConfig::controller)
+      .def_readwrite("safety", &rcs::common::RobotConfig::safety);
   py::class_<rcs::common::RobotState>(common, "RobotState").def(py::init<>());
 
   bind_type_class<rcs::common::GripperType>(common, "GripperType")

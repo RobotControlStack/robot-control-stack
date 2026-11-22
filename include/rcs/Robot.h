@@ -83,6 +83,9 @@ struct RobotConfig {
   // The controller to run, see ControllerConfig.h. None: the robot's native
   // control (MuJoCo actuators in sim, the default controllers on hardware).
   std::optional<ControllerConfig> controller = std::nullopt;
+  // Limits on the torques of the controller (SafetyStage), from rcs.ROBOTS.
+  // None: the torques go to the robot as the controller computes them.
+  std::optional<SafetyConfig> safety = std::nullopt;
   virtual ~RobotConfig() {};
 };
 

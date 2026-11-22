@@ -7,6 +7,7 @@
 #include "Controller.h"
 #include "Controllers.h"
 #include "FR3Controllers.h"
+#include "SafetyStage.h"
 #include "utils.h"
 
 namespace rcs {
@@ -39,10 +40,14 @@ struct ControllerPair {
 
 // Builds the controller with a linear interpolator that spreads each goal
 // over interpolation_time (the control period of the policy). The joint
-// limits are the robot's, as in RobotConfig::joint_limits.
+// limits are the robot's, as in RobotConfig::joint_limits. With a safety
+// config (RobotConfig::safety), the controller's torques go through a
+// SafetyStage; timestep is the period of the control loop.
 ControllerPair make_controller(const ControllerConfig& config,
                                double interpolation_time,
-                               const JointLimits& joint_limits);
+                               const JointLimits& joint_limits,
+                               const std::optional<SafetyConfig>& safety,
+                               double timestep);
 
 }  // namespace common
 }  // namespace rcs

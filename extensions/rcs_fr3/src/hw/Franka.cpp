@@ -408,7 +408,8 @@ common::ControllerPair Franka::make_torque_controller(bool cartesian) {
   }
   // a goal per policy step, interpolated over one policy period
   return common::make_controller(config, 1.0 / this->m_cfg.policy_rate,
-                                 this->m_cfg.joint_limits);
+                                 this->m_cfg.joint_limits, this->m_cfg.safety,
+                                 this->m_cfg.timestep);
 }
 
 void Franka::create_dynamics() {

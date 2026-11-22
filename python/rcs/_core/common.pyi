@@ -58,6 +58,10 @@ __all__: list[str] = [
     "RobotType",
     "RotVec",
     "SIMULATION",
+    "SafeCartesianController",
+    "SafeJointController",
+    "SafetyConfig",
+    "SafetyStage",
     "TRIPOD_GRASP",
 ]
 M = typing.TypeVar("M", bound=int)
@@ -404,6 +408,7 @@ class RobotConfig(typing.Generic[M]):
     q_home: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] | None
     robot_platform: RobotPlatform
     robot_type: RobotType
+    safety: SafetyConfig | None
     tcp_offset: Pose
     def __init__(
         self,
@@ -476,6 +481,31 @@ class RotVec:
         self,
     ) -> numpy.ndarray[tuple[typing.Literal[3], typing.Literal[3]], numpy.dtype[numpy.float64]]: ...
 
+class SafetyConfig:
+    joint_limit_margin: float
+    max_torque_rate: float
+    torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]
+    def __copy__(self) -> SafetyConfig: ...
+    def __deepcopy__(self, arg0: dict) -> SafetyConfig: ...
+    def __init__(
+        self,
+        torque_limit: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]] = ...,
+        max_torque_rate: float = ...,
+        joint_limit_margin: float = 0.1,
+    ) -> None: ...
+
+class SafetyStage:
+    def __init__(
+        self,
+        config: SafetyConfig,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
+        timestep: float,
+    ) -> None: ...
+    def apply(
+        self, tau: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]], state: ControllerState
+    ) -> numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]]: ...
+    def reset(self, state: ControllerState) -> None: ...
+
 class FR3OSC(CartesianController):
     def __init__(
         self,
@@ -486,6 +516,15 @@ class FR3OSC(CartesianController):
 
 class OSC(CartesianController):
     def __init__(self, config: OSCConfig, interpolator: CartesianInterpolator) -> None: ...
+
+class SafeCartesianController(CartesianController):
+    def __init__(
+        self,
+        controller: CartesianController,
+        config: SafetyConfig,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
+        timestep: float,
+    ) -> None: ...
 
 class LinearCartesianInterpolator(CartesianInterpolator):
     def __init__(self, duration: float) -> None: ...
@@ -504,6 +543,15 @@ class JointPD(JointController):
         kp: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         kd: numpy.ndarray[tuple[M], numpy.dtype[numpy.float64]],
         interpolator: JointInterpolator,
+    ) -> None: ...
+
+class SafeJointController(JointController):
+    def __init__(
+        self,
+        controller: JointController,
+        config: SafetyConfig,
+        joint_limits: numpy.ndarray[tuple[typing.Literal[2], M], numpy.dtype[numpy.float64]],
+        timestep: float,
     ) -> None: ...
 
 class LinearJointInterpolator(JointInterpolator):

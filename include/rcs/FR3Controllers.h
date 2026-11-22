@@ -26,7 +26,6 @@ namespace common {
 // torque rate limit and the per-joint torque clip. The joint limits are those
 // of the robot (RobotConfig::joint_limits, lower limits in the first row),
 // passed to the constructors.
-using JointLimits = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::ColMajor>;
 
 struct FR3JointControllerConfig {
   Vector7d kp =

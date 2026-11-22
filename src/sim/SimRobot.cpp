@@ -340,9 +340,9 @@ void SimRobot::install_configured_controller() {
     throw std::runtime_error(
         "a configured controller needs SimConfig::async_control");
   }
-  common::ControllerPair controller =
-      common::make_controller(this->cfg.controller.value(),
-                              1.0 / sim_cfg.frequency, this->cfg.joint_limits);
+  common::ControllerPair controller = common::make_controller(
+      this->cfg.controller.value(), 1.0 / sim_cfg.frequency,
+      this->cfg.joint_limits, this->cfg.safety, sim_cfg.timestep);
   this->joint_controller = nullptr;
   this->cartesian_controller = nullptr;
   if (controller.joint) {
