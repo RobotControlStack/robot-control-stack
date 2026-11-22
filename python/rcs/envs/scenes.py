@@ -52,6 +52,10 @@ class RCSEnvCreator(ABC, EnvCreator, typing.Generic[RCSEnvCreatorConfig]):
 class WrapperConfig:
     binary_gripper: bool = True
     home_on_reset: bool = True
+    home_noise: tuple[float, float, float, float, float, float] | None = None
+    """Uniform noise ``[-n, n]`` on the home TCP pose at every reset (x, y, z in m, roll, pitch, yaw in rad, base
+    frame), applied through IK like DROID's randomized reset; DROID uses ``(0.1, 0.2, 0.1, 0.3, 0.3, 0.3)``.
+    ``None`` moves to the exact home pose."""
     include_depth: bool = False
     record_control_states: bool = False
     """Adds all robot states seen by the low level controller since the last step to
@@ -500,7 +504,13 @@ class SimEnvCreator(RCSEnvCreator[SimEnvCreatorConfig], typing.Generic[TaskConfi
                     kinematic_model_path, kinematic_model_path.endswith(".urdf"), attachment_site
                 )
             )
-        env = RobotWrapper(env, robot, prefixed_cfg.control_mode, home_on_reset=prefixed_cfg.wrapper_cfg.home_on_reset)
+        env = RobotWrapper(
+            env,
+            robot,
+            prefixed_cfg.control_mode,
+            home_on_reset=prefixed_cfg.wrapper_cfg.home_on_reset,
+            home_noise=prefixed_cfg.wrapper_cfg.home_noise,
+        )
         env = RobotSimWrapper(env)
         if prefixed_cfg.wrapper_cfg.record_control_states:
             env = SimControlStateWrapper(env)

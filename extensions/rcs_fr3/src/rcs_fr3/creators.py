@@ -108,7 +108,13 @@ class RCSFR3ConfigEnvCreator(RCSEnvCreator[FR3HardwareEnvCreatorConfig]):
         robot = hw.Franka(cfg.robot_cfg, ik)
 
         env: gym.Env = HardwareEnv(frequency=cfg.frequency)
-        env = RobotWrapper(env, robot, cfg.control_mode, home_on_reset=cfg.wrapper_cfg.home_on_reset)
+        env = RobotWrapper(
+            env,
+            robot,
+            cfg.control_mode,
+            home_on_reset=cfg.wrapper_cfg.home_on_reset,
+            home_noise=cfg.wrapper_cfg.home_noise,
+        )
         env = FR3HW(env)
         if cfg.hand_cfg is not None:
             hand = rcs.registry.HANDS.get(cfg.hand_cfg.hand_type.id)(cfg.hand_cfg)

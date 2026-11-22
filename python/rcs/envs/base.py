@@ -1,5 +1,6 @@
 """Gym API."""
 
+import contextlib
 import copy
 import logging
 from enum import Enum, auto
@@ -342,11 +343,23 @@ class RobotWrapper(ActObsInfoWrapper):
     y
     """
 
-    def __init__(self, env, robot: common.Robot, control_mode: ControlMode, home_on_reset: bool = True):
+    def __init__(
+        self,
+        env,
+        robot: common.Robot,
+        control_mode: ControlMode,
+        home_on_reset: bool = True,
+        home_noise: tuple[float, float, float, float, float, float] | None = None,
+    ):
         super().__init__(env)
         self.robot = robot
         self._control_mode_overrides = [control_mode]
         self.home_on_reset = home_on_reset
+        self.home_noise = None if home_noise is None else np.asarray(home_noise, dtype=np.float64)
+        if self.home_noise is not None and self.home_noise.shape != (6,):
+            msg = f"home_noise needs 6 values (x, y, z, roll, pitch, yaw), got {home_noise}"
+            raise ValueError(msg)
+        self._home_rng: np.random.Generator | None = None
         self.action_space: gym.spaces.Dict
         self.observation_space: gym.spaces.Dict
         low, high = robot.get_config().joint_limits
@@ -432,17 +445,73 @@ class RobotWrapper(ActObsInfoWrapper):
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        self.robot.reset()
-        if self.home_on_reset:
-            exception = True
-            while exception:
-                try:
-                    self.robot.move_home()
-                    exception = False
-                except Exception:
-                    self.robot.automatic_error_recovery()  # type: ignore[attr-defined]
-                    sleep(0.1)
+        if seed is not None:
+            # in multi robot envs the seed arrives here and not at the outermost wrapper
+            self._home_rng = np.random.default_rng(seed)
+        q_noisy = self._noisy_home() if self.home_on_reset and self.home_noise is not None else None
+        with self._home_override(q_noisy):
+            # the simulation resets the joints to q_home in robot.reset(), the hardware moves there in move_home()
+            self.robot.reset()
+            if self.home_on_reset:
+                exception = True
+                while exception:
+                    try:
+                        self.robot.move_home()
+                        exception = False
+                    except Exception:
+                        self.robot.automatic_error_recovery()  # type: ignore[attr-defined]
+                        sleep(0.1)
         return super().reset(seed=seed, options=options)
+
+    def _noisy_home(self, attempts: int = 10) -> np.ndarray | None:
+        """Home joints with the TCP pose perturbed like DROID's ``reset(randomize=True)``: noise uniform in
+        ``[-home_noise, home_noise]``, translation added in the base frame, rotation ``R_noise @ R_home`` with the
+        noise as extrinsic ``xyz`` euler angles. Samples that IK cannot reach or that end within the joint-limit
+        margin are redrawn; after ``attempts`` failures the plain home pose is used (as in DROID)."""
+        assert self.home_noise is not None
+        cfg = self.robot.get_config()
+        ik = self.robot.get_ik()
+        if cfg.q_home is None or ik is None:
+            _logger.warning("home_noise needs q_home and an IK solver, moving to the plain home pose")
+            return None
+        q_home = np.array(cfg.q_home, copy=True)
+        home = ik.forward(q_home, cfg.end_effector.tcp_offset)
+        low, high = np.asarray(cfg.joint_limits)
+        # stay out of the joint-limit guard of the safety stage, and at least 0.05 rad from a limit
+        margin = max(cfg.safety.joint_limit_margin if cfg.safety is not None else 0.0, 0.05)
+        for _ in range(attempts):
+            rng = self._home_rng if self._home_rng is not None else self.np_random
+            n = rng.uniform(-self.home_noise, self.home_noise)
+            rot = common.RPY(*n[3:]).rotation_matrix() @ home.rotation_m()
+            target = common.Pose(rotation=rot, translation=home.translation() + n[:3])
+            q = ik.inverse(target, q_home, cfg.end_effector.tcp_offset)
+            if q is None or np.any(q < low + margin) or np.any(q > high - margin):
+                continue
+            # the IK may return a non converged solution, accept only poses that reach the target
+            reached = ik.forward(q, cfg.end_effector.tcp_offset)
+            cos = (np.trace(reached.rotation_m() @ target.rotation_m().T) - 1) / 2
+            rot_err = np.arccos(np.clip(cos, -1.0, 1.0))
+            if np.linalg.norm(reached.translation() - target.translation()) < 0.005 and rot_err < 0.02:
+                return np.asarray(q)
+        _logger.warning("no reachable noisy home pose after %d samples, moving to the plain home pose", attempts)
+        return None
+
+    @contextlib.contextmanager
+    def _home_override(self, q: np.ndarray | None):
+        """Temporarily points the robot's ``q_home`` at ``q`` (reset and move_home use it on every platform)."""
+        if q is None:
+            yield
+            return
+        cfg = self.robot.get_config()
+        # copy: the binding returns a view into the config that the assignment below overwrites
+        q_home = None if cfg.q_home is None else np.array(cfg.q_home, copy=True)
+        cfg.q_home = q
+        self.robot.set_config(cfg)  # type: ignore[attr-defined]
+        try:
+            yield
+        finally:
+            cfg.q_home = q_home
+            self.robot.set_config(cfg)  # type: ignore[attr-defined]
 
     def close(self):
         self.robot.close()
