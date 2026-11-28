@@ -118,10 +118,10 @@ class JointDatasetConverter:
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.source_sql = self._build_source_sql(self.dataset_paths)
-        # Recordings from before env_obs was added store the observation after the step (paired with env_action):
+        # Recordings without an rcs_version column store the observation after the step (paired with env_action):
         # pair each action with the previous row's observation instead.
         columns = {row[0] for row in self.conn.execute(f"DESCRIBE SELECT * FROM ({self.source_sql}) AS src").fetchall()}
-        self.legacy_layout = "env_action" in columns
+        self.legacy_layout = "rcs_version" not in columns
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
