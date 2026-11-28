@@ -294,13 +294,14 @@ def test_storage_wrapper_pairs_obs_with_the_action_applied_to_it(tmp_path: Path)
     connection = duckdb.connect()
     try:
         rows = connection.execute(
-            "SELECT obs, action, env_obs FROM read_parquet(?) ORDER BY step", [str(tmp_path / "recorded")]
+            "SELECT obs, action, env_obs, rcs_version FROM read_parquet(?) ORDER BY step", [str(tmp_path / "recorded")]
         ).fetchall()
     finally:
         connection.close()
 
     assert len(rows) == len(actions)
-    for i, (obs, action, env_obs) in enumerate(rows):
+    for i, (obs, action, env_obs, rcs_version) in enumerate(rows):
+        assert rcs_version == rcs.__version__
         # obs is the observation the action was applied from, env_obs the one it led to
         _assert_nested_close(obs, _to_py(_strip_frames(observations[i])), atol=1e-6)
         _assert_nested_close(action, _to_py(actions[i]), atol=1e-8)

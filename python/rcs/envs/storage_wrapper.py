@@ -15,6 +15,7 @@ import pyarrow as pa
 import pyarrow.dataset as ds
 import simplejpeg
 from PIL import Image
+from rcs._core import __version__ as rcs_version
 
 
 class StorageWrapper(gym.Wrapper):
@@ -50,7 +51,8 @@ class StorageWrapper(gym.Wrapper):
         action was applied from (the reset observation for the first row), ``action``
         is the action passed to ``step`` and ``env_obs`` is the observation returned
         by that step, without camera frames (it equals the next row's ``obs``).
-        ``(obs, action)`` is therefore the pair a policy is trained on.
+        ``(obs, action)`` is therefore the pair a policy is trained on. ``rcs_version``
+        marks this layout; recordings without it store the observation after the step.
 
         Observation handling:
         - Expects observations to be dictionaries.
@@ -302,6 +304,7 @@ class StorageWrapper(gym.Wrapper):
                 "action": action,
                 "instruction": self.instruction,
                 "timestamp": datetime.datetime.now().timestamp(),
+                "rcs_version": rcs_version,
             }
 
             self.buffer.append(frame)

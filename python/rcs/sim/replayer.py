@@ -87,8 +87,8 @@ def load_trajectory(dataset_path: Path | str, trajectory_uuid: str) -> list[Reco
             row[0]
             for row in connection.execute("DESCRIBE SELECT * FROM read_parquet(?)", [str(dataset_path)]).fetchall()
         }
-        # recordings from before env_obs was added store the stepped action as env_action
-        action_column = "env_action" if "env_action" in columns else "action"
+        # recordings without rcs_version store the stepped action as env_action
+        action_column = "action" if "rcs_version" in columns else "env_action"
         rows = connection.execute(
             f"SELECT uuid, step, timestamp, obs, info, {action_column}, instruction, success "
             "FROM read_parquet(?) WHERE uuid = ? ORDER BY step",
