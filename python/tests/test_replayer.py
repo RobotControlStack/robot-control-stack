@@ -116,7 +116,7 @@ def _source_rows(dataset_dir: Path, limit: int):
         uuid = load_distinct_uuids(dataset_dir)[0]
         return connection.execute(
             """
-            SELECT step, obs, info, reward, success, action, env_action, instruction
+            SELECT step, obs, info, reward, success, action, env_obs, instruction
             FROM read_parquet(?)
             WHERE uuid = ?
             ORDER BY step
@@ -133,7 +133,7 @@ def _replay_rows(dataset_dir: Path):
     try:
         return connection.execute(
             """
-            SELECT step, obs, info, reward, success, action, env_action, instruction
+            SELECT step, obs, info, reward, success, action, env_obs, instruction
             FROM read_parquet(?)
             ORDER BY step
             """,
@@ -263,6 +263,51 @@ def _joint_qpos_in_root_frame(env: StorageWrapper, joint_name: str, root_frame_t
     return np.concatenate((joint_pose_root.translation(), joint_pose_root.rotation_q_wxyz()))
 
 
+def _to_py(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _to_py(item) for key, item in value.items()}
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def test_storage_wrapper_pairs_obs_with_the_action_applied_to_it(tmp_path: Path):
+    env = _build_env(tmp_path / "recorded", with_cameras=False)
+    actions = [
+        {
+            robot: {
+                "tquat": np.array([0.0, 0.0, 0.02 * (i + 1), 0.0, 0.0, 0.0, 1.0]),
+                "gripper": np.array([1.0], dtype=np.float32),
+            }
+            for robot in ("left", "right")
+        }
+        for i in range(3)
+    ]
+    try:
+        observations = [env.reset()[0]]
+        observations += [env.step(action)[0] for action in actions]
+    finally:
+        env.close()
+
+    connection = duckdb.connect()
+    try:
+        rows = connection.execute(
+            "SELECT obs, action, env_obs, rcs_version FROM read_parquet(?) ORDER BY step", [str(tmp_path / "recorded")]
+        ).fetchall()
+    finally:
+        connection.close()
+
+    assert len(rows) == len(actions)
+    for i, (obs, action, env_obs, rcs_version) in enumerate(rows):
+        assert rcs_version == rcs.__version__
+        # obs is the observation the action was applied from, env_obs the one it led to
+        _assert_nested_close(obs, _to_py(_strip_frames(observations[i])), atol=1e-6)
+        _assert_nested_close(action, _to_py(actions[i]), atol=1e-8)
+        _assert_nested_close(env_obs, _to_py(_strip_frames(observations[i + 1])), atol=1e-6)
+
+
 def test_replayer_reproduces_existing_parquet_prefix_without_cameras(tmp_path: Path):
     source_dir = tmp_path / "source"
     replay_dir = tmp_path / "replayed"
@@ -285,7 +330,7 @@ def test_replayer_reproduces_existing_parquet_prefix_without_cameras(tmp_path: P
             replay_reward,
             replay_success,
             replay_action,
-            replay_env_action,
+            replay_env_obs,
             replay_instruction,
         ) = replay_row
         (
@@ -295,7 +340,7 @@ def test_replayer_reproduces_existing_parquet_prefix_without_cameras(tmp_path: P
             source_reward,
             source_success,
             source_action,
-            source_env_action,
+            source_env_obs,
             source_instruction,
         ) = source_row
 
@@ -307,7 +352,7 @@ def test_replayer_reproduces_existing_parquet_prefix_without_cameras(tmp_path: P
         _assert_nested_close(replay_reward, source_reward, atol=1e-7)
         _assert_nested_close(replay_success, source_success)
         _assert_nested_close(replay_action, source_action, atol=1e-8)
-        _assert_nested_close(replay_env_action, source_env_action, atol=1e-8)
+        _assert_nested_close(replay_env_obs, source_env_obs, atol=1e-5)
         _assert_nested_close(replay_instruction, source_instruction)
 
 
@@ -360,7 +405,7 @@ def test_replayer_adds_cameras_to_existing_episode_without_cameras(tmp_path: Pat
             replay_reward,
             replay_success,
             replay_action,
-            replay_env_action,
+            replay_env_obs,
             replay_instruction,
         ) = replay_row
         (
@@ -370,7 +415,7 @@ def test_replayer_adds_cameras_to_existing_episode_without_cameras(tmp_path: Pat
             source_reward,
             source_success,
             source_action,
-            source_env_action,
+            source_env_obs,
             source_instruction,
         ) = source_row
 
@@ -385,7 +430,7 @@ def test_replayer_adds_cameras_to_existing_episode_without_cameras(tmp_path: Pat
         _assert_nested_close(replay_reward, source_reward, atol=1e-7)
         _assert_nested_close(replay_success, source_success)
         _assert_nested_close(replay_action, source_action, atol=1e-8)
-        _assert_nested_close(replay_env_action, source_env_action, atol=1e-8)
+        _assert_nested_close(replay_env_obs, source_env_obs, atol=1e-5)
         _assert_nested_close(replay_instruction, source_instruction)
 
 

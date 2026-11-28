@@ -118,6 +118,10 @@ class JointDatasetConverter:
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.source_sql = self._build_source_sql(self.dataset_paths)
+        # Recordings without an rcs_version column store the observation after the step (paired with env_action):
+        # pair each action with the previous row's observation instead.
+        columns = {row[0] for row in self.conn.execute(f"DESCRIBE SELECT * FROM ({self.source_sql}) AS src").fetchall()}
+        self.legacy_layout = "rcs_version" not in columns
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
@@ -195,27 +199,41 @@ class JointDatasetConverter:
 
         self.lrds.finalize()
 
+    def _observation_column(self, column: str) -> str:
+        return f"LAG({column}) OVER (ORDER BY step)" if self.legacy_layout else column
+
     def _fetch_transition_table(self, episode_id: str) -> pd.DataFrame:
         observation_selects = ",\n                    ".join(
-            [f"obs.{robot_key}.joints AS observation_joints_{robot_key}" for robot_key in self.robot_keys]
-            + [f"obs.{robot_key}.gripper AS observation_gripper_{robot_key}" for robot_key in self.robot_keys]
+            [
+                f"{self._observation_column(f'obs.{robot_key}.joints')} AS observation_joints_{robot_key}"
+                for robot_key in self.robot_keys
+            ]
+            + [
+                f"{self._observation_column(f'obs.{robot_key}.gripper')} AS observation_gripper_{robot_key}"
+                for robot_key in self.robot_keys
+            ]
         )
+        action_column = "env_action" if self.legacy_layout else "action"
         action_selects = ",\n                    ".join(
             [f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}" for robot_key in self.robot_keys]
-            + [f"env_action.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
+            + [f"{action_column}.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
 
+        # the first row of a legacy recording has no observation before its action
         return self.conn.execute(
             f"""
-            SELECT
-                uuid,
-                step,
-                success,
-                instruction,
-                {observation_selects},
-                {action_selects}
-            FROM ({self.source_sql}) AS src
-            WHERE uuid = ?
+            SELECT * FROM (
+                SELECT
+                    uuid,
+                    step,
+                    success,
+                    instruction,
+                    {observation_selects},
+                    {action_selects}
+                FROM ({self.source_sql}) AS src
+                WHERE uuid = ?
+            )
+            WHERE observation_joints_{self.robot_keys[0]} IS NOT NULL
             ORDER BY step
             """,
             [episode_id],
@@ -231,10 +249,11 @@ class JointDatasetConverter:
 
     def _image_query(self) -> str:
         image_selects = ",\n                    ".join(
-            f"obs.frames.{camera.frame_name}.rgb.data AS {camera.image_column}" for camera in self.cameras
+            f"{self._observation_column(f'obs.frames.{camera.frame_name}.rgb.data')} AS {camera.image_column}"
+            for camera in self.cameras
         )
-        image_not_null_checks = "\n                  ".join(
-            f"AND obs.frames.{camera.frame_name}.rgb.data IS NOT NULL" for camera in self.cameras
+        image_not_null_checks = "\n              AND ".join(
+            f"{camera.image_column} IS NOT NULL" for camera in self.cameras
         )
         image_columns = ",\n                ".join(camera.image_column for camera in self.cameras)
 
@@ -246,12 +265,12 @@ class JointDatasetConverter:
                     {image_selects}
                 FROM ({self.source_sql}) AS src
                 WHERE uuid = ?
-                  {image_not_null_checks}
             )
             SELECT
                 step,
                 {image_columns}
             FROM ordered
+            WHERE {image_not_null_checks}
             ORDER BY step
         """
 
@@ -346,16 +365,24 @@ class JointDatasetConverter:
         df["observation_state"] = df.apply(self._build_observation_state, axis=1)
         df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
-        df = df[df["action_vector"].notna()]  # noqa: PD901
+        # skip a step only if the robot does not move during it (its observation equals the next one); the last
+        # step has no next observation and is kept
+        raw_state = np.stack(
+            [
+                np.concatenate(
+                    [
+                        np.asarray(row[f"observation_{part}_{robot_key}"], dtype=np.float64)
+                        for robot_key in self.robot_keys
+                        for part in ("joints", "gripper")
+                    ]
+                )
+                for _, row in df.iterrows()
+            ]
+        )
+        moved = np.ones(len(df), dtype=bool)
+        moved[:-1] = ~np.all(np.isclose(raw_state[1:], raw_state[:-1], atol=1e-4, rtol=0), axis=1)
 
-        prev_action: np.ndarray | None = None
-        keep_mask = []
-        for action_vec in df["action_vector"]:
-            assert isinstance(action_vec, np.ndarray)
-            keep_mask.append(prev_action is None or not np.allclose(action_vec, prev_action, atol=1e-4, rtol=0))
-            prev_action = action_vec
-
-        return df.loc[keep_mask].reset_index(drop=True)
+        return df[moved & df["action_vector"].notna().to_numpy()].reset_index(drop=True)
 
     def parse_episode(self, episode_id: str, table: pd.DataFrame, success: bool):
         table = self._prepare_transition_table(table)
