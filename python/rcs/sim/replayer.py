@@ -83,8 +83,14 @@ def load_distinct_uuids(dataset_path: Path | str) -> list[str]:
 def load_trajectory(dataset_path: Path | str, trajectory_uuid: str) -> list[RecordedSimStep]:
     connection = duckdb.connect()
     try:
+        columns = {
+            row[0]
+            for row in connection.execute("DESCRIBE SELECT * FROM read_parquet(?)", [str(dataset_path)]).fetchall()
+        }
+        # recordings from before env_obs was added store the stepped action as env_action
+        action_column = "env_action" if "env_action" in columns else "action"
         rows = connection.execute(
-            "SELECT uuid, step, timestamp, obs, info, env_action, instruction, success "
+            f"SELECT uuid, step, timestamp, obs, info, {action_column}, instruction, success "
             "FROM read_parquet(?) WHERE uuid = ? ORDER BY step",
             [str(dataset_path), trajectory_uuid],
         ).fetchall()

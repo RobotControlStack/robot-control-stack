@@ -46,6 +46,12 @@ class StorageWrapper(gym.Wrapper):
         3. **Consolidation:** On a clean exit (`close()`), the many small batch files are
            merged into larger, optimized Parquet files.
 
+        Row layout: each row is one ``step(action)``. ``obs`` is the observation the
+        action was applied from (the reset observation for the first row), ``action``
+        is the action passed to ``step`` and ``env_obs`` is the observation returned
+        by that step, without camera frames (it equals the next row's ``obs``).
+        ``(obs, action)`` is therefore the pair a policy is trained on.
+
         Observation handling:
         - Expects observations to be dictionaries.
         - RGB camera frames are JPEG-encoded.
@@ -91,8 +97,7 @@ class StorageWrapper(gym.Wrapper):
         self.always_record = always_record
         self.instruction = instruction
         self._success = False
-        self._prev_action = None
-        self._prev_absolute_action = None
+        self._prev_obs: dict[str, Any] | None = None
         self.success_from_env = success_from_env
         self.allow_wrapper_instruction = allow_wrapper_instruction
 
@@ -268,15 +273,18 @@ class StorageWrapper(gym.Wrapper):
                 raise RuntimeError(msg) from exc
 
         obs_original, reward, terminated, truncated, info = self.env.step(action)
-        obs = copy.deepcopy(obs_original)
 
         if not self._pause:
+            # obs: observation the action was chosen from (before the step), env_obs: observation after the step
+            obs = self._prev_obs
             assert isinstance(obs, dict)
             if "frames" in obs and not obs["frames"]:
                 del obs["frames"]
             if "frames" in obs:
                 self._encode_images(obs)
             self._flatten_arrays(obs)
+            env_obs = copy.deepcopy({k: v for k, v in obs_original.items() if k != "frames"})
+            self._flatten_arrays(env_obs)
             if info.get("success") and self.success_from_env:
                 self.success()
             if info.get("instruction") is not None and self.allow_wrapper_instruction:
@@ -284,19 +292,17 @@ class StorageWrapper(gym.Wrapper):
 
             frame = {
                 "obs": obs,
+                "env_obs": env_obs,
                 "info": info,
                 "reward": reward,
                 "step": self.step_cnt,
                 "uuid": self.uuid.hex,
                 "date": datetime.date.today().isoformat(),
                 "success": self._success,
-                "action": self._prev_action,
-                "env_action": action,
+                "action": action,
                 "instruction": self.instruction,
                 "timestamp": datetime.datetime.now().timestamp(),
             }
-
-            self._prev_action = action
 
             self.buffer.append(frame)
 
@@ -306,6 +312,7 @@ class StorageWrapper(gym.Wrapper):
                 # can still mark the episode as successful even if the batch boundary was hit.
                 self._flush(keep_last=True)
 
+        self._prev_obs = copy.deepcopy(obs_original)
         return obs_original, reward, terminated, truncated, info
 
     def set_instruction(self, instruction: str):
@@ -327,9 +334,8 @@ class StorageWrapper(gym.Wrapper):
             self._flush()
         self._pause = not self.always_record
         self._success = False
-        self._prev_action = None
-        self._prev_absolute_action = None
         obs, info = self.env.reset(seed=seed, options=options)
+        self._prev_obs = copy.deepcopy(obs)
         self.step_cnt = 0
         self.uuid = uuid4()
         return obs, info
