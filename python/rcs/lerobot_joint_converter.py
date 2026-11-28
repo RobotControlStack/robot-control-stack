@@ -118,6 +118,10 @@ class JointDatasetConverter:
         self.binarize_gripper = binarize_gripper
         self.gripper_binarize_threshold = gripper_binarize_threshold
         self.source_sql = self._build_source_sql(self.dataset_paths)
+        # Recordings from before env_obs was added store the observation after the step (paired with env_action):
+        # pair each action with the previous row's observation instead.
+        columns = {row[0] for row in self.conn.execute(f"DESCRIBE SELECT * FROM ({self.source_sql}) AS src").fetchall()}
+        self.legacy_layout = "env_action" in columns
         self.video_encoding = video_encoding
 
         self.tcp_offset = rcs.GRIPPER_TCP_OFFSETS[self.gripper_type]
@@ -195,27 +199,41 @@ class JointDatasetConverter:
 
         self.lrds.finalize()
 
+    def _observation_column(self, column: str) -> str:
+        return f"LAG({column}) OVER (ORDER BY step)" if self.legacy_layout else column
+
     def _fetch_transition_table(self, episode_id: str) -> pd.DataFrame:
         observation_selects = ",\n                    ".join(
-            [f"obs.{robot_key}.joints AS observation_joints_{robot_key}" for robot_key in self.robot_keys]
-            + [f"obs.{robot_key}.gripper AS observation_gripper_{robot_key}" for robot_key in self.robot_keys]
+            [
+                f"{self._observation_column(f'obs.{robot_key}.joints')} AS observation_joints_{robot_key}"
+                for robot_key in self.robot_keys
+            ]
+            + [
+                f"{self._observation_column(f'obs.{robot_key}.gripper')} AS observation_gripper_{robot_key}"
+                for robot_key in self.robot_keys
+            ]
         )
+        action_column = "env_action" if self.legacy_layout else "action"
         action_selects = ",\n                    ".join(
             [f"info.{robot_key}.absolute_action AS absolute_action_{robot_key}" for robot_key in self.robot_keys]
-            + [f"env_action.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
+            + [f"{action_column}.{robot_key}.gripper AS action_gripper_{robot_key}" for robot_key in self.robot_keys]
         )
 
+        # the first row of a legacy recording has no observation before its action
         return self.conn.execute(
             f"""
-            SELECT
-                uuid,
-                step,
-                success,
-                instruction,
-                {observation_selects},
-                {action_selects}
-            FROM ({self.source_sql}) AS src
-            WHERE uuid = ?
+            SELECT * FROM (
+                SELECT
+                    uuid,
+                    step,
+                    success,
+                    instruction,
+                    {observation_selects},
+                    {action_selects}
+                FROM ({self.source_sql}) AS src
+                WHERE uuid = ?
+            )
+            WHERE observation_joints_{self.robot_keys[0]} IS NOT NULL
             ORDER BY step
             """,
             [episode_id],
@@ -231,10 +249,11 @@ class JointDatasetConverter:
 
     def _image_query(self) -> str:
         image_selects = ",\n                    ".join(
-            f"obs.frames.{camera.frame_name}.rgb.data AS {camera.image_column}" for camera in self.cameras
+            f"{self._observation_column(f'obs.frames.{camera.frame_name}.rgb.data')} AS {camera.image_column}"
+            for camera in self.cameras
         )
-        image_not_null_checks = "\n                  ".join(
-            f"AND obs.frames.{camera.frame_name}.rgb.data IS NOT NULL" for camera in self.cameras
+        image_not_null_checks = "\n              AND ".join(
+            f"{camera.image_column} IS NOT NULL" for camera in self.cameras
         )
         image_columns = ",\n                ".join(camera.image_column for camera in self.cameras)
 
@@ -246,12 +265,12 @@ class JointDatasetConverter:
                     {image_selects}
                 FROM ({self.source_sql}) AS src
                 WHERE uuid = ?
-                  {image_not_null_checks}
             )
             SELECT
                 step,
                 {image_columns}
             FROM ordered
+            WHERE {image_not_null_checks}
             ORDER BY step
         """
 
