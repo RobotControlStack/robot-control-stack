@@ -365,16 +365,24 @@ class JointDatasetConverter:
         df["observation_state"] = df.apply(self._build_observation_state, axis=1)
         df["action_vector"] = df.apply(self._convert_action_to_joint_space, axis=1)
 
-        df = df[df["action_vector"].notna()]  # noqa: PD901
+        # skip a step only if the robot does not move during it (its observation equals the next one); the last
+        # step has no next observation and is kept
+        raw_state = np.stack(
+            [
+                np.concatenate(
+                    [
+                        np.asarray(row[f"observation_{part}_{robot_key}"], dtype=np.float64)
+                        for robot_key in self.robot_keys
+                        for part in ("joints", "gripper")
+                    ]
+                )
+                for _, row in df.iterrows()
+            ]
+        )
+        moved = np.ones(len(df), dtype=bool)
+        moved[:-1] = ~np.all(np.isclose(raw_state[1:], raw_state[:-1], atol=1e-4, rtol=0), axis=1)
 
-        prev_action: np.ndarray | None = None
-        keep_mask = []
-        for action_vec in df["action_vector"]:
-            assert isinstance(action_vec, np.ndarray)
-            keep_mask.append(prev_action is None or not np.allclose(action_vec, prev_action, atol=1e-4, rtol=0))
-            prev_action = action_vec
-
-        return df.loc[keep_mask].reset_index(drop=True)
+        return df[moved & df["action_vector"].notna().to_numpy()].reset_index(drop=True)
 
     def parse_episode(self, episode_id: str, table: pd.DataFrame, success: bool):
         table = self._prepare_transition_table(table)
